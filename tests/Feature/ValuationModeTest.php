@@ -52,4 +52,27 @@ class ValuationModeTest extends TestCase
 
         $this->actingAs($admin)->get('http://crm.xcar.localhost/offers/valuations/history')->assertOk()->assertSee('закупочные, без наценки')->assertSee('2 ТС');
     }
+
+    /**
+     * 20.11.2026, файл Альфы «2-13-19.xlsx»: VIN одной строки уже у ТС парковки — сумма встаёт без VIN, «VIN занят», а строки
+     * после неё тоже сохраняются (прежде `IdentityTaken` обрывал сохранение посреди списка).
+     */
+    public function test_vin_taken_by_park_vehicle_does_not_stop_the_list(): void
+    {
+        $admin = User::create(['name' => 'Админ', 'phone' => '79000000001', 'roles' => [Role::Admin], 'approved_at' => now()]);
+        $vendor = Vendor::create(['name' => 'АльфаСтрахование тест', 'deal_format' => 'supplier', 'floor_by_value' => true]);
+        \App\Park\Vehicle::create(['vendor_id' => null, 'vin' => 'WA1LAAF73FD012345', 'state' => \App\Park\VehicleState::Stored]);
+        $one = Offer::create(['vendor_id' => $vendor->id, 'claim_ref' => '5671/046/02475/26']);
+        $two = Offer::create(['vendor_id' => $vendor->id, 'claim_ref' => '4931/046/02601/26']);
+        $text = "5671/046/02475/26 767 524.00\nWA1LAAF73FD012345\n4931/046/02601/26 455 000.00";
+
+        $items = app(MatchValuations::class)($admin, ValuationText::parse($text)['rows'], true);
+        $saved = ApplyValuations::prepare($admin, $items, true, 'file');
+        $res = app(ApplyValuations::class)($admin, $saved, [$one->id, $two->id]);
+
+        $this->assertSame(767524, (int) $one->fresh()->value);
+        $this->assertNull($one->fresh()->vin);
+        $this->assertSame(455000, (int) $two->fresh()->value);
+        $this->assertSame(1, $res['vin_taken']);
+    }
 }

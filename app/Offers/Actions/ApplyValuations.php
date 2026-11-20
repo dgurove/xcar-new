@@ -97,9 +97,11 @@ final class ApplyValuations
                 (isset($set['value']) && (int) $offer->value !== $set['value']) || (isset($set['floor_price']) && (int) $offer->floor_price !== $set['floor_price']) ? $done++ : null;
             }
             // VIN — только в пустой (другой — перепроверить); город из текста главнее (Мигторг бывает устаревшим).
-            // VIN другого живого предложения не встанет (`Identity`) — строка без него, в итоге «VIN занят».
+            // VIN другого живого предложения или ТС парковки не встанет (`Identity`) — строка без него, в итоге «VIN занят»
+            // (20.11.2026, файл Альфы «2-13-19.xlsx»: VIN одной строки стоял у Audi Q7 на парковке — `IdentityTaken` ронял
+            // сохранение посреди списка, 43 из 118 встали, остальные — нет).
             if (isset($vins[$offer->id]) && blank($offer->vin)) {
-                if (Identity::offerByVin($vins[$offer->id], $offer->id)) {
+                if (Identity::offerByVin($vins[$offer->id], $offer->id) || Identity::carByVin($vins[$offer->id], $offer->car_id)) {
                     $vinTaken++;
                 } else {
                     $set['vin'] = $vins[$offer->id];
@@ -113,7 +115,19 @@ final class ApplyValuations
             if ($set === []) {
                 continue;
             }
-            ($this->update)($offer, $set, $user, ['source' => 'valuation', 'value' => $set['value'] ?? null, 'floor' => $set['floor_price'] ?? null] + ($markup ? [] : ['markup' => false]));
+            $log = ['source' => 'valuation', 'value' => $set['value'] ?? null, 'floor' => $set['floor_price'] ?? null] + ($markup ? [] : ['markup' => false]);
+            try {
+                ($this->update)($offer, $set, $user, $log);
+            } catch (IdentityTaken $e) {
+                // VIN всё же у другой машины — сумма встаёт без VIN; одна строка не роняет весь список.
+                if (! isset($set['vin'])) {
+                    throw $e;
+                }
+                unset($set['vin']);
+                $vinDone--;
+                $vinTaken++;
+                $set !== [] && ($this->update)($offer->fresh(), $set, $user, $log);
+            }
             if (isset($set['floor_price']) || isset($set['value'])) {
                 $items[] = ['offer_id' => $offer->id, 'number' => $offer->number, 'ref' => (string) $offer->claim_ref, 'vendor_id' => $offer->vendor_id, 'amount' => (int) $saved['amounts'][$offer->id]];
             }
