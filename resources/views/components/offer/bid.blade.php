@@ -42,8 +42,10 @@
     $diffText = $diff ? ($diff > 0 ? '+' : '−').Money::nums(abs($diff)) : null;
     $alerts = $high || ($loss && $active) || (! $active && ! $accepted) || $counter || $bid->counterDeclined();
 @endphp
-{{-- Строка (19.11.2026, владелец по макетам, вариант 3: «всё в кучу свалено», «кнопки слева — бред»): слева аватар, имя и
-     когда; справа цена светофором и под ней всегда разница; тревоги — цветной строкой, только когда есть. Кнопок в строке нет:
+{{-- Строка (19.11.2026, владелец по макетам, вариант 3: «всё в кучу свалено», «кнопки слева — бред»; 20.11.2026, вариант Б: «имя
+     сверху, сумма под именем слева, дата и время справа» — имя рвалось по буквам): имя на всю ширину, ниже цена светофором
+     слева и когда справа. Разница, «в гараже», «внёс» и подписи тревог («ниже закупочной на …» — только красной суммой) — в шторке;
+     в строке — лишь контрпредложение и «отклонено». Кнопок в строке нет:
      нажатие — шторка (`x-ui.more`): шапка с ценой и комментарием, «Написать» и главная «Принять…» / «Отдать…» в ряд, ниже
      списком «Поправить цену…», «Контрпредложение…», ответ за менеджера и красное «Отклонить…». Отклонённые — серой строкой. --}}
 <div @class(['bid-line', 'bid-row--loss' => ($loss && $active) || $high, 'bid-row--low' => $low && ! ($loss && $active), 'bid-row--ok' => $active && ! $garage && ! $low && ! $loss && ! $high, 'bid-line--off' => ! $sheet])>
@@ -57,14 +59,22 @@
         @if (! $active && ! $accepted)<x-ui.state :tone="$bid->state === BidState::Declined ? 'danger' : 'closed'">{{ mb_strtolower($bid->state->label()) }}</x-ui.state>@endif
         @if ($counter)<x-ui.state tone="accent"><span class="nums">→ {{ Money::rub($bid->counter_amount) }}</span>, ждём ответа</x-ui.state>@if ($bid->counter_remind_at)<span>напомним {!! \App\Support\Ago::html($bid->counter_remind_at, true, words: false) !!}</span>@endif
         @elseif ($bid->counterDeclined())<span>отказался от <span class="nums">{{ Money::rub($bid->counter_amount) }}</span></span>@endif
-    @php $alert = ob_get_clean(); ob_start(); @endphp
+    @php $alert = ob_get_clean(); $rowAlert = (! $active && ! $accepted) || $counter; @endphp
+    @php ob_start(); @endphp
         <x-ui.avatar :user="$who" :size="36"/>
         <span class="min-w-0 flex-1">
             <span class="bid-line-name">{{ $who->shortName() }}</span>
-            <span class="bid-line-sub"><span class="nums">{{ \App\Support\Ago::html($bid->created_at, true, words: false) }}</span></span>
-            @if ($alerts)<span class="bid-line-sub">{!! $alert !!}</span>@endif
+            <span class="bid-line-row">
+                <span class="bid-amount nums font-semibold">{{ $garage ? 'В гараж' : Money::rub($price) }}</span>
+                <span class="bid-line-when nums">{{ \App\Support\Ago::html($bid->created_at, true, words: false) }}</span>
+            </span>
+            @if ($rowAlert)
+                <span class="bid-line-sub">
+                    @if (! $active && ! $accepted)<x-ui.state :tone="$bid->state === BidState::Declined ? 'danger' : 'closed'">{{ mb_strtolower($bid->state->label()) }}</x-ui.state>@endif
+                    @if ($counter)<x-ui.state tone="accent"><span class="nums">→ {{ Money::rub($bid->counter_amount) }}</span>, ждём ответа</x-ui.state>@if ($bid->counter_remind_at)<span>напомним {!! \App\Support\Ago::html($bid->counter_remind_at, true, words: false) !!}</span>@endif @endif
+                </span>
+            @endif
         </span>
-        <span class="bid-line-end">{!! $sum !!}</span>
         @if ($sheet)<x-ui.icon name="chevron-right" class="size-4 shrink-0 text-ink-muted"/>@endif
     @php $main = ob_get_clean(); @endphp
     @if ($sheet)

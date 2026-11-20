@@ -33,15 +33,18 @@
                  красное «Снять параллельную…». --}}
             <div id="parallel-{{ $p->id }}" class="bid-line">
                 @php ob_start(); @endphp
-                    <span class="bid-line-sub"><span class="nums">{{ \App\Support\Ago::html($p->created_at, true, words: false) }}</span></span>
                     <span class="bid-line-sub"><x-ui.state :tone="$tone">{{ $word }}</x-ui.state>@if ($take['locked'])<span>{{ $take['locked'] }}</span>@endif</span>
-                @php $sub = ob_get_clean(); @endphp
+                @php $state = ob_get_clean(); $sub = '<span class="bid-line-sub"><span class="nums">'.\App\Support\Ago::html($p->created_at, true, words: false).'</span></span>'.$state; @endphp
                 <x-ui.more :id="'parallel-menu-'.$p->id" sheet-class="bid-sheet">
                     <x-slot:trigger>
                         <button type="button" class="bid-line-main" data-action="sheet#open" aria-haspopup="dialog" aria-controls="parallel-menu-{{ $p->id }}">
                             <x-ui.avatar :user="$p->buyer" :size="36"/>
-                            <span class="min-w-0 flex-1"><span class="bid-line-name">{{ $p->buyer?->shortName() }}</span>{!! $sub !!}</span>
-                            <span class="bid-line-end"><span class="bid-amount nums font-semibold">{{ Money::rub($p->amount) }}</span></span>
+                            {{-- Имя сверху, ниже цена слева и когда справа, состояние словом (20.11.2026, как строка подтверждения). --}}
+                            <span class="min-w-0 flex-1">
+                                <span class="bid-line-name">{{ $p->buyer?->shortName() }}</span>
+                                <span class="bid-line-row"><span class="bid-amount nums font-semibold">{{ Money::rub($p->amount) }}</span><span class="bid-line-when nums">{{ \App\Support\Ago::html($p->created_at, true, words: false) }}</span></span>
+                                {!! $state !!}
+                            </span>
                             <x-ui.icon name="chevron-right" class="size-4 shrink-0 text-ink-muted"/>
                         </button>
                     </x-slot:trigger>

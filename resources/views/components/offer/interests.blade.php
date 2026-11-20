@@ -30,7 +30,12 @@
                 @php $sub = ob_get_clean(); $name = $interest->user->is($me) ? 'Вы' : $interest->user->name; @endphp
                 @php ob_start(); @endphp
                     <x-ui.avatar :user="$interest->user" :size="36"/>
-                    <span class="min-w-0 flex-1"><span class="bid-line-name">{{ $name }}</span>{!! $sub !!}@if ($interest->comment)<span class="mt-0.5 block text-sm">{{ $interest->comment }}</span>@endif</span>
+                    {{-- Только имя покупателя и когда (20.11.2026, владелец: «имя менеджера там вообще не нужно»): чей он, «внёс» — в шторке. --}}
+                    <span class="min-w-0 flex-1">
+                        <span class="bid-line-name">{{ $name }}</span>
+                        <span class="bid-line-row">@if ($interest->comment)<span class="min-w-0 truncate text-sm">{{ $interest->comment }}</span>@endif<span class="bid-line-when nums">{{ \App\Support\Ago::html($interest->created_at, true, words: false) }}</span></span>
+                        @if ($interest->state === InterestState::Closed)<span class="bid-line-sub"><x-ui.state tone="closed">закрыт</x-ui.state></span>@endif
+                    </span>
                     @if ($sheet)<x-ui.icon name="chevron-right" class="size-4 shrink-0 text-ink-muted"/>@endif
                 @php $main = ob_get_clean(); @endphp
                 @if ($sheet)
