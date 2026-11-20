@@ -66,6 +66,35 @@ class SupplierVatTest extends TestCase
         $this->assertFalse(SupplierVat::saleDocument('Односторонний абандон, договор купли-продажи предмета лизинга, в том числе НДС 22% в размере 64 136,49'));
     }
 
+    /** Метка «С НДС» — за ставкой; грузовым Альфы 22 % по вендору, легковым — нет; письмо перебивает умолчание (20.11.2026). */
+    public function test_tag_follows_rate_and_heavy_default(): void
+    {
+        $alfa = Vendor::create(['name' => 'Альфа тест', 'supplier_vat_heavy' => 22]);
+        $truck = Offer::create(['vendor_id' => $alfa->id, 'claim_ref' => '0790/046/11111/26', 'vehicle_category' => \App\Cars\Category::Truck]);
+        $car = Offer::create(['vendor_id' => $alfa->id, 'claim_ref' => '0790/046/22222/26', 'vehicle_category' => \App\Cars\Category::Passenger]);
+        $this->assertSame(22, $truck->fresh()->supplier_vat);
+        $this->assertSame('vendor', $truck->fresh()->supplier_vat_source);
+        $this->assertContains(Offer::VAT_TAG, $truck->fresh()->tags);
+        $this->assertTrue($truck->fresh()->prices_include_vat);
+        $this->assertNull($car->fresh()->supplier_vat);
+        $this->assertNotContains(Offer::VAT_TAG, $car->fresh()->tags ?? []);
+
+        // Альфа написала «Без НДС» — ставка 0, метка снялась; смена типа ТС письмо не перебивает.
+        SupplierVat::put($truck->fresh(), 0, 'letter', null, now());
+        $this->assertSame(0, $truck->fresh()->supplier_vat);
+        $this->assertNotContains(Offer::VAT_TAG, $truck->fresh()->tags ?? []);
+        $t = $truck->fresh();
+        $t->vehicle_category = \App\Cars\Category::Special;
+        $t->save();
+        $this->assertSame(0, $truck->fresh()->supplier_vat);
+
+        // Легковой стал грузовым (марку вписали позже) — умолчание по вендору.
+        $c = $car->fresh();
+        $c->vehicle_category = \App\Cars\Category::Truck;
+        $c->save();
+        $this->assertSame(22, $car->fresh()->supplier_vat);
+    }
+
     private function deal(?int $supplierVat): Deal
     {
         Storage::fake('private');

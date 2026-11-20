@@ -101,6 +101,9 @@ class Offer extends Model
         return ['value'];
     }
 
+    /** Метка ставки поставщика с НДС (`supplier_vat > 0`), ставится и снимается сама. */
+    public const VAT_TAG = 'С НДС';
+
     protected static function booted(): void
     {
         // Оценочная продажи с парковки (`ParkValue`): новая продажа машины, что стоит у нас, берёт оценочную ТС с её датой;
@@ -115,10 +118,27 @@ class Offer extends Model
         // поменяли ставку — галка за ней; старые двери (письмо, вендор, «Через Р.О.С.») ставят галку — ставка за ней: «с НДС» без
         // ставки — 22 %, «без НДС» — 0, если ставка была.
         static::saving(function (self $o) {
+            // Умолчание вендора (20.11.2026): грузовым — своя ставка (`supplier_vat_heavy`, Альфа 22 %: о НДС она пишет только после
+            // продажи). Пересчитывается, когда стал известен вендор или тип ТС, — пока ставка не из письма, документа или руки.
+            if ($o->vendor_id && in_array($o->supplier_vat_source, [null, 'vendor'], true) && ! $o->isDirty('supplier_vat_source')
+                && (! $o->exists || $o->isDirty('vendor_id')
+                    // Поля машины пишутся раньше дорожки (`OnCar::save`): к этой минуте они уже не «грязные», а «изменённые».
+                    || ($o->relationLoaded('car') && $o->getRelation('car')?->wasChanged(['category', 'brand_id', 'model_id', 'body'])))) {
+                $rate = Vendor::supplierVat($o->vendor_id, $o->isHeavy());
+                if ($rate !== null || $o->supplier_vat_source === 'vendor') {
+                    $o->supplier_vat = $rate;
+                    $o->supplier_vat_source = $rate === null ? null : 'vendor';
+                }
+            }
             if ($o->isDirty('supplier_vat')) {
                 $o->prices_include_vat = (int) $o->supplier_vat > 0;
             } elseif ($o->isDirty('prices_include_vat')) {
                 $o->supplier_vat = $o->prices_include_vat ? ($o->supplier_vat ?: 22) : ($o->supplier_vat ? 0 : $o->supplier_vat);
+            }
+            // Метка «С НДС» — сама за ставкой (20.11.2026, владелец): другие метки не трогаем.
+            if ($o->isDirty('supplier_vat')) {
+                $tags = array_values(array_diff($o->tags ?? [], [self::VAT_TAG]));
+                $o->tags = (int) $o->supplier_vat > 0 ? [...$tags, self::VAT_TAG] : $tags;
             }
         });
         // `opened_at` — вычисленное каталогом (`CatalogQuery::openedAtSql`), колонки нет: в запись не уходит.

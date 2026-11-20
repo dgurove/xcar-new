@@ -34,8 +34,12 @@
                 <x-audience.field :value="$vendor->audience_rules ? json_encode($vendor->audience_rules) : ''" :rules="$vendor->audience_rules" inline/>
                 <x-ui.check name="silence_means_buy" :checked="$vendor->silence_means_buy">Молчание означает покупку</x-ui.check>
                 {{-- НДС поставщика ставкой (20.11.2026): умолчание его предложений, в счёте за ТС по договору комиссии — она. --}}
-                <x-ui.field type="select" name="supplier_vat" label="НДС поставщика" :value="$vendor->supplier_vat"
-                    :options="['' => 'не указан'] + collect(\App\Billing\Vat::RATES)->mapWithKeys(fn ($r) => [$r => \App\Billing\Vat::label($r)])->all()"/>
+                @php $vatOptions = ['' => 'не указан'] + collect(\App\Billing\Vat::RATES)->mapWithKeys(fn ($r) => [$r => \App\Billing\Vat::label($r)])->all(); @endphp
+                <div class="grid grid-cols-2 gap-3">
+                    <x-ui.field type="select" name="supplier_vat" label="НДС поставщика" :value="$vendor->supplier_vat" :options="$vatOptions"/>
+                    {{-- Грузовым — своя (20.11.2026: Альфа о НДС пишет только после продажи, а грузовики у неё почти все с НДС). --}}
+                    <x-ui.field type="select" name="supplier_vat_heavy" label="Грузовые" :value="$vendor->supplier_vat_heavy" :options="['' => 'как все'] + array_slice($vatOptions, 1, null, true)"/>
+                </div>
                 {{-- Сумма страховой — оценочная (Альфа): закупочная от неё по правилу `Offers\Pricing`, в CRM поле «Оценочная». --}}
                 <x-ui.check name="floor_by_value" :checked="$vendor->floor_by_value">Закупочная от оценочной</x-ui.check>
                 {{-- Диапазоны наценки к оценочной (07.11.2026): умолчание предложений вендора — поставщик на partner.xcar.ru

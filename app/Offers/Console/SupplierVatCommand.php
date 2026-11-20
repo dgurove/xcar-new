@@ -55,7 +55,34 @@ final class SupplierVatCommand extends Command
                 SupplierVat::put($offer, $found['rate'], $found['source'], $found['message_id'], $found['at']);
             }
         }
+        // Ставки нет нигде — умолчание вендора (грузовым своё, `supplier_vat_heavy`): черновики, галерея, продажа. Идущие сделки —
+        // только списком: схему денег на ходу не меняем.
+        $deals = [];
+        foreach (Offer::query()->whereNull('supplier_vat')->whereNotNull('vendor_id')->orderBy('id')->pluck('id') as $id) {
+            $offer = Offer::with('vendor')->find($id);
+            $rate = \App\Vendors\Vendor::supplierVat($offer->vendor_id, $offer->isHeavy());
+            if ($rate === null) {
+                continue;
+            }
+            $deal = Deal::where('offer_id', $offer->id)->active()->latest('id')->first();
+            if ($deal) {
+                $deals[] = [$offer->number, $offer->vendor?->name, $offer->title(), Vat::label($rate), $deal->schemeOf()->label()];
+
+                continue;
+            }
+            if (! in_array($offer->state, [OfferState::Draft, OfferState::Gallery, OfferState::Open], true)) {
+                continue;
+            }
+            $rows[] = [$offer->number, $offer->vendor?->name, '—', Vat::label($rate), 'вендор', Str::limit($offer->title(), 70), ''];
+            if ($apply) {
+                app(\App\Offers\Actions\UpdateOffer::class)($offer, ['supplier_vat' => $rate, 'supplier_vat_source' => 'vendor', 'supplier_vat_at' => now()], null, ['why' => 'НДС поставщика по вендору']);
+            }
+        }
         $this->table(['№', 'Вендор', 'Было', 'Стало', 'Откуда', 'Кусок', 'Счёт за ТС'], $rows);
+        if ($deals) {
+            $this->line('Идущие сделки без ставки — не трогаю, решать руками:');
+            $this->table(['№', 'Вендор', 'ТС', 'По вендору', 'Схема'], $deals);
+        }
         $this->info(count($rows).($apply ? ' записано' : ' найдено, ничего не записано (--apply — записать)'));
 
         return self::SUCCESS;
