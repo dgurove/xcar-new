@@ -24,7 +24,8 @@
     $tools = $user && $surface !== \App\Support\Surface::Partner && $surface !== \App\Support\Surface::Chat;
     // Партнёру шапки нет вовсе (08.11.2026, владелец: «шапка и лого тут не нужны»): у вошедшего остаётся полоса под вырез
     // экрана (`--safe-top`, цвет строки состояния), раздел, профиль, тема и выход — в ряду заголовка (`partner.me`).
-    $bare = $user && $surface === \App\Support\Surface::Partner;
+    // XCAR Chat (20.11.2026, владелец: «шапку надо убрать полностью») — так же: аватар с меню — у заголовка «Чатов».
+    $bare = $user && ($surface === \App\Support\Surface::Partner || $surface === \App\Support\Surface::Chat);
 @endphp
 <header id="header" class="header">
     {{-- Состояние связи — полоса по нижнему краю шапки, вне раскладки (05.11.2026, владелец: надпись «Соединение…» в ряду

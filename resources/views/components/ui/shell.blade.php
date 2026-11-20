@@ -76,6 +76,7 @@
     @endif
     {{-- Новые лоты Мигторга черновиками — капсула сотрудникам CRM (админы и модераторы, тема `staff`). --}}
     @if (! $bare && auth()->user()?->isStaff() && \App\Support\Surface::current() === \App\Support\Surface::Crm)<x-migtorg.island/>@endif
-    @unless ($partner)<x-ui.tabbar/>@endunless
+    {{-- XCAR Chat — тоже без таб-бара: раздел один, профиль — аватаром у заголовка «Чатов». --}}
+    @unless ($partner || \App\Support\Surface::current() === \App\Support\Surface::Chat)<x-ui.tabbar/>@endunless
     @unless ($bare)<x-ui.toasts/>@endunless
 </x-ui.layout>

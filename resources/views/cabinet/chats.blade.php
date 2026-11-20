@@ -35,7 +35,14 @@
 <x-ui.shell :title="$current ? $name : 'Чаты'" :back="$current ? ['Чаты', $base] : false" :heading="false" :back-row="false">
     {{-- Заголовок раздела, как у «Чатов» CRM; открыт чат на телефоне — прячется (`body.chat-open`). --}}
     <div class="chat-crm-top">
-        <h1 class="head-title text-xl sm:text-2xl">Чаты</h1>
+        {{-- XCAR Chat без шапки: профиль, тема и выход — аватаром справа (`partner.me`). Ряд — внутри: у `.chat-crm-top` свой
+             `display: none` в открытом чате на телефоне, утилита `flex` на нём его перебила бы. --}}
+        <div class="flex items-center justify-between gap-3">
+            <h1 class="head-title text-xl sm:text-2xl">Чаты</h1>
+            @if (\App\Support\Surface::current() === \App\Support\Surface::Chat)
+                @include('partner.me')
+            @endif
+        </div>
     </div>
     @include('cabinet.chats-split')
 </x-ui.shell>

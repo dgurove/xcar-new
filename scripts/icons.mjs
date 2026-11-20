@@ -7,7 +7,7 @@
 // Ярлыки долгого нажатия — иконки кита из icon.blade.php. Экран запуска iOS — горизонтальный
 // логотип на цвете полосы, под каждый iPhone своя картинка (iOS требует точный размер).
 import sharp from 'sharp';
-import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 
 const at = (p) => new URL(p, import.meta.url).pathname;
 const BLACK = '#000000';
@@ -73,7 +73,9 @@ for (const name of SURFACES) {
         .composite([{ input: inner, gravity: 'centre' }]).png().toFile(out('icon-maskable-512.png'));
 
     // Силуэт: без фона, всё белым.
-    const mono = svg.replace(/<rect[^>]*\/>\s*/, '').replace(/fill="(white|black|#97BF0D)"/g, 'fill="white"');
+    // У знака с маской (XCAR Chat) замена цветов сломала бы маску — у него свой исходник силуэта.
+    const own = at(`../resources/icons/${name}-mono.svg`);
+    const mono = existsSync(own) ? readFileSync(own, 'utf8') : svg.replace(/<rect[^>]*\/>\s*/, '').replace(/fill="(white|black|#97BF0D)"/g, 'fill="white"');
     await sharp(Buffer.from(mono)).resize(512, 512).png().toFile(out('icon-mono-512.png'));
 
     // Ярлыки: заливка кита в безопасной зоне на чёрном.
