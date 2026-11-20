@@ -17,6 +17,10 @@
     $scheme = $deal->schemeOf();
     $ours = in_array($scheme, [DealScheme::Prime, DealScheme::Ros], true);
     $direct = $deal->paysSelection();
+    // Менеджер сам платит поставщику по его счёту — и «страховой напрямую», и гаражная «платит менеджер» (20.11.2026, владелец по
+    // 7925/046/01102/26: «гараж — та же сделка с доп. этапом и расходами, всё остальное ровно то же»; гаражной `paysSelection` нет —
+    // подбор у неё долей, — и счёт Альфы со своей платёжкой у Сергея не показывались, сумма поставщику — «уточним»).
+    $toSupplier = $deal->paysSupplierSelf();
     $alive = $invoices->reject(fn ($i) => $i->state === InvoiceState::Void);
     $sale = $alive->first(fn ($i) => $i->kind === ChargeKind::Sale && $i->isShownToManager());
     $selection = $alive->first(fn ($i) => $i->kind === ChargeKind::Selection);
@@ -45,13 +49,13 @@
     // Альфа (ПРАЙМ / Р.О.С.): договор — после подтверждённой оплаты, до неё строки договора нет.
     $contractRow = $deal->hasContract() && ! $deal->contractAfterPay();
     // Платёж поставщику на его шаге (Альфа «напрямую»): платёжка — ответ шага, закрывает его сама.
-    $supplierStep = $live && $requirement && $direct && $deal->paysSupplierOn($requirement->stage);
-    $supplierFiles = $direct ? \App\Offers\SupplierInvoice::shown($offer) : collect();
-    $proofs = $direct ? ($deal->sentPaymentProof()?->getMedia('files') ?? collect()) : collect();
+    $supplierStep = $live && $requirement && $toSupplier && $deal->paysSupplierOn($requirement->stage);
+    $supplierFiles = $toSupplier ? \App\Offers\SupplierInvoice::shown($offer) : collect();
+    $proofs = $toSupplier ? ($deal->sentPaymentProof()?->getMedia('files') ?? collect()) : collect();
     // На шаге оплаты поставщику уже приложенные, но ещё не ответившие шаг листы — тоже платёжками.
     $stepProofs = $supplierStep ? $requirement->getMedia('files') : collect();
     $carTitle = $ours ? ($sale?->seller ?? $deal->seller())->config()['name'] : ($scheme === DealScheme::Insurer ? 'Поставщику' : 'Собственнику');
-    $carSum = $ours ? ($sale ? $sale->total : \App\Offers\DealContract::priceFor($deal)) : ($deal->isDirect() && $deal->owner_price === null ? null : $deal->ownerPrice());
+    $carSum = $ours ? ($sale ? $sale->total : \App\Offers\DealContract::priceFor($deal)) : ($deal->isDirect() && $deal->owner_price === null ? null : ($toSupplier ? $deal->supplierPayment() : $deal->ownerPrice()));
     $carState = $ours ? $stateOf($sale) : ($deal->prepaid_at ? ['оплачено', 'text-open'] : ($proofs->isNotEmpty() ? ['ждём подтверждения', 'text-ink-muted'] : null));
     $salePayments = $sale && $sale->relationLoaded('allPayments') ? $sale->allPayments->reject(fn ($p) => $p->source === \App\Billing\PaymentSource::Offset) : ($sale?->allPayments()->get()->reject(fn ($p) => $p->source === \App\Billing\PaymentSource::Offset) ?? collect());
 @endphp
