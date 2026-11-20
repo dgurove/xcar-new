@@ -57,7 +57,7 @@ class PeopleController
             return response()->json(self::answer(People::row($depot->load('settlement'))));
         }
 
-        // Админ в CRM заводит покупателя менеджеру сделки (20.10.2026, владелец: «пока менеджер не укажет покупателя, мы не
+        // Админ и модератор в CRM заводят покупателя менеджеру сделки (20.10.2026, владелец: «пока менеджер не укажет покупателя, мы не
         // можем закрыть сделку»): своих покупателей у админа нет — новый встаёт в «Покупатели» менеджера и в эту сделку.
         $forDeal = $kind === 'buyer' && self::staffForDeal($me);
         $deal = $kind === 'buyer' && $request->filled('deal')
@@ -126,7 +126,8 @@ class PeopleController
     /** Админ в CRM: покупателя заводит не себе, а менеджеру сделки (`deal` обязателен). */
     private static function staffForDeal(User $me): bool
     {
-        return $me->isAdmin() && Surface::current() === Surface::Crm;
+        // И модератору (20.11.2026, Алина не нашла «+ Новый покупатель»): с 17.11 он ведёт сделки целиком (`canEditDeals`).
+        return $me->canEditDeals() && Surface::current() === Surface::Crm;
     }
 
     /** Строка нового человека — та же разметка, что у списка шторки. */

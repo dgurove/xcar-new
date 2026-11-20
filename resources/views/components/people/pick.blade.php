@@ -87,6 +87,16 @@
                 @endif
                 @if ($grouped)
                 <div class="flex flex-col gap-4" data-people-pick-target="list">
+                    {{-- «+ Новый …» — первой строкой (20.11.2026: модератор не нашёл его под длинным списком покупателей менеджера). --}}
+                    @if ($canCreate)
+                        <div class="list">
+                            <button type="button" class="row w-full text-left" data-people-pick-target="addRow" data-action="people-pick#add">
+                                <x-ui.row-icon name="plus" size="s" tone="accent"/>
+                                <span class="min-w-0 flex-1 font-medium text-accent-text">{{ $newLabel }}</span>
+                                <x-ui.chevron/>
+                            </button>
+                        </div>
+                    @endif
                     @foreach ($grouped as $group => $rows)
                         <div data-people-group>
                             @if ($group !== '')<div class="list-head">{{ $group }}</div>@endif
@@ -97,19 +107,17 @@
                             </div>
                         </div>
                     @endforeach
-                    @if ($canCreate)
-                        <div class="list">
-                            <button type="button" class="row w-full text-left" data-people-pick-target="addRow" data-action="people-pick#add">
-                                <x-ui.row-icon name="plus" size="s" tone="accent"/>
-                                <span class="min-w-0 flex-1 font-medium text-accent-text">{{ $newLabel }}</span>
-                                <x-ui.chevron/>
-                            </button>
-                        </div>
-                    @endif
                     <p class="text-sm text-ink-muted" data-people-empty hidden>Никого не нашли</p>
                 </div>
                 @else
                 <div class="list" data-people-pick-target="list">
+                    @if ($canCreate)
+                        <button type="button" class="row w-full text-left" data-people-pick-target="addRow" data-action="people-pick#add">
+                            <x-ui.row-icon name="plus" size="s" tone="accent"/>
+                            <span class="min-w-0 flex-1 font-medium text-accent-text">{{ $newLabel }}</span>
+                            <x-ui.chevron/>
+                        </button>
+                    @endif
                     @if ($none)
                         <label class="row row-check people-option" data-people-option data-search-text="">
                             <x-ui.row-icon name="user" size="s" tone="muted"/>
@@ -120,13 +128,6 @@
                     @foreach ($people as $p)
                         <x-people.option :person="$p" :name="'_pp_'.$uid" :checked="$chosen && (string) $chosen['id'] === (string) $p['id']"/>
                     @endforeach
-                    @if ($canCreate)
-                        <button type="button" class="row w-full text-left" data-people-pick-target="addRow" data-action="people-pick#add">
-                            <x-ui.row-icon name="plus" size="s" tone="accent"/>
-                            <span class="min-w-0 flex-1 font-medium text-accent-text">{{ $newLabel }}</span>
-                            <x-ui.chevron/>
-                        </button>
-                    @endif
                 </div>
                 @endif
                 @if ($people->isEmpty() && ! $none && ! $canCreate)<x-ui.empty class="mt-4">Пока никого нет</x-ui.empty>@endif

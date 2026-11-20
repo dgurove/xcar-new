@@ -228,7 +228,8 @@ export default class extends Controller {
         this.made = data;
         if (!this.onlyValue) {
             const option = this.option(data.html, 'radio', this.listTarget.querySelector('input[type=radio]')?.name ?? `_pp_${this.nameValue}`);
-            if (this.hasAddRowTarget) this.addRowTarget.before(option); else this.listTarget.append(option);
+            // «+ Новый …» стоит первой строкой (20.11.2026) — новый человек сразу под ней.
+            if (this.hasAddRowTarget) this.addRowTarget.after(option); else this.listTarget.append(option);
             this.listTarget.querySelectorAll('input[type=radio]').forEach((i) => { i.checked = i === option.querySelector('input'); });
         }
         if (!data.credentials) { this.finish(); window.toast?.(data.toast || `${data.name} в списке`); return; }

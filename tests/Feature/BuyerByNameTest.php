@@ -36,6 +36,19 @@ class BuyerByNameTest extends TestCase
         $this->assertTrue($buyer->isBuyer());
     }
 
+    /** Модератор CRM заводит покупателя менеджеру сделки (20.11.2026: Алина не нашла «+ Новый покупатель»), логиста — нет. */
+    public function test_moderator_adds_buyer_for_deal(): void
+    {
+        $moderator = User::create(['name' => 'Алина', 'phone' => '79000000009', 'roles' => [Role::Moderator], 'approved_at' => now()]);
+        $offer = \App\Offers\Offer::create(['floor_price' => 800000, 'asking_price' => 900000]);
+        $deal = \App\Offers\Deal::create(['offer_id' => $offer->id, 'buyer_id' => $this->manager->id, 'cost' => 800000, 'amount' => 900000]);
+
+        $this->actingAs($moderator)->postJson('http://crm.xcar.localhost/people', ['kind' => 'buyer', 'deal' => $deal->id, '_person' => ['first_name' => 'Иван', 'last_name' => 'Петров']])
+            ->assertOk();
+        $this->assertSame('Иван Петров', User::where('manager_id', $this->manager->id)->sole()->name);
+        $this->actingAs($moderator)->postJson('http://crm.xcar.localhost/people', ['kind' => 'logist', '_person' => ['first_name' => 'Олег']])->assertForbidden();
+    }
+
     public function test_buyers_form_adds_by_name_and_gives_access_later(): void
     {
         $this->actingAs($this->manager)->post('http://xcar.localhost/buyers/invites', ['mode' => 'person', 'first_name' => 'Олег'])

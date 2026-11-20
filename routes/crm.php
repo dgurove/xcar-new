@@ -160,6 +160,11 @@ Route::domain(config('xcar.crm_host'))->middleware(['auth', 'ability:isStaff'])-
     // список «Сделок» с окном документов, сумма договора, данные ДКП и паспорт покупателя; прочее по сделке — только админу.
     Route::middleware('ability:canEditDeals')->group(function () {
         Route::get('/work/deals', [DealController::class, 'index']);
+        // «+ Новый покупатель» сделки (и модератору, 20.11.2026) и «+ Новый логист / сотрудник» вывоза (только админ —
+        // `PeopleController::allows`), данные входа и ссылка нового — письмом.
+        Route::post('/people', [PeopleController::class, 'store']);
+        Route::post('/people/credentials-mail/{token}', [PeopleMailController::class, 'credentials']);
+        Route::post('/people/{user}/password-link-mail', [PeopleMailController::class, 'passwordLink']);
         Route::get('/work/deals/{deal}', [DealController::class, 'show']);
         Route::put('/work/deals/{deal}/contract', [DealContractController::class, 'update']);
         Route::put('/work/deals/{deal}/invoice-data', [DealContractController::class, 'invoiceData']);
@@ -451,10 +456,6 @@ Route::domain(config('xcar.crm_host'))->middleware(['auth', 'ability:isStaff'])-
             Route::get('/users/{user}/statement', [UserController::class, 'statement']);
             Route::get('/users/{user}/export', [UserController::class, 'export']);
             Route::post('/users/invites', [InviteController::class, 'store']);
-            // «+ Новый логист / сотрудник» в шторке выбора «Кто вывозит» (18.10.2026).
-            Route::post('/people', [PeopleController::class, 'store']);
-            Route::post('/people/credentials-mail/{token}', [PeopleMailController::class, 'credentials']);
-            Route::post('/people/{user}/password-link-mail', [PeopleMailController::class, 'passwordLink']);
             Route::post('/users/invites/{invite}/off', [InviteController::class, 'disable']);
             Route::post('/users/invites/{invite}/mail', [InviteController::class, 'mail']);
             Route::post('/users/invites/{invite}/on', [InviteController::class, 'enable']);

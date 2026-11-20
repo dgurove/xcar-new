@@ -35,7 +35,7 @@ class PeopleMailController
     public function passwordLink(Request $request, User $user)
     {
         $me = $request->user();
-        abort_unless($me->isAdmin() || $user->manager_id === $me->id, 404);
+        abort_unless($me->isAdmin() || ($me->canEditDeals() && $user->manager_id) || $user->manager_id === $me->id, 404);
         $url = (string) $request->input('url');
         abort_unless(str_starts_with($url, \App\Support\Surface::Site->url('/password/link/')) && $user->email, 404);
         $html = view('emails.password', [
