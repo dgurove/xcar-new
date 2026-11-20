@@ -52,6 +52,18 @@
         @php
             $base = $offer->state === OfferState::Open ? $offer->published_at : $offer->slot_at;
         @endphp
+        {{-- Эксклюзив за оценку идёт (`Exclusive`, 20.11.2026: Андрей ставил «Всем», а оставался только Роман) — виден здесь и
+             снимается переключателем со «Вы уверены?»; тогда волны ниже встают как выбрали (`UpdateOffer`, `exclusive_off`). --}}
+        @php $running = $offer->state === OfferState::Open ? \App\Offers\Exclusive::running($offer) : collect(); @endphp
+        @if ($running->isNotEmpty())
+            <div class="col-span-2" data-controller="exclusive" data-exclusive-text-value="{{ \App\Offers\Exclusive::warning($running) }}">
+                <input type="hidden" name="exclusive_off" value="0" form="{{ $form }}" data-exclusive-target="off">
+                <label class="check">
+                    <input type="checkbox" switch checked data-exclusive-target="toggle" data-action="exclusive#change">
+                    <span>Только {{ \App\Offers\Exclusive::who($running) }} до {{ \App\Support\Ago::day($running->min('exclusive_until'), true) }}, за оценку</span>
+                </label>
+            </div>
+        @endif
         @if ($as === 'sheet')
             <x-audience.field :value="$offer->audience_rules ? json_encode($offer->audience_rules) : ''" :rules="AudienceRules::of($offer)" :form="$form"
                 inline :base="$base" :fresh="$offer->state !== OfferState::Open" :sheet="'audience-'.$n.'-'.$as" class="col-span-2">

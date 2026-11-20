@@ -54,6 +54,9 @@ final class UpdateOffer
         if ($asOf) {
             $log['as_of'] = $asOf->toDateTimeString();
         }
+        // «Только ему до …» сняли в шторке «Показ» (`exclusive_off`, 20.11.2026): лента волн встаёт как выбрали.
+        $waive = (bool) ($data['exclusive_off'] ?? false);
+        unset($data['exclusive_off']);
         $was = $offer->value;
         $wasRules = Pricing::autoRules($offer);
         $offer->fill($data);
@@ -116,9 +119,22 @@ final class UpdateOffer
         if ($offer->isDirty('binding_until') && $offer->bids_close_at?->isFuture()) {
             $offer->bids_close_at = Binding::clampClose($offer, $offer->bids_close_at);
         }
-        // Эксклюзив за оценку идёт — правка «Показа» его не снимает (`Exclusive`).
-        if ($offer->state === OfferState::Open && $offer->isDirty('audience_rules') && ($running = Exclusive::running($offer))->isNotEmpty()) {
-            $offer->audience_rules = Exclusive::rules(AudienceRules::of($offer), $running, $offer);
+        // Эксклюзив за оценку идёт — правка «Показа» его не снимает (`Exclusive`), пока его не сняли переключателем в той же
+        // шторке (20.11.2026, Андрей трижды ставил «Всем» по 2611164131, а оставался только Роман): тогда волны — как выбрали,
+        // не трогали — как у вендора (то же, что «Открыть всем сейчас…»).
+        $waived = false;
+        if ($offer->state === OfferState::Open && ($running = Exclusive::running($offer))->isNotEmpty()) {
+            if ($waive && $by) {
+                Exclusive::waive($offer, $by);
+                $waived = true;
+                $offer->first_look_until = null;
+                $offer->first_look_user_id = null;
+                if (! array_key_exists('audience_rules', $data) || ! $offer->isDirty('audience_rules')) {
+                    $offer->audience_rules = null;
+                }
+            } elseif ($offer->isDirty('audience_rules')) {
+                $offer->audience_rules = Exclusive::rules(AudienceRules::of($offer), $running, $offer);
+            }
         }
         // Правка пишет и предложение, и его машину (`Cars\Car`): история и «что поменялось» — по обеим.
         $diff = Changes::ofLane($offer);
@@ -130,7 +146,7 @@ final class UpdateOffer
         if ($by && $changed) {
             app(\App\Cars\Sources\Pick::class)->settle($offer, $changed, $by);
         }
-        if (array_intersect(['audience_rules', 'vendor_id'], $changed)) {
+        if ($waived || array_intersect(['audience_rules', 'vendor_id'], $changed)) {
             app(SyncViewers::class)($offer);
             app(NotifyViewers::class)($offer, live: true);
         }

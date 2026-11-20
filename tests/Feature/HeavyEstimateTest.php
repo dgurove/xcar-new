@@ -239,6 +239,28 @@ class HeavyEstimateTest extends TestCase
         $this->assertTrue($truck->viewers()->where('user_id', $this->other->id)->value('opens_at') <= now());
     }
 
+    /** Сняли эксклюзив в шторке «Показ» (20.11.2026, 2611164131): волны — как выбрали, и выбранным, а не только «всем». */
+    public function test_showing_switch_waives_exclusive_with_chosen_waves(): void
+    {
+        $truck = $this->draft('DAF', '0196/046/03098/26');
+        app(AskEstimates::class)($truck, [$this->roma], $this->admin, exclusive: 5);
+        app(GiveEstimate::class)(Estimate::where('offer_id', $truck->id)->sole(), 1500000, $this->roma);
+        app(UpdateOffer::class)($truck->fresh(), ['asking_price' => 1630000], $this->admin);
+        app(ChangeOfferState::class)($truck->fresh(), OfferState::Open, $this->admin);
+        $chosen = [['type' => 'user', 'id' => $this->other->id, 'delay' => 0]];
+
+        // Без снятия — как прежде: выбранный всё равно после эксклюзива.
+        app(UpdateOffer::class)($truck->fresh(), ['audience_rules' => $chosen], $this->admin);
+        $this->assertTrue($truck->viewers()->where('user_id', $this->other->id)->value('opens_at') > now()->addDays(4));
+
+        app(UpdateOffer::class)($truck->fresh(), ['audience_rules' => $chosen, 'exclusive_off' => true], $this->admin);
+        $truck = $truck->fresh();
+        $this->assertEquals($chosen, $truck->audience_rules);
+        $this->assertTrue($truck->viewers()->where('user_id', $this->other->id)->value('opens_at') <= now());
+        $this->assertNull($truck->first_look_until);
+        $this->assertNotNull(Estimate::where('offer_id', $truck->id)->sole()->withdrawn_at);
+    }
+
     /** Дыры эксклюзива (09.11.2026): не успел оценить, снялись и вышли снова, галерея, крестик, «Выставить всем…». */
     public function test_exclusive_holes_closed(): void
     {

@@ -36,7 +36,7 @@
     <x-ui.sheet :id="$id" title="Показ">
         <x-offer.showing :offer="$offer" :form="$form" :summary="$summary" as="sheet"/>
         {{-- `data-save-part` — на странице уходят только поля показа, если тронуты только они (`save_bar_controller`). --}}
-        <x-ui.sheet-foot type="submit" foot="mt-4" :form="$form" data-action="sheet#close" data-save-part="binding_until bids_close_at audience_rules recommended chat_enabled share_locked garage_allowed">Сохранить</x-ui.sheet-foot>
+        <x-ui.sheet-foot type="submit" foot="mt-4" :form="$form" data-action="sheet#close" data-save-part="exclusive_off binding_until bids_close_at audience_rules recommended chat_enabled share_locked garage_allowed">Сохранить</x-ui.sheet-foot>
     </x-ui.sheet>
 </div>
 @endif

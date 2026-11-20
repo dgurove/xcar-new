@@ -158,6 +158,10 @@ class OfferRequest extends FormRequest
                 $data['floor_rules'] = $rules;
             }
         }
+        // Снять эксклюзив за оценку переключателем шторки «Показ» (`UpdateOffer`) — только админ.
+        if ($this->boolean('exclusive_off') && $show && $this->user()?->canManageCrm()) {
+            $data['exclusive_off'] = true;
+        }
         if ($sent('audience_rules') && $show) {
             // Волны показа приходят JSON-строкой из шторки «Кому»; пустые или как у вендора — «как у вендора» (null).
             $vendor = $this->filled('vendor_id') ? Vendor::find($this->integer('vendor_id')) : $this->route('offer')?->vendor;
