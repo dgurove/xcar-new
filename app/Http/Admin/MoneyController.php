@@ -595,13 +595,16 @@ class MoneyController
     public static function personTable(bool $payout = false): Table
     {
         // На телефоне — два этажа: название и сумма, под ними этап (или тревога оплаты) и сколько прошло; кнопка — одна, в строке.
-        return Table::of(new Column('title', $payout ? 'За что' : 'Марка, модель', grow: true, fixed: true, rem: 18),
-            $payout ? null : new Column('stage', 'Статус', from: 'sm', role: ColRole::State, rem: 14, fixed: true),
-            new Column('pay', $payout ? 'Статус' : 'Оплата', from: 'sm', role: ColRole::State, rem: 11, fixed: true),
+        return Table::of(new Column('title', $payout ? 'За что' : 'Марка, модель', grow: true, rem: 14),
+            // № убытка с логотипом вендора — как в «Сделках» (22.11.2026, владелец).
+            new Column('vendor', '№ убытка', from: 'sm', role: ColRole::Code, rem: 10),
+            $payout ? null : new Column('stage', 'Статус', from: 'sm', role: ColRole::State, rem: 13, fixed: true),
+            new Column('pay', $payout ? 'Статус' : 'Оплата', from: 'sm', role: ColRole::State, rem: 10, fixed: true),
             // Сумма — у правого края, под суммой заголовка группы (22.11.2026, владелец: «суммы логичнее справа»): кнопки, дата, сумма.
             // С окном справа кнопок нет (`aside`): действие — в самом окне.
             new Column('acts', '', from: 'lg', num: true, aside: true, role: ColRole::When, rem: 17, fixed: true),
-            new Column('since', 'Выставлено', from: 'sm', num: true, role: ColRole::When, cell: 'nums', rem: 6.5, fixed: true),
+            // «Выставлено» — дата или, пока не выставлена, сама кнопка «Выставить» (владелец: «либо не выставлена, либо есть дата»).
+            new Column('since', 'Выставлено', from: 'sm', num: true, role: ColRole::When, cell: 'nums', rem: 7.5, fixed: true),
             new Column('amount', 'Сумма', num: true, role: ColRole::When, cell: 'nums', rem: 7, fixed: true));
     }
 

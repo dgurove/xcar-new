@@ -10,7 +10,9 @@
     // Умолчание экрана (`Facets::implied`: «Взятые в работу» в «Оплатах», «Кроме Каркаде») — не выбор: серым названием фильтра,
     // без лайма и × (22.11.2026, владелец: «фильтр по умолчанию — не то, что нужно высвечивать, так и должно быть»).
     $implied = $facets->isImplied($f->key);
-    $on = ! $implied && ($chip->on ?? $chip->selected !== []);
+    // Галки в окне — по настоящему выбору, умолчание тоже: исключённое им («Не взял в работу») — без галки (владелец).
+    $picked = $chip->on ?? $chip->selected !== [];
+    $on = ! $implied && $picked;
     $groups = $f->groups ?: ['' => array_map(fn ($o) => $o->key, $chip->options)];
     $byKey = collect($chip->options)->keyBy('key');
 @endphp
@@ -69,7 +71,7 @@
                     @if (count($chip->options) > 8)
                         <input type="search" class="field-input field-s min-w-0 flex-1" placeholder="Найти" autocomplete="off" enterkeyhint="search" data-action="input->facets#filter keydown.enter->facets#stop">
                     @endif
-                    <button type="button" class="facet-all" data-facets-target="all" data-action="facets#all">{{ $on ? 'Выбрать все' : 'Исключить все' }}</button>
+                    <button type="button" class="facet-all" data-facets-target="all" data-action="facets#all">{{ $picked ? 'Выбрать все' : 'Исключить все' }}</button>
                 </div>
             @endif
             @foreach ($groups as $label => $keys)
@@ -92,7 +94,7 @@
                                 @if ($f->single)
                                     <input type="radio" name="{{ $key }}" value="{{ $o->key === $f->default ? '' : $o->key }}" @checked($o->selected) data-facets-target="box">
                                 @else
-                                    <input type="checkbox" value="{{ $o->key }}" @checked($o->selected || ! $on) data-facets-target="box">
+                                    <input type="checkbox" value="{{ $o->key }}" @checked($o->selected || ! $picked) data-facets-target="box">
                                 @endif
                             </span>
                         </label>

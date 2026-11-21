@@ -67,6 +67,9 @@
         <span class="cell-sub cell-sub--one sm:hidden">@if ($alarm)<span class="{{ $tone }}">{{ $word }}</span>@elseif ($r->stage)<span>{{ $r->stage }}</span>@elseif ($word)<span class="{{ $tone }}">{{ $word }}</span>@endif<span class="line-end">@if ($button){!! $button !!}@elseif ($sinceText)<span class="nums {{ $sinceTone }}">{{ $sinceText }}</span>@endif</span></span>
     </td>
         @break
+        @case('vendor')
+    <td class="{{ $col->classes() }}">@if ($offer)<x-vendor.ref :vendor-id="$offer->vendor_id" :ref="$offer->claim_ref" cell/>@endif</td>
+        @break
         @case('stage')
     <td class="{{ $col->classes() }}">{{ $r->stage }}</td>
         @break
@@ -82,12 +85,14 @@
         @break
         @case('since')
     {{-- Без столбца кнопок («Оплата за подбор») главная кнопка — здесь, на месте времени. --}}
-    <td class="{{ $col->classes() }} {{ $button && ! $table->has('acts') ? '' : $sinceTone }}">@if ($button && ! $table->has('acts')){!! $button !!}@else{{ $sinceText }}@endif</td>
+    {{-- «Выставить» — здесь, на месте даты; без столбца кнопок («Оплата за подбор») — и прочая главная кнопка. --}}
+    @php $here = $main === 'issue' || ($button && ! $table->has('acts')); @endphp
+    <td class="{{ $col->classes() }} {{ $here ? '' : $sinceTone }}">@if ($here){!! $button !!}@else{{ $sinceText }}@endif</td>
         @break
         @case('acts')
     {{-- ПК: кнопки строки рядом, без захода в окно (22.11.2026). --}}
     <td class="{{ $col->classes() }}"><span class="row-acts">
-        @if ($main === 'issue' || $main === 'claim' || $main === 'payout'){!! $button !!}@endif
+        @if ($main === 'claim' || $main === 'payout'){!! $button !!}@endif
         @if ($nudge)<x-deal.nudge-sheet :deal="$deal" :invoice="$first" label="Напомнить" small/>@endif
         @if ($cash)
             <span class="contents" data-controller="sheet">
