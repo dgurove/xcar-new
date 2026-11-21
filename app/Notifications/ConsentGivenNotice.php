@@ -55,7 +55,7 @@ final class ConsentGivenNotice extends Notice
 
     public function category(): string
     {
-        return 'managers';
+        return 'taking';
     }
 
     public function subject(): string
@@ -63,9 +63,10 @@ final class ConsentGivenNotice extends Notice
         return '/work/deals/'.$this->deal->id;
     }
 
+    /** С 21.11.2026 выключаемо у админа своей строкой `taking` (`Categories::ADMIN`), по умолчанию включено. */
     public function critical(): bool
     {
-        return true;
+        return false;
     }
 
     public function important(): bool
