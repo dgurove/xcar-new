@@ -132,24 +132,42 @@ class ManagerAsksTest extends TestCase
         // С 18.11.2026 (1e0877a1) — сразу «Письмо с реквизитами»: покупатель — в самом шаге, шага «Нет реквизитов» нет.
         $this->assertSame('Письмо с реквизитами', $offer->fresh()->stage()->name);
 
-        // Передумал вид — тот же покупатель, а не второй «Новый покупатель».
+        // Плитка человека не заводит (21.11.2026): черновик данных у договора, передумал вид — тот же черновик.
+        $buyers = User::count();
         $this->actingAs($this->manager)->post("http://xcar.localhost/deals/{$deal->id}/buyer-new", ['kind' => 'company'])->assertRedirect();
         $this->actingAs($this->manager)->post("http://xcar.localhost/deals/{$deal->id}/buyer-new", ['kind' => 'ip'])
-            ->assertRedirect()->assertSessionHas('open_sheet', 'deal-buyer-data');
-        $this->assertSame(1, User::where('name', \App\Users\Actions\AddPerson::UNNAMED)->count());
+            ->assertRedirect()->assertSessionHas('open_sheet', 'deal-buyer-new');
+        $this->assertSame($buyers, User::count(), 'покупателя до сохранения нет');
         $deal = $deal->fresh();
-        $buyer = DealContract::for($deal)->buyer;
-        $this->assertNotNull($buyer, 'покупатель встал в сделку');
-        $this->assertSame($this->manager->id, $buyer->manager_id);
-        $this->assertSame(\App\Billing\PartyKind::Entrepreneur, $buyer->party->kind);
-        $this->assertSame('', $buyer->party->name, 'ФИО не «Новый покупатель»');
+        $contract = DealContract::for($deal);
+        $this->assertNull($contract->buyer_user_id);
+        $this->assertSame(\App\Billing\PartyKind::Entrepreneur, $contract->draftParty->kind);
         $this->assertNotNull($deal->managerTask(), 'заполнить — дело менеджера');
-        $this->actingAs($this->manager)->get("http://xcar.localhost/deals/{$deal->id}")->assertOk()->assertSee('ОГРНИП');
+        $this->actingAs($this->manager)->get("http://xcar.localhost/deals/{$deal->id}")->assertOk()->assertSee('ОГРНИП')->assertSee('не сохранён');
 
-        $this->actingAs($this->manager)->put("http://xcar.localhost/deals/{$deal->id}/contract", ['buyer' => ['kind' => 'ip',
+        // Скан паспорта — к черновику: человека ещё нет, а грузить можно.
+        \Illuminate\Support\Facades\Queue::fake();
+        $this->actingAs($this->manager)->post("http://xcar.localhost/parties/{$contract->draft_party_id}/passport/main",
+            ['file' => \Illuminate\Http\UploadedFile::fake()->image('main.jpg', 400, 300)], ['Accept' => 'application/json'])->assertOk();
+        $this->assertNotNull($contract->draftParty->fresh()->passportScan('main'));
+
+        // Ошибка в полях — покупателя всё ещё нет.
+        $this->actingAs($this->manager)->put("http://xcar.localhost/deals/{$deal->id}/contract", ['buyer_id' => 'draft', 'buyer' => ['kind' => 'ip', 'name' => 'Рысьева Анна Игоревна']])
+            ->assertSessionHasErrors('buyer.inn');
+        $this->assertSame($buyers, User::count());
+
+        $this->actingAs($this->manager)->put("http://xcar.localhost/deals/{$deal->id}/contract", ['buyer_id' => 'draft', 'buyer' => ['kind' => 'ip',
             'name' => 'Рысьева Анна Игоревна', 'inn' => '781234567890', 'ogrn' => '312784700012345', 'legal_address' => 'Санкт-Петербург',
-            'account' => '40802810000000000001', 'bank_name' => 'Точка', 'bik' => '044525104']])->assertRedirect();
-        $this->assertSame('Анна Рысьева', $buyer->fresh()->name);
+            'account' => '40802810000000000001', 'bank_name' => 'Точка', 'bik' => '044525104']])->assertRedirect()->assertSessionHas('toast', 'Покупатель добавлен');
+        $contract = DealContract::for($deal->fresh());
+        $buyer = $contract->buyer;
+        $this->assertNotNull($buyer, 'покупатель встал в сделку');
+        $this->assertNull($contract->draft_party_id);
+        $this->assertSame('Анна Рысьева', $buyer->name);
+        $this->assertSame($this->manager->id, $buyer->manager_id);
+        $this->assertTrue($buyer->isBuyer());
+        $this->assertSame('781234567890', $buyer->party->inn);
+        $this->assertSame(0, User::where('name', \App\Users\Actions\AddPerson::UNNAMED)->count());
     }
 
     public function test_chat_photo_goes_into_step_files_and_stays_in_chat(): void

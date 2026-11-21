@@ -24,7 +24,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  * тот же `seller` (сам из договора комиссии Совкомбанка — `FillCommissionOwner`), номер — `commissionNo`. НДС договора —
  * выбором в CRM (`vatRate`).
  */
-#[Fillable(['deal_id', 'seller_party_id', 'buyer_user_id', 'payer', 'price', 'city', 'signed_at', 'ready_at', 'issuer', 'number', 'year', 'commission_no', 'vat_rate', 'cash_part', 'supplier_price', 'supplier_purpose', 'supplier_requisites', 'shown_at', 'shown_by', 'code', 'numbered_on', 'edited_at', 'edited_by', 'edited_base'])]
+#[Fillable(['deal_id', 'seller_party_id', 'buyer_user_id', 'payer', 'price', 'city', 'signed_at', 'ready_at', 'issuer', 'number', 'year', 'commission_no', 'vat_rate', 'cash_part', 'supplier_price', 'supplier_purpose', 'supplier_requisites', 'shown_at', 'shown_by', 'code', 'numbered_on', 'edited_at', 'edited_by', 'edited_base', 'draft_party_id'])]
 class DealContract extends Model
 {
     use FastAttributes;
@@ -69,6 +69,15 @@ class DealContract extends Model
     public function buyer(): BelongsTo
     {
         return $this->belongsTo(User::class, 'buyer_user_id');
+    }
+
+    /**
+     * Новый покупатель, пока его данные не сохранили (21.11.2026): контрагент без аккаунта — поля и скан паспорта шторки «Новый
+     * покупатель» (`Cabinet\DealController::buyerNew`). Человек из него — при сохранении (`SaveDealContract`).
+     */
+    public function draftParty(): BelongsTo
+    {
+        return $this->belongsTo(Party::class, 'draft_party_id');
     }
 
     /**

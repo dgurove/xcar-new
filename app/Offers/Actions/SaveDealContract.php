@@ -58,6 +58,9 @@ final class SaveDealContract
                 $buyer = User::create(['name' => $name, 'last_name' => $last, 'first_name' => $first, 'phone' => $phone, 'roles' => [Role::Buyer],
                     'manager_id' => $deal->buyer_id, 'approved_at' => now(), 'approved_by' => $by->id, 'access' => []]);
                 $contract->buyer_user_id = $buyer->id;
+            } elseif (($data['buyer_id'] ?? null) === 'draft') {
+                $contract->buyer_user_id = $this->fromDraft($contract, $data['buyer'] ?? [])->id;
+                $contract->draft_party_id = null;
             } elseif (($data['buyer_id'] ?? null) === 'me') {
                 // Покупатель — сам менеджер: он же и платит по счёту ПРАЙМ.
                 [$contract->buyer_user_id, $contract->payer] = [$deal->buyer_id, 'manager'];
@@ -88,6 +91,12 @@ final class SaveDealContract
                 // Покупатель — сам менеджер-ИП или самозанятый: паспорт дописываем, вид его реквизитов для выплат не трогаем.
                 ($this->buyerData)(Party::forUser($buyer), $data['buyer'], keepKind: $buyer->id === $deal->buyer_id);
             }
+            // Выбрали другого, не сохранив черновик плитки, — черновик со сканом больше не нужен.
+            if ($contract->isDirty('buyer_user_id') && $contract->buyer_user_id && $contract->draft_party_id) {
+                $stale = $contract->draftParty;
+                $contract->draft_party_id = null;
+                DB::afterCommit(fn () => $stale && ! User::where('party_id', $stale->id)->exists() && rescue(fn () => $stale->delete(), report: false));
+            }
             $contract->save();
             // Ничего из названного не тронули (кто платит, скан) — «ДКП изменён», а не пустое «ДКП: » (07.11.2026).
             $what = implode(', ', array_filter([
@@ -116,6 +125,26 @@ final class SaveDealContract
         }
 
         return ($this->settle)($contract);
+    }
+
+    /**
+     * Новый покупатель из черновика плитки (21.11.2026, `Cabinet\DealController::buyerNew`): данные сохранили — только теперь он
+     * встаёт в «Покупатели» менеджера, с контрагентом черновика (там уже скан паспорта). Имя — из ФИО или названия формы.
+     */
+    private function fromDraft(DealContract $contract, array $buyer): User
+    {
+        $party = $contract->draftParty;
+        if (! $party || User::where('party_id', $party->id)->exists()) {
+            throw ValidationException::withMessages(['buyer_id' => 'Данные нового покупателя устарели, выберите вид ещё раз']);
+        }
+        $name = trim(preg_replace('/\s+/u', ' ', (string) (($buyer['kind'] ?? null) === 'company' ? ($buyer['org'] ?? '') : ($buyer['name'] ?? ''))));
+        [$first, $last] = ($buyer['kind'] ?? null) === 'company' ? [$name, ''] : (SaveBuyerData::nameParts($name) ?? [$name, '']);
+        $manager = $contract->deal->buyer;
+        [$user] = app(\App\Users\Actions\AddPerson::class)(fn () => app(\App\Users\Actions\IssueInvite::class)->buyer($manager),
+            ['first_name' => mb_substr($first, 0, 60), 'last_name' => mb_substr($last, 0, 60)], contact: true);
+        $user->update(['party_id' => $party->id]);
+
+        return $user;
     }
 
     /** Поля паспорта из набора формы — только они, пустые строки как null. */

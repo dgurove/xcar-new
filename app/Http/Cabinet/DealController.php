@@ -16,7 +16,6 @@ use App\Logistics\Actions\RequestPickup;
 use App\Logistics\Actions\SelfPickup;
 use App\Offers\Actions\AttachSignedContract;
 use App\Offers\Actions\PickSigningTime;
-use App\Offers\Actions\SaveDealContract;
 use App\Offers\Actions\SaveSigningWish;
 use App\Offers\Actions\SetReceiver;
 use App\Offers\Bid;
@@ -39,8 +38,6 @@ use App\Support\Sort;
 use App\Support\Table\Table;
 use App\Support\Table\ColRole;
 use App\Support\Table\Column;
-use App\Users\Actions\AddPerson;
-use App\Users\Actions\IssueInvite;
 use App\Users\User;
 use App\Users\Wording;
 use App\Workflow\Actions\AnswerRequirement;
@@ -367,29 +364,29 @@ class DealController
 
     /**
      * Новый покупатель по виду (13.11.2026, владелец: «"внесём сами" не катит, они сами должны поля заполнять; паспорт — ладно,
-     * скан нужен»): плитка «Физлицо» / «ИП» / «Организация» (`x-deal.buyer-kind`) заводит покупателя менеджера с контрагентом
-     * этого вида, ставит его в договор и сразу открывает «Данные для договора» (`cabinet.deals.contract`, `x-billing.buyer-fields`):
-     * поля, у физлица и ИП — скан паспорта с чтением. Имя аккаунта — из полей при сохранении (`SaveBuyerData`). Прежние
-     * «Реквизиты фотографией» (10.11.2026: фото, а вносили мы) сняты.
+     * скан нужен»): плитка «Физлицо» / «ИП» / «Организация» (`x-deal.buyer-kind`) открывает шторку «Новый покупатель»
+     * (`cabinet.deals.buyer-draft`): поля, у физлица и ИП — скан паспорта с чтением. Человека плитка не заводит (21.11.2026,
+     * владелец: брошенные «Новый покупатель» в покупателях — «тупость»): у договора встаёт черновик данных (`draft_party_id`,
+     * контрагент без аккаунта — к нему ложится скан), покупатель появляется, когда данные сохранили (`SaveDealContract`).
      */
-    public function buyerNew(Request $request, Deal $deal, AddPerson $add, IssueInvite $issue, SaveDealContract $save)
+    public function buyerNew(Request $request, Deal $deal)
     {
         $me = $request->user();
-        abort_unless($deal->isLive() && ! $me->isSuperBuyer(), 404);
+        abort_unless($deal->isLive() && $deal->buyer_id === $me->id && ! $me->isSuperBuyer(), 404);
         $kind = $request->validate(['kind' => ['required', 'in:person,ip,company']])['kind'];
-        // Передумал вид или нажал дважды — тот же незаполненный покупатель сделки, без второго «Нового покупателя».
-        $user = DealContract::for($deal)->buyer;
-        if (! $user || $user->name !== AddPerson::UNNAMED || $user->manager_id !== $me->id || $user->party?->readyForContract()) {
-            [$user] = $add(fn () => $issue->buyer($me, $deal->id), ['first_name' => AddPerson::UNNAMED, 'last_name' => ''], contact: true);
-        }
-        Party::forUser($user)->update(['name' => '', 'kind' => match ($kind) {
+        $as = match ($kind) {
             'ip' => PartyKind::Entrepreneur, 'company' => PartyKind::Company, default => PartyKind::Person,
-        }]);
-        if (DealContract::for($deal)->buyer_user_id !== $user->id) {
-            $save(DealContract::for($deal), ['buyer_id' => (string) $user->id], $me);
+        };
+        $contract = DealContract::for($deal);
+        // Передумал вид или нажал дважды — тот же черновик: вписанное и скан на месте, меняется только вид.
+        $draft = $contract->draftParty;
+        if ($draft && ! User::where('party_id', $draft->id)->exists()) {
+            $draft->update(['kind' => $as]);
+        } else {
+            $contract->update(['draft_party_id' => Party::create(['kind' => $as, 'name' => ''])->id]);
         }
 
-        return $this->back($request, $deal)->with('open_sheet', 'deal-buyer-data');
+        return $this->back($request, $deal)->with('open_sheet', 'deal-buyer-new');
     }
 
     /** «Ещё нет» и закрытие вопроса при входе (`x-deal.ask-sheet`): до завтра не спрашиваем (`requirements.prompted_at`). */

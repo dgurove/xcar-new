@@ -276,7 +276,9 @@ class Party extends Model implements HasMedia
     /** Чей это контрагент на сайте: сам человек (его `party_id`) или его менеджер — им можно прикреплять и смотреть скан. */
     public function managedBy(User $me): bool
     {
-        return User::where('party_id', $this->id)->where(fn ($w) => $w->whereKey($me->id)->orWhere('manager_id', $me->id))->exists();
+        // И черновик нового покупателя его сделки (21.11.2026, `DealContract::draftParty`): человека ещё нет, скан уже грузят.
+        return User::where('party_id', $this->id)->where(fn ($w) => $w->whereKey($me->id)->orWhere('manager_id', $me->id))->exists()
+            || \App\Offers\DealContract::where('draft_party_id', $this->id)->whereHas('deal', fn ($d) => $d->where('buyer_id', $me->id))->exists();
     }
 
     /** Сторона договора внесена: у физлица — паспорт, у организации и ИП — название, ИНН, адрес (у юрлица и руководитель). */

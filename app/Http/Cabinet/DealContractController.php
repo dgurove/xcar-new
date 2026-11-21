@@ -52,12 +52,15 @@ class DealContractController
             $data['new_buyer'] = ['phone' => $request->input('new_buyer.phone')];
             unset($data['buyer_id']);
         }
+        // Черновик плитки (21.11.2026) — только своей сделки: покупателя менеджеру заводит он сам.
+        $draft = ($data['buyer_id'] ?? null) === 'draft';
+        abort_if($draft && $deal->buyer_id !== $request->user()->id, 404);
         $contract = $save(DealContract::for($deal), $data, $request->user());
         // Выбрали покупателя, а данных для договора у него нет — сразу их шторка со сканом паспорта (18.10.2026).
         $needs = ! empty($data['buyer_id']) && ($b = $contract->fresh()->buyer) && ! $b->party?->readyAsBuyer();
 
         return back()->with('open_sheet', $needs ? 'deal-buyer-data' : null)->with('toast', match (true) {
-            $new => 'Покупатель добавлен',
+            $new || $draft => 'Покупатель добавлен',
             $deal->isPrime() && $deal->fresh()->hasManagerInvoice() => 'Сохранено, счёт выставлен',
             default => 'Сохранено',
         });

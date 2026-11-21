@@ -1,12 +1,14 @@
 {{-- Выбор покупателя, пока его нет (18.11.2026, владелец выбрал вариант А): новый — плитками вида (`x-deal.buyer-kind`), свой —
      строкой: «Я сам» и последние покупатели менеджера, нажатие сразу выбирает (`PUT /deals/{id}/contract`); «Все покупатели» —
-     шторка выбора с поиском (`x-people.pick`, слушает `buyer:open`). Заготовка без данных — её строка (данные, «Другой
+     шторка выбора с поиском (`x-people.pick`, слушает `buyer:open`). Плитку нажали, не сохранив, — строка «Новый покупатель»
+     открывает черновик снова (`cabinet.deals.buyer-draft`, 21.11.2026); покупатель без данных — его строка (данные, «Другой
      покупатель»). Один кусок на задачу «Укажите покупателя» под шагом (`buyer-task`) и шаги, что сами просят покупателя
      (ПРАЙМ на оплате, «Покупатель по ДКП» в получении — `step`). --}}
 @php
     $me = auth()->user();
     $contract = \App\Offers\DealContract::for($deal)->loadMissing('buyer.party');
     $draft = $contract->buyer;
+    $draftParty = $contract->draftParty;
     $mine = \App\Support\People::buyersOf($me)->reject(fn ($b) => $b->isBuyerDraft());
     // Последние — по последнему договору с ними (кого выбирали недавно, тот и нужен).
     $recentIds = $mine->isEmpty() ? collect() : \App\Offers\DealContract::whereIn('buyer_user_id', $mine->pluck('id'))
@@ -17,6 +19,15 @@
     $rows = \App\Support\People::contractBuyers($me, 'Я сам', 'ваши данные для договора');
 @endphp
 <div><x-deal.buyer-kind :deal="$deal"/></div>
+@if ($draftParty && ! $draft)
+    <div class="list mt-3">
+        <button type="button" class="row w-full text-left" data-controller="emit" data-action="emit#send" data-emit-event-param="deal-buyer-new:open">
+            <x-ui.icon :name="match ($draftParty->kind) { \App\Billing\PartyKind::Company => 'bank', \App\Billing\PartyKind::Entrepreneur => 'bag', default => 'user' }" class="size-5 shrink-0 text-ink-dim"/>
+            <span class="min-w-0 flex-1"><span class="block truncate">{{ filled($draftParty->name) ? $draftParty->name : 'Новый покупатель, '.$draftParty->kind->label() }}</span><span class="row-sub text-urgent">не сохранён</span></span>
+            <x-ui.chevron/>
+        </button>
+    </div>
+@endif
 @if ($draft)
     {{-- Плитку нажали, данные не внесли — строка заготовки открывает их шторку (кусок договора: там и выбор другого). --}}
     <div class="mt-3">@include('cabinet.deals.contract', ['part' => 'buyer', 'embedded' => true, 'labels' => true, 'after' => ''])</div>

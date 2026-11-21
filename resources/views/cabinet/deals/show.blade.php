@@ -38,6 +38,7 @@
             @if ($carCard)<div class="order-1 min-w-0">@include('cabinet.deals.car-card')</div>@endif
             <div class="order-1 min-w-0">@include('cabinet.deals.receipt-card')</div>
             @if ($deal->buyer_asked_at && $deal->isLive())<x-deal.buyer-ask-sheet :deal="$deal"/>@endif
+            @include('cabinet.deals.buyer-draft')
             @include('cabinet.deals.path', ['class' => 'order-5'])
 
             @if ($pastInvoices->isNotEmpty())
