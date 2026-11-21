@@ -123,8 +123,9 @@ class MoneyController
             $peek = $tab === 'owed' && ctype_digit((string) $request->query('peek')) ? Invoice::find((int) $request->query('peek')) : null;
             $tab = $peek ? self::tabOf($peek) : 'fees';
         }
-        // Чип «Статус» помнится один на «Оплаты» — раздел и страница человека (22.11.2026); «Оплаченных» больше нет.
-        ListPrefs::sync($request, 'crm-money', keep: ['stage']);
+        // Чип «Статус» не помнится (22.11.2026, владелец: «перезахожу — и он не устанавливается»): каждый вход — умолчание
+        // «Кроме „Не взял в работу“», другой выбор — на этот раз.
+        ListPrefs::sync($request, 'crm-money');
         $facets = self::facets($request, $tab);
         if ($tab !== 'payouts') {
             $facets->apply(MoneyBook::deals($tab, false));
@@ -343,7 +344,7 @@ class MoneyController
             return $detail->response();
         }
         $tab = array_key_exists((string) $request->query('tab'), self::TABS) ? (string) $request->query('tab') : 'fees';
-        ListPrefs::sync($request, 'crm-money', keep: ['stage']);
+        ListPrefs::sync($request, 'crm-money');
         $facets = self::facets($request, $tab);
         $qs = trim((string) $request->query('q'));
         if ($tab === 'payouts') {
@@ -597,10 +598,11 @@ class MoneyController
         return Table::of(new Column('title', $payout ? 'За что' : 'Марка, модель', grow: true, fixed: true, rem: 18),
             $payout ? null : new Column('stage', 'Статус', from: 'sm', role: ColRole::State, rem: 14, fixed: true),
             new Column('pay', $payout ? 'Статус' : 'Оплата', from: 'sm', role: ColRole::State, rem: 11, fixed: true),
-            new Column('amount', 'Сумма', num: true, cell: 'nums', rem: 7, fixed: true),
-            new Column('since', 'Выставлено', from: 'sm', num: true, role: ColRole::When, cell: 'nums', rem: 6.5, fixed: true),
+            // Сумма — у правого края, под суммой заголовка группы (22.11.2026, владелец: «суммы логичнее справа»): кнопки, дата, сумма.
             // С окном справа кнопок нет (`aside`): действие — в самом окне.
-            new Column('acts', '', from: 'lg', num: true, aside: true, role: ColRole::When, rem: 17, fixed: true));
+            new Column('acts', '', from: 'lg', num: true, aside: true, role: ColRole::When, rem: 17, fixed: true),
+            new Column('since', 'Выставлено', from: 'sm', num: true, role: ColRole::When, cell: 'nums', rem: 6.5, fixed: true),
+            new Column('amount', 'Сумма', num: true, role: ColRole::When, cell: 'nums', rem: 7, fixed: true));
     }
 
     /**

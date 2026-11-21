@@ -18,7 +18,7 @@ use Illuminate\Support\Facades\DB;
  * - `cancelled` «Сделка отменена»;
  * - иначе блок шага по имени тем же ключом, что чип «Этап» «Сделок» (`left(md5(name), 8)`): одноимённые блоки разных
  *   вендоров — один вариант; без позиции — «Сделка закрыта», «Гараж» или «Без этапа».
- * По умолчанию — всё, кроме `untaken` и `cancelled` (`DEFAULT`, умолчанием экрана `Facets::implied`).
+ * По умолчанию — всё, кроме `untaken` (`DEFAULT`, умолчанием экрана `Facets::implied`).
  */
 final class MoneyStage
 {
@@ -26,8 +26,8 @@ final class MoneyStage
 
     public const CANCELLED = 'cancelled';
 
-    /** Умолчание чипа: «Кроме „Не взял в работу“ и отменённых». */
-    public const DEFAULT = '!'.self::UNTAKEN.','.self::CANCELLED;
+    /** Умолчание чипа — «Кроме „Не взял в работу“» (владелец): отменённые видны, в них бывают деньги к возврату. */
+    public const DEFAULT = '!'.self::UNTAKEN;
 
     /** Свои ключи (не блоки маршрута) и их подписи. */
     private const OWN = [self::UNTAKEN => 'Не взял в работу', 'garage' => 'Гараж', 'none' => 'Без этапа', self::CANCELLED => 'Сделка отменена'];

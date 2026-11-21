@@ -4,7 +4,8 @@
      Ведёт на его сделки (`MoneyController::person`). person — строка `MoneyController::people`. --}}
 @props(['person', 'tab'])
 @php use App\Support\Money; $p = $person; $payout = $tab === 'payouts'; @endphp
-<a href="{{ \App\Http\Admin\MoneyController::personUrl($p['user'], $tab) }}" class="row money-person">
+{{-- Выбранный в разделе «Статус» идёт к человеку (сам чип не помнится: каждый вход — умолчание). --}}
+<a href="{{ \App\Http\Admin\MoneyController::personUrl($p['user'], $tab).(request()->query->has('stage') ? '&stage='.urlencode((string) request('stage')) : '') }}" class="row money-person">
     @if ($p['user'])
         <x-ui.avatar :user="$p['user']" :size="30"/>
     @else

@@ -75,7 +75,7 @@ final class MoneyRows
             // Зачёт вознаграждения в старых счетах (до 18.11.2026) — история.
             PaymentSource::Offset => 'вознаграждение менеджера '.$day,
             PaymentSource::Credit => 'засчитана оплата по ссылке '.$day,
-            default => 'оплатил '.$day.' в банк'.($p->refNumber() ? ', п/п '.$p->refNumber() : ''),
+            default => 'оплатил '.$day.' переводом'.($p->refNumber() ? ', п/п '.$p->refNumber() : ''),
         };
     }
 
@@ -144,7 +144,7 @@ final class MoneyRows
         } : ['ждём перевод', 'text-ink-muted'];
     }
 
-    /** Как заплатили — коротко под названием оплаченного: «наличными», «по ссылке, СБП», «в банк», «зачётом». */
+    /** Как заплатили — коротко под названием оплаченного: «наличными», «по ссылке, СБП», «переводом» (на счёт; «в банк» — непонятно, 22.11.2026), «зачётом». */
     public static function paidWay(Invoice $i, Collection $attempts): ?string
     {
         $p = $i->payments->sortBy('paid_at')->last();
@@ -155,7 +155,7 @@ final class MoneyRows
             PaymentSource::Cash => 'наличными',
             PaymentSource::Offset => 'вознаграждением менеджера',
             PaymentSource::Credit => 'оплатой по ссылке',
-            default => 'в банк',
+            default => 'переводом',
         };
     }
 
@@ -170,7 +170,7 @@ final class MoneyRows
             PaymentSource::Acquiring, PaymentSource::Credit => 'по ссылке',
             PaymentSource::Cash => 'наличными',
             PaymentSource::Offset => 'вознаграждением менеджера',
-            default => 'в банк',
+            default => 'переводом',
         })->unique()->values();
         if ($ways->count() === 1 && ($last = $payments->last())?->source === PaymentSource::Acquiring) {
             return trim('по ссылке '.PayMethod::label($attempts->get($last->id)?->method));
