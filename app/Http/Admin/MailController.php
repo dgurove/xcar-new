@@ -39,6 +39,7 @@ use App\Mail\Jobs\PushFlag;
 use App\Mail\Jobs\SendMessage;
 use App\Mail\Message;
 use App\Mail\Scope;
+use App\Mail\Senders;
 use App\Mail\SendState;
 use App\Mail\Sync;
 use App\Mail\Template;
@@ -647,9 +648,9 @@ class MailController
         if (! $request->header('Turbo-Frame')) {
             return $this->inWindow($request);
         }
-        // Ящики, что только принимают (offer@), не пишут: с них не начинают и не отвечают.
-        $accounts = Account::where('scope', $this->scope)->sending()->orderBy('title')->get();
-        $account = $accounts->firstWhere('slug', $request->query('account')) ?? $accounts->first();
+        // С каких ящиков пишет человек — `Senders` (offer@ только принимает: с него не начинают и не отвечают).
+        $accounts = Senders::for($request->user());
+        $account = $accounts->firstWhere('slug', $request->query('account')) ?? Senders::pick($request->user(), null, $this->scope);
         abort_unless($account, 404);
         $template = $request->query('template') ? Template::where('scope', $this->scope)->letters()->find($request->query('template')) : null;
         // Предложение — письмо CRM, машина и счёт — письма парковки: чужая сторона их не подставляет.
@@ -937,12 +938,11 @@ class MailController
         $message->load(['account.replyAccount', 'addresses', 'attachments']);
         $mode = $request->query('mode', 'reply');
         $defaults = $mode === 'forward' ? $composer->forward($message) : $composer->reply($message, $mode !== 'only');
-        // Ящик, что только принимает (offer@), отвечает через свой «Отвечаем с ящика» (deal@).
-        $sender = $message->account->sender();
-
-        // «От» — любой ящик своей стороны, что пишет (28.10.2026, владелец: «от я бы добавил возможность выбирать»); по
-        // умолчанию — тот, что отвечает за ящик письма.
-        $accounts = Account::where('scope', $this->scope)->sending()->orderBy('title')->get();
+        // «От» — ящики, с которых человек пишет (`Senders`, 21.11.2026); по умолчанию — тот, что отвечает за ящик письма (offer@ —
+        // через deal@), если с него можно, иначе свой: модератор отвечает на письмо storage@ с deal@ новой веткой с In-Reply-To.
+        $accounts = Senders::for($request->user());
+        $sender = Senders::pick($request->user(), $message->account, $this->scope);
+        abort_unless($sender, 404);
 
         if (! $request->header('Turbo-Frame')) {
             return $this->inWindow($request);
@@ -967,7 +967,7 @@ class MailController
             $defaults['body'] = Template::html(mb_substr((string) $request->query('text'), 0, 2000)).$defaults['body'];
         }
 
-        return view('admin.mail.compose-frame', ['frame' => $request->header('Turbo-Frame'), 'account' => $sender, 'accounts' => $accounts->contains('id', $sender->id) ? $accounts : collect([$sender]), 'thread' => $thread, 'parent' => $message,
+        return view('admin.mail.compose-frame', ['frame' => $request->header('Turbo-Frame'), 'account' => $sender, 'accounts' => $accounts, 'thread' => $thread, 'parent' => $message,
             'defaults' => $defaults, 'mode' => $mode, 'templates' => $templates, 'offer' => $thread->offer, 'vehicle' => $vehicle, 'base' => $this->base]);
     }
 
@@ -984,7 +984,8 @@ class MailController
             }
             throw $e;
         }
-        $account = Account::where('slug', $data['account'])->where('scope', $this->scope)->firstOrFail();
+        $account = Senders::for($request->user())->firstWhere('slug', $data['account']);
+        abort_unless($account, 404);
         // Доп. запрос поставщику — что спросили, словами на момент отправки (`mail_messages.requests`).
         if ($this->scope === Scope::Offers && ! empty($data['extra'])) {
             $data['requests'] = ExtraRequest::record(ExtraRequest::picked($data['extra']), $data['extra_city'] ?? null);
@@ -993,10 +994,10 @@ class MailController
             return redirect($retry ?: url()->previous())->withInput()->withErrors(['to' => 'Нужен хотя бы один адрес']);
         }
 
-        // Родитель — письмо своей стороны: ответ можно отправить с любого её ящика («От»), с чужого ящика он уйдёт новой
-        // веткой с In-Reply-To (`Composer::create`).
-        $boxes = Account::where('scope', $this->scope)->pluck('id');
-        $parent = ! empty($data['parent']) ? Message::with(['thread', 'attachments', 'account'])->whereIn('account_id', $boxes)->find($data['parent']) : null;
+        // Родитель — письмо, ветку которого человеку видно: своей стороны или другой в окне машины (`across`). Ответ уходит с
+        // выбранного ящика («От»); с ящика не той ветки — новой веткой с In-Reply-To (`Composer::create`).
+        $parent = ! empty($data['parent']) ? Message::with(['thread.account', 'attachments', 'account'])->find($data['parent']) : null;
+        $parent = $parent?->thread && ($parent->thread->account->scope === $this->scope || $this->across($parent->thread)) ? $parent : null;
         $thread = ! empty($data['thread']) ? Thread::where('account_id', $account->id)->find($data['thread']) : null;
         // Повторная отправка из того же редактора после «не ушло» (`compose_send_controller`): неудачное письмо уступает место,
         // новое ложится в его ветку.
@@ -1604,8 +1605,8 @@ class MailController
     private function sendRules(Request $request): array
     {
         return $request->validate([
-            // Ящик — только своей стороны: с парковки не уйдёт письмо от offer@ или deal@.
-            'account' => ['required', Rule::exists('mail_accounts', 'slug')->where('scope', $this->scope->value)],
+            // Ящик — только тот, с которого человек пишет (`Senders`).
+            'account' => ['required', Rule::in(Senders::for($request->user())->pluck('slug')->all())],
             'parent' => ['nullable', 'integer'],
             'thread' => ['nullable', 'integer'],
             'to' => ['required', 'string', 'max:1000'],
@@ -1633,7 +1634,7 @@ class MailController
             'extra' => ['nullable', 'array', 'max:30'],
             'extra.*' => ['integer'],
             'extra_city' => ['nullable', 'string', 'max:80'],
-        ], [], ['to' => 'Кому', 'cc' => 'Копия', 'subject' => 'Тема', 'body' => 'Письмо']);
+        ], ['account.in' => 'С этого ящика писать нельзя'], ['to' => 'Кому', 'cc' => 'Копия', 'subject' => 'Тема', 'body' => 'Письмо']);
     }
 
     private function guard(Thread $thread): void

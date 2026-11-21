@@ -43,12 +43,14 @@
     @if ($errors->any() && ! $errors->has('to') && ! $errors->has('cc'))<p class="field-error px-4 pt-3">{{ $errors->first() }}</p>@endif
     {{-- «От» — строкой, только когда есть из чего выбрать (04.11.2026, владелец про вид редактора: серая строка с одним ящиком
          занимала место на телефоне); один ящик — скрытым полем. --}}
+    @php $side = ($base ?? '/work/mail') === '/mail' ? \App\Mail\Scope::Park : \App\Mail\Scope::Offers; @endphp
     @if ($accounts->count() > 1)
         <div class="compose-row">
             <span class="compose-label">От</span>
             <select name="account" class="compose-from" aria-label="От кого">
                 @foreach ($accounts as $a)
-                    <option value="{{ $a->slug }}" @selected(old('account', $account->slug) === $a->slug)>{{ $a->fromName() }} &lt;{{ $a->email }}&gt;</option>
+                    {{-- Ящик другой стороны (у админа: storage@ в CRM, deal@ на парковке) — с её названием: письмо ляжет в её почту. --}}
+                    <option value="{{ $a->slug }}" @selected(old('account', $account->slug) === $a->slug)>{{ $a->fromName() }} &lt;{{ $a->email }}&gt;@if ($a->scope !== $side), {{ $a->scope === \App\Mail\Scope::Park ? 'парковка' : 'CRM' }}@endif</option>
                 @endforeach
             </select>
         </div>
