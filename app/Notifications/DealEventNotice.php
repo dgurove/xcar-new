@@ -44,7 +44,7 @@ final class DealEventNotice extends Notice
 
         return new self($offer, $extra !== '' ? 'extra-ask' : 'our-letter', $extra !== '' ? 'Доп. просьба поставщику' : 'Письмо поставщику ушло',
             $extra !== '' ? 'доп. просьба: '.$extra : 'письмо поставщику', $extra !== '' ? null : ($words ?: $letter->subject), 'our_mail', $by,
-            path: '/offers/'.$offer->number.'?window='.rawurlencode('/offers/'.$offer->number.'/letters?at='.$letter->id));
+            path: Notice::dealPathOr($offer, '/offers/'.$offer->number.'?window='.rawurlencode('/offers/'.$offer->number.'/letters?at='.$letter->id)));
     }
 
     /** Шаг сделки сдвинул сотрудник: «Андрей Кузнецов: «Оплата получена» → «Подписание»». */

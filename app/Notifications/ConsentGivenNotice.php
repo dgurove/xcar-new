@@ -7,7 +7,7 @@ use App\Offers\Deal;
 /**
  * Менеджер взял сделку в работу — теперь письмо поставщику (27.10.2026, владелец: у Альфы сначала согласие менеджера, потом
  * «актуально»; с 15.11.2026 и у Т-Страхования — просьба о контактах; после письма отказаться нельзя). Сотрудникам громко и в Telegram, ссылка — на сделку, где шаг
- * с письмом поставщику лаймовой «Написать поставщику».
+ * с письмом поставщику лаймовой «Написать поставщику». У админа выключаемо строкой `taking` (21.11.2026).
  */
 final class ConsentGivenNotice extends Notice
 {
@@ -36,16 +36,12 @@ final class ConsentGivenNotice extends Notice
     }
 
     /**
-     * Сразу окно письма с черновиком шага (19.11.2026, Андрей по AUT-26-369145: «взял в работу — даже не предложило написать
-     * письмо»), пока письмо не ушло; ушло или шаг без письма — сделка.
+     * Сделка, а не окно письма (22.11.2026, владелец: «все действия в сделке»; было окно письма с 19.11.2026). Письмо
+     * поставщику — лаймовой «Написать поставщику» в шаге сделки.
      */
     public function href(): string
     {
-        $offer = $this->deal->offer;
-        $stage = $offer?->stage();
-
-        return $stage?->isLetterStep() && $offer->position()?->letterStatus() === 'unsent' && ($url = $offer->vendorLetterUrl($stage))
-            ? $url : '/work/deals/'.$this->deal->id;
+        return '/work/deals/'.$this->deal->id;
     }
 
     public function offerNumber(): ?int
@@ -76,6 +72,6 @@ final class ConsentGivenNotice extends Notice
 
     public function toTelegram(): ?array
     {
-        return ['title' => $this->title(), 'lines' => [$this->text()], 'button' => str_starts_with($this->href(), '/work/mail') ? 'Написать поставщику' : 'Открыть сделку'];
+        return ['title' => $this->title(), 'lines' => [$this->text()], 'button' => 'Открыть сделку'];
     }
 }

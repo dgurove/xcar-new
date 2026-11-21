@@ -3,6 +3,7 @@
 namespace App\Telegram\Messages;
 
 use App\Mail\Message as Letter;
+use App\Notifications\Notice;
 use App\Offers\Offer;
 use App\Support\Surface;
 use App\Telegram\Text;
@@ -43,12 +44,13 @@ final class VendorLetter extends Message
         return [];
     }
 
+    /** Машина в сделке — сделка (22.11.2026, владелец: «все действия в сделке»); иначе окно писем машины или поток. */
     protected function link(): array
     {
         $path = $this->offer
-            ? "/offers/{$this->offer->number}?window=/offers/{$this->offer->number}/letters"
+            ? Notice::dealPathOr($this->offer, "/offers/{$this->offer->number}?window=/offers/{$this->offer->number}/letters")
             : '/work/mail?window='.$this->letter->thread_id;
 
-        return ['text' => 'Открыть письмо', 'url' => Surface::Crm->url($path)];
+        return ['text' => str_starts_with($path, '/work/deals/') ? 'Открыть сделку' : 'Открыть письмо', 'url' => Surface::Crm->url($path)];
     }
 }

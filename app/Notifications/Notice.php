@@ -353,6 +353,15 @@ abstract class Notice extends Notification implements ShouldQueue
     }
 
     /** Предмет сообщений о предложении: ушло от человека (снято, сдвинули волну) — `RetractOfferNotices` их удалит. */
+    /**
+     * Машина в идущей сделке — ссылка на сделку, иначе `$fallback` (22.11.2026, владелец: «неудобно, что письмо открывает,
+     * все действия-то в сделке»). Для уведомлений и Telegram сотрудникам.
+     */
+    public static function dealPathOr(?Offer $offer, string $fallback): string
+    {
+        return ($deal = $offer?->deal) ? '/work/deals/'.$deal->id : $fallback;
+    }
+
     public static function offerSubject(int $offerId): string
     {
         return 'offer:'.$offerId;
