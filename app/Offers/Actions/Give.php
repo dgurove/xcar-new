@@ -363,7 +363,8 @@ final class Give
         if ($position && $position->stage_id !== $before) {
             return $this->agreedBefore($offer, $deal, $by);
         }
-        $workflow = $position ? $position->stage->workflow : ($offer->vendor?->is_active ? $offer->vendor->workflow(Track::Sale) : null);
+        // Своего маршрута у поставщика нет — маршрут по умолчанию (`Vendor::saleWorkflow`, 22.11.2026): сделка без этапа не встаёт.
+        $workflow = $position ? $position->stage->workflow : ($offer->vendor?->is_active ? $offer->vendor->saleWorkflow() : null);
         $entry = $position || $workflow?->is_active ? $workflow?->dealEntry($deal) : null;
 
         return $entry && $entry->id !== $position?->stage_id ? ($this->enter)($offer, $entry, $by) : $offer;

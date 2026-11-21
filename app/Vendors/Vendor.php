@@ -316,6 +316,25 @@ class Vendor extends Model implements HasMedia
         return $this->workflows->firstWhere('track', $track);
     }
 
+    /**
+     * Маршрут продажи для сделки: свой; нет его или он пустой — копия маршрута Т-Банка (`Preset::TBank`), своя у поставщика,
+     * правится в его настройках (22.11.2026, владелец по BMW X5 2611184295 Росгосстраха: «без этапа — делай маршрут по
+     * умолчанию как у Тинька»; у Росгосстраха, Абсолюта, СОГАЗа, Интери, ВСК маршрута не было, и принятая сделка вставала без
+     * этапа). Выключенный, но заполненный маршрут — выбор человека, его не трогаем.
+     */
+    public function saleWorkflow(): ?Workflow
+    {
+        $own = $this->workflow(Track::Sale);
+        if ($own && $own->stages()->exists()) {
+            return $own;
+        }
+        $workflow = $this->workflowOrNew(Track::Sale);
+        app(\App\Workflow\Actions\ApplyPreset::class)($workflow, \App\Workflow\Preset::TBank);
+        $this->unsetRelation('workflows');
+
+        return $workflow->fresh();
+    }
+
     /** Маршрут ветки, заведённый при первом обращении. */
     public function workflowOrNew(Track $track): Workflow
     {
