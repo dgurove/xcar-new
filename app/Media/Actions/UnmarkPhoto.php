@@ -29,8 +29,8 @@ final class UnmarkPhoto
         return Storage::disk('private')->path("marked/{$media->id}.".strtolower(pathinfo($media->file_name, PATHINFO_EXTENSION) ?: 'webp'));
     }
 
-    /** Имя снятого знака или null — знака нет, кадр не тронут. $mark — знак выбрал человек (`Unmark`). */
-    public function __invoke(Media $media, ?string $mark = null): ?string
+    /** Имя снятого знака или null — знака нет, кадр не тронут. $mark — знак выбрал человек, $turns — и на боку (`Unmark`). */
+    public function __invoke(Media $media, ?string $mark = null, bool $turns = false): ?string
     {
         if ($media->getCustomProperty('unmarked')) {
             return null;
@@ -39,7 +39,7 @@ final class UnmarkPhoto
         if (! is_file($source)) {
             return null;
         }
-        $clean = ($this->unmark)($source, $mark);
+        $clean = ($this->unmark)($source, $mark, $turns);
         if (! $clean) {
             return null;
         }
@@ -54,6 +54,8 @@ final class UnmarkPhoto
             @unlink($clean['path']);
         }
         $media->setCustomProperty('unmarked', $clean['mark']);
+        // Знак выбрал человек: решение по лоту (`MigtorgMarks`) такой кадр не откатывает.
+        $mark === null || $media->setCustomProperty('unmark_chosen', true);
         $this->refresh($media);
 
         return $clean['mark'];
@@ -108,6 +110,7 @@ final class UnmarkPhoto
         copy($backup, $this->source($media));
         @unlink($backup);
         $media->forgetCustomProperty('unmarked');
+        $media->forgetCustomProperty('unmark_chosen');
         $this->refresh($media);
 
         return true;

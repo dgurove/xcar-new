@@ -16,17 +16,18 @@ final class Unmark
 {
     /**
      * $mark — знак выбрал человек (шторка «Водяной знак»): только он, место и масштаб ищутся шире, порог ниже.
+     * $turns — и кадр, повёрнутый на бок (знак Мигторга ставят до поворота снимка; `MigtorgMarks` у лота со знаком).
      *
      * @return array{path: string, mark: string}|null чистый кадр во временном JPEG (удалить — забота вызвавшего)
      */
-    public function __invoke(string $path, ?string $mark = null): ?array
+    public function __invoke(string $path, ?string $mark = null, bool $turns = false): ?array
     {
         $base = tempnam(sys_get_temp_dir(), 'unmark-');
         @unlink($base);
         $out = $base.'.jpg';
         try {
             // nice: сайт и почта на двух ядрах впереди; на кадр ~0,1 с, на 48 МП — секунды.
-            $only = $mark === null ? [] : ['--mark', $mark];
+            $only = [...($mark === null ? [] : ['--mark', $mark]), ...($turns ? ['--turns'] : [])];
             $result = Process::timeout(60)->run(['nice', '-n', '10', config('xcar.unmark', 'unmark'), ...$only, Watermarks::dirs(), $path, $out]);
             $line = trim((string) collect(explode("\n", trim($result->output())))->last());
             $answer = json_decode($line, true);

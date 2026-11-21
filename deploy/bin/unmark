@@ -449,31 +449,40 @@ def marks_in(folders):
     return [m for m in marks if not over.get(m.name, {}).get('off')]
 
 
-def remove(folder, src, dst, only=None, polish=True):
+# Повороты кадра (--turns): знак Мигторга бывает лёгшим на бок — его ставят до поворота снимка (21.11.2026, Renault 3703).
+# Пара: как повернуть кадр, чтобы знак встал ровно, и как вернуть результат обратно.
+TURNS = ((cv2.ROTATE_90_CLOCKWISE, cv2.ROTATE_90_COUNTERCLOCKWISE), (cv2.ROTATE_90_COUNTERCLOCKWISE, cv2.ROTATE_90_CLOCKWISE))
+
+
+def remove(folder, src, dst, only=None, polish=True, turns=False):
     t = time.time()
     img = fit_side(read(src))
-    gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY).astype(np.float32)
     marks = [m for m in marks_in(folder) if only is None or m.name == only]
     if only is not None and not marks:
         raise ValueError(f'знака {only} в реестре нет')
     search, scales, lo, hi = (SEARCH_CHOSEN, SCALES_CHOSEN, K_MIN_CHOSEN, K_MAX_CHOSEN) if only else (SEARCH, (1.0,), K_MIN, K_MAX)
-    for mark in marks:
-        at = locate(gray, mark, search=search, scales=scales)
-        if at is None:
-            continue
-        h, w = at['alpha'].shape
-        crop = gray[at['iy']:at['iy'] + h, at['ix']:at['ix'] + w]
-        k = strength(crop, at['alpha'], mark.white)
-        if lo <= k <= hi:
-            out = unmark(img, mark, at)
-            r = time.time()
-            out, refined = refine(out, at, folder) if polish else (out, False)
-            ok = cv2.imwrite(str(dst), out, [cv2.IMWRITE_JPEG_QUALITY, 95])
-            if not ok:
-                raise ValueError(f'не записался {dst}')
-            return {'mark': mark.name, 'k': round(k, 3), 'x': round(at['x'], 2), 'y': round(at['y'], 2),
-                    's': round(at['s'], 4), 'refined': refined, 'refine_ms': int((time.time() - r) * 1000) if refined else None,
-                    'ms': int((time.time() - t) * 1000)}
+    for turn, back in ((None, None),) + (TURNS if turns else ()):
+        frame = img if turn is None else cv2.rotate(img, turn)
+        gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY).astype(np.float32)
+        for mark in marks:
+            at = locate(gray, mark, search=search, scales=scales)
+            if at is None:
+                continue
+            h, w = at['alpha'].shape
+            crop = gray[at['iy']:at['iy'] + h, at['ix']:at['ix'] + w]
+            k = strength(crop, at['alpha'], mark.white)
+            if lo <= k <= hi:
+                out = unmark(frame, mark, at)
+                r = time.time()
+                out, refined = refine(out, at, folder) if polish else (out, False)
+                if back is not None:
+                    out = cv2.rotate(out, back)
+                ok = cv2.imwrite(str(dst), out, [cv2.IMWRITE_JPEG_QUALITY, 95])
+                if not ok:
+                    raise ValueError(f'не записался {dst}')
+                return {'mark': mark.name, 'k': round(k, 3), 'x': round(at['x'], 2), 'y': round(at['y'], 2),
+                        's': round(at['s'], 4), 'refined': refined, 'refine_ms': int((time.time() - r) * 1000) if refined else None,
+                        'turned': turn is not None, 'ms': int((time.time() - t) * 1000)}
     return {'mark': None, 'ms': int((time.time() - t) * 1000)}
 
 
@@ -729,7 +738,8 @@ def tune(name, folders, photos, pairs):
 if __name__ == '__main__':
     args = sys.argv[1:]
     polish = '--no-refine' not in args  # без дочистки сетью — сравнить «до и после»
-    args = [a for a in args if a != '--no-refine']
+    turns = '--turns' in args  # и кадр, повёрнутый на бок
+    args = [a for a in args if a not in ('--no-refine', '--turns')]
     if args[:1] == ['--calibrate'] and len(args) >= 3:
         calibrate(args[1], args[2:])
     elif args[:1] == ['--tune'] and len(args) >= 3:
@@ -754,11 +764,11 @@ if __name__ == '__main__':
     elif len(args) == 5 and args[0] == '--mark' or len(args) == 3:
         only = args[1] if args[0] == '--mark' else None
         try:
-            print(json.dumps(remove(*args[-3:], only=only, polish=polish), ensure_ascii=False), flush=True)
+            print(json.dumps(remove(*args[-3:], only=only, polish=polish, turns=turns), ensure_ascii=False), flush=True)
         except ValueError as e:
             print(json.dumps({'mark': None, 'error': str(e)}, ensure_ascii=False), flush=True)
             sys.exit(2)
     else:
-        print('unmark [--mark <имя>] [--no-refine] <каталог знаков> <вход> <выход> | unmark --calibrate <знак.json> <фото…> | '
+        print('unmark [--mark <имя>] [--no-refine] [--turns] <каталог знаков> <вход> <выход> | unmark --calibrate <знак.json> <фото…> | '
               'unmark --learn <имя> <x0,y0,x1,y1> <каталог> <фото с рамкой> <фото…>', file=sys.stderr)
         sys.exit(64)

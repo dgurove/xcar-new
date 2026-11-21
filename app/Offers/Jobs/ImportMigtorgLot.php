@@ -11,6 +11,7 @@ use App\Live\Publisher;
 use App\Live\Topics;
 use App\Media\Actions\UnmarkPhoto;
 use App\Media\Hidden;
+use App\Media\MigtorgMarks;
 use App\Media\PhotoIngest;
 use App\Offers\Actions\UpdateOffer;
 use App\Offers\Console\MigtorgSync;
@@ -328,6 +329,11 @@ final class ImportMigtorgLot implements ShouldQueue
                         $temp && @unlink($temp);
                     }
                 }
+            }
+            // Знак — по лоту целиком: ложные одиночные снятия назад, у лота со знаком — оставшиеся кадры с поворотом.
+            if ($added) {
+                $marks = app(MigtorgMarks::class)->settle($offer);
+                ($marks['added'] || $marks['undone']) && Log::info("Мигторг: лот {$this->lotId} знак ".($marks['marked'] ? "есть, дочищено {$marks['added']}" : "нет, возвращено {$marks['undone']}"));
             }
         } finally {
             Progress::done($offer, Progress::MIGTORG);
