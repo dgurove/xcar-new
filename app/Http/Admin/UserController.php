@@ -462,7 +462,6 @@ class UserController
     {
         return Bid::where('user_id', $user->id)->exists()
             || Deal::where('buyer_id', $user->id)->exists()
-            || DB::table('offer_managers')->where('user_id', $user->id)->exists()
             || $user->buyers()->exists()
             || Chat::where('user_id', $user->id)->where('messages_count', '>', 0)->exists()
             || Car::where('manager_id', $user->id)->exists();
