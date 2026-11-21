@@ -142,8 +142,9 @@ final class PhotoIngest
         $marked = null;
         try {
             // Чужой знак площадки снимается до сжатия: webp размывает край знака, и формула снятия перестаёт сходиться.
-            // Оригинал Мигторга (`migtorg`) приходит без их знака — снимать нечего.
-            if ($collection === 'photos' && $model instanceof Offer && ! isset($properties['migtorg']) && ! isset($properties['partner']) && ($clean = app(Unmark::class)($path))) {
+            // Оригинал Мигторга (`migtorg`) — тоже: обычно он без их знака, но у части лотов «оригинал» отдают со знаком
+            // (21.11.2026, Lada Vesta № 3952: все 29 кадров с «MIG TORG», снятие их пропускало). Знака нет — `Unmark` молчит.
+            if ($collection === 'photos' && $model instanceof Offer && ! isset($properties['partner']) && ($clean = app(Unmark::class)($path))) {
                 $properties += ['unmarked' => $clean['mark']];
             }
             $webp = $this->shrink($clean['path'] ?? $path, $max);
