@@ -34,7 +34,18 @@ final class MoneyRow
 
     public static function service(Invoice $invoice): self
     {
-        return new self(null, $invoice, collect([$invoice]), 'Без сделки');
+        // Засчитанная в сделку — что с этим зачётом: ждёт денег, сделку отменили, оплачено сверх неё.
+        $deal = $invoice->creditDeal;
+        $stage = match (true) {
+            ! $deal => 'Без сделки',
+            $deal->state === \App\Offers\DealState::Cancelled => 'Сделка отменена',
+            $invoice->state === InvoiceState::Issued => 'В зачёт сделки',
+            // Оплачена, а в счета сделки ничего не легло — их ещё нет; легло частью — остальное сверх.
+            (float) $invoice->getAttribute('credited') <= 0 => 'Ждёт счёта сделки',
+            default => 'Сверх сделки',
+        };
+
+        return new self(null, $invoice, collect([$invoice]), $stage);
     }
 
     /** Выплата (раздел «Выплаты»): строка — счёт, этапа нет. */
@@ -72,7 +83,7 @@ final class MoneyRow
         return match (true) {
             $this->deal !== null => $this->deal->buyer_id,
             $this->service->isOwed() => $this->recipient,
-            default => $this->service->manager_id,
+            default => $this->service->creditDeal?->buyer_id ?? $this->service->manager_id,
         };
     }
 

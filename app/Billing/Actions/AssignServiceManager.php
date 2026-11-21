@@ -28,10 +28,11 @@ final class AssignServiceManager
         if ($manager && ! $manager->hasRole(Role::Manager)) {
             throw ValidationException::withMessages(['manager_id' => 'Это не менеджер']);
         }
-        if ($offer) {
+        // Машину привязывают заново, только если её поменяли: иначе каждое «Сохранить» писало бы в «Историю» и пересчитывало зачёт.
+        if ($offer && $offer->id !== $invoice->offer_id) {
             $invoice = ($this->attach)($invoice, $offer, null, $by);
-            $manager = $invoice->creditDeal?->buyer ?? $manager;
         }
+        $manager = $invoice->creditDeal?->buyer ?? $manager;
         if ($invoice->manager_id !== $manager?->id) {
             $invoice->update(['manager_id' => $manager?->id]);
             $invoice->carOffer()?->log(OfferEventType::Note, $by, ['text' => 'Ссылка на оплату '.Money::rub($invoice->total).($manager ? ': менеджер '.$manager->shortName() : ': без менеджера')]);

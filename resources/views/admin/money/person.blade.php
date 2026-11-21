@@ -19,12 +19,10 @@
     $creates = ! $payout && auth()->user()->isAdmin() && app(\App\Billing\Acquiring\Gateway::class)->configured();
 @endphp
 <x-ui.shell :title="$name" :detail="$detail">
-    <x-ui.pills>
-        @foreach (MoneyController::TABS as $k => $t)
-            <x-ui.pill :href="MoneyController::personUrl($user, $k)" :current="$k === $tab" data-turbo-action="replace">{{ $t }}@if ($counts[$k])<span class="nums ml-1 opacity-60">{{ $counts[$k] }}</span>@endif</x-ui.pill>
-        @endforeach
-    </x-ui.pills>
-    <x-ui.toolbar name="money-person" :facets="$payout ? null : $facets" search="Номер, марка, VIN" search-target="#money-person-list">
+    {{-- Разделы человека — пилюлями самого тулбара (22.11.2026, владелец: отдельный ряд пилюль над рядом лупы и чипа — «вёрстка
+         ужасно выглядит»): на ПК одной строкой с лупой и «Статусом», на телефоне пилюли — своей строкой сверху. --}}
+    <x-ui.toolbar name="money-person" :pills="MoneyController::TABS" :pill="$tab" pill-param="tab" pill-home="fees" :pill-drop="['peek', 'q']" :counts="array_filter($counts)"
+        :facets="$payout ? null : $facets" search="Номер, марка, VIN" search-target="#money-person-list">
         @if ($creates)
             <x-slot:actions>@include('admin.money.service-sheet', ['manager' => $user])</x-slot:actions>
         @endif
@@ -52,4 +50,6 @@
             </x-ui.table>
         @endif
     </div>
+    {{-- Окно писем машины: письмо в окне сделки открывается поверх (22.11.2026: «жму на письмо в окошке — не открывается»). --}}
+    <x-mail.window/>
 </x-ui.shell>

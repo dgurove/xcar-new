@@ -137,7 +137,8 @@ class MoneyController
 
         return view('admin.money.index', [
             'detail' => $detail, 'facets' => $facets, 'q' => $qs, 'tab' => $tab, 'sections' => $sections, 'sort' => $sort($tab),
-            'counts' => self::counts($facets), 'attempts' => AcquiringPayment::whereIn('payment_id', $paid)->get()->keyBy('payment_id'),
+            // Числа «Комиссий» и «ДКП» — по чипу «Статус» и на вкладке «Выплат» (у неё своего чипа нет).
+            'counts' => self::counts($tab === 'payouts' ? MoneyBook::facets($request) : $facets), 'attempts' => AcquiringPayment::whereIn('payment_id', $paid)->get()->keyBy('payment_id'),
             // Без лупы — люди строками (18.11.2026): внутри человека — его сделки.
             'people' => $qs === '' ? self::people($tab, $facets) : null,
         ]);
@@ -291,7 +292,7 @@ class MoneyController
         } else {
             $rows = MoneyBook::open($tab, false, $facets);
             $history = MoneyBook::paid($tab, false, $facets)->reorder()->select('deals.buyer_id')->distinct()->pluck('buyer_id')
-                ->concat($tab === 'fees' ? MoneyBook::services(false, open: false)->reorder()->select('manager_id')->distinct()->pluck('manager_id') : []);
+                ->concat($tab === 'fees' ? MoneyBook::services(false, open: false)->reorder()->select([])->selectRaw('coalesce('.MoneyBook::SERVICE_PERSON.', billing_invoices.manager_id) as pid')->distinct()->pluck('pid') : []);
         }
         $key = fn ($id) => $id ? (string) $id : 'none';
         $users = User::whereIn('id', $rows->map(fn (MoneyRow $r) => $r->personId())->concat($history)->filter()->unique())->get()->keyBy('id');
@@ -337,7 +338,7 @@ class MoneyController
         $user = $person === 'none' ? null : User::findOrFail((int) $person);
         $detail = Detail::of($request, fn (string $key) => str_starts_with($key, 's')
             ? (($i = Invoice::crmMoney()->find((int) substr($key, 1))) ? $this->card($i) : null)
-            : \App\Offers\CarWindow::of($request, OfferNumber::find($key)));
+            : \App\Offers\CarWindow::of($request, OfferNumber::find($key)), invoices: true);
         if ($detail->framed()) {
             return $detail->response();
         }
@@ -367,7 +368,7 @@ class MoneyController
         $tried = self::tried(Invoice::crmMoney())->pluck('billing_invoices.id')->flip();
 
         return view('admin.money.person', [
-            'detail' => $detail, 'user' => $user, 'tab' => $tab, 'counts' => self::counts($facets, $user)['counts'], 'facets' => $facets, 'q' => $qs,
+            'detail' => $detail, 'user' => $user, 'tab' => $tab, 'counts' => self::counts($tab === 'payouts' ? MoneyBook::facets($request) : $facets, $user)['counts'], 'facets' => $facets, 'q' => $qs,
             'rows' => $open, 'paid' => $paid, 'portion' => $portion, 'attempts' => $attempts, 'tried' => $tried,
         ]);
     }
@@ -597,7 +598,7 @@ class MoneyController
             $payout ? null : new Column('stage', 'Статус', from: 'sm', role: ColRole::State, rem: 14, fixed: true),
             new Column('pay', $payout ? 'Статус' : 'Оплата', from: 'sm', role: ColRole::State, rem: 11, fixed: true),
             new Column('amount', 'Сумма', num: true, cell: 'nums', rem: 7, fixed: true),
-            new Column('since', 'Выставлено', from: 'sm', num: true, role: ColRole::When, cell: 'nums', rem: 6, fixed: true),
+            new Column('since', 'Выставлено', from: 'sm', num: true, role: ColRole::When, cell: 'nums', rem: 6.5, fixed: true),
             // С окном справа кнопок нет (`aside`): действие — в самом окне.
             new Column('acts', '', from: 'lg', num: true, aside: true, role: ColRole::When, rem: 17, fixed: true));
     }

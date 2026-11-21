@@ -30,7 +30,8 @@
     $alarm = $word && in_array($tone, ['text-urgent', 'text-danger'], true);
     $amount = $r->amount();
     $since = $r->since();
-    $sinceText = $paid ? $since?->format('d.m') : ($since ? \App\Support\Ago::since($since) : null);
+    // Дата выставления, а не сколько прошло (22.11.2026, начальник): «вчера», «07.10»; у оплаченной — день оплаты. Срок прошёл — красным.
+    $sinceText = $since ? \App\Support\Ago::html($since) : null;
     $sinceTone = ! $paid && $r->isOverdue() ? 'text-danger' : 'text-ink-muted';
     $claim = $paid ? null : $r->claim();
     $title = $offer ? null : ($payout ? R::payoutKind($r->service) : (R::what($r->service) ?? 'Ссылка на оплату'));
@@ -44,9 +45,9 @@
         default => null,
     };
     // Наличными у ручной ссылки — только у назначенной (в «Без менеджера» кнопка строки одна: «Назначить менеджера»).
-    $cash = ! $paid && ! $payout && ! $claim && $first && ! ($service && ! $r->service->manager_id);
+    $cash = ! $paid && ! $payout && ! $claim && $first && ! ($service && ! $r->personId());
     $nudge = ! $paid && ! $unsent && ! $claim && $deal && $first && $first->isShownToManager();
-    $assign = $service && $admin && ! $r->service->manager_id;
+    $assign = $service && $admin && ! $r->service->manager_id && ! $r->service->credit_deal_id;
 @endphp
 @php ob_start(); @endphp
 @switch($main)

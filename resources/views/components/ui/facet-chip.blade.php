@@ -7,7 +7,10 @@
 @php
     $f = $chip->facet;
     $key = $f->key;
-    $on = $chip->on ?? $chip->selected !== [];
+    // Умолчание экрана (`Facets::implied`: «Взятые в работу» в «Оплатах», «Кроме Каркаде») — не выбор: серым названием фильтра,
+    // без лайма и × (22.11.2026, владелец: «фильтр по умолчанию — не то, что нужно высвечивать, так и должно быть»).
+    $implied = $facets->isImplied($f->key);
+    $on = ! $implied && ($chip->on ?? $chip->selected !== []);
     $groups = $f->groups ?: ['' => array_map(fn ($o) => $o->key, $chip->options)];
     $byKey = collect($chip->options)->keyBy('key');
 @endphp
@@ -18,7 +21,7 @@
             <a href="{{ ($chip->inner ?? null) && ! $chip->inner->on && ! $chip->selected ? $chip->inner->onUrl : $facets->url([$key => '']) }}" class="facet-x" data-turbo-action="replace" data-turbo-prefetch="false" aria-label="Снять «{{ $f->title }}»"><x-ui.icon name="x" class="size-3.5"/></a>
         </span>
     @else
-        <button type="button" class="pill !pr-2.5" data-action="sheet#open" aria-controls="{{ $id }}" @if ($on) aria-current="true" @endif>{{ $chip->label }}<x-ui.icon name="chevron-down" class="size-4"/></button>
+        <button type="button" class="pill !pr-2.5" data-action="sheet#open" aria-controls="{{ $id }}" @if ($on) aria-current="true" @endif>{{ $implied ? $f->title : $chip->label }}<x-ui.icon name="chevron-down" class="size-4"/></button>
     @endif
     <x-ui.sheet :id="$id" :title="$f->title" anchor :class="! $f->single && count($chip->options) > 8 ? 'sheet-steady-phone' : ''">
         @if ($f->dates)

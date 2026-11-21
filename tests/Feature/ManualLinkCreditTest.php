@@ -253,7 +253,7 @@ class ManualLinkCreditTest extends TestCase
         $this->actingAs($this->admin);
 
         // «Оплаты» по менеджерам (18.11.2026): строки людей; ручная оплата без менеджера — «Без менеджера», внутри — машиной.
-        $this->get($crm.'/work/money')->assertOk()->assertSee('Тужиков')->assertSee('Без менеджера')->assertSee('Взятые в работу');
+        $this->get($crm.'/work/money')->assertOk()->assertSee('Тужиков')->assertSee('Без менеджера')->assertDontSee('Взятые в работу')->assertDontSee('facet-on', false);
         $this->get($crm.'/work/money/managers/'.$deal->buyer_id.'?tab=fees')->assertOk()->assertSee('ссылку не открывали');
         $this->get($crm.'/work/money/managers/none?tab=fees')->assertOk()->assertSee('Lada Vesta');
         $this->get($crm.'/work/money?q='.urlencode('морковин дмитрий'))->assertOk()->assertSee('data-detail-key="'.$manual->id.'"', false)->assertDontSee('data-detail-key="'.$this->selection($deal)->id.'"', false);

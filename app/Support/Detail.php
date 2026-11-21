@@ -31,11 +31,12 @@ final class Detail
 
     private bool $rendered = false;
 
-    private function __construct(private Request $request, private Closure $resolve) {}
+    private function __construct(private Request $request, private Closure $resolve, private bool $invoices = false) {}
 
-    public static function of(Request $request, Closure $resolve): self
+    /** `invoices` — ключи `s123` (счёт без машины в «Оплатах», 22.11.2026) пускаются только сюда: остальные списки ищут по числу. */
+    public static function of(Request $request, Closure $resolve, bool $invoices = false): self
     {
-        return new self($request, $resolve);
+        return new self($request, $resolve, $invoices);
     }
 
     public static function key(?Request $request = null): ?string
@@ -61,7 +62,7 @@ final class Detail
             $this->html = match (true) {
                 $key === self::FILTER => $this->request->attributes->get(Facets::class)?->panel(),
                 // `s123` — счёт без машины в «Оплатах» (ручная ссылка, выплата; 22.11.2026): его карточка рядом.
-                $key === null || ! preg_match('/^s?\d+$/', $key) => null,
+                $key === null || ! preg_match($this->invoices ? '/^s?\d+$/' : '/^\d+$/', $key) => null,
                 default => ($this->resolve)($key),
             };
         }

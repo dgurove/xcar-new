@@ -67,7 +67,9 @@ class Invoice extends Model implements HasMedia
         // И страница человека в «Оплатах» (18.11.2026, `MoneyController::person`): менеджер счёта, у выплаты — получатель.
         $person = $this->isOwed() ? User::where('party_id', $this->party_id)->orderBy('id')->value('id') : $this->manager()?->id;
         // Ручную ссылку перевели к другому человеку или в сделку (22.11.2026) — и прежняя его страница.
-        $was = $this->wasChanged(['manager_id', 'credit_deal_id']) ? ($this->getOriginal('manager_id') ?? 'none') : null;
+        $was = $this->wasChanged(['manager_id', 'credit_deal_id'])
+            ? (($old = $this->getOriginal('credit_deal_id')) ? \App\Offers\Deal::whereKey($old)->value('buyer_id') : null) ?? $this->getOriginal('manager_id') ?? 'none'
+            : null;
         app(Publisher::class)->refreshSoon(Topics::STAFF, array_values(array_unique(array_filter(['/work/money', '/work/money/managers/'.($person ?? 'none'), $was ? '/work/money/managers/'.$was : null]))));
         // Строка машины во вкладке «Оплата за подбор» (18.11.2026, `SelectionController`): выставили, оплатили — уходит или меняется.
         if ($n = $this->carOffer()?->number) {

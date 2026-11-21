@@ -68,9 +68,8 @@ final class MoneyBook
     /** Чип «Статус» раздела, умолчание — после «Беру в работу» и не отменённые; лупа и адрес умолчание снимают. */
     public static function facets(\Illuminate\Http\Request $request): Facets
     {
-        // Умолчание в чипе словами — «Взятые в работу», а не «Кроме Не взял в работу, Сделка отменена».
-        $default = fn () => in_array((string) $request->query('stage', MoneyStage::DEFAULT), [MoneyStage::DEFAULT, '!'.MoneyStage::CANCELLED.','.MoneyStage::UNTAKEN], true);
-        $facets = Facets::for($request, 'crm-money', MoneyStage::facet()->caption(fn () => $default() ? 'Взятые в работу' : null));
+        // Умолчание — не выбор: чип серым «Статус ▾» (`x-ui.facet-chip`), в окне отмечены все, кроме «Не взял в работу» и отменённых.
+        $facets = Facets::for($request, 'crm-money', MoneyStage::facet());
         if (! $request->query->has('stage') && trim((string) $request->query('q')) === '') {
             $facets->implied('stage', MoneyStage::DEFAULT);
         }
@@ -128,16 +127,34 @@ final class MoneyBook
         return $q;
     }
 
+    /** Чья ручная ссылка в SQL: покупатель засчитанной сделки, иначе назначенный менеджер (`Invoice::manager`). */
+    public const SERVICE_PERSON = '(select cd.buyer_id from deals cd where cd.id = billing_invoices.credit_deal_id)';
+
     /**
-     * Ручные ссылки без сделки (разовые оплаты, `Invoice::isService`, не засчитанные в сделку) этого человека.
+     * Ручная ссылка, засчитанная в сделку, видна своей строкой, пока её деньги не легли в счета сделки целиком: ещё не оплачена
+     * (её денег в сделке нет), сделку отменили (деньги, возможно, вернуть) или оплачено больше, чем засчитано (сверх сделки).
+     */
+    private const CREDITED = "coalesce((select sum(cp.amount) from billing_payments cp where cp.credit_invoice_id = billing_invoices.id
+            and cp.source = 'credit' and cp.state = 'confirmed' and cp.voided_at is null), 0)";
+
+    private const CREDIT_SHOWN = "(billing_invoices.credit_deal_id is null or billing_invoices.state = 'issued'
+        or exists (select 1 from deals cd where cd.id = billing_invoices.credit_deal_id and cd.state = 'cancelled')
+        or billing_invoices.paid > ".self::CREDITED." + 0.005)";
+
+    /**
+     * Ручные ссылки (разовые оплаты, `Invoice::isService`) этого человека своими строками: без сделки и те, что засчитаны в сделку,
+     * но её деньгами ещё не стали (`CREDIT_SHOWN`).
      */
     public static function services(User|null|false $person, ?bool $open = null): Builder
     {
+        $who = 'coalesce('.self::SERVICE_PERSON.', billing_invoices.manager_id)';
+
         return Invoice::query()->where('kind', ChargeKind::Service->value)->where('direction', 'issued')->whereNull('deal_id')->whereNull('vehicle_id')
-            ->whereNull('credit_deal_id')->where('state', '!=', InvoiceState::Void->value)
+            ->where('state', '!=', InvoiceState::Void->value)->whereRaw(self::CREDIT_SHOWN)
+            ->select('billing_invoices.*')->selectRaw(self::CREDITED.' as credited')
             ->when($open !== null, fn ($q) => $q->where('state', $open ? InvoiceState::Issued->value : InvoiceState::Paid->value))
-            ->when($person !== false, fn ($q) => $person ? $q->where('manager_id', $person->id) : $q->whereNull('manager_id'))
-            ->with(['payments', 'claims', 'payLinks.attempts', 'party', 'offer', 'assignedManager'])
+            ->when($person !== false, fn ($q) => $person ? $q->whereRaw($who.' = ?', [$person->id]) : $q->whereRaw($who.' is null'))
+            ->with(['payments', 'claims', 'payLinks.attempts', 'party', 'offer', 'assignedManager', 'creditDeal.buyer'])
             ->orderByRaw($open === false ? 'paid_at desc nulls last' : 'billing_invoices.id');
     }
 
