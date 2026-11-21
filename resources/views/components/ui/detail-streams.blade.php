@@ -14,4 +14,4 @@
 @if (session('detail-hold'))<turbo-stream action="hold"></turbo-stream>@endif
 {{-- letters — открыть окно писем с черновиком (приняли подтверждение — письмо вендору), когда карточка встанет. Письмо ждёт
      в очереди человека на сервере (`Mail\LetterPrompt`), а не в сессии: её метку съедал соседний запрос. --}}
-@if ($letterPrompt = session('letters') ?? \App\Mail\LetterPrompt::take())<turbo-stream action="letters" url="{{ $letterPrompt }}"></turbo-stream>@endif
+@if ($letterPrompt = (\App\Http\Middleware\KeepFlashInBackground::background(request()) ? null : session()->pull('letters')) ?? \App\Mail\LetterPrompt::take())<turbo-stream action="letters" url="{{ $letterPrompt }}"></turbo-stream>@endif

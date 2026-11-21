@@ -14,6 +14,9 @@ export function why(reason) {
 }
 
 export const storm = (() => {
+    // Страница во фрейме шторки сделки (XCAR Chat и Mail, `x-ui.deal-sheet`) — не перезагрузка окна: каждая открытая сделка
+    // считалась бы загрузкой, и четыре сделки за полминуты снимали воркер сайта как «петлю» (21.11.2026).
+    if (window.name === 'xcar-deal' && window.top !== window.self) return false;
     if (read('sw-off', false)) return true;
     const now = Date.now();
     const loads = read('reload-loads', []).filter((l) => now - l.at < WINDOW);

@@ -11,7 +11,11 @@
     // перечитали — письмо снова открыто. Только адрес писем машины, предложения или очереди своего хоста.
     $kept = request()->query('letters');
     $kept = is_string($kept) && preg_match('#^/(offers|cars)/\d+/letters(\?[\w=&%.-]*)?$|^/[\w/-]+/\d+/letters(\?[\w=&%.-]*)?$#', $kept) ? $kept : null;
-    $url ??= session('letters') ?? \App\Mail\LetterPrompt::take() ?? $kept;
+    // Метка `letters` забирается (`pull`), а не читается: прочитанная, она оставалась во flash, а фоновые запросы
+    // (`KeepFlashInBackground` продлевает flash) возвращали её снова — письмо по давней машине всплывало на любой странице
+    // (21.11.2026). Фоновый запрос (предзагрузка страницы) метку не трогает: её заберёт настоящий переход.
+    $background = \App\Http\Middleware\KeepFlashInBackground::background(request());
+    $url ??= ($background ? null : session()->pull('letters')) ?? \App\Mail\LetterPrompt::take() ?? $kept;
 @endphp
 <div data-controller="sheet window" data-action="letters:open@window->window#open letters:close@window->window#close" @if ($url) data-window-url-value="{{ $url }}" @endif class="contents">
     <x-ui.sheet id="letters" :title="$title" tall>

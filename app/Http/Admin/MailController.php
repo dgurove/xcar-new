@@ -921,6 +921,11 @@ class MailController
     private function inWindow(Request $request)
     {
         $uri = $request->getRequestUri();
+        // Предзагрузка и прочие фоновые запросы (наведение на уведомление «напишите письмо») окна не заказывают: метка `letters`
+        // ставилась без клика и всплывала потом на чужих страницах (21.11.2026, письмо по другой машине у Андрея).
+        if (\App\Http\Middleware\KeepFlashInBackground::background($request)) {
+            return redirect($this->base.'?compose='.urlencode($uri));
+        }
         $from = (string) $request->headers->get('referer');
         $same = $from !== '' && parse_url($from, PHP_URL_HOST) === $request->getHost() && ! str_contains($from, '/mail/new') && ! str_contains($from, '/reply/');
 

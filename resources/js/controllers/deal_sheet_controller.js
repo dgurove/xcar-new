@@ -9,8 +9,10 @@ export default class extends Controller {
     static values = { open: String };
 
     connect() {
-        // Закрыли — фрейм пустеет: открытая страница не слушает живые обновления впустую и не держит память.
-        this.onClose = () => this.frameTarget.removeAttribute('src');
+        // Закрыли — фрейм заменяется чистым: открытая страница не слушает живые обновления впустую и не держит память, а её
+        // переходы уходят из истории вкладки. Иначе «Назад» (и свайп) после шторки листал страницы фрейма, а не вёл из чата к
+        // списку (21.11.2026, «чаты поломались»).
+        this.onClose = () => this.fresh();
         this.dialogTarget.addEventListener('close', this.onClose);
     }
 
@@ -35,8 +37,17 @@ export default class extends Controller {
         this.show(link.href);
     }
 
+    // Каждая сделка — во фрейме, вставленном заново: первая загрузка нового фрейма заменяет его пустую страницу и в историю
+    // вкладки не пишется, а смена `src` у загруженного фрейма добавляла запись.
     show(href) {
-        if (this.frameTarget.getAttribute('src') !== href) this.frameTarget.src = href;
+        if (this.frameTarget.getAttribute('src') !== href) this.fresh(href);
         window.dispatchEvent(new CustomEvent('deal-sheet:open'));
+    }
+
+    fresh(href = null) {
+        const frame = this.frameTarget.cloneNode(false);
+        frame.removeAttribute('src');
+        if (href) frame.src = href;
+        this.frameTarget.replaceWith(frame);
     }
 }
