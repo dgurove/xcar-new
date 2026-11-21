@@ -422,6 +422,19 @@ class Party extends Model implements HasMedia
         return $party;
     }
 
+    /** Служебная сторона ручной ссылки без менеджера и плательщика (22.11.2026): почту для чека вводит тот, кто платит, на `/pay`. */
+    public const LINK_PAYER = 'Плательщик по ссылке';
+
+    public static function linkPayer(): self
+    {
+        return self::firstOrCreate(['name' => self::LINK_PAYER, 'is_self' => false, 'inn' => null, 'email' => null], ['kind' => PartyKind::Person]);
+    }
+
+    public function isLinkPayer(): bool
+    {
+        return $this->name === self::LINK_PAYER && $this->inn === null && $this->email === null;
+    }
+
     public static function forUser(User $user, bool $create = true): self
     {
         if ($user->party) {

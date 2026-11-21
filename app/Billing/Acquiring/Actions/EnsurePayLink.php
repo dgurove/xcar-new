@@ -39,7 +39,7 @@ final class EnsurePayLink
         }
         // Без плательщика (18.11.2026, владелец: «плательщика ваще вырезаем… по ссылке просто почта»): почту для чека вводит тот, кто
         // платит, на `/pay` — почту менеджера туда не подставляем.
-        // Разовая услуга из CRM — почта, вписанная сотрудником при выставлении (`IssueServiceInvoice`).
-        return ($this->create)($invoice, Robot::user(), $amount, PayerKind::Other, email: $invoice->isService() ? $invoice->party->email : null, auto: true);
+        // Разовая услуга из CRM — почта, вписанная сотрудником при выставлении (`IssueServiceInvoice`); у ссылки менеджера — нет.
+        return ($this->create)($invoice, Robot::user(), $amount, PayerKind::Other, email: $invoice->isService() && $invoice->manager_id === null ? $invoice->party->email : null, auto: true);
     }
 }

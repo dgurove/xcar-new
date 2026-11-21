@@ -95,6 +95,10 @@
                     @if ($offer)<x-ui.chevron/>@endif
                 </a>
             @endif
+            {{-- Чья ручная ссылка без сделки (22.11.2026): «Назначить» — менеджер и, по желанию, ТС его сделки. --}}
+            @if ($editCar && ! $i->creditDeal && auth()->user()?->isAdmin())
+                <x-money.assign-sheet :invoice="$i" row/>
+            @endif
             @if ($manual && $i->creditDeal)
                 <a @if ($dealUrl) href="{{ $dealUrl }}" data-turbo-frame="_top" @endif class="row">
                     <span class="shrink-0 text-ink-muted">Сделка</span>

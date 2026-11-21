@@ -1,7 +1,7 @@
 {{-- Человек в «Оплатах» строкой (18.11.2026, владелец: «максимально простые красивые строки — аватарка, имя менеджера, справа сумма
      долга и стрелочка >»): под именем — только то, что требует нас, словами-элементами («2 отправить», «сообщил об оплате N ₽»,
      «ссылка не прошла», «просрочил N ₽» красным, у выплат — «реквизитов нет»); справа — сколько открытого в разделе, без подписи.
-     Ведёт на его машины (`MoneyController::person`). person — строка `MoneyController::people`. --}}
+     Ведёт на его сделки (`MoneyController::person`). person — строка `MoneyController::people`. --}}
 @props(['person', 'tab'])
 @php use App\Support\Money; $p = $person; $payout = $tab === 'payouts'; @endphp
 <a href="{{ \App\Http\Admin\MoneyController::personUrl($p['user'], $tab) }}" class="row money-person">
@@ -23,6 +23,7 @@
         @endif
     </span>
     {{-- Подписи под суммой нет (18.11.2026, владелец: «должен» под каждой суммой — бред): кто кому — говорит раздел. --}}
-    <span @class(['nums shrink-0 font-semibold', 'text-accent-text' => $payout])>{{ Money::rub($p['sum']) }}</span>
+    {{-- Всё оплачено — суммы нет (22.11.2026: человек в списке ради истории, «Оплаченных» больше нет). --}}
+    @if ($p['sum'] > 0)<span @class(['nums shrink-0 font-semibold', 'text-accent-text' => $payout])>{{ Money::rub($p['sum']) }}</span>@endif
     <x-ui.chevron/>
 </a>

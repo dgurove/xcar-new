@@ -386,6 +386,8 @@ Route::domain(config('xcar.crm_host'))->middleware(['auth', 'ability:isStaff'])-
         Route::post('/work/money/service', [MoneyController::class, 'service'])->middleware('ability:isAdmin');
         Route::get('/work/money/cars', [MoneyController::class, 'cars'])->middleware('ability:isAdmin');
         Route::get('/work/money/links/existing', [MoneyController::class, 'existing'])->middleware('ability:isAdmin');
+        // «Назначить менеджера» ручной ссылке, по желанию — со сделкой (22.11.2026, `AssignServiceManager`).
+        Route::post('/work/money/invoices/{invoice}/manager', [MoneyController::class, 'assign'])->middleware('ability:isAdmin');
         Route::put('/work/money/links/{link}/car', [PayLinkController::class, 'car'])->middleware('ability:isAdmin');
         Route::get('/work/money/links/{link}/attach', [PayLinkController::class, 'attach'])->middleware('ability:isAdmin');
         Route::post('/work/money/acquiring/{attempt}/refund', [PayLinkController::class, 'refund']);

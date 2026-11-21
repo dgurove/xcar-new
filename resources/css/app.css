@@ -476,11 +476,9 @@ html.kb-open { --home-gap: 0px; }
   @media (min-width: 640px) { .btn-s { height: 2.5rem; } }
   /* Кнопка в строке таблицы (18.11.2026, «Оплаты»: «гораздо компактнее, чтобы помещалось много строк») — высотой с этаж строки. */
   .btn-xs { @apply px-2.5 text-sm; height: 1.625rem; border-radius: 999px; }
-  /* Кнопка строки посередине справа поверх двух этажей (телефон, «Оплаты» → человек): строка не выше обычной. */
-  @media (max-width: 639.98px) {
-    .table td.has-mid-act { position: relative; padding-right: 7rem !important; }
-    .table td.has-mid-act > .mid-act { position: absolute; right: .75rem; top: 50%; transform: translateY(-50%); z-index: 1; }
-  }
+  /* Кнопки строки на ПК («Оплаты» → человек, 22.11.2026: «Выставить», «Оплатил наличными», «Напомнить» — без захода в окно): в ряд
+     у правого края, не переносятся. */
+  .row-acts { display: flex; justify-content: flex-end; align-items: center; gap: .375rem; white-space: nowrap; }
   .btn-hero { @apply px-12 text-lg; height: 4rem; }
   @media (min-width: 640px) { .btn-hero { @apply text-xl; height: 4.375rem; } }
 

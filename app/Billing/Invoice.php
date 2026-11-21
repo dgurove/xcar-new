@@ -38,7 +38,7 @@ use Spatie\MediaLibrary\InteractsWithMedia;
  */
 #[Fillable(['seller', 'park', 'direction', 'year', 'number', 'code', 'revision', 'external_no', 'kind', 'month', 'party_id', 'vehicle_id', 'deal_id', 'offer_id', 'issued_at', 'due_at', 'vat', 'vat_rate', 'vat_on_top', 'total', 'paid', 'state', 'paid_at',
     'overdue_at', 'reminded_at', 'sent_at', 'sent_by', 'sent_message_id', 'voided_at', 'void_reason', 'notes', 'created_by', 'car_title', 'credit_deal_id', 'shown_at', 'shown_by', 'nudged_at', 'nudge_at',
-    'act_no', 'act_at', 'basis', 'line_title', 'requested_at', 'requested_by'])]
+    'act_no', 'act_at', 'basis', 'line_title', 'requested_at', 'requested_by', 'manager_id'])]
 class Invoice extends Model implements HasMedia
 {
     use FastAttributes;
@@ -53,7 +53,7 @@ class Invoice extends Model implements HasMedia
         static::addGlobalScope(City::SCOPE, fn (Builder $q) => ($city = City::viewing()) ? City::invoices($q, $city) : null);
         // Счёт выставили, оплатили, аннулировали — «Оплаты» у всех, кто их открыл, перечитываются (18.10.2026: у других
         // строка висела в «Проверить» / «Ждём»). После коммита.
-        static::saved(fn (self $i) => $i->wasRecentlyCreated || $i->wasChanged(['state', 'paid', 'due_at', 'shown_at']) ? $i->refreshLists() : null);
+        static::saved(fn (self $i) => $i->wasRecentlyCreated || $i->wasChanged(['state', 'paid', 'due_at', 'shown_at', 'manager_id', 'credit_deal_id']) ? $i->refreshLists() : null);
     }
 
     /** Перечитать списки «Оплат» своей стороны: парковки или CRM. */
@@ -66,7 +66,9 @@ class Invoice extends Model implements HasMedia
         }
         // И страница человека в «Оплатах» (18.11.2026, `MoneyController::person`): менеджер счёта, у выплаты — получатель.
         $person = $this->isOwed() ? User::where('party_id', $this->party_id)->orderBy('id')->value('id') : $this->manager()?->id;
-        app(Publisher::class)->refreshSoon(Topics::STAFF, ['/work/money', '/work/money/managers/'.($person ?? 'none')]);
+        // Ручную ссылку перевели к другому человеку или в сделку (22.11.2026) — и прежняя его страница.
+        $was = $this->wasChanged(['manager_id', 'credit_deal_id']) ? ($this->getOriginal('manager_id') ?? 'none') : null;
+        app(Publisher::class)->refreshSoon(Topics::STAFF, array_values(array_unique(array_filter(['/work/money', '/work/money/managers/'.($person ?? 'none'), $was ? '/work/money/managers/'.$was : null]))));
         // Строка машины во вкладке «Оплата за подбор» (18.11.2026, `SelectionController`): выставили, оплатили — уходит или меняется.
         if ($n = $this->carOffer()?->number) {
             app(Publisher::class)->rowsSoon(Topics::STAFF, ['/offers' => [$n]]);
@@ -541,7 +543,20 @@ class Invoice extends Model implements HasMedia
     /** Менеджер, с которым этот счёт: покупатель сделки или держатель машины гаража. */
     public function manager(): ?User
     {
-        return $this->deal?->buyer ?? $this->garageCar?->manager;
+        // Ссылку перевели к человеку или в сделку в этом же запросе — связь, загруженная до того, устарела.
+        foreach (['creditDeal' => 'credit_deal_id', 'assignedManager' => 'manager_id'] as $rel => $key) {
+            if ($this->relationLoaded($rel) && $this->getRelation($rel)?->getKey() !== $this->{$key}) {
+                $this->unsetRelation($rel);
+            }
+        }
+
+        return $this->deal?->buyer ?? $this->creditDeal?->buyer ?? $this->garageCar?->manager ?? $this->assignedManager;
+    }
+
+    /** Чья ручная ссылка без сделки (`manager_id`, 22.11.2026): «Назначить менеджера» в «Оплатах», поле «Менеджер» у «Создать ссылку». */
+    public function assignedManager(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'manager_id');
     }
 
     /** Номер для документа без «№»: «20261108-01» у парковки, иначе сквозной. */

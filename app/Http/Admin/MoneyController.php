@@ -8,6 +8,7 @@ use App\Billing\Acquiring\Gateway;
 use App\Billing\Acquiring\LinkExists;
 use App\Billing\Acquiring\PayLink;
 use App\Billing\Acquiring\PayLinkState;
+use App\Billing\Actions\AssignServiceManager;
 use App\Billing\Actions\ConfirmPayment;
 use App\Billing\Actions\IssueServiceInvoice;
 use App\Billing\Actions\RejectPayment;
@@ -30,6 +31,7 @@ use App\Support\Facets\Facet;
 use App\Support\Facets\Facets;
 use App\Support\Facets\Option;
 use App\Support\ListPrefs;
+use App\Support\Portion;
 use App\Support\Money;
 use App\Support\Sort;
 use App\Support\Table\ColRole;
@@ -101,11 +103,16 @@ class MoneyController
 
     public function index(Request $request)
     {
-        // Ключ карточки с `tab=links` — ссылка (`linkUrl`: уведомления, строка ссылки в карточке счёта); иначе — счёт, у
-        // разовой оплаты — её последняя ссылка. Номера ссылок и счетов пересекаются, угадывать по одному числу нельзя.
+        // Прежние адреса ручной ссылки (уведомления, закладки: `?tab=links&peek=`, `?peek=` счёта) — к её человеку, окном рядом
+        // (22.11.2026, владелец: «кликаешь — выкидывает обратно в менеджеров и открывается устаревшее окно»).
+        if (($legacy = self::legacy($request)) !== null) {
+            return redirect($legacy);
+        }
+        // Ключ карточки с `tab=links` — ссылка (строка ссылки в карточке счёта); иначе — счёт. Номера ссылок и счетов
+        // пересекаются, угадывать по одному числу нельзя.
         $detail = Detail::of($request, fn (string $key) => $request->query('tab') === 'links'
             ? (($link = PayLink::find($key)) ? $this->link($link) : null)
-            : (($invoice = Invoice::find($key)) ? (($invoice->isService() && ($link = $invoice->payLinks()->reorder()->latest('id')->first())) ? $this->link($link) : $this->detail($invoice)) : null));
+            : (($invoice = Invoice::find($key)) ? $this->card($invoice) : null));
         if ($detail->framed()) {
             return $detail->response();
         }
@@ -116,59 +123,67 @@ class MoneyController
             $peek = $tab === 'owed' && ctype_digit((string) $request->query('peek')) ? Invoice::find((int) $request->query('peek')) : null;
             $tab = $peek ? self::tabOf($peek) : 'fees';
         }
+        // Чип «Статус» помнится один на «Оплаты» — раздел и страница человека (22.11.2026); «Оплаченных» больше нет.
+        ListPrefs::sync($request, 'crm-money', keep: ['stage']);
         $facets = self::facets($request, $tab);
-        // «Оплаченные» не помнится: раздел открывается делами, а не историей.
-        ListPrefs::sync($request, 'crm-money', keep: array_values(array_diff($facets->keys(), ['paid'])));
-        // Варианты чипов — по счетам вкладки: «сколько будет» в шторке чипа отвечает этот запрос.
-        $facets->apply(self::of($tab));
+        if ($tab !== 'payouts') {
+            $facets->apply(MoneyBook::deals($tab, false));
+        }
         $qs = trim((string) $request->query('q'));
-        // Лупа — по обеим вкладкам сразу (мимо пилюли), открытые и оплаченные, без страниц.
-        $tabs = $qs === '' ? [$tab] : array_keys(self::TABS);
+        // Лупа — по всем разделам сразу (мимо пилюли и чипов), открытые и оплаченные.
         $sort = fn (string $t) => Sort::from($request->query('sort'), self::sorts($t), '-auto');
-        $sections = collect($tabs)->mapWithKeys(fn ($t) => [$t => $this->section($t, $t === $tab ? $facets : self::facets($request, $t), $qs, $sort($t))])->all();
-        $paid = collect($sections)->flatMap(fn ($s) => $s['paid'] instanceof Collection ? $s['paid'] : $s['paid']->items())->flatMap(fn ($i) => $i->payments->pluck('id'));
-
-        // Без лупы и «Оплаченных» — люди строками (18.11.2026): внутри человека — его машины.
-        $people = $qs === '' && ! $facets->on('paid') ? self::people($tab, $facets) : null;
+        $sections = $qs === '' ? [] : collect(array_keys(self::TABS))->mapWithKeys(fn ($t) => [$t => $this->section($t, $qs, $sort($t))])->all();
+        $paid = collect($sections)->flatMap(fn ($s) => $s['paid'])->flatMap(fn ($i) => $i->payments->pluck('id'));
 
         return view('admin.money.index', [
             'detail' => $detail, 'facets' => $facets, 'q' => $qs, 'tab' => $tab, 'sections' => $sections, 'sort' => $sort($tab),
             'counts' => self::counts($facets), 'attempts' => AcquiringPayment::whereIn('payment_id', $paid)->get()->keyBy('payment_id'),
-            'people' => $people,
+            // Без лупы — люди строками (18.11.2026): внутри человека — его сделки.
+            'people' => $qs === '' ? self::people($tab, $facets) : null,
         ]);
     }
 
-    /**
-     * Чипы вкладки: менеджер (у обеих, помнится один на раздел), «Откуда» у «Нам должны» — сделка, гараж или вручную (что
-     * было подписью строки в списке ссылок, 09.10.2026), «Оплаченные» — вместо открытых оплаченное, свежее сверху.
-     */
-    private static function facets(Request $request, string $tab): Facets
+    /** Прежний адрес ручной ссылки или её счёта в разделе — новый адрес у её человека; иначе null. */
+    private static function legacy(Request $request): ?string
     {
-        // Чипа «Менеджер» нет (18.11.2026): раздел и так по менеджерам.
-        return Facets::for($request, 'crm-money', ...array_filter([
-            in_array($tab, self::OWED, true) ? Facet::column('from', 'Откуда', ['источник', 'источника', 'источников'], MoneyLinks::FROM)
-                ->labels(fn (array $keys) => collect(MoneyLinks::FROM_LABELS)->only($keys)->map(fn ($l, $k) => new Option($k, $l))->all())->natural() : null,
-            Facet::toggle('paid', $tab === 'payouts' ? 'Выплаченные' : 'Оплаченные', fn ($q) => $q),
-        ]));
+        $peek = (string) $request->query('peek');
+        if (! ctype_digit($peek) || ! in_array($request->query('tab'), ['links', 'owed'], true) || $request->header('Turbo-Frame') === Detail::FRAME) {
+            return null;
+        }
+        $invoice = $request->query('tab') === 'links' ? PayLink::find((int) $peek)?->invoice : Invoice::find((int) $peek);
+
+        return $invoice?->isService() ? self::url($invoice) : null;
+    }
+
+    /** Карточка счёта: у разовой оплаты — её последняя ссылка, у остальных — счёт. */
+    private function card(Invoice $invoice)
+    {
+        return ($invoice->isService() && ($link = $invoice->payLinks()->reorder()->latest('id')->first())) ? $this->link($link) : $this->detail($invoice);
     }
 
     /**
-     * Счета раздела: «Комиссии» — наши выставленные, кроме счетов за машину (подбор, разовые услуги); «ДКП» — счета за машину от
-     * ПРАЙМ и Р.О.С. (сделки и гараж); «Выплаты» — вознаграждения и перевозки.
+     * Чипы раздела: у «Комиссий» и «ДКП» — «Статус» сделки (`MoneyStage`, 22.11.2026; по умолчанию — после «Беру в работу»), у
+     * «Выплат» чипов нет. «Оплаченных» и «Откуда» больше нет: у человека все его сделки, оплаченные — лентой ниже.
+     */
+    private static function facets(Request $request, string $tab): Facets
+    {
+        return $tab === 'payouts' ? Facets::for($request, 'crm-money') : MoneyBook::facets($request);
+    }
+
+    /**
+     * Счета раздела для лупы и чисел: «Комиссии» — наши выставленные, кроме счетов за машину (подбор, разовые услуги); «ДКП» —
+     * счета за машину от ПРАЙМ и Р.О.С. (сделки и гараж); «Выплаты» — перевозки.
      */
     public static function of(string $tab, ?Facets $facets = null)
     {
         $q = Invoice::crmMoney();
-        // Неотправленный менеджеру счёт сделки — тоже здесь (18.11.2026, владелец: «внутри все оплаты по этому менеджеру и в том
-        // числе то, что надо ему отправить»): группой «Отправить» у человека. Вознаграждение от поставщика до оплаты — нет.
-        // До шага оплаты неотправленного не видно вовсе: это ещё не долг (`Invoice::ON_PAY_STEP_SQL`).
+        // Неотправленный менеджеру счёт сделки — только на шаге оплаты (`Invoice::ON_PAY_STEP_SQL`): так его ищет лупа и считает
+        // вкладка «Оплата за подбор» (`SelectionController`). Страница человека видит все сделки сама (`MoneyBook`, 22.11.2026).
         $ours = fn () => ($facets ? $facets->applyTo($q) : $q)->where('direction', 'issued')
-            ->where(fn ($w) => $w->where(fn ($x) => $x->shownToManager())
-                ->orWhere(fn ($x) => $x->whereRaw(Invoice::ON_PAY_STEP_SQL)));
+            ->where(fn ($w) => $w->where(fn ($x) => $x->shownToManager())->orWhere(fn ($x) => $x->whereRaw(Invoice::ON_PAY_STEP_SQL)));
 
         return match ($tab) {
-            'dkp' => $ours()->where('kind', ChargeKind::Sale)->whereIn('seller', [Seller::Prime->value, Seller::Ros->value]),
-            'fees' => $ours()->where(fn ($w) => $w->where('kind', '!=', ChargeKind::Sale)->orWhereNotIn('seller', [Seller::Prime->value, Seller::Ros->value])),
+            'dkp', 'fees' => $ours()->whereRaw(MoneyBook::tabSql($tab)),
             default => ($facets ? $facets->applyTo($q) : $q)->where('direction', 'owed')->whereIn('kind', self::PAYOUTS),
         };
     }
@@ -184,23 +199,19 @@ class MoneyController
     }
 
     /**
-     * Вкладка группами: claims — менеджер пишет, что оплатил (только «Нам должны»); open — ждём, сверху то, где по ссылке
-     * пытались и не вышло; paid — оплаченные свежими сверху, по 50 на страницу. Без лупы — либо дела (claims, open), либо
-     * с чипом «Оплаченные» только paid; с лупой — всё.
+     * Лупа по разделу группами: claims — менеджер пишет, что оплатил (не у выплат); open — ждём, сверху то, где по ссылке
+     * пытались и не вышло; paid — оплаченные свежими сверху, до 50.
      */
-    private function section(string $tab, Facets $facets, string $qs, Sort $sort): array
+    private function section(string $tab, string $qs, Sort $sort): array
     {
-        // Лупа — `Invoice::search` (пустой запрос — без отбора); без неё у оплаченного страницы.
-        $q = fn () => self::of($tab, $facets)->search($qs)->with(self::WITH);
-        $history = $qs === '' && $facets->on('paid');
-        $todo = $qs !== '' || ! $history;
-        $claims = in_array($tab, self::OWED, true) && $todo
-            ? Payment::where('state', PaymentState::Claimed)->whereHas('invoice', fn ($i) => $i->whereIn('billing_invoices.id', self::of($tab, $facets)->search($qs)->select('billing_invoices.id')))
+        $q = fn () => self::of($tab)->search($qs)->with(self::WITH);
+        $claims = in_array($tab, self::OWED, true)
+            ? Payment::where('state', PaymentState::Claimed)->whereHas('invoice', fn ($i) => $i->whereIn('billing_invoices.id', self::of($tab)->search($qs)->select('billing_invoices.id')))
                 ->with(['invoice' => fn ($i) => $i->with(self::WITH)])->orderBy('paid_at')->orderBy('id')->get()
             : collect();
-        $tried = $tab === 'payouts' ? collect() : self::tried(self::of($tab, $facets)->search($qs))->pluck('billing_invoices.id');
+        $tried = $tab === 'payouts' ? collect() : self::tried(self::of($tab)->search($qs))->pluck('billing_invoices.id');
         $auto = $sort->key === 'auto';
-        $open = ! $todo ? collect() : $q()->where('state', InvoiceState::Issued)->with('payLinks.attempts')
+        $open = $q()->where('state', InvoiceState::Issued)->with('payLinks.attempts')
             ->when(in_array($tab, self::OWED, true), fn ($w) => $w->whereDoesntHave('claims'))
             ->when($auto && $tried->isNotEmpty(), fn ($w) => $w->orderByRaw('billing_invoices.id in ('.$tried->map(fn ($id) => (int) $id)->implode(',').') desc'))
             ->when($auto, fn ($w) => $w->orderByRaw('due_at asc nulls last'), fn ($w) => self::order($w, $sort, open: true))
@@ -208,11 +219,7 @@ class MoneyController
         $last = Payment::select('paid_at')->whereColumn('invoice_id', 'billing_invoices.id')->where('state', PaymentState::Confirmed)->whereNull('voided_at')->latest('paid_at')->limit(1);
         $paid = $q()->where('state', InvoiceState::Paid)->when($auto, fn ($w) => $w->orderByDesc($last), fn ($w) => self::order($w, $sort, open: false))->orderByDesc('billing_invoices.id');
 
-        return ['claims' => $claims, 'open' => $open, 'tried' => $tried, 'paid' => match (true) {
-            $qs !== '' => $paid->limit(50)->get(),
-            $history => $paid->paginate(50)->withQueryString(),
-            default => collect(),
-        }];
+        return ['claims' => $claims, 'open' => $open, 'tried' => $tried, 'paid' => $paid->limit(50)->get()];
     }
 
     /** Поле сортировки столбца: у открытых сумма — остаток, у оплаченных — итог. */
@@ -231,109 +238,157 @@ class MoneyController
     }
 
     /**
-     * Числа пилюль — сколько открытого; tones — где есть дело: не прошла по ссылке, пишет, что оплатил, выплатить. Дело —
-     * красной точкой у названия (`pill-todo`, 17.11.2026), а не рыжей заливкой пилюли: блоки цветом не заливаются.
+     * Числа разделов — сколько ждём денег (сделки с неоплаченным счётом раздела по чипу «Статус», ручные ссылки, выплаты);
+     * tones — где есть дело: пишет, что оплатил, не прошла по ссылке, не выставлено, выплатить. Дело — красной точкой у названия
+     * (`pill-todo`, 17.11.2026), а не заливкой пилюли.
+     *
+     * @return array{counts: array<string, int>, tones: array<string, string>}
      */
-    private static function counts(Facets $facets): array
+    private static function counts(Facets $facets, User|null|false $person = false): array
     {
-        $open = fn (string $t) => self::of($t, $facets)->where('state', InvoiceState::Issued);
-        // Дело: менеджер пишет, что оплатил, или по ссылке пытались и не вышло — позвонить (ссылки — только у комиссий).
-        // Неотправленное менеджеру — тоже дело (18.11.2026).
-        $todo = fn (string $t) => $open($t)->whereHas('claims')->exists() || ($t === 'fees' && MoneyLinks::tried())
-            || ($t !== 'payouts' && $open($t)->whereNotNull('deal_id')->whereNull('shown_at')->where('paid', '<=', 0)->whereRaw(Invoice::ON_PAY_STEP_SQL)->exists());
+        $counts = $tones = [];
+        foreach (array_keys(self::TABS) as $t) {
+            if ($t === 'payouts') {
+                $n = self::payouts($person)->where('state', InvoiceState::Issued)->count();
+                [$counts[$t], $tones[$t]] = [$n, $n ? 'pill-todo' : ''];
 
-        return [
-            'counts' => ['fees' => $open('fees')->count(), 'dkp' => $open('dkp')->count(), 'payouts' => $n = $open('payouts')->count()],
-            'tones' => array_filter(['fees' => $todo('fees') ? 'pill-todo' : '', 'dkp' => $todo('dkp') ? 'pill-todo' : '', 'payouts' => $n ? 'pill-todo' : '']),
-        ];
+                continue;
+            }
+            $open = MoneyBook::openDeals($t, $person, $facets);
+            $services = $t === 'fees' ? MoneyBook::services($person, open: true) : null;
+            $counts[$t] = (clone $open)->count() + ($services ? (clone $services)->count() : 0);
+            $todo = (clone $open)->whereRaw(MoneyBook::hasTabInvoice($t, open: true, extra: "(bi.shown_at is null and bi.paid <= 0 or exists (select 1 from billing_payments bp where bp.invoice_id = bi.id and bp.state = 'claimed'))"))->exists()
+                || ($t === 'fees' && MoneyLinks::tried());
+            $tones[$t] = $todo ? 'pill-todo' : '';
+        }
+
+        return ['counts' => $counts, 'tones' => array_filter($tones)];
+    }
+
+    /** Выплаты раздела этого человека (`false` — все, `null` — получатель не сотрудник). */
+    private static function payouts(User|null|false $person)
+    {
+        return self::of('payouts')->when($person !== false, fn ($q) => $person
+            ? $q->whereRaw(self::RECIPIENT.' = ?', [$person->id])
+            : $q->whereRaw(self::RECIPIENT.' is null'));
     }
 
     /**
-     * Люди раздела строками (18.11.2026): кто, сколько всего открытого (неотправленное тоже), что требует нас — отправить,
-     * проверить его «оплатил», ссылка не прошла, просрочено; у выплаты — реквизитов нет. Сначала те, где есть дело, потом по сумме.
-     * Без менеджера (разовая услуга, получатель не сотрудник) — последней строкой, ключ `none`.
+     * Люди раздела строками (18.11.2026): кто, сколько всего ждём (неотправленное тоже), что требует нас — отправить, проверить
+     * его «оплатил», ссылка не прошла, просрочено; у выплаты — реквизитов нет. Сначала те, где есть дело, потом по сумме, потом
+     * те, у кого всё оплачено (22.11.2026: «Оплаченных» больше нет — история у человека), по имени. Без менеджера (разовая
+     * услуга, аукцион, получатель не сотрудник) — последней строкой, ключ `none`.
      *
      * @return Collection<int, array{key: string, user: ?User, sum: float, send: int, claimed: float, tried: bool, overdue: float, noDetails: bool}>
      */
     public static function people(string $tab, ?Facets $facets = null): Collection
     {
-        $open = self::of($tab, $facets)->where('state', InvoiceState::Issued)
-            ->select('billing_invoices.*')->selectRaw(self::personSql($tab).' as person_id')
-            ->with(['payments', 'party'])->withSum('claims', 'amount')->get();
-        $tried = $tab === 'payouts' ? collect() : self::tried(self::of($tab, $facets))->pluck('billing_invoices.id')->flip();
-        $users = User::whereIn('id', $open->pluck('person_id')->filter()->unique())->get()->keyBy('id');
+        $tried = self::tried(Invoice::crmMoney())->pluck('billing_invoices.id')->flip();
+        if ($tab === 'payouts') {
+            $rows = self::payouts(false)->where('state', InvoiceState::Issued)->select('billing_invoices.*')->selectRaw(self::RECIPIENT.' as person_id')
+                ->with(['payments', 'party', 'claims'])->get()->map(fn (Invoice $i) => MoneyRow::payout($i)->setPerson($i->person_id));
+            $history = self::payouts(false)->where('state', InvoiceState::Paid)->selectRaw(self::RECIPIENT.' as person_id')->distinct()->pluck('person_id');
+        } else {
+            $rows = MoneyBook::open($tab, false, $facets);
+            $history = MoneyBook::paid($tab, false, $facets)->reorder()->select('deals.buyer_id')->distinct()->pluck('buyer_id')
+                ->concat($tab === 'fees' ? MoneyBook::services(false, open: false)->reorder()->select('manager_id')->distinct()->pluck('manager_id') : []);
+        }
+        $key = fn ($id) => $id ? (string) $id : 'none';
+        $users = User::whereIn('id', $rows->map(fn (MoneyRow $r) => $r->personId())->concat($history)->filter()->unique())->get()->keyBy('id');
+        $known = fn (string $k) => $k !== 'none' && $users->has((int) $k) ? $k : 'none';
+        $people = $rows->groupBy(fn (MoneyRow $r) => $known($key($r->personId())))
+            ->map(fn (Collection $rs, string $k) => [
+                'key' => $k, 'user' => $users->get((int) $k),
+                'sum' => round($rs->sum(fn (MoneyRow $r) => $r->amount()), 2),
+                'send' => $tab === 'payouts' ? 0 : $rs->filter(fn (MoneyRow $r) => $r->unsent()->isNotEmpty())->count(),
+                'claimed' => round($rs->sum(fn (MoneyRow $r) => $r->claimed()), 2),
+                'tried' => $rs->contains(fn (MoneyRow $r) => $r->open()->contains(fn (Invoice $i) => $tried->has($i->id))),
+                'overdue' => round($rs->sum(fn (MoneyRow $r) => $r->overdue()), 2),
+                'noDetails' => $tab === 'payouts' && $rs->contains(fn (MoneyRow $r) => ! $r->service->party->payoutReady()),
+            ]);
+        foreach ($history->map(fn ($id) => $known($key($id)))->unique() as $k) {
+            $people[$k] ??= ['key' => $k, 'user' => $users->get((int) $k), 'sum' => 0.0, 'send' => 0, 'claimed' => 0.0, 'tried' => false, 'overdue' => 0.0, 'noDetails' => false];
+        }
 
-        return $open->groupBy(fn ($i) => $i->person_id && $users->has($i->person_id) ? (string) $i->person_id : 'none')
-            ->map(fn (Collection $bills, string $key) => [
-                'key' => $key, 'user' => $users->get((int) $key),
-                'sum' => round($bills->sum(fn ($i) => $i->remaining()), 2),
-                'send' => $tab === 'payouts' ? 0 : $bills->filter(fn ($i) => ! $i->isShownToManager())->count(),
-                'claimed' => round((float) $bills->sum('claims_sum_amount'), 2),
-                'tried' => $bills->contains(fn ($i) => $tried->has($i->id)),
-                'overdue' => round($bills->filter(fn ($i) => $i->isOverdue())->sum(fn ($i) => $i->remaining()), 2),
-                'noDetails' => $tab === 'payouts' && $bills->contains(fn ($i) => ! $i->party->payoutReady()),
-            ])
-            ->sortBy([
-                fn ($a, $b) => ($a['key'] === 'none') <=> ($b['key'] === 'none'),
-                fn ($a, $b) => (int) ($b['send'] > 0 || $b['claimed'] > 0 || $b['tried']) <=> (int) ($a['send'] > 0 || $a['claimed'] > 0 || $a['tried']),
-                fn ($a, $b) => (int) ($b['overdue'] > 0) <=> (int) ($a['overdue'] > 0),
-                fn ($a, $b) => $b['sum'] <=> $a['sum'],
-            ])->values();
+        return $people->sortBy([
+            fn ($a, $b) => ($a['key'] === 'none') <=> ($b['key'] === 'none'),
+            fn ($a, $b) => (int) ($b['send'] > 0 || $b['claimed'] > 0 || $b['tried']) <=> (int) ($a['send'] > 0 || $a['claimed'] > 0 || $a['tried']),
+            fn ($a, $b) => (int) ($b['overdue'] > 0) <=> (int) ($a['overdue'] > 0),
+            fn ($a, $b) => (int) ($b['sum'] > 0) <=> (int) ($a['sum'] > 0),
+            fn ($a, $b) => $b['sum'] <=> $a['sum'],
+            fn ($a, $b) => (string) $a['user']?->name <=> (string) $b['user']?->name,
+        ])->values();
     }
 
-    /** Адрес человека в «Оплатах»: его машины в разделе. */
+    /** Адрес человека в «Оплатах»: его сделки в разделе. */
     public static function personUrl(?User $user, string $tab): string
     {
         return '/work/money/managers/'.($user?->id ?? 'none').'?tab='.$tab;
     }
 
     /**
-     * Страница человека (18.11.2026): его машины в разделе группами — «Отправить» (кнопками «Отправить» и «Уже оплачено» —
-     * наличными), «Сообщил об оплате» («Поступила» / «Не поступила»), «Ждём оплату» (просроченные и «ссылка не прошла» сверху),
-     * у выплат — «Выплатить»; последней — «Оплачено за 30 дней». Строка — окно машины (`CarWindow`), без машины — карточка счёта.
+     * Страница человека (18.11.2026; с 22.11.2026 — все его сделки, владелец: «отображались ВСЕ сделки, столбец „Статус“ — этап, и
+     * фильтр»; «„Оплаченные“ — тут же, за всю историю, бесконечной лентой»). Строка — сделка со всеми её счетами раздела
+     * (`MoneyBook`, `MoneyRow`): группы «Не выставлены» (и счёта ещё нет — словом, чего не хватает), «Выставлены», «Оплачены»
+     * порциями по сотне. Строка — окно машины рядом (`CarWindow`), ручная ссылка и счёт без машины — его карточка (`s{счёт}`).
      */
     public function person(Request $request, string $person)
     {
         $user = $person === 'none' ? null : User::findOrFail((int) $person);
-        $detail = Detail::of($request, fn (string $key) => \App\Offers\CarWindow::of($request, OfferNumber::find($key)));
+        $detail = Detail::of($request, fn (string $key) => str_starts_with($key, 's')
+            ? (($i = Invoice::crmMoney()->find((int) substr($key, 1))) ? $this->card($i) : null)
+            : \App\Offers\CarWindow::of($request, OfferNumber::find($key)));
         if ($detail->framed()) {
             return $detail->response();
         }
         $tab = array_key_exists((string) $request->query('tab'), self::TABS) ? (string) $request->query('tab') : 'fees';
-        $mine = fn (string $t) => self::of($t)->where(fn ($w) => $user
-            ? $w->whereRaw(self::personSql($t).' = ?', [$user->id])
-            : $w->whereRaw(self::personSql($t).' is null'));
-        $open = $mine($tab)->where('state', InvoiceState::Issued)->with([...self::WITH, 'payLinks.attempts', 'claims'])->orderByRaw('due_at asc nulls last')->orderBy('billing_invoices.id')->get();
-        // Один список (18.11.2026, владелец: «разделять на группы не надо, по порядку выставления, не отправленные сверху»):
-        // невыставленные — первыми, остальное — по дню выставления, раньше выставленное выше (дольше ждёт).
-        $rows = $open->sortBy([
-            fn ($a, $b) => (int) $a->isShownToManager() <=> (int) $b->isShownToManager(),
-            fn ($a, $b) => ($a->shown_at ?? $a->created_at) <=> ($b->shown_at ?? $b->created_at),
-        ])->values();
-        $paid = $mine($tab)->where('state', InvoiceState::Paid)->where('paid_at', '>=', now()->subDays(30)->toDateString())->with(self::WITH)->orderByDesc('paid_at')->orderByDesc('billing_invoices.id')->get();
-        $attempts = AcquiringPayment::whereIn('payment_id', $paid->flatMap(fn ($i) => $i->payments->pluck('id')))->get()->keyBy('payment_id');
-        // Числа у разделов человека — сколько открытого.
-        $counts = collect(array_keys(self::TABS))->mapWithKeys(fn ($t) => [$t => $t === $tab ? $open->count() : $mine($t)->where('state', InvoiceState::Issued)->count()])->all();
+        ListPrefs::sync($request, 'crm-money', keep: ['stage']);
+        $facets = self::facets($request, $tab);
+        $qs = trim((string) $request->query('q'));
+        if ($tab === 'payouts') {
+            $mine = fn () => self::payouts($user)->search($qs)->with([...self::WITH, 'payLinks.attempts', 'claims']);
+            $open = $mine()->where('state', InvoiceState::Issued)->orderByRaw('due_at asc nulls last')->orderBy('billing_invoices.id')->get()->map(fn (Invoice $i) => MoneyRow::payout($i));
+            $paidQ = $mine()->where('state', InvoiceState::Paid)->orderByRaw('paid_at desc nulls last');
+            $portion = Portion::of($request, $paidQ, (clone $paidQ)->reorder()->count());
+            $paid = collect($portion->items())->map(fn (Invoice $i) => MoneyRow::payout($i));
+        } else {
+            $facets->apply(MoneyBook::deals($tab, $user, $qs));
+            $open = MoneyBook::open($tab, $user, $facets, $qs);
+            $paidQ = MoneyBook::paid($tab, $user, $facets, $qs);
+            $portion = Portion::of($request, $paidQ, (clone $paidQ)->reorder()->count());
+            $paid = MoneyBook::paidRows($portion->items());
+            // Оплаченные ручные ссылки без сделки — их единицы: в первую порцию, по дню оплаты среди сделок.
+            if ($tab === 'fees' && $portion->currentPage() === 1) {
+                $paid = $paid->concat(MoneyBook::services($user, open: false)->search($qs)->get()->map(fn (Invoice $i) => MoneyRow::service($i)))
+                    ->sortByDesc(fn (MoneyRow $r) => $r->paidAt()?->timestamp ?? 0)->values();
+            }
+        }
+        $attempts = AcquiringPayment::whereIn('payment_id', $paid->flatMap(fn (MoneyRow $r) => $r->invoices->flatMap(fn ($i) => $i->payments->pluck('id'))))->get()->keyBy('payment_id');
+        $tried = self::tried(Invoice::crmMoney())->pluck('billing_invoices.id')->flip();
 
         return view('admin.money.person', [
-            'detail' => $detail, 'user' => $user, 'tab' => $tab, 'counts' => $counts, 'rows' => $rows, 'paid' => $paid, 'attempts' => $attempts,
+            'detail' => $detail, 'user' => $user, 'tab' => $tab, 'counts' => self::counts($facets, $user)['counts'], 'facets' => $facets, 'q' => $qs,
+            'rows' => $open, 'paid' => $paid, 'portion' => $portion, 'attempts' => $attempts, 'tried' => $tried,
         ]);
     }
 
-    /** Адрес счёта в «Оплатах» — на своей вкладке, с карточкой (уведомления, Telegram). */
+    /**
+     * Адрес счёта в «Оплатах» (уведомления, Telegram): разовая оплата — окном у своего человека (22.11.2026, `s{счёт}`), прочие —
+     * карточкой счёта на своей вкладке.
+     */
     public static function url(Invoice $i): string
     {
-        if ($i->isService() && ($link = $i->payLinks()->reorder()->latest('id')->first())) {
-            return self::linkUrl($link);
+        if ($i->isService()) {
+            return self::personUrl($i->manager(), 'fees').'&peek=s'.$i->id;
         }
 
         return '/work/money?tab='.self::tabOf($i).'&peek='.$i->id;
     }
 
-    /** Ссылка на оплату в «Оплатах» — её карточка на «Ссылки». */
+    /** Ссылка на оплату в «Оплатах»: ручная — окно её счёта у человека, ссылка сделки — её карточка. */
     public static function linkUrl(PayLink $link): string
     {
-        return '/work/money?tab=links&peek='.$link->id;
+        return $link->invoice?->isService() ? self::url($link->invoice) : '/work/money?tab=links&peek='.$link->id;
     }
 
     /** Откуда деньги в ручной оплате: зачёт вознаграждения ставит только система, руками его не выбрать. */
@@ -405,8 +460,10 @@ class MoneyController
     }
 
     /**
-     * Разовая оплата по ссылке: счёт ПРАЙМ на услугу без сделки (`IssueServiceInvoice`) — плательщик из заведённых или
-     * новый по имени, почта по желанию (нет — спросит `/pay`). Дальше открывается карточка счёта со ссылкой.
+     * Разовая оплата по ссылке: счёт ПРАЙМ на услугу без сделки (`IssueServiceInvoice`). Плательщика админ не указывает
+     * (22.11.2026, владелец: «марку, модель и сумму указываем, а плательщика они сами — когда по ссылке переходят»): машина, сумма,
+     * услуга и чья ссылка — менеджер (у машины со сделкой — её менеджер сам); почту для чека спрашивает `/pay`. После — туда же,
+     * откуда создавали (`back`: раздел или страница человека), с карточкой ссылки рядом и её шторкой «Скопировать / Отправить».
      * Без подключённой ЮKassa ссылки не будет — и счёт не выставляется.
      */
     public function service(Request $request, IssueServiceInvoice $issue, Gateway $gateway)
@@ -415,24 +472,25 @@ class MoneyController
         $request->merge(['amount' => $request->filled('amount') ? Money::parse($request->input('amount')) : null]);
         $data = $request->validate([
             'amount' => ['required', 'numeric', 'min:1'], 'title' => ['required', 'string', 'max:200'],
-            'party_id' => ['required', Rule::when(fn () => $request->input('party_id') !== 'new', ['exists:billing_parties,id'])],
-            'party_name' => ['required_if:party_id,new', 'nullable', 'string', 'max:200'],
-            'party_email' => ['nullable', 'email', 'max:120'],
+            'manager_id' => ['nullable', 'integer', Rule::exists('users', 'id')->where(fn ($q) => $q->whereJsonContains('roles', 'manager'))],
             'offer_id' => ['nullable', 'integer', 'exists:offers,id'], 'car_title' => ['nullable', 'string', 'max:160'],
-        ], ['amount.required' => 'Сколько платят', 'title.required' => 'Назовите услугу', 'party_name.required_if' => 'Кто платит',
-            'party_email.email' => 'Проверьте почту']);
-        $payer = $data['party_id'] === 'new'
-            ? ['name' => $data['party_name'], 'email' => $data['party_email'] ?? null]
-            : Party::where('is_self', false)->findOrFail($data['party_id']);
+            'back' => ['nullable', 'string', 'max:300'],
+        ], ['amount.required' => 'Сколько платят', 'title.required' => 'Назовите услугу', 'manager_id.exists' => 'Это не менеджер']);
         $offer = ! empty($data['offer_id']) ? Offer::find($data['offer_id']) : null;
+        $manager = ! empty($data['manager_id']) ? User::find($data['manager_id']) : null;
         try {
-            $invoice = $issue($payer, $request->user(), (float) $data['amount'], $data['title'], $offer, $data['car_title'] ?? null, $request->boolean('force'));
+            $invoice = $issue(null, $request->user(), (float) $data['amount'], $data['title'], $offer, $data['car_title'] ?? null, $request->boolean('force'), $manager);
         } catch (LinkExists $e) {
             return redirect(self::linkUrl($e->link))->with('toast', 'Ссылка уже есть');
         }
         $link = $invoice->openLink();
+        // Остаться на месте (владелец): на странице человека — она же с окном ссылки, в разделе — раздел с ним.
+        $back = (string) ($data['back'] ?? '');
+        $here = str_starts_with($back, '/work/money/managers/')
+            ? strtok($back, '?').'?'.http_build_query(['tab' => 'fees', 'peek' => 's'.$invoice->id])
+            : '/work/money?'.http_build_query(['tab' => 'fees', 'peek' => $invoice->id]);
 
-        return redirect($link ? self::linkUrl($link) : self::url($invoice))->with(['toast' => 'Ссылка готова'] + ($link ? ['open-link' => $link->id] : []));
+        return redirect($here)->with(['toast' => 'Ссылка готова'] + ($link ? ['open-link' => $link->id] : []));
     }
 
     /**
@@ -454,18 +512,37 @@ class MoneyController
             'id' => $o->id,
             'label' => trim($o->title().' '.$o->year),
             'hint' => implode(', ', array_filter([OfferNumber::isPublic($o) ? '№ '.$o->number : null, $o->deal?->buyer?->shortName(), $o->deal ? DealCredit::status($o->deal) : null])),
-            'payer' => $o->deal?->buyer?->name, 'party_id' => $o->deal?->buyer?->party_id,
+            'payer' => $o->deal?->buyer?->name, 'party_id' => $o->deal?->buyer?->party_id, 'manager_id' => $o->deal?->buyer_id,
         ])->values());
     }
 
-    /** «Ссылка уже есть» в форме, до отправки: по выбранной ТС или этому плательщику (`ExistingLink`). Нет — пусто. */
+    /** «Ссылка уже есть» в форме, до отправки: по выбранной ТС (плательщика форма не спрашивает с 22.11.2026). Нет — пусто. */
     public function existing(Request $request)
     {
         $offer = $request->filled('offer_id') ? Offer::find((int) $request->query('offer_id')) : null;
-        $party = ctype_digit((string) $request->query('party_id')) ? (int) $request->query('party_id') : null;
-        $link = ExistingLink::find($offer, $party, $party ? null : (string) $request->query('party_name'));
+        $link = $offer ? ExistingLink::forOffer($offer) : null;
 
         return $link ? view('admin.money.link-exists', ['link' => $link]) : response('');
+    }
+
+    /**
+     * «Назначить менеджера» ручной ссылке (22.11.2026, `AssignServiceManager`): менеджер и, по желанию, ТС его сделки — тогда
+     * оплата засчитывается в её счета и строка уходит в сделку. Пусто — снова «Без менеджера».
+     */
+    public function assign(Request $request, Invoice $invoice, AssignServiceManager $assign)
+    {
+        $data = $request->validate([
+            'manager_id' => ['nullable', 'integer', Rule::exists('users', 'id')->where(fn ($q) => $q->whereJsonContains('roles', 'manager'))],
+            'offer_id' => ['nullable', 'integer', 'exists:offers,id'],
+        ], ['manager_id.exists' => 'Это не менеджер']);
+        $offer = ! empty($data['offer_id']) ? Offer::find($data['offer_id']) : null;
+        $invoice = $assign($invoice, ! empty($data['manager_id']) ? User::find($data['manager_id']) : null, $offer, $request->user());
+
+        return back()->with('toast', match (true) {
+            (bool) $invoice->credit_deal_id => 'Засчитано в сделку',
+            (bool) $invoice->manager_id => 'Менеджер: '.$invoice->assignedManager->shortName(),
+            default => 'Без менеджера',
+        });
     }
 
     /** Карточка ссылки на «Ссылки»: кто платит, ТС, откуда, что с ней, QR и текст, попытки, счёт. */
@@ -508,18 +585,21 @@ class MoneyController
     }
 
     /**
-     * Таблица страницы человека (18.11.2026, владелец выбрал «два этажа, как „Предложения“»): название и под ним что с оплатой,
-     * справа сумма и под ней сколько прошло с выставления; кнопка — только у невыставленного, «сообщил об оплате» и выплаты
-     * (`x-money.person-row`), ровно своей ширины (`fixed`).
+     * Таблица страницы человека (18.11.2026, владелец выбрал «два этажа, как „Предложения“»; 22.11.2026 — строка-сделка):
+     * название, «Статус» — этап сделки (`MoneyStage`), «Оплата» — что с деньгами словом, сумма, сколько прошло с выставления
+     * и на ПК — кнопки (владелец: «„Выставить“, „Оплатил наличными“ / „Напомнить“, „Назначить менеджера“ — без необходимости
+     * проваливаться внутрь»). Ширины ровно заданные (`fixed`): открытые и лента оплаченных догружаются кусками, столбцы стоят одинаково.
      */
-    public static function personTable(): Table
+    public static function personTable(bool $payout = false): Table
     {
-        // Номера убытка нет (владелец: «захотят — нажмут, посмотрят»); на телефоне — два этажа: название и статус слева, сумма и
-        // сколько прошло — концами строк (`.line-end`), кнопка — в строке статуса.
-        // Ширины — ровно заданные (`fixed`): список и блок «Оплачено» — две таблицы, их столбцы должны стоять одинаково.
-        return Table::of(new Column('title', 'Марка, модель', grow: true, fixed: true, rem: 20), new Column('status', 'Статус', from: 'sm', role: ColRole::State, rem: 12, fixed: true),
-            // «Выставлено» и кнопка — один столбец (18.11.2026, владелец: «где выставлено — время, где не выставлено — кнопка»).
-            new Column('amount', 'Сумма', num: true, cell: 'nums', rem: 7, fixed: true), new Column('since', 'Выставлено', from: 'sm', num: true, role: ColRole::When, cell: 'nums', rem: 7.5, fixed: true));
+        // На телефоне — два этажа: название и сумма, под ними этап (или тревога оплаты) и сколько прошло; кнопка — одна, в строке.
+        return Table::of(new Column('title', $payout ? 'За что' : 'Марка, модель', grow: true, fixed: true, rem: 18),
+            $payout ? null : new Column('stage', 'Статус', from: 'sm', role: ColRole::State, rem: 14, fixed: true),
+            new Column('pay', $payout ? 'Статус' : 'Оплата', from: 'sm', role: ColRole::State, rem: 11, fixed: true),
+            new Column('amount', 'Сумма', num: true, cell: 'nums', rem: 7, fixed: true),
+            new Column('since', 'Выставлено', from: 'sm', num: true, role: ColRole::When, cell: 'nums', rem: 6, fixed: true),
+            // С окном справа кнопок нет (`aside`): действие — в самом окне.
+            new Column('acts', '', from: 'lg', num: true, aside: true, role: ColRole::When, rem: 17, fixed: true));
     }
 
     /**

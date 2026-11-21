@@ -34,15 +34,27 @@ final class IssueServiceInvoice
 {
     public function __construct(private IssueInvoice $issue) {}
 
-    /** @param  Party|array{name: string, email?: ?string}  $payer */
-    /** `force` — «Всё равно создать»: вторая ссылка по той же машине или плательщику, доплата сверх сделки (09.10.2026). */
-    public function __invoke(Party|array $payer, User $by, float $amount, string $title, ?Offer $offer = null, ?string $car = null, bool $force = false): Invoice
+    /**
+     * @param  Party|array{name: string, email?: ?string}|null  $payer  null — плательщика не спрашиваем (22.11.2026, владелец: «марку,
+     *   модель и сумму указываем, а плательщика они сами указывают, когда по ссылке переходят»): сторона счёта — менеджер
+     *   (`Party::forUser`, как у подбора), без него — служебная «Плательщик по ссылке» (`Party::linkPayer`); почту спрашивает `/pay`
+     * `force` — «Всё равно создать»: вторая ссылка по той же машине или плательщику, доплата сверх сделки (09.10.2026).
+     * `manager` — чья ссылка (`manager_id`): у машины со сделкой — её менеджер, если не назван.
+     */
+    public function __invoke(Party|array|null $payer, User $by, float $amount, string $title, ?Offer $offer = null, ?string $car = null, bool $force = false, ?User $manager = null): Invoice
     {
         $title = trim(preg_replace('/\s+/u', ' ', $title));
         if ($problem = ServiceTitle::problem($title)) {
             throw ValidationException::withMessages(['title' => $problem]);
         }
-        $party = $payer instanceof Party ? $payer : $this->payer($payer);
+        $deal = $offer ? DealCredit::dealFor($offer) : null;
+        $manager ??= $deal?->buyer;
+        $party = match (true) {
+            $payer instanceof Party => $payer,
+            is_array($payer) => $this->payer($payer),
+            $manager !== null => Party::forUser($manager),
+            default => Party::linkPayer(),
+        };
         $rate = Seller::Prime->vatRate();
         $total = $party->vat_on_top && $rate ? round($amount * (100 + $rate) / 100, 2) : round($amount, 2);
         $max = (float) config('xcar.yookassa.max_amount');
@@ -52,19 +64,20 @@ final class IssueServiceInvoice
 
         $car = $offer ? null : (PayLink::squash((string) $car) ?: null);
 
-        return DB::transaction(function () use ($party, $by, $amount, $title, $offer, $car, $force) {
+        return DB::transaction(function () use ($party, $payer, $by, $amount, $title, $offer, $car, $force, $deal, $manager) {
             DB::select('select pg_advisory_xact_lock(?)', [crc32('service-link')]);
-            if (! $force && ($found = ExistingLink::find($offer, $party->exists ? $party->id : null, $party->name))) {
+            // Без плательщика «ссылка уже есть» — только по машине: сторона счёта у них общая (менеджер, «Плательщик по ссылке»).
+            $found = $payer === null ? ($offer ? ExistingLink::forOffer($offer) : null) : ExistingLink::find($offer, $party->exists ? $party->id : null, $party->name);
+            if (! $force && $found) {
                 throw new LinkExists($found);
             }
             // Новый плательщик заводится только вместе со счётом: «ссылка уже есть» не оставляет пустого контрагента.
             $party->exists || $party->save();
-            $deal = $offer ? DealCredit::dealFor($offer) : null;
             $invoice = ($this->issue)($party, $by, 'issued', ChargeKind::Service, WorkDays::add(now(), 3),
                 lines: [['title' => $title, 'qty' => 1, 'unit' => 'svc', 'price' => round($amount, 2), 'kind' => ChargeKind::Service->value]], offerId: $offer?->id);
             // Машина системы — `offer_id`; её название из поля словами не дублируется (как в `AttachServiceCar`).
-            $invoice->update(['car_title' => $offer ? null : $car, 'credit_deal_id' => $deal?->id]);
-            $offer?->log(OfferEventType::Note, $by, ['text' => 'Ссылка на оплату '.Money::rub($invoice->total).' — '.$party->name]);
+            $invoice->update(['car_title' => $offer ? null : $car, 'credit_deal_id' => $deal?->id, 'manager_id' => $manager?->id]);
+            $offer?->log(OfferEventType::Note, $by, ['text' => 'Ссылка на оплату '.Money::rub($invoice->total).' — '.($payer === null ? ($manager?->shortName() ?? 'без менеджера') : $party->name)]);
 
             return $invoice;
         });

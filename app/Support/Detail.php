@@ -56,11 +56,12 @@ final class Detail
         if (! $this->rendered) {
             $this->rendered = true;
             $key = self::key($this->request);
-            // Ключи строк — номера и id: прочее (first, мусор в адресе) карточки не даёт и в запрос не идёт. Фильтр — окно
+            // Ключи строк — номера и id (`s` — счёт «Оплат»): прочее (first, мусор в адресе) карточки не даёт и в запрос не идёт. Фильтр — окно
             // чипов списка (`Facets::panel`), если список их сузил.
             $this->html = match (true) {
                 $key === self::FILTER => $this->request->attributes->get(Facets::class)?->panel(),
-                $key === null || ! ctype_digit($key) => null,
+                // `s123` — счёт без машины в «Оплатах» (ручная ссылка, выплата; 22.11.2026): его карточка рядом.
+                $key === null || ! preg_match('/^s?\d+$/', $key) => null,
                 default => ($this->resolve)($key),
             };
         }

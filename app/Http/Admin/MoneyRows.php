@@ -159,6 +159,41 @@ final class MoneyRows
         };
     }
 
+    /**
+     * Как заплатили по всем оплатам строки (22.11.2026, владелец: «часть по ссылке, часть наличными — не две строки, а сумма»):
+     * «по ссылке и наличными»; один способ — как `paidWay` («по ссылке СБП»). Зачёт ручной ссылки в сделку — «по ссылке».
+     */
+    public static function paidWays(Collection $invoices, Collection $attempts): ?string
+    {
+        $payments = $invoices->flatMap(fn (Invoice $i) => $i->payments)->sortBy('paid_at');
+        $ways = $payments->map(fn ($p) => match ($p->source) {
+            PaymentSource::Acquiring, PaymentSource::Credit => 'по ссылке',
+            PaymentSource::Cash => 'наличными',
+            PaymentSource::Offset => 'вознаграждением менеджера',
+            default => 'в банк',
+        })->unique()->values();
+        if ($ways->count() === 1 && ($last = $payments->last())?->source === PaymentSource::Acquiring) {
+            return trim('по ссылке '.PayMethod::label($attempts->get($last->id)?->method));
+        }
+
+        return $ways->isEmpty() ? null : $ways->join(', ', ' и ');
+    }
+
+    /** Чего не хватает, чтобы счёт встал (`Deal::invoiceGap`), — словом в строке «Оплат» вместо «Выставить». */
+    public static function gap(string $gap): string
+    {
+        return match ($gap) {
+            'buyer' => 'нет покупателя',
+            'passport' => 'нет данных покупателя',
+            'unread' => 'данные не распознались',
+            'price' => 'нет цены продажи',
+            'share' => 'нет нашей доли',
+            'commission' => 'нет вознаграждения',
+            'ros_requisites' => 'нет реквизитов Р.О.С.',
+            default => 'счёта нет',
+        };
+    }
+
     /** Срок счёта словами и тоном: «до 8 окт» / «срок прошёл 5 окт». */
     public static function due(Invoice $i): ?array
     {

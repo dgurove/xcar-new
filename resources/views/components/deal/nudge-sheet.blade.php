@@ -2,7 +2,8 @@
      во столько-то, типа уверены? и три кнопки: Да, напомнить сейчас / Да, напомнить через… (потом выбор через сколько дней) / Не
      напоминать»). Кнопка серая под счётом рядом с «Оплата получена»; шторка — `NudgeInvoice`. «Через…» — чипы дней, напоминание
      уйдёт в 10:00 по Москве. Запланировано — словом в шторке, «Не напоминать» его снимает. --}}
-@props(['deal', 'invoice'])
+{{-- label / small — кнопкой в строке «Оплат» (22.11.2026): «Напомнить», маленькая. --}}
+@props(['deal', 'invoice', 'label' => 'Напомнить менеджеру', 'small' => false])
 @php
     $id = 'nudge-'.$invoice->id;
     $last = \App\Billing\Actions\NudgeInvoice::lastAt($invoice);
@@ -12,7 +13,7 @@
     $action = '/work/deals/'.$deal->id.'/invoices/'.$invoice->id.'/nudge';
 @endphp
 <div class="contents" data-controller="sheet">
-    <button type="button" {{ $attributes->class('btn btn-quiet btn-s gap-2') }} data-action="sheet#open" aria-controls="{{ $id }}">Напомнить менеджеру</button>
+    <button type="button" {{ $attributes->class(['btn btn-quiet gap-2', 'btn-s' => ! $small, 'btn-xs' => $small]) }} data-action="sheet#open" aria-controls="{{ $id }}">{{ $label }}</button>
     <x-ui.sheet :id="$id" title="Напомнить менеджеру?">
         <div class="flex flex-col gap-4">
             @if ($last)

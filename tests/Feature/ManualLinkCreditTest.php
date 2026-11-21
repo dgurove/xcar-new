@@ -188,10 +188,12 @@ class ManualLinkCreditTest extends TestCase
         $this->assertNotNull($extra->openLink());
         $this->assertNotNull($own->fresh()->isOpen() ? $own : null);
 
-        $first = $this->manual(10000, null, 'Морковин Дмитрий Евгеньевич');
-        $this->actingAs($this->admin)->post('http://'.config('xcar.crm_host').'/work/money/service', ['amount' => '20 000', 'title' => ServiceTitle::DEFAULT, 'party_id' => 'new', 'party_name' => 'морковин  дмитрий евгеньевич'])
-            ->assertRedirect('/work/money?tab=links&peek='.$first->openLink()->id);
-        $this->assertSame(2, Invoice::where('kind', ChargeKind::Service)->where('state', InvoiceState::Issued)->count());
+        // Из CRM плательщика не спрашивают (22.11.2026): сторона — служебная «Плательщик по ссылке», «ссылка уже есть» — только по
+        // машине; после — туда же, откуда создавали, с окном ссылки.
+        $this->actingAs($this->admin)->post('http://'.config('xcar.crm_host').'/work/money/service', ['amount' => '20 000', 'title' => ServiceTitle::DEFAULT])
+            ->assertRedirect('/work/money?tab=fees&peek='.($new = Invoice::where('kind', ChargeKind::Service)->latest('id')->first())->id);
+        $this->assertTrue($new->party->isLinkPayer());
+        $this->assertNull($new->manager_id);
     }
 
     public function test_attaching_later_credits_partly_paid_selection_and_rest_is_extra(): void
@@ -251,7 +253,7 @@ class ManualLinkCreditTest extends TestCase
         $this->actingAs($this->admin);
 
         // «Оплаты» по менеджерам (18.11.2026): строки людей; ручная оплата без менеджера — «Без менеджера», внутри — машиной.
-        $this->get($crm.'/work/money')->assertOk()->assertSee('Тужиков')->assertSee('Без менеджера')->assertSee('Откуда');
+        $this->get($crm.'/work/money')->assertOk()->assertSee('Тужиков')->assertSee('Без менеджера')->assertSee('Взятые в работу');
         $this->get($crm.'/work/money/managers/'.$deal->buyer_id.'?tab=fees')->assertOk()->assertSee('ссылку не открывали');
         $this->get($crm.'/work/money/managers/none?tab=fees')->assertOk()->assertSee('Lada Vesta');
         $this->get($crm.'/work/money?q='.urlencode('морковин дмитрий'))->assertOk()->assertSee('data-detail-key="'.$manual->id.'"', false)->assertDontSee('data-detail-key="'.$this->selection($deal)->id.'"', false);
@@ -263,6 +265,7 @@ class ManualLinkCreditTest extends TestCase
         $this->get($crm.'/work/money?tab=links&peek='.$link->id, ['Turbo-Frame' => 'detail'])->assertOk()->assertSee('link-'.$link->id.'-car:open', false);
         $this->delete($crm.'/work/money/links/'.$link->id)->assertRedirect();
         $this->assertSame(InvoiceState::Void, $manual->fresh()->state);
-        $this->get($crm.'/work/money')->assertDontSee('Без менеджера');
+        // Строки «Без менеджера» больше нет («Без менеджера» есть ещё в поле «Менеджер» у «Создать ссылку»).
+        $this->get($crm.'/work/money')->assertDontSee('/work/money/managers/none', false);
     }
 }
