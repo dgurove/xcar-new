@@ -125,7 +125,8 @@ final class UnmarkPhoto
     }
 
     /** Файл, с которого снимается знак: чистая копия, если поверх лежит наш знак, иначе сам оригинал. */
-    private function source(Media $media): string
+    /** Файл кадра без нашего знака (запрет шеринга): с него снимают и проверяют чужой знак. */
+    public static function source(Media $media): string
     {
         return $media->getCustomProperty('watermarked', false) ? Watermark::cleanPath($media) : $media->getPath();
     }

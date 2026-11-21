@@ -71,13 +71,16 @@ class UnmarkPhotos extends Command
         foreach ($ids as $id) {
             $offer = Offer::find($id);
             $sample = $offer->photos()->filter(fn (Media $m) => $m->getCustomProperty('migtorg') && ! $m->getCustomProperty('unmarked'))->take(3);
-            $marked = $sample->contains(function (Media $m) {
-                $clean = is_file($m->getPath()) ? app(Unmark::class)($m->getPath()) : null;
+            // Файл без нашего знака (наш XCAR сбивал проверку) и знак хотя бы на двух кадрах из трёх: на листе осмотра
+            // поиск знака изредка срабатывает ложно (4370, 2611113876).
+            $marked = $sample->filter(function (Media $m) {
+                $source = UnmarkPhoto::source($m);
+                $clean = is_file($source) ? app(Unmark::class)($source) : null;
                 $clean && @unlink($clean['path']);
 
                 return (bool) $clean;
-            });
-            if (! $marked) {
+            })->count();
+            if ($marked < min(2, $sample->count())) {
                 continue;
             }
             $found++;
