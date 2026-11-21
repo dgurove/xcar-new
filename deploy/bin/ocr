@@ -60,6 +60,7 @@ orientation = None
 # Меньше знаков на странице — модель ориентации ошиблась (заявка Альфы боком читалась как «прямо»): перебрать
 # остальные три поворота и взять тот, где текста больше. Платят только неудачные страницы.
 SHORT = 150
+SHORT_PASSPORT = 40
 
 
 def load(path):
@@ -91,18 +92,23 @@ DOC_SIDE = 2200
 def read(path):
     """Текст и поворот (четверти против часовой), с которым он прочитан."""
     image, turn = load(path)
-    text = '\n'.join(lines(engine(np.ascontiguousarray(np.rot90(image, turn or 0)))))
+    passport = os.path.basename(path).startswith('pass-')
+    result = engine(np.ascontiguousarray(np.rot90(image, turn or 0)))
+    text = '\n'.join(lines(result))
     best = turn or 0
-    if turn is not None and len(text) < SHORT:
+    # Паспорт — порог ниже (21.11.2026: прописка от руки почти всегда короче 150 знаков, и каждая страница платила три лишних
+    # прохода — 40 с на сервере, а модель ориентации на фото паспорта права; перебор — только совсем пустой странице).
+    if turn is not None and len(text) < (SHORT_PASSPORT if passport else SHORT):
         # Модель ориентации меняется, только если текста явно больше (16.11.2026, прописка от руки боком: модель сказала
         # верно, а «прямо» дало на пару знаков больше такого же мусора — и страница осталась боком).
         mine = len(text)
         for k in (k for k in range(4) if k != turn):
-            other = '\n'.join(lines(engine(np.ascontiguousarray(np.rot90(image, k)))))
+            other_result = engine(np.ascontiguousarray(np.rot90(image, k)))
+            other = '\n'.join(lines(other_result))
             if len(other) > max(len(text), mine * 1.5, mine + 50):
-                text, best = other, k
-    if os.path.basename(path).startswith('pass-'):
-        across_text = across(np.rot90(image, best))
+                text, best, result = other, k, other_result
+    if passport:
+        across_text = across(np.rot90(image, best), result)
         if across_text:
             text += '\n' + ACROSS + '\n' + across_text
     return text, best
@@ -112,10 +118,12 @@ ACROSS = '‹поперёк›'
 ACROSS_SIDE = 2600
 
 
-def across(image):
+def across(image, result=None):
     """Цифры, напечатанные вертикально (серия и номер паспорта): страница на +90° и −90°; из направления, где больше
     шестизначных чисел (номер), — только строки с четырьмя и больше цифрами, цифрами через пробел. Ужимать нельзя:
-    на 1600 px красные цифры не находились (скан 07.11.2026)."""
+    на 1600 px красные цифры не находились (скан 07.11.2026). Читается не вся страница, а полоса справа от строк текста
+    (`edge`): номер напечатан у правого края бланка — два прохода по полосе вместо двух по странице (21.11.2026)."""
+    image = image[:, edge(image, result):]
     h, w = image.shape[:2]
     if max(h, w) > ACROSS_SIDE:
         k = ACROSS_SIDE / max(h, w)
@@ -132,6 +140,17 @@ def across(image):
         if six > most:
             best, most = found, six
     return '\n'.join(best)
+
+
+def edge(image, result):
+    """Левый край полосы для поперечных проходов: правее строк, прочитанных вдоль (рамки вдвое шире своей высоты), с запасом
+    6 % ширины; не правее 85 % — полоса не уже 15 %. Строк нет — вся страница. На девяти паспортах 20–21.11.2026 номер из
+    полосы — тот же, что со всей страницы."""
+    if result is None or result.boxes is None:
+        return 0
+    w = image.shape[1]
+    right = [max(p[0] for p in b) for b in result.boxes if max(p[0] for p in b) - min(p[0] for p in b) > 2 * (max(p[1] for p in b) - min(p[1] for p in b))]
+    return int(max(0, min(max(right) - 0.06 * w, 0.85 * w))) if right else 0
 
 
 def lines(result):
