@@ -16,7 +16,7 @@
                 <x-ui.share-link :url="$c['url']" title="Вход в XCAR" done="Данные для входа в буфере" :text="$text"/>
                 {{-- С no-reply на его почту (06.11.2026): одноразовым ключом, пароль на сервере не хранится. --}}
                 @if (! empty($c['mail']))
-                    <form method="post" action="{{ \App\Support\Surface::current() === \App\Support\Surface::Crm ? '/settings' : '' }}/people/credentials-mail/{{ $c['mail'] }}">@csrf<button type="submit" class="btn btn-quiet w-full"><x-ui.icon name="mail" class="size-5"/>На почту {{ $c['email'] }}</button></form>
+                    <form method="post" action="/people/credentials-mail/{{ $c['mail'] }}">@csrf<button type="submit" class="btn btn-quiet w-full"><x-ui.icon name="mail" class="size-5"/>На почту {{ $c['email'] }}</button></form>
                 @endif
             </div>
         </x-ui.sheet>

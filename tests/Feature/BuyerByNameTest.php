@@ -43,7 +43,15 @@ class BuyerByNameTest extends TestCase
         $offer = \App\Offers\Offer::create(['floor_price' => 800000, 'asking_price' => 900000]);
         $deal = \App\Offers\Deal::create(['offer_id' => $offer->id, 'buyer_id' => $this->manager->id, 'cost' => 800000, 'amount' => 900000]);
 
-        $this->actingAs($moderator)->postJson('http://crm.xcar.localhost/people', ['kind' => 'buyer', 'deal' => $deal->id, '_person' => ['first_name' => 'Иван', 'last_name' => 'Петров']])
+        // Адрес — тот, что ставит шторка в CRM, а не написанный в тесте (21.11.2026: маршрут переехал из `/settings`, шторка
+        // слала на старый — 404 у всех в CRM, а тест с адресом руками был зелёным).
+        $this->actingAs($moderator);
+        $this->app->instance(\App\Support\Surface::class, \App\Support\Surface::Crm);
+        $html = \Illuminate\Support\Facades\Blade::render('<x-people.pick name="buyer_id" kind="buyer" :deal="$deal"/>', ['deal' => $deal->id]);
+        $this->app->forgetInstance(\App\Support\Surface::class);
+        $this->assertSame(1, preg_match('/data-people-pick-url-value="([^"]+)"/', $html, $m));
+
+        $this->postJson('http://crm.xcar.localhost'.$m[1], ['kind' => 'buyer', 'deal' => $deal->id, '_person' => ['first_name' => 'Иван', 'last_name' => 'Петров']])
             ->assertOk();
         $this->assertSame('Иван Петров', User::where('manager_id', $this->manager->id)->sole()->name);
         $this->actingAs($moderator)->postJson('http://crm.xcar.localhost/people', ['kind' => 'logist', '_person' => ['first_name' => 'Олег']])->assertForbidden();

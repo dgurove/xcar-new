@@ -17,7 +17,6 @@
     'deal' => null, 'autosubmit' => false, 'none' => null, 'variant' => 'field', 'placeholder' => 'Выбрать', 'required' => false, 'finish' => null,
     'only' => false, 'append' => null, 'reload' => false, 'trigger' => 'row', 'owner' => null, 'open' => false, 'passport' => false, 'search' => null])
 @php
-    use App\Support\Surface;
     $uid = 'pp'.substr(md5($name.$kind.uniqid('', true)), 0, 8);
     $people = collect($people);
     $chosen = $people->first(fn ($p) => (string) $p['id'] === (string) old($name, $value));
@@ -26,7 +25,8 @@
     $grouped = $people->contains(fn ($p) => isset($p['group']))
         ? $people->sortBy(fn ($p) => $chosen && (string) $p['id'] === (string) $chosen['id'] ? 0 : 1)->groupBy(fn ($p) => $p['group'] ?? '', preserveKeys: false)
         : null;
-    $create = Surface::current() === Surface::Crm ? '/settings/people' : '/people';
+    // Один адрес на всех хостах (с 20.11.2026 в CRM не `/settings/people`: там его открыли модератору, `routes/crm.php`).
+    $create = '/people';
     $canCreate = \App\Http\PeopleController::allows(auth()->user(), $kind);
     $error = $errors->first($name);
     // «Готово» в шторке только «+ Новый» (новый просто в списке); в выборе — «Выбрать»: он встаёт в поле.
