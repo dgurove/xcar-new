@@ -20,6 +20,8 @@
     $due = $invoice->total - $offset;
     // QR для приложения банка: реквизиты, сумма к оплате и назначение, по которому выписка найдёт счёт.
     $qr = \App\Billing\Documents\PaymentQr::text($invoice, $self);
+    // Счёт сделки до «Отправить менеджеру» — без номера и без QR: на месте кода заглушка «QR сформируется после отправки».
+    $qrPending = ! $qr && \App\Billing\Documents\PaymentQr::pending($invoice, $self);
     $bank = $self->bank_name && $self->account && $self->bik;
     // Логотип в документах — XCAR у всех продавцов (31.10.2026, владелец: Park — только на сайте). PNG, снятый с SVG шапки:
     // обрезку (`clip-path`) логотипа dompdf рисует криво.
@@ -108,6 +110,7 @@
                 </table>
             </td>
             @if ($qr)<td class="qr"><img src="{{ \App\Support\Qr::pngDataUri($qr, 8, 0) }}" alt=""></td>@endif
+            @if ($qrPending)<td class="qr"><img src="{{ \App\Billing\Documents\PaymentQr::placeholder() }}" alt="QR сформируется после отправки"></td>@endif
         </tr></table>
     @endif
 

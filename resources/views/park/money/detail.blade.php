@@ -17,7 +17,7 @@
             @if ($i->state === InvoiceState::Issued && auth()->user()->canManagePark())
                 <details class="w-full"><summary class="btn btn-s btn-accent inline-flex cursor-pointer">{{ $i->isOwed() ? 'Перечислено' : 'Оплачен' }}</summary><div class="mt-3">@include('park.money.pay-form')</div></details>
             @endif
-            @if ($i->number)<x-ui.doc :doc="['url' => $href.'/pdf', 'type' => 'pdf', 'name' => 'schet-'.$i->number.'.pdf', 'label' => 'Счёт '.$i->label()]" class="chip">PDF</x-ui.doc>@endif
+            @if ($i->number)<x-ui.doc :doc="['url' => $href.'/pdf'.$i->pdfStamp(), 'type' => 'pdf', 'name' => 'schet-'.$i->number.'.pdf', 'label' => 'Счёт '.$i->label()]" class="chip">PDF</x-ui.doc>@endif
             @include('billing.act-docs', ['invoice' => $i, 'base' => $href, 'class' => 'chip'])
             @if ($i->state === InvoiceState::Issued && $i->paid == 0 && auth()->user()->canManagePark())
                 <form method="post" action="{{ $href }}/void" class="contents" data-turbo-confirm="Аннулировать счёт?">@csrf<button class="chip text-ink-muted">Аннулировать</button></form>

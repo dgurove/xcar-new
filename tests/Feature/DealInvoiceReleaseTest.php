@@ -92,10 +92,18 @@ class DealInvoiceReleaseTest extends TestCase
         // Что уходит — словами `Billing\PayOffer` (17.11.2026): шлюз в тесте не подключён — счёт, а не ссылка; «без номера» не пишем.
         $this->assertMatchesRegularExpression('/Менеджер не видит счёт за \S+\s*</u', $row());
         $this->assertStringContainsString('/work/deals/'.$deal->id.'/invoices/'.$invoice->id.'/show', $row());
+        // Не отправлен — на месте QR заглушка (21.11.2026, владелец: «QR сформируется после отправки»).
+        $sheet = fn () => view('billing.docs.invoice', ['invoice' => $invoice->fresh(), 'self' => $invoice->seller->party()])->render();
+        $this->assertStringContainsString('alt="QR сформируется после отправки"', $sheet());
+        $stamp = $invoice->fresh()->pdfStamp();
 
         // «Отправить менеджеру» — видит, уведомление, ход его.
         app(ShowToManager::class)->invoice($deal->fresh(), $invoice, $admin);
         $this->assertSame(1, $invoice->fresh()->number);
+        // Отправлен — номер и настоящий QR сразу, у PDF новый адрес: открытый раньше файл телефон не подсунет.
+        $this->assertStringNotContainsString('QR сформируется', $sheet());
+        $this->assertStringContainsString('<td class="qr"><img src="data:image/png', $sheet());
+        $this->assertNotSame($stamp, $invoice->fresh()->pdfStamp());
         $this->assertTrue($invoice->fresh()->isVisibleToManager($manager));
         $this->assertStringContainsString('№ 1 у менеджера', $row());
         $this->assertStringNotContainsString('Менеджер не видит', $row());

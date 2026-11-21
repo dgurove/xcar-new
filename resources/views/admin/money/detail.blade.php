@@ -45,7 +45,7 @@
                         </x-ui.sheet>
                     </div>
                 @endif
-                @if ($i->number && $i->hasPdf())<x-ui.doc :doc="['url' => $href.'/pdf', 'type' => 'pdf', 'name' => 'schet-'.$i->number.'.pdf', 'label' => 'Счёт '.$i->label()]" class="act"><span class="btn btn-quiet btn-round"><x-ui.icon name="file"/></span>PDF</x-ui.doc>@endif
+                @if ($i->number && $i->hasPdf())<x-ui.doc :doc="['url' => $href.'/pdf'.$i->pdfStamp(), 'type' => 'pdf', 'name' => 'schet-'.$i->number.'.pdf', 'label' => 'Счёт '.$i->label()]" class="act"><span class="btn btn-quiet btn-round"><x-ui.icon name="file"/></span>PDF</x-ui.doc>@endif
             </div>
         @endif
 

@@ -28,7 +28,7 @@
                 {{-- Письмо — окном писем (28.10.2026, одна дверь): шторка «Действия» закрывается, окно открывается. --}}
                 @if ($mailUrl ?? null)<button type="button" class="btn btn-accent btn-block" data-controller="emit" data-action="emit#send sheet#close" data-emit-event-param="letters:open" data-emit-url-param="{{ $mailUrl }}"><x-ui.icon name="send" class="size-4"/> {{ $i->sent_at ? 'Отправить снова' : 'Отправить' }}</button>@endif
                 {{-- Документы — в шторке документов поверх окна; акт хранения — PDF, если выставлен закрытием месяца, иначе страница. --}}
-                @if ($file)<x-ui.doc :doc="['url' => $base.'/pdf', 'type' => 'pdf', 'name' => 'Счет '.$i->fileNo().'.pdf', 'label' => 'Счёт '.$i->label()]" class="btn btn-quiet btn-block"><x-ui.icon name="file" class="size-4"/> PDF</x-ui.doc>@endif
+                @if ($file)<x-ui.doc :doc="['url' => $base.'/pdf'.$i->pdfStamp(), 'type' => 'pdf', 'name' => 'Счет '.$i->fileNo().'.pdf', 'label' => 'Счёт '.$i->label()]" class="btn btn-quiet btn-block"><x-ui.icon name="file" class="size-4"/> PDF</x-ui.doc>@endif
                 {{-- Акт: у реестра — прежний файл страховой (Excel или Word, у РГС ещё приложение), у счёта на ТС — PDF или страница. --}}
                 @include('billing.act-docs', ['invoice' => $i, 'base' => $base, 'class' => 'btn btn-ghost btn-block'])
                 @if ($i->isRegistry() && $i->park && $i->kind === \App\Billing\ChargeKind::Storage)

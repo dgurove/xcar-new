@@ -111,7 +111,7 @@
                                         :open="($errors->any() && old('way') === 'transfer' && old('invoice') == $sale->id) || request()->boolean('pay') || (int) request('invoice') === $sale->id"/>
                                 </div>
                             @else
-                                <x-ui.file :name="'Счёт '.$saleNo" mime="application/pdf" :href="'/account/invoices/'.$sale->id.'/pdf'" download class="row"/>
+                                <x-ui.file :name="'Счёт '.$saleNo" mime="application/pdf" :href="'/account/invoices/'.$sale->id.'/pdf'.$sale->pdfStamp()" download class="row"/>
                             @endif
                             {{-- Что уже внесено: платёжки, наличные, переводы. --}}
                             @foreach ($salePayments as $p)

@@ -200,7 +200,7 @@
         $billRows = function ($i, bool $withSum) use ($deal, $last, $paidBy, $payerRow, $payerId, $inStep) {
             $link = $i->state !== InvoiceState::Paid ? $last($i, true) : null;
             $linkState = $link ? \App\Http\Admin\MoneyLinks::short($link)[0] : null;
-            $pdf = $i->hasPdf() ? '/work/money/invoices/'.$i->id.'/pdf' : null;
+            $pdf = $i->hasPdf() ? '/work/money/invoices/'.$i->id.'/pdf'.$i->pdfStamp() : null;
 
             return view('admin.deals.money-bill', compact('deal', 'i', 'link', 'linkState', 'pdf', 'paidBy', 'payerRow', 'payerId', 'inStep', 'withSum'))->render();
         };

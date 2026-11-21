@@ -13,7 +13,7 @@
         $name = mb_lcfirst(\App\Billing\PayOffer::name($invoice));
         $missing = $linked ? 'Менеджер не получил ссылку на оплату '.\App\Billing\PayOffer::what($invoice) : 'Менеджер не видит '.$name;
         $media = $invoice->hasPdf();
-        $href = $media ? '/work/money/invoices/'.$invoice->id.'/pdf' : \App\Http\Admin\MoneyController::url($invoice);
+        $href = $media ? '/work/money/invoices/'.$invoice->id.'/pdf'.$invoice->pdfStamp() : \App\Http\Admin\MoneyController::url($invoice);
         $action = '/work/deals/'.$deal->id.'/invoices/'.$invoice->id.'/show';
         $sub = \App\Support\Money::rub(\App\Billing\PayOffer::amount($invoice));
         $sheet = 'send-invoice-'.$invoice->id;
