@@ -13,6 +13,12 @@
                 <span class="min-w-0 flex-1"><span class="block">Ссылка на оплату</span><span class="row-sub">не выставлена</span></span>
                 <x-deal.issue-button :deal="$deal" :invoice="$i"/>
             </div>
+            {{-- Наличными мимо ссылки — кнопкой тут же (22.11.2026, владелец: «где нажать, что уже наличными оплатил», пункт «⋯» не находили). --}}
+            @if ($paidBy->contains('id', $i->id))
+                <div class="send-under send-pair">
+                    <button type="button" class="btn btn-quiet btn-s gap-2" data-controller="emit" data-action="emit#send" data-emit-event-param="paid-{{ $i->id }}:open"><x-ui.icon name="check" class="size-4"/>Оплатили наличными</button>
+                </div>
+            @endif
         @elseif ($link && $link->isOpen())
             <x-ui.share-link variant="row" :url="$link->url()" title="Оплата по ссылке" :text="$link->message()" done="Ссылка на оплату в буфере">
                 <x-slot:lead>
