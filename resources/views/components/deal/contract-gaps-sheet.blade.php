@@ -1,5 +1,5 @@
 {{-- Договор, который ещё не готов, — строкой, как будто готов (18.11.2026, владелец: «договор так же», как счёт, только без
-     «Сформировать без прописки»): второй строкой — чего нет (`DealContract::missing`), нажатие — шторка «Договор невозможно
+     «Сформировать без прописки»): без второй строки (с 22.11.2026), нажатие — шторка «Договор невозможно
      сформировать»: данные покупателя полями тут же (паспорт, скан — `x-billing.buyer-fields`), остальное — строками в свои шторки
      (покупатель, собственник, сумма) или на страницу (ПТС). Скрепкой справа — приложить подписанный вне системы. --}}
 @props(['deal', 'attach' => false])
@@ -31,10 +31,9 @@
     <div class="row">
         <button type="button" class="flex min-w-0 flex-1 items-center gap-3 text-left" data-action="sheet#open">
             <x-ui.file-icon name="dkp.pdf"/>
-            <span class="min-w-0 flex-1">
-                <span class="block truncate">Договор купли-продажи</span>
-                <span class="row-sub text-danger">{{ $words }}</span>
-            </span>
+            {{-- Чего нет — не подписью (22.11.2026, владелец: «покупатель, продавец и ПТС уже рядом написаны — подпись не нужна»):
+                 строками «Владелец», «ПТС», «Покупатель» рядом, словом «нужны данные» над блоком и списком в шторке. --}}
+            <span class="min-w-0 flex-1 truncate">Договор купли-продажи</span>
         </button>
         @if ($attach && \App\Offers\Actions\AttachSignedContract::allows($deal))
             <form method="post" action="/work/deals/{{ $deal->id }}/signed" enctype="multipart/form-data" class="contents" data-controller="autosubmit">
