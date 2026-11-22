@@ -2010,7 +2010,8 @@ html.kb-open { --home-gap: 0px; }
   .sale-row-value { flex-shrink: 0; max-width: 65%; text-align: right; }
   .signed-add.sale-row { cursor: pointer; }
   /* Сумма к переводу поставщику — числом окна (17), не 26: была крупнее всего в окне. */
-  .pay-sum { font-size: var(--text-lg); font-weight: 600; }
+  /* Сумма «Оплаты поставщику» — как цена продажи в «Продаже»: 15 полужирным (22.11.2026, владелец: «шрифты скачут»). */
+  .pay-sum { font-size: var(--text-base); font-weight: 600; }
   /* «Деньги» на странице сделки менеджера (`cabinet.deals.money`, 16.11.2026): строки «подпись — сумма» через волосяную линию,
      без карточки в карточке; своя доля — зелёным, но размером строки. */
   .deal-money-rows { display: flex; flex-direction: column; margin-top: .25rem; }

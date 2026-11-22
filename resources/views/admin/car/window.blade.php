@@ -39,7 +39,7 @@
             <x-slot:aside>
                 <div class="flex items-start justify-between gap-3">
                     @if ($aside)
-                        <div><div class="nums whitespace-nowrap text-lg font-semibold">{{ $aside[0] }}</div>@if ($aside[1])<div class="text-xs text-ink-muted">{{ $aside[1] }}</div>@endif</div>
+                        <div><div class="nums whitespace-nowrap text-lg font-semibold">{{ $aside[0] }}</div>@if ($aside[1])<div class="text-sm text-ink-muted">{{ $aside[1] }}</div>@endif</div>
                     @endif
                     <x-offer.binding :offer="$offer" aside class="ml-auto"/>
                 </div>

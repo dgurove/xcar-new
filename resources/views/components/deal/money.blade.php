@@ -217,6 +217,9 @@
             default => null,
         };
         // Кому платит покупатель — словами (`DealScheme::short` — подпись сегмента, здесь по-человечески).
+        // Подбор: строки ссылки и отметок — своей группой ниже; нечего показывать (оплачен) — его слово под «Услугами подбора».
+        $selRows = $selection ? trim($billRows($selection, false)) : '';
+        $selWord = $selection ? \App\Billing\PayWord::of($selection) : null;
         $schemeWord = $deal->isAuction() ? null : match ($deal->schemeOf()) {
             \App\Offers\DealScheme::Prime => 'через ПРАЙМ',
             \App\Offers\DealScheme::Ros => 'через Р.О.С.',
@@ -261,7 +264,7 @@
                 <div class="row sale-row"><span class="sale-row-label">{{ $r[0] }}@foreach ($r[4] ?? [] as [$subText, $subTone])<span class="block text-sm {{ $subTone }}">{{ $subText }}</span>@endforeach</span><span class="sale-row-value {{ $r[2] }}">{{ $r[1] }}</span><x-ui.chevron-space/></div>
             @endforeach
             @if ($feeBilled && $selection)
-                <div class="row sale-row"><span class="sale-row-label">Услуги подбора</span><span class="sale-row-value nums">{{ Money::rub((float) $selection->total) }}</span><x-ui.chevron-space/></div>
+                <div class="row sale-row"><span class="sale-row-label">Услуги подбора</span><span class="sale-row-value nums">{{ Money::rub((float) $selection->total) }}@if ($selRows === '' && $selWord)<span class="block text-sm {{ $selWord[1] }}">{{ $selWord[0] }}</span>@endif</span><x-ui.chevron-space/></div>
             @endif
         </div>
     @endif
@@ -381,11 +384,9 @@
         </div>
     @endif
     {{-- Услуги подбора (ДКП, «страховой», доля гаража) — своим блоком: шапка — сумма и слово, ниже ссылка и отметки. --}}
-    @if ($selection)
-        @php $selWord = \App\Billing\PayWord::of($selection); @endphp
+    @if ($selection && $selRows !== '')
         {{-- Юрлицо ссылки, как у менеджера («ООО «ПРАЙМ»»): услуги подбора — ссылкой на оплату, не счётом (18.11.2026); сумма — в «Итоге». --}}
         <x-deal.doc-cap :label="'Подбор — '.($selection->seller ?? \App\Billing\Seller::Prime)->config()['name']" :state="$selWord[0] ?? null" :tone="str_contains($selWord[1] ?? '', 'open') ? 'ok' : (str_contains($selWord[1] ?? '', 'danger') ? 'bad' : (str_contains($selWord[1] ?? '', 'urgent') ? 'due' : 'muted'))" class="mt-4"/>
-        @php $selRows = trim($billRows($selection, false)); @endphp
         @if ($selRows !== '')<div class="list">{!! $selRows !!}</div>@endif
     @endif
     {{-- Прочие наши счета («Ещё счёт») — строками с суммой: в шапках их нет. --}}
