@@ -371,6 +371,8 @@ class MoneyController
         return view('admin.money.person', [
             'detail' => $detail, 'user' => $user, 'tab' => $tab, 'counts' => self::counts($tab === 'payouts' ? MoneyBook::facets($request) : $facets, $user)['counts'], 'facets' => $facets, 'q' => $qs,
             'rows' => $open, 'paid' => $paid, 'portion' => $portion, 'attempts' => $attempts, 'tried' => $tried,
+            // «Выплаты» пилюлей — только если человеку есть что выплачивать или выплачивали (22.11.2026, владелец: «пустые не отображать»).
+            'tabs' => $tab === 'payouts' || self::payouts($user)->exists() ? self::TABS : array_diff_key(self::TABS, ['payouts' => 0]),
         ]);
     }
 

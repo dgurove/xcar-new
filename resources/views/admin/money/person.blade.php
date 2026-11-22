@@ -21,7 +21,7 @@
 <x-ui.shell :title="$name" :detail="$detail">
     {{-- Разделы человека — пилюлями самого тулбара (22.11.2026, владелец: отдельный ряд пилюль над рядом лупы и чипа — «вёрстка
          ужасно выглядит»): на ПК одной строкой с лупой и «Статусом», на телефоне пилюли — своей строкой сверху. --}}
-    <x-ui.toolbar name="money-person" :pills="MoneyController::TABS" :pill="$tab" pill-param="tab" pill-home="fees" :pill-drop="['peek', 'q']" :counts="array_filter($counts)"
+    <x-ui.toolbar name="money-person" :pills="$tabs" :pill="$tab" pill-param="tab" pill-home="fees" :pill-drop="['peek', 'q']" :counts="array_filter($counts)"
         :facets="$payout ? null : $facets" search="Номер, марка, VIN" search-target="#money-person-list">
         @if ($creates)
             <x-slot:actions>@include('admin.money.service-sheet', ['manager' => $user])</x-slot:actions>
