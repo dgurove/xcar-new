@@ -24,13 +24,14 @@ final class CarWindow
      * попадаешь в сделку»): только «Продажа» (`x-deal.money`) — цена, покупатель, счета, наличные, поступления, вознаграждение —
      * и «Открыть сделку» страницей (`admin/car/money-window`, кусок `admin/car/money-body`). Сделки нет — прежнее окно машины.
      */
-    public static function money(Request $request, ?Offer $offer): ?View
+    public static function money(Request $request, ?Offer $offer, ?Deal $deal = null): ?View
     {
         $user = $request->user();
         if (! $offer || ! $user || ! $offer->isEditableBy($user)) {
             return null;
         }
-        $vars = CarView::for($offer, $user)->vars();
+        // Строка — сделка человека, а не машины (машину после отмены могли отдать другому): о ней и окно (`CarView::$pastDeal`).
+        $vars = CarView::for($offer, $user, deal: $deal?->offer_id === $offer->id ? $deal : null)->vars();
 
         return ($vars['deal'] ?? $vars['garageCar']?->deal) ? view('admin.car.money-window', $vars) : view('admin.car.window', $vars);
     }

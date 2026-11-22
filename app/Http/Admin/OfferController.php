@@ -151,7 +151,9 @@ class OfferController
      */
     public function money(Request $request, Offer $offer)
     {
-        $vars = CarView::for($offer, $request->user())->vars();
+        // Строка «Оплат» — сделка человека (`?deal=`): машину после отмены могли отдать другому.
+        $deal = $request->query('deal') ? \App\Offers\Deal::find((int) $request->query('deal')) : null;
+        $vars = CarView::for($offer, $request->user(), deal: $deal?->offer_id === $offer->id ? $deal : null)->vars();
         if (! ($vars['deal'] ?? $vars['garageCar']?->deal)) {
             return redirect("/offers/{$offer->number}");
         }

@@ -12,3 +12,5 @@
 @endphp
 @include('admin.car.facts')
 @if ($moneyDeal)<x-deal.money :deal="$moneyDeal" id="money" :skip="$moneyDeal->isGarage() ? ['payer'] : []"/>@endif
+{{-- Шторки плашки держателя («Передать…» гаражной, публикация для других) — по первому требованию, как в окне машины. --}}
+<div class="contents" data-lazy-sheets="/offers/{{ $n }}/window-sheets{{ ($car->pastDeal ?? false) && $deal ? '?deal='.$deal->id : '' }}"></div>
