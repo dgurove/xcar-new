@@ -1,5 +1,5 @@
 {{-- Поделиться оффером или машиной закупки: текст из отмеченных строк в буфер, PDF из отмеченных фото — в системный лист «Поделиться» (и на компьютере), скачать — строкой «PDF готов», или те же фото альбомом. --}}
-@props(['subject', 'variant' => 'secondary', 'size' => null, 'icon' => false])
+@props(['subject', 'variant' => 'secondary', 'size' => null, 'icon' => false, 'personLink' => null])
 @php
     $user = auth()->user();
     $fields = $subject->fields($user);
@@ -62,6 +62,17 @@
                 <div class="vin-box" data-controller="copy" data-copy-done-value="Ссылка в буфере">
                     <input type="text" readonly class="field-input" value="{{ $link }}" aria-label="Ссылка" data-copy-target="field" data-action="click->copy#copy">
                     <button type="button" class="vin-magic field-copy" data-copy-target="button" data-action="copy#copy" aria-label="Скопировать ссылку" title="Скопировать ссылку"><x-ui.icon name="copy" class="size-5"/></button>
+                </div>
+            @endif
+            {{-- Ссылка менеджеру на его сделку или машину в гараже (`Deal::personUrl`) — под ссылкой на предложение, только
+                 скопировать (23.11.2026, владелец: карточка «Ссылка менеджеру» на странице — лишняя). --}}
+            @if ($personLink)
+                <div class="flex flex-col gap-1.5">
+                    <span class="field-label">Ссылка менеджеру на сделку</span>
+                    <div class="vin-box" data-controller="copy" data-copy-done-value="Ссылка для менеджера в буфере">
+                        <input type="text" readonly class="field-input" value="{{ $personLink }}" aria-label="Ссылка менеджеру" data-copy-target="field" data-action="click->copy#copy">
+                        <button type="button" class="vin-magic field-copy" data-copy-target="button" data-action="copy#copy" aria-label="Скопировать ссылку менеджеру" title="Скопировать ссылку менеджеру"><x-ui.icon name="copy" class="size-5"/></button>
+                    </div>
                 </div>
             @endif
             <div class="flex flex-col gap-2">

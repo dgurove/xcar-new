@@ -16,6 +16,9 @@
     $carDone = ! $empty && ! $fromMail && $offer->vendor_id && $offer->brand_id && $offer->model_id
         && ($offer->claim_ref || $offer->vendor?->claim_ref_optional);
     $foldCar = $published || $carDone ? true : null;
+    // Заведённая машина — сводкой под фото справа, правка — шторкой «Данные ТС» (23.11.2026, владелец: «в сделке в 99 % не
+    // трогают детали машины»); пустой черновик и черновик из писем — полями слева: там их и вводят.
+    $carAside = $foldCar === true;
     // Чат сделки — карточкой первой в правой колонке (`x-deal.chat-card`, 07.10.2026); в «Чатах» и пилюле — остальные.
     $dealChat = $deal?->buyer;
     $otherChats = $car->otherChats();
@@ -44,7 +47,8 @@
         </x-slot:actions>
     @endif
     <x-slot:sub class="offer-head flex flex-wrap items-center gap-1.5">
-        <x-car.codes :offer="$offer"/>
+        {{-- Коды — в сводке машины справа (`x-car.summary`), когда она есть. --}}
+        @unless ($carAside)<x-car.codes :offer="$offer"/>@endunless
         @if ($garageCar)
             {{-- Отданная в гараж — «в гараже», как в сделке, пока идут и бумаги со страховой (владелец 06.10.2026). --}}
             <x-ui.pill tone="plain" href="#garage">В гараже, {{ $garageCar->manager?->shortName() ?? 'взяли под себя' }}</x-ui.pill>
@@ -111,7 +115,7 @@
     <div class="@container">
     <div class="grid grid-cols-1 items-start gap-4 @4xl:grid-cols-[minmax(0,1fr)_22rem]">
         <div class="contents @4xl:col-start-1 @4xl:row-start-1 @4xl:flex @4xl:min-w-0 @4xl:flex-col @4xl:gap-4">
-        <form method="post" action="/offers/{{ $n }}" id="offer-form" @if (auth()->user()->canManageCrm()) data-price-guard="edit" data-price-guard-offer="{{ $n }}" @endif data-controller="vin draft save-bar next glow empty-blocks{{ $empty ? ' drop-empty' : '' }}" data-glow-fields-value="{{ json_encode($glow) }}" data-save-bar-dirty-value="{{ $errors->any() ? 'true' : 'false' }}" @if ($empty) data-drop-empty-url-value="/offers/{{ $n }}/drop-empty" @endif class="order-2 flex flex-col gap-4 @4xl:order-none">
+        <form method="post" action="/offers/{{ $n }}" id="offer-form" @if (auth()->user()->canManageCrm()) data-price-guard="edit" data-price-guard-offer="{{ $n }}" @endif data-controller="vin draft save-bar next glow empty-blocks{{ $empty ? ' drop-empty' : '' }}" data-glow-fields-value="{{ json_encode($glow) }}" data-save-bar-dirty-value="{{ $errors->any() ? 'true' : 'false' }}" @if ($empty) data-drop-empty-url-value="/offers/{{ $n }}/drop-empty" @endif @class(['contents' => $carAside, 'order-2 flex flex-col gap-4 @4xl:order-none' => ! $carAside])>
             @csrf @method('put') @if ($errors->has('price_check'))<input type="hidden" name="price_ok" value="1">@endif
 
             {{-- Машина — те же блоки, что на парковке (`x-car.blocks`, 19.10.2026: «ТС одна сущность»): «Транспортное
@@ -119,15 +123,20 @@
                  как в Контактах iOS: текстом, «Изменить» ставит поля, «Готово» сохраняет. Поля всё время в форме, скрытые:
                  сохранение «Показа» шлёт их как есть. Черновик — сразу поля; ошибка раскрывает свой блок, спорные поля —
                  строками в блоке (`x-car.variants`). --}}
-            <x-car.blocks :lane="$offer" :blocks="['car', 'papers', 'specs']" :fold="$foldCar" :hints="$hints"
-                :required="$published ? [] : ['vendor_id', 'claim_ref', 'brand_id']">
-                <x-slot:top>
-                    @if ($empty)
-                        <div class="mb-3"><x-ui.paste/></div>
-                    @endif
-                </x-slot:top>
-            </x-car.blocks>
-            @include('admin.offers.fields.sale', ['fold' => $foldCar])
+            @if ($carAside)
+                {{-- Заведённая машина — полями в шторке «Данные ТС» (она внутри формы), на странице — сводкой справа. --}}
+                @include('admin.offers.car-sheet')
+            @else
+                <x-car.blocks :lane="$offer" :blocks="['car', 'papers', 'specs']" :fold="$foldCar" :hints="$hints"
+                    :required="$published ? [] : ['vendor_id', 'claim_ref', 'brand_id']">
+                    <x-slot:top>
+                        @if ($empty)
+                            <div class="mb-3"><x-ui.paste/></div>
+                        @endif
+                    </x-slot:top>
+                </x-car.blocks>
+                @include('admin.offers.fields.sale', ['fold' => $foldCar])
+            @endif
         </form>
 
         {{-- Дорожки — от ширины своей колонки (`@container/lanes`): от 52rem три в линию, уже — две, ещё уже — столбиком. --}}
@@ -140,12 +149,10 @@
         <div class="contents @4xl:col-start-2 @4xl:row-start-1 @4xl:flex @4xl:flex-col @4xl:gap-4">
             {{-- Чат с менеджером сделки — верхом колонки, на телефоне самым верхом страницы, как на странице сделки на xcar
                  (07.10.2026, владелец: «чуть ли не самая важная кнопка во время сделки»). --}}
-            {{-- Ссылка менеджеру на его сделку или машину в гараже — под чатом с ним (15.11.2026, владелец: «ссылку я бы перенёс к
-                 блоку чата»; была карточкой «Ссылка для …» посреди третьей дорожки). --}}
-            @php $personDeal = $admin ? ($garageCar?->deal ?? $deal) : null; @endphp
+            {{-- Ссылка менеджеру на его сделку или гараж — в «Поделиться» шапки, только скопировать (23.11.2026, владелец: карточка лишняя). --}}
             {{-- Остальные чаты машины — той же карточкой под чатом сделки (16.11.2026, владелец: «„Чатов: 2“ убрать, лучше бы все чаты
                  отображал, как чат с менеджером, под него»); карточки «Чаты» ниже больше нет. --}}
-            @if ($dealChat || $personDeal?->buyer || $otherChats->isNotEmpty())
+            @if ($dealChat || $otherChats->isNotEmpty())
                 <div class="order-first flex flex-col gap-4">
                     @if ($dealChat)<x-deal.chat-card :deal="$deal" :chat="$car->dealChat()"/>@endif
                     @foreach ($otherChats as $chat)
@@ -153,7 +160,6 @@
                             <x-chat.card-body :chat="$chat" :title="$chat->displayName()" :unread="(int) $chat->unread_for_staff" :user="$chat->user"/>
                         </a>
                     @endforeach
-                    @if ($personDeal)<x-deal.person-link :deal="$personDeal"/>@endif
                 </div>
             @endif
             {{-- Что сейчас и что с этим сделать — верхом правой колонки, на телефоне сразу под шапкой. --}}
@@ -163,12 +169,15 @@
                     @if ($nowKind)@include('admin.offers.now-block', ['transitions' => $transitions->except(OfferState::Open->value)])@endif
                 </div>
             @endif
-            {{-- Фото — пачками верхом правой колонки, над чатом (23.11.2026, владелец: «фотки в боковом меню, а не в основном»,
+            {{-- Фото — пачками в правой колонке, под чатами и «что сейчас» (23.11.2026, вечером владелец: «чаты всё-таки над этим блоком»; до того — владелец: «фотки в боковом меню, а не в основном»,
                  «логичнее над блоком с чатами»; чат и «что сейчас» — order-first, фото — ещё выше); на телефоне — на прежнем месте (order-4). Без заголовка «Фотографии»: подписи пачек и так «Фото …» (владелец). Кадры письма прикрепляются после «Завести» (ImportThreadFiles): строка хода и
                  заглушки в пачке, attach_controller переспрашивает их, пока строка есть. --}}
-            <x-ui.card class="order-4 !pb-3 @4xl:order-[-10000]" data-controller="attach" data-attach-url-value="/offers/{{ $n }}/attach" data-attach-car-value="{{ $offer->car_id }}">
+            {{-- Под фото — данные машины сводкой (`x-car.summary`, 23.11.2026): на телефоне карточка тогда на месте прежних блоков
+                 ТС — после дорожек, перед «Ценами» (владелец). --}}
+            <x-ui.card @class(['!pb-3 @4xl:order-2', 'order-2' => $carAside, 'order-4' => ! $carAside]) data-controller="attach" data-attach-url-value="/offers/{{ $n }}/attach" data-attach-car-value="{{ $offer->car_id }}">
                 <x-mail.attach-line :model="$offer"/>
                 @include('admin.offers.gallery')
+                @if ($carAside)<x-car.summary :offer="$offer" :sheet="'car-edit-'.$n"/>@endif
             </x-ui.card>
             {{-- Деньги — справа над «Историей», у всех; поля ходят в форму оффера через form=. На телефоне — сразу под ТС. --}}
             {{-- Цены — так же: суммы текстом, «Изменить» — поля, «Готово» — сохранить (поля привязаны к форме через form=). --}}

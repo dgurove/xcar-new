@@ -5475,6 +5475,19 @@ html[data-theme-switch] #header, html[data-theme-switch] #tabbar, html[data-them
   .photo-pack-sheet .photo-cell .photo-actions [data-act="hide"] .pa-icon { position: absolute; top: .625rem; right: .625rem; color: #1c1c1e; }
   .photo-pack-sheet .photo-cell.is-hidden .photo-actions [data-act="hide"]::before { background: rgb(0 0 0 / .2); box-shadow: inset 0 0 0 1.5px rgb(255 255 255 / .9); }
   .photo-pack-sheet .photo-cell.is-hidden .photo-actions [data-act="hide"] .pa-icon { display: none; }
+  /* Данные машины сводкой под пачками фото (`x-car.summary`, 23.11.2026, владелец выбрал из макетов «сетку»): «Транспортное средство» с «Изменить», подпись 12 и значение 13 в два столбца; код копируется целиком. */
+  .car-summary-head { @apply mt-3 mb-1.5 flex items-center justify-between gap-3; }
+  .car-summary { @apply grid grid-cols-2 gap-x-3 gap-y-2 text-sm leading-snug; }
+  .car-summary > div { @apply min-w-0; }
+  /* Последняя ячейка одна в строке — во всю ширину: справа пусто, переносить незачем (владелец). */
+  .car-summary > div:last-child:nth-child(odd) { grid-column: 1 / -1; }
+  .car-summary dt { @apply text-xs text-ink-dim; }
+  /* Слова («Автоматическая, передний», город) переносятся, коды — одной строкой и «…» только когда правда не влезают. */
+  .car-summary dd { @apply mt-px break-words; }
+  .car-summary .vincode { @apply max-w-full; }
+  .car-summary .vincode-text { @apply truncate; }
+  .car-summary dd > .ref-line { @apply flex min-w-0 items-center gap-1; }
+  .car-summary-hint { @apply block max-w-full truncate text-left text-xs; }
   .photo-strip { @apply -mr-4 flex min-w-0 flex-1 snap-x gap-1 overflow-x-auto pr-4 sm:mr-0 sm:pr-0 sm:pb-1; scrollbar-width: none; }
   @media (hover: hover) { .photo-strip { scrollbar-width: thin; } }
   /* Внутри карточки лента не вылезает за края: отрицательные поля — только на голой странице. */

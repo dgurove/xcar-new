@@ -105,6 +105,21 @@ final class CarFields
     }
 
     /**
+     * Значение поля текстом — одно для блока машины текстом (`x-car.block`) и сводки на странице машины (`x-car.summary`):
+     * список — подписью значения, пробег «12 000 км», объём «2,0 л», мощность «150 л. с.». Вендор, марка и модель — именами
+     * у вызывающего (их записи у него под рукой).
+     */
+    public static function show(string $column, mixed $value): ?string
+    {
+        return match (self::kind($column)) {
+            'enum' => $value instanceof \BackedEnum ? $value->label() : ($value ? self::enum($column)::tryFrom($value)?->label() : null),
+            'digits' => $value !== null && $value !== '' ? Money::nums((int) $value).' км' : null,
+            'liters' => $value ? Liters::format((int) $value).' л' : null,
+            default => $column === 'engine_power' && $value ? $value.' л. с.' : ($value === '' ? null : $value),
+        };
+    }
+
+    /**
      * Правила полей машины именами дорожки. Обязательность — у дорожки: черновику предложения нужны вендор и номер,
      * парковке — марка и модель (`VehicleFields`, `OfferRequest`).
      *

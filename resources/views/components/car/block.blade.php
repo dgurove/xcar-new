@@ -7,7 +7,7 @@
 @php
     use App\Cars\CarFields;
     use App\Offers\{Offer, OfferState};
-    use App\Support\{Liters, Money};
+    use App\Support\Liters;
     $of ??= $lane ? $lane::class : null;
     $sale = $of === Offer::class;
     [$title, $columns] = CarFields::BLOCKS[$block];
@@ -32,10 +32,7 @@
             'vendor' => $vendor?->name,
             'brand' => $brand?->name,
             'model' => $model?->name,
-            'enum' => $v instanceof \BackedEnum ? $v->label() : ($v ? CarFields::enum($c)::tryFrom($v)?->label() : null),
-            'digits' => $v !== null && $v !== '' ? Money::nums((int) $v).' км' : null,
-            'liters' => $v ? Liters::format((int) $v).' л' : null,
-            default => $c === 'engine_power' && $v ? $v.' л. с.' : ($v === '' ? null : $v),
+            default => CarFields::show($c, $v),
         };
     };
     // Спорные поля блока (`Cars\Sources\Variants`) — меткой в самом поле, «или Белый ›» под значением и под полем ввода;
