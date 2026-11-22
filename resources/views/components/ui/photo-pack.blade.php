@@ -13,7 +13,10 @@
     $open = $photos->reject($hidden)->count();
     // Обложка — главный кадр машины, если он в пачке, иначе первый открытый, иначе первый.
     $cover = ($mainId ? $photos->firstWhere('id', $mainId) : null) ?? $photos->first(fn ($m) => ! $hidden($m)) ?? $photos->first();
-    $words = $total === 0 ? 'Нет фото' : ($hide ? 'Открыто '.$open.' из '.$total : $total.' фото');
+    // Счёт: при глазе — значок открытого глаза и «14 из 28» (23.11.2026, владелец: «„Открыто“ заменим на иконку глаза»),
+    // без глаза — «28 фото». Тот же вид пишет photos_controller#syncCount после нажатий.
+    $eye = $hide && $total > 0;
+    $words = $total === 0 ? 'Нет фото' : ($hide ? $open.' из '.$total : $total.' фото');
     $label = $title ?? 'Фото';
     // На обложке — без «Фото»: «От страховой 09.10», «При приёме 09.10» одной строкой, где бы пачка ни стояла (23.11.2026,
     // владелец: перенос даты на вторую строку «стрёмный»). В шапке шторки — полностью.
@@ -30,10 +33,10 @@
                 <x-ui.icon name="camera" class="size-6"/>
             @endif
         </span>
-        <span class="photo-pack-sub" data-photos-target="count">{{ $words }}</span>
+        <span class="photo-pack-sub photo-count" data-photos-target="count">@if ($eye)<x-ui.icon name="eye" class="size-3.5"/>@endif{{ $words }}</span>
     </button>
     <x-ui.sheet :id="$id.'-pack'" :title="$head" wide class="photo-pack-sheet">
-        <div class="photo-pack-bar"><span data-photos-target="count">{{ $words }}</span>@if ($hide)<x-ui.photos-all/>@endif</div>
+        <div class="photo-pack-bar"><span class="photo-count" data-photos-target="count">@if ($eye)<x-ui.icon name="eye" class="size-3.5"/>@endif{{ $words }}</span>@if ($hide)<x-ui.photos-all/>@endif</div>
         {{ $slot }}
     </x-ui.sheet>
 </div>

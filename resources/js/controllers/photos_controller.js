@@ -6,7 +6,7 @@ import { shrink } from '../lib/image';
 import { pool, sha as digest } from '../lib/upload';
 import { refreshCsrf } from '../net';
 import { loadSortable } from '../lib/sortable';
-import { openLightbox } from '../lightbox';
+import { openLightbox, ICONS } from '../lightbox';
 import { openSheet, closeSheet, outside } from '../sheet';
 import { photoMenu } from '../lib/photo-menu';
 
@@ -128,15 +128,21 @@ export default class extends Controller {
         this.allTargets.forEach((b) => { b.hidden = cells.length < 2; b.textContent = any ? 'Отображать все' : 'Скрыть все'; });
     }
 
-    // Пачка обложкой (`x-ui.photo-pack`): «Открыто N из M» под обложкой и в шторке, обложка тусклая, когда открытых нет. Глаз
+    // Пачка обложкой (`x-ui.photo-pack`): глаз и «N из M» под обложкой и в шторке, обложка тусклая, когда открытых нет. Глаз
     // ставится на экране сразу — счёт за ним, не дожидаясь сервера. Без глаза — просто «N фото».
     syncCount() {
         if (!this.hasCountTarget && !this.hasCoverTarget) return;
         const cells = [...this.element.querySelectorAll('.photo-cell[data-id]')];
         const open = cells.filter((c) => c.dataset.hidden !== '1').length;
         const eye = this.eyeCells().length > 0;
-        const words = !cells.length ? 'Нет фото' : eye ? `Открыто ${open} из ${cells.length}` : `${cells.length} фото`;
-        this.countTargets.forEach((el) => { if (el.textContent !== words) el.textContent = words; });
+        // При глазе — значок открытого глаза и «14 из 28» (как рисует x-ui.photo-pack), без глаза — «28 фото».
+        const words = !cells.length ? 'Нет фото' : eye ? `${open} из ${cells.length}` : `${cells.length} фото`;
+        const icon = eye && cells.length ? `<svg viewBox="0 0 24 24" class="size-3.5" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="${ICONS.eye}"/></svg>` : '';
+        this.countTargets.forEach((el) => {
+            if (el.textContent === words && !!el.querySelector('svg') === !!icon) return;
+            el.innerHTML = icon;
+            el.append(words);
+        });
         this.coverTargets.forEach((el) => el.classList.toggle('is-hidden', eye && cells.length > 0 && !open));
     }
 

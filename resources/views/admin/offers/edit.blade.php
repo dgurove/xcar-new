@@ -146,7 +146,7 @@
             {{-- Остальные чаты машины — той же карточкой под чатом сделки (16.11.2026, владелец: «„Чатов: 2“ убрать, лучше бы все чаты
                  отображал, как чат с менеджером, под него»); карточки «Чаты» ниже больше нет. --}}
             @if ($dealChat || $personDeal?->buyer || $otherChats->isNotEmpty())
-                <div class="order-first flex flex-col gap-2">
+                <div class="order-first flex flex-col gap-4">
                     @if ($dealChat)<x-deal.chat-card :deal="$deal" :chat="$car->dealChat()"/>@endif
                     @foreach ($otherChats as $chat)
                         <a href="/work/chats/{{ $chat->id }}" class="box deal-chat" aria-label="Чат с {{ $chat->displayName() }}">
@@ -166,7 +166,7 @@
             {{-- Фото — пачками верхом правой колонки, над чатом (23.11.2026, владелец: «фотки в боковом меню, а не в основном»,
                  «логичнее над блоком с чатами»; чат и «что сейчас» — order-first, фото — ещё выше); на телефоне — на прежнем месте (order-4). Без заголовка «Фотографии»: подписи пачек и так «Фото …» (владелец). Кадры письма прикрепляются после «Завести» (ImportThreadFiles): строка хода и
                  заглушки в пачке, attach_controller переспрашивает их, пока строка есть. --}}
-            <x-ui.card class="order-4 @4xl:order-[-10000]" data-controller="attach" data-attach-url-value="/offers/{{ $n }}/attach" data-attach-car-value="{{ $offer->car_id }}">
+            <x-ui.card class="order-4 !pb-3 @4xl:order-[-10000]" data-controller="attach" data-attach-url-value="/offers/{{ $n }}/attach" data-attach-car-value="{{ $offer->car_id }}">
                 <x-mail.attach-line :model="$offer"/>
                 @include('admin.offers.gallery')
             </x-ui.card>

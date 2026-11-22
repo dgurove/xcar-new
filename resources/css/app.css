@@ -5443,7 +5443,10 @@ html[data-theme-switch] #header, html[data-theme-switch] #tabbar, html[data-them
   .photo-pack-img img { width: 100%; height: 100%; object-fit: cover; }
   .photo-pack-img.is-hidden img { @apply opacity-40 grayscale; }
   @media (hover: hover) { .photo-pack-cover:hover .photo-pack-img { @apply brightness-95; } }
-  .photo-pack-sub { @apply text-sm text-ink-muted; }
+  .photo-pack-sub { @apply text-sm text-ink-dim; }
+  /* Счёт пачки: значок открытого глаза и «14 из 28». */
+  /* Приглушённо, как дата пачки (владелец, 23.11.2026). */
+  .photo-count { display: inline-flex; align-items: center; gap: .3125rem; color: var(--color-ink-dim); }
   /* Шторка пачки: счёт и «Скрыть все» строкой, ниже квадраты во всю ширину шторки, как «Фото» iOS: щель 2 px, без
      скруглений, 3 в ряд на телефоне, 5 от 640. */
   .photo-pack-bar { @apply -mt-3 mb-3 flex min-h-8 items-center justify-between gap-4 text-sm text-ink-muted; }
