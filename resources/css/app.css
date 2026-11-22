@@ -443,7 +443,9 @@ html.kb-open { --home-gap: 0px; }
     .surface-crm .container-site .list:not(dialog *, #detail *, .box *, .list *),
     .surface-crm .container-site .chat-rows-list:not(dialog *, #detail *),
     .surface-crm .container-site .cards--list:not(dialog *, #detail *),
-    .surface-crm .container-site .inbox-list,
+    .surface-crm .container-site .inbox-list:not(.inbox-plates *),
+    .surface-crm .container-site .inbox-piles,
+    .surface-crm .container-site .inbox-plates,
     .surface-crm .container-site .chain-swipe:not(dialog *, #detail *) { margin-inline: -1rem; }
     /* Сайт — так же (18.11.2026, владелец: «хочу сделать xcar побольше похожим на CRM — блоки на телефоне тоже от края до края»). */
     .surface-site .container-site .box:not(dialog *, #detail *, .box *, .list *),
@@ -1763,7 +1765,7 @@ html.kb-open { --home-gap: 0px; }
   .valuation-step[data-state="done"] .valuation-tick { @apply block; animation: valuation-draw .35s ease-out forwards; }
   .valuation-lines { @apply mt-4 max-h-[40dvh] overflow-hidden text-sm; mask-image: linear-gradient(to bottom, #000 80%, transparent); }
   .valuation-line { @apply truncate rounded-md px-2 py-0.5 text-ink-dim transition-colors duration-300; }
-  .valuation-line.is-kept { @apply text-ink; box-shadow: inset 3px 0 0 var(--color-accent); }
+  .valuation-line.is-kept { @apply text-ink; --side: var(--color-accent); --side-w: 3px; --side-inset: .25rem; }
   .valuation-ok { @apply size-16 flex-none; fill: none; stroke: var(--color-accent); stroke-width: 4; stroke-linecap: round; stroke-linejoin: round; }
   .valuation-ok circle { stroke-dasharray: 176; stroke-dashoffset: 176; animation: valuation-draw .5s ease-out forwards; }
   .valuation-ok path { stroke-dasharray: 44; stroke-dashoffset: 44; animation: valuation-draw .3s .35s ease-out forwards; }
@@ -1907,7 +1909,18 @@ html.kb-open { --home-gap: 0px; }
   .box-urgent h2::before { content: '!'; display: inline-grid; place-items: center; width: 1.375rem; height: 1.375rem; margin-right: .5rem; vertical-align: .125rem; border-radius: 999px; background: var(--color-urgent); color: #fff; font-size: .8125rem; font-weight: 700; line-height: 1; }
   .box-nested.box-urgent h2::before { content: none; }
   /* Строка с полосой слева — вариант Б. */
-  .stripe, .box-nested.box-urgent { box-shadow: inset 4px 0 0 var(--stripe, var(--color-urgent)); }
+  .stripe, .box-nested.box-urgent { --side: var(--stripe, var(--color-urgent)); }
+  /* Полоса сбоку — прямая планка, а не тень: у скруглённой строки или карточки inset-тень гнулась «С» по углу (22.11.2026,
+     владелец: «даже если строки скруглённые, сбоку должна быть прямая полоса»). Планка отступает от верха и низа на
+     --side-inset, мимо скругления; цвет — --side, ширина — --side-w. Где ::before уже занят разделителем (чаты) — ::after. */
+  :is(.valuation-line.is-kept, .stripe, .box-nested.box-urgent, .bid-row--low, .bid-row--loss, .row.profit, .table tbody tr[aria-selected="true"] > td:first-child,
+    .list .row[aria-selected="true"], .route-leg--now .route-leg-body, .parsing-cell.is-now, .chat-row[aria-current], .inbox-row[aria-selected="true"], .inbox-row.is-unread) { position: relative; }
+  :is(.valuation-line.is-kept, .stripe, .box-nested.box-urgent, .bid-row--low, .bid-row--loss, .row.profit, .table tbody tr[aria-selected="true"] > td:first-child,
+    .list .row[aria-selected="true"], .route-leg--now .route-leg-body, .parsing-cell.is-now, .inbox-row[aria-selected="true"], .inbox-row.is-unread)::before,
+  .chat-row[aria-current]::after {
+    content: ''; position: absolute; z-index: 1; left: 0; top: var(--side-inset, .375rem); bottom: var(--side-inset, .375rem); width: var(--side-w, 4px);
+    background: var(--side); pointer-events: none; }
+  .chat-row[aria-current]::after { display: block; }
 
   /* Крошки, строки списков, тексты. */
   .crumbs { @apply mb-4 text-sm text-ink-dim; }
@@ -1945,9 +1958,9 @@ html.kb-open { --home-gap: 0px; }
   /* Подтверждение светофором (26.10.2026, `Offer::bidZone`): не ниже порога — сумма зелёным, ниже — жёлтая заливка
      строки, не выше закупочной — красная. Слов «ниже минимальной» нет — цвет и есть сигнал. */
   .bid-row--ok .bid-amount { color: var(--color-open); }
-  .bid-row--low { box-shadow: inset 4px 0 0 var(--color-urgent); }
+  .bid-row--low { --side: var(--color-urgent); }
   .bid-row--low .bid-amount { color: var(--color-urgent); }
-  .bid-row--loss { box-shadow: inset 4px 0 0 var(--color-danger); }
+  .bid-row--loss { --side: var(--color-danger); }
   .bid-row--loss .bid-amount { color: var(--color-danger); }
   /* Строка подтверждения, резерва, параллельной и интереса (19.11.2026, вариант 3): слева аватар, имя и когда, справа цена и
      под ней разница; вся строка — кнопка шторки. Шторка: шапка с ценой и ряд «Написать» | главная. */
@@ -2126,7 +2139,7 @@ html.kb-open { --home-gap: 0px; }
   .list-cap-act { @apply -my-1 inline-flex items-center gap-1 py-1 text-sm font-medium text-accent-text; }
   /* Вознаграждение менеджера по ДКП — его прибыль (05.10.2026): строка в зелёном, сумма с мягким свечением и одним
      проходом блика при показе; без движения — просто зелёным. */
-  .row.profit { box-shadow: inset 4px 0 0 var(--color-open); }
+  .row.profit { --side: var(--color-open); }
   .profit-sum { @apply text-xl font-bold; color: var(--color-open); filter: drop-shadow(0 0 10px color-mix(in srgb, var(--color-open) 45%, transparent)); }
   @media (prefers-reduced-motion: no-preference) {
     .profit-sum { background: linear-gradient(100deg, var(--color-open) 40%, color-mix(in srgb, var(--color-open) 30%, white) 50%, var(--color-open) 60%) 100% 0 / 250% 100%;
@@ -2225,12 +2238,12 @@ html.kb-open { --home-gap: 0px; }
   @media (hover: hover) { .table tbody tr:hover { background: var(--color-hover); } }
   /* Выбранная — серым с лаймовой полосой слева (10.11.2026: без заливки цветом). */
   .table tbody tr[aria-selected="true"], .table tbody tr[aria-selected="true"]:hover { background: var(--color-surface-3); }
-  .table tbody tr[aria-selected="true"] > td:first-child { box-shadow: inset 4px 0 0 var(--color-accent); }
+  .table tbody tr[aria-selected="true"] > td:first-child { --side: var(--color-accent); }
   /* Ещё ищем покупателя и время есть (логистика, `SaleState::waiting`) — строка приглушена; наведение и открытая — целиком. */
   .table tbody tr.is-dim > td:not(.pick-cell) { opacity: .5; }
   .table tbody tr.is-dim:hover > td, .table tbody tr.is-dim[aria-selected="true"] > td { opacity: 1; }
   /* Строка списка `.list` с карточкой рядом (лента «Оплат») — выбрана так же, как строка таблицы. */
-  .list .row[aria-selected="true"], .list .row[aria-selected="true"]:hover { background: var(--color-surface-3); box-shadow: inset 4px 0 0 var(--color-accent); }
+  .list .row[aria-selected="true"], .list .row[aria-selected="true"]:hover { background: var(--color-surface-3); --side: var(--color-accent); }
   /* Плитка и строка, чья карточка открыта рядом, — как выбранная строка таблицы. */
   .card[aria-selected="true"] { box-shadow: inset 0 0 0 2px var(--color-accent); }
   .table tbody tr:focus-visible { outline: 2px solid var(--color-accent); outline-offset: -2px; }
@@ -3215,7 +3228,7 @@ html.kb-open { --home-gap: 0px; }
   .route-leg .route-mark::before { content: ''; position: absolute; top: -.25rem; bottom: -.25rem; left: 50%; width: 3px; translate: -50% 0; border-radius: 2px; background: var(--color-accent); }
   .route-leg--ahead .route-mark::before { width: 2px; background: repeating-linear-gradient(to bottom, var(--color-ink-dim) 0 4px, transparent 4px 9px); }
   .route-leg-body { grid-column: 2 / -1; display: flex; align-items: center; gap: .75rem; width: 100%; margin-block: .25rem; padding: .5rem .75rem; border-radius: var(--radius-m); background: var(--color-surface-2); text-align: left; }
-  .route-leg--now .route-leg-body { box-shadow: inset 4px 0 0 var(--color-accent); }
+  .route-leg--now .route-leg-body { --side: var(--color-accent); }
   .route-who { overflow-wrap: anywhere; }
   .route-state { margin-left: auto; flex-shrink: 0; font-size: var(--text-sm); color: var(--color-ink-muted); text-align: right; }
   .route-leg--now .route-state { color: var(--color-accent-text); }
@@ -3367,7 +3380,7 @@ html.kb-open { --home-gap: 0px; }
   .parsing-label { @apply text-sm text-ink-dim sm:pt-2; }
   .parsing-cells { @apply grid grid-cols-2 gap-1.5; }
   .parsing-cell { @apply relative min-w-0 rounded-(--radius-m) bg-surface-2; }
-  .parsing-cell.is-now { box-shadow: inset 4px 0 0 var(--color-accent); }
+  .parsing-cell.is-now { --side: var(--color-accent); }
   .parsing-pick { @apply block w-full min-w-0 rounded-(--radius-m) px-3 py-1.5 text-left; }
   .parsing-cell:has(> .parsing-open) .parsing-value { @apply pr-6; }
   .parsing-cell.is-empty { @apply px-3 py-1.5; background: transparent; }
@@ -3983,7 +3996,10 @@ html.kb-open { --home-gap: 0px; }
     .split[data-open] .split-main tr.is-dim > td { opacity: 1; }
     .split[data-open] .split-main [data-detail-key] { scroll-margin-bottom: calc(68dvh - var(--tabbar-edge) + 1rem); }
     .split[data-open] .split-main tr[aria-selected="true"] > :first-child,
-    .split[data-open] .split-main .row[aria-selected="true"] { box-shadow: inset 3px 0 0 var(--color-accent); }
+    .split[data-open] .split-main .row[aria-selected="true"] { position: relative; --side: var(--color-accent); --side-w: 3px; }
+    .split[data-open] .split-main tr[aria-selected="true"] > :first-child::before,
+    .split[data-open] .split-main .row[aria-selected="true"]::before {
+      content: ''; position: absolute; z-index: 1; left: 0; top: var(--side-inset, .375rem); bottom: var(--side-inset, .375rem); width: var(--side-w); background: var(--side); pointer-events: none; }
   }
   /* Шапка карточки с лентой: название и цена в одну строку, под ними метки с фактами во всю ширину (колонка рядом с ценой
      ставила теги столбиком); до 640 цена — своей строкой под названием. */
@@ -5971,7 +5987,7 @@ dialog.lightbox:not(.lb-one) .lb-pill--bottom { bottom: calc(var(--lb-strip-bott
     .chat-row:hover + .chat-row::before, .chat-row:hover::before, .chat-row:has(+ .chat-row:hover)::before { display: none; }
   }
   /* Поиск — шапкой списка: окно переписки начинается вровень с ним; поле той же ширины и скругления, что строки. */
-  .chat-row[aria-current] { background: var(--color-surface-3); box-shadow: inset 4px 0 0 var(--color-accent); }
+  .chat-row[aria-current] { background: var(--color-surface-3); --side: var(--color-accent); }
   .chat-row[aria-current]::before, .chat-row[aria-current] + .chat-row::before { display: none; }
   .chat-row-photo { position: relative; flex-shrink: 0; width: 3.5rem; height: 2.5rem; }
   .chat-row-photo > img, .chat-row-photo > svg { width: 100%; height: 100%; object-fit: cover; border-radius: var(--radius-m); background: var(--color-surface-3); }
@@ -6436,11 +6452,10 @@ dialog.lightbox:not(.lb-one) .lb-pill--bottom { bottom: calc(var(--lb-strip-bott
   .inbox-lead--car .cat-icon { width: 1.125rem; height: 1.125rem; margin: 0; }
   .inbox-row + .inbox-row { box-shadow: inset 0 .5px 0 var(--color-line); }
   @media (hover: hover) { .inbox-row:hover { background: var(--color-hover); } }
-  .inbox-row[aria-selected="true"], .inbox-row[aria-selected="true"]:hover { background: var(--color-surface-3); box-shadow: inset 4px 0 0 var(--color-accent); }
+  .inbox-row[aria-selected="true"], .inbox-row[aria-selected="true"]:hover { background: var(--color-surface-3); --side: var(--color-accent); }
   /* Непрочитанное — та же полоса слева, что у открытого, только без заливки (17.11.2026, владелец: «визуально трудно определить,
      что прочитано»); у второй и дальше строк — вместе с волосяной линией сверху. */
-  .inbox-row.is-unread { box-shadow: inset 4px 0 0 var(--color-accent); }
-  .inbox-row + .inbox-row.is-unread { box-shadow: inset 0 .5px 0 var(--color-line), inset 4px 0 0 var(--color-accent); }
+  .inbox-row.is-unread { --side: var(--color-accent); }
   .inbox-l1 { display: flex; align-items: center; gap: .5rem; min-width: 0; font-size: var(--inbox-fs); line-height: var(--inbox-lh); }
   .inbox-who { flex: 1 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 500; color: var(--color-ink-muted); }
   .inbox-row.is-unread .inbox-who { color: var(--color-ink); }
@@ -6460,6 +6475,19 @@ dialog.lightbox:not(.lb-one) .lb-pill--bottom { bottom: calc(var(--lb-strip-bott
   .inbox-count { flex: none; min-width: var(--inbox-lh); height: var(--inbox-lh); padding: 0 .3125rem; border-radius: 9999px; background: var(--color-surface-3); font-size: var(--text-xs); line-height: var(--inbox-lh); text-align: center; color: var(--color-ink-muted); }
   .inbox-snip { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--color-ink-muted); }
   .inbox-more { padding: 1rem; text-align: center; font-size: var(--text-sm); color: var(--color-ink-dim); }
+  /* Пачками (22.11.2026, владелец, вариант А макета): цепочка — карточкой, под пачкой один-два листа, второй уже первого, как
+     стопка уведомлений iOS. «Цепочки» без пачек — плашка на цепочку с теми же строками. Отступ между ними — 8 px. */
+  .inbox-piles, .inbox-plates { --inbox-fs: 14px; --inbox-lh: 1.125rem; display: flex; flex-direction: column; gap: .5rem; }
+  .inbox-pile { display: flex; flex-direction: column; align-items: center; }
+  .inbox-pile > .inbox-row { width: 100%; border-radius: var(--radius-l); background: var(--color-surface); }
+  .inbox-sheet { width: calc(100% - 1.5rem); height: .3125rem; border-radius: 0 0 .625rem .625rem; background: var(--color-surface);
+    box-shadow: inset .5px 0 0 var(--color-line), inset -.5px 0 0 var(--color-line), inset 0 -.5px 0 var(--color-line); }
+  .inbox-sheet + .inbox-sheet { width: calc(100% - 3rem); opacity: .6; }
+  .inbox-pile:has(.inbox-sheet) > .inbox-row { border-bottom-left-radius: .875rem; border-bottom-right-radius: .875rem; }
+  .inbox-piles > .inbox-more, .inbox-plates > .inbox-more { padding-top: .5rem; }
+  .inbox-me { color: var(--color-ink-dim); }
+  /* Ящик у заголовка «Почта» — тихой пилюлей того же ряда, текстом обычного веса. */
+  .mail-box-pick { margin-left: .75rem; vertical-align: .25rem; font-size: var(--text-sm); font-weight: 400; }
 
   @media (min-width: 1024px) {
     .split--mail .split-main { flex: 0 0 26rem; }

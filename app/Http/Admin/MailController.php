@@ -117,7 +117,7 @@ class MailController
     public const GROUPS_PER_PAGE = 30;
 
     /** Переключатели почты, что действуют на этот раз и не запоминаются (`ListPrefs`). */
-    private const ONCE = ['unread', 'files', 'quiet'];
+    private const ONCE = ['unread', 'quiet'];
 
     /** `$queue` — адрес «Из писем»: оттуда же идут «Завести» и «Не заявка» у цепочки. */
     public function __construct(
@@ -145,8 +145,9 @@ class MailController
         $accounts = Account::where('scope', $this->scope)->orderBy('title')
             // Не админу в CRM — только ящики, что принимают (`Thread::crmMailFor`): deal@ ему не виден.
             ->when($this->scope === Scope::Offers && ! $request->user()->isAdmin(), fn ($a) => $a->whereNotNull('reply_account_id'))->get();
-        // Открываются «Входящие» (17.11.2026, как в Gmail); `?box=attention` в CRM, где этой пилюли больше нет, — тоже они.
-        $box = $forced ?? (array_key_exists($request->query('box', ''), Boxes::boxes($this->scope)) ? $request->query('box') : 'in');
+        // Открываются «Цепочки» (22.11.2026, владелец: «по умолчанию должны быть цепочки»); `?box=attention` в CRM, где этой
+        // пилюли больше нет, и прежний `?box=all` — тоже они.
+        $box = $forced ?? (array_key_exists($request->query('box', ''), Boxes::boxes($this->scope)) ? $request->query('box') : 'chains');
         // Везде по умолчанию — свежие сверху (04.10.2026, владелец: «странная, логики нет»); «дольше ждут» — по возрастанию.
         $sort = Sort::from($request->query('sort') === 'waiting' ? 'fresh' : $request->query('sort'), Boxes::SORTS, '-fresh');
         $q = trim((string) $request->query('q'));
@@ -158,7 +159,6 @@ class MailController
                 ->filter(fn (Intent $i) => $i->short() && in_array($i->value, $keys, true))
                 ->mapWithKeys(fn (Intent $i) => [$i->value => new Option($i->value, $i->title())])->all()),
             Facet::toggle('unread', 'Непрочитанные', fn ($t) => $t->where('unread_count', '>', 0)),
-            Facet::toggle('files', 'С файлами', fn ($t) => $t->where('has_attachments', true)),
             // «Прочее» (автоответы, бухгалтерия, письма без машины не от вендора) стоит во «Все»: убрать — этим чипом.
             Facet::toggle('quiet', 'Без прочего', fn ($t) => $t->where(fn ($w) => Boxes::notNoise($w))),
         )->countBy('count(distinct '.Boxes::group($this->scope).')');
@@ -168,7 +168,9 @@ class MailController
         $park = $this->scope === Scope::Park;
         // Ящик (13.10.2026, владелец: «письма только с offer и только с deal»): выбран — и дела, и письма в их карточках
         // только этого ящика. У парковки ящик один, в «Из писем» выборка вшита — переключателя нет.
-        $mailbox = ! $park && ! $forced && $accounts->count() > 1 ? $accounts->firstWhere('slug', (string) $request->query('account')) : null;
+        // Без выбора — deal@ (22.11.2026, владелец: «по умолчанию deal@xcar.ru, а не „Все ящики“»); «Все ящики» — выбор (`account=`), он помнится.
+        $mailbox = ! $park && ! $forced && $accounts->count() > 1
+            ? $accounts->firstWhere('slug', $request->query->has('account') ? (string) $request->query('account') : 'deal') : null;
         $boxAccounts = $mailbox ? collect([$mailbox]) : $accounts;
         $with = ['account', 'vendor', 'offer', 'offer.vendor', 'vehicle', 'vehicle.yard', 'vehicle.vendor', 'candidate.vendor', 'latestMessage.author', 'latestIncoming'];
 
@@ -291,9 +293,13 @@ class MailController
     }
 
     /**
-     * «Входящие» и «Отправленные» (17.11.2026, владелец: «во входящих только входящие, в отправленных только отправленные,
-     * без цепочек, классический красивый gmail»; макет выбран 17.11): письма строками слева — кто, тема, машина; открытое
-     * письмо справа (`Detail`, ключ — id письма), ↑/↓ листают. Чипы — вендор, непрочитанные, с файлами.
+     * «Цепочки», «Входящие» и «Отправленные» — письма строками слева, открытое письмо справа (`Detail`, ключ — id письма),
+     * ↑/↓ листают (17.11.2026, владелец: «во входящих только входящие, в отправленных только отправленные, классический
+     * красивый gmail»). Чипы — вендор, непрочитанные, с файлами.
+     * **Пачками** (22.11.2026, владелец: «схлопывать в пачки по цепочкам, чтобы было видно только последнее из цепочки»):
+     * цепочка — дело (`Boxes::group`), строка — её последнее письмо этой пилюли (в «Цепочках» — в любую сторону); чипы
+     * отбирают письма до пачки. «Цепочки» без пачек — цепочка плашкой, в ней все её письма. Помнится у каждой пилюли своё
+     * (`?stack=1|0`), умолчание — `Boxes::STACKED`.
      */
     private function letters(Request $request, string $box, string $list, Collection $boxAccounts, Builder $all, array $data)
     {
@@ -304,42 +310,87 @@ class MailController
         $facets = Facets::for($request, $list,
             Common::vendor('mail_threads.vendor_id'),
             Facet::toggle('unread', 'Непрочитанные', fn ($m) => $m->where('mail_messages.is_seen', false)),
-            Facet::toggle('files', 'С файлами', fn ($m) => $m->where('mail_messages.has_attachments', true)),
         )->countBy('count(*)');
-        $query = Boxes::letters($boxAccounts->pluck('id'), $box, $all);
+        ListPrefs::sync($request, "{$list}-{$box}", keep: ['stack'], view: false, sort: false);
+        $stack = match ((string) $request->query('stack')) {
+            '1' => true, '0' => false, default => Boxes::STACKED[$box]
+        };
+        // «Цепочки» без пачек — плашками цепочек: страница — цепочки, а не письма.
+        $plates = $box === 'chains' && ! $stack;
+        $accounts = $boxAccounts->pluck('id');
+        $query = Boxes::letters($accounts, $box, $all);
         $facets->apply($query);
+        $group = Boxes::group($this->scope);
+        $order = fn ($q) => $q->orderByDesc('mail_messages.date_at')->orderByDesc('mail_messages.id');
         // ТС парковки — тоже сразу: строка берёт марку и вендора (17.11.2026: на парковке ТС грузилось на каждую строку отдельно).
-        $page = $query->with(['account', 'author', 'attachments', 'addresses', 'thread.offer.vendor', 'thread.offer.car', 'thread.vendor', 'thread.candidate.vendor',
-            ...($data['park'] ? ['thread.vehicle.vendor'] : [])])
-            ->orderByDesc('mail_messages.date_at')->orderByDesc('mail_messages.id')->simplePaginate(50)->withQueryString();
-        // «Ч.2» того же письма (те же слова от того же адреса в сутки) — одной строкой с первой частью, файлы суммой.
-        $continued = [];
-        foreach (collect($page->items())->groupBy('thread_id') as $letters) {
-            $continued += NodeTitle::continued($letters->sortBy(fn (Message $m) => $m->date_at?->getTimestamp() ?? 0)->values());
+        $with = ['account', 'author', 'attachments', 'addresses', 'thread.offer.vendor', 'thread.offer.car', 'thread.vendor', 'thread.candidate.vendor',
+            ...($data['park'] ? ['thread.vehicle.vendor'] : [])];
+        if ($stack || $plates) {
+            // Верхнее письмо каждой цепочки — тем же порядком, что список.
+            $tops = (clone $query)->select(DB::raw("distinct on ({$group}) mail_messages.id"))
+                ->orderByRaw("{$group}, mail_messages.date_at desc, mail_messages.id desc");
+            $page = $order(Message::query()->whereIn('mail_messages.id', $tops))->with($with)->simplePaginate($plates ? 20 : 50)->withQueryString();
+        } else {
+            $page = $order($query->with($with))->simplePaginate(50)->withQueryString();
         }
-        $files = [];
-        foreach ($page->items() as $m) {
-            $head = $continued[$m->id] ?? $m->id;
-            $files[$head] = ($files[$head] ?? 0) + $m->files()->count();
-        }
-        $rows = collect($page->items())->reject(fn (Message $m) => isset($continued[$m->id]))->values();
-        // Сколько писем во всей переписке по машине (цепочка, ветка) — кружок в строке (17.11.2026, владелец: «вся переписка
-        // по машине»): ключ дела — тот же, что у «Все делами» (`Boxes::group`), в тех же ящиках.
+        // Цепочка письма — ключ дела, тот же, что у «Все делами» (`Boxes::group`), в тех же ящиках.
         $key = fn (Message $m) => match (true) {
             $data['park'] && (bool) $m->thread?->vehicle_id => 'v:'.$m->thread->vehicle_id,
             ! $data['park'] && (bool) $m->thread?->offer_id => 'o:'.$m->thread->offer_id,
             (bool) $m->thread?->candidate_id => 'c:'.$m->thread->candidate_id,
             default => 't:'.$m->thread_id,
         };
-        $keys = $rows->map($key)->unique()->values();
-        $group = Boxes::group($this->scope);
-        $sizes = $keys->isEmpty() ? collect() : Message::query()->join('mail_threads', 'mail_threads.id', '=', 'mail_messages.thread_id')
-            ->whereIn('mail_messages.account_id', $boxAccounts->pluck('id'))->whereIn('mail_messages.thread_id', (clone $all)->select('mail_threads.id'))
-            ->whereRaw("{$group} in (".implode(',', array_fill(0, $keys->count(), '?')).')', $keys->all())
-            ->selectRaw("{$group} as g, count(*) as n")->groupByRaw($group)->pluck('n', 'g');
-        $view = ['rows' => $rows, 'page' => $page, 'files' => $files, 'box' => $box, 'base' => $this->base, 'park' => $data['park'],
-            'filtered' => $facets->active(), 'queue' => $this->queue,
-            'sizes' => $rows->mapWithKeys(fn (Message $m) => [$m->id => (int) ($sizes[$key($m)] ?? 1)])->all()];
+        $items = collect($page->items());
+        $keys = $items->map($key)->unique()->values();
+        $in = fn (string $col) => "{$col} in (".implode(',', array_fill(0, max(1, $keys->count()), '?')).')';
+        // Плашки — все письма цепочек страницы, свежие сверху (чипы выбрали цепочки, а не письма — как «Все делами»).
+        $members = $plates && $keys->isNotEmpty()
+            ? $order(Boxes::letters($accounts, 'chains', $all)->whereRaw($in($group), $keys->all())->with($with))->get()
+            : $items;
+        // «Ч.2» того же письма (те же слова от того же адреса в сутки) — одной строкой с первой частью, файлы суммой.
+        $continued = [];
+        if (! $stack) {
+            foreach ($members->groupBy('thread_id') as $letters) {
+                $continued += NodeTitle::continued($letters->sortBy(fn (Message $m) => $m->date_at?->getTimestamp() ?? 0)->values());
+            }
+        }
+        $files = [];
+        foreach ($members as $m) {
+            $head = $continued[$m->id] ?? $m->id;
+            $files[$head] = ($files[$head] ?? 0) + $m->files()->count();
+        }
+        $members = $members->reject(fn (Message $m) => isset($continued[$m->id]))->values();
+        // По цепочке одним запросом: сколько писем во всей переписке по машине (кружок в строке, 17.11.2026, владелец: «вся
+        // переписка по машине»), сколько входящих и наших в живых ветках (листы под пачкой), последнее непрочитанное входящее
+        // (пачка жирная и раскрывает его справа — показ делает прочитанным) и последнее входящее (собеседник цепочки).
+        $latest = fn (string $where) => "(array_agg(mail_messages.id order by mail_messages.date_at desc, mail_messages.id desc) filter (where {$where}))[1]";
+        $live = 'mail_threads.archived_at is null';
+        $stats = $keys->isEmpty() ? collect() : Message::query()->join('mail_threads', 'mail_threads.id', '=', 'mail_messages.thread_id')
+            ->whereIn('mail_messages.account_id', $accounts)->whereIn('mail_messages.thread_id', (clone $all)->select('mail_threads.id'))
+            ->whereRaw($in($group), $keys->all())
+            ->selectRaw("{$group} as g, count(*) as n, count(*) filter (where {$live} and mail_messages.outside) as n_in,"
+                ." count(*) filter (where {$live} and not mail_messages.outside) as n_out,"
+                .' '.$latest("{$live} and mail_messages.outside and not mail_messages.is_seen").' as unread_id,'
+                .' '.$latest("{$live} and mail_messages.outside").' as peer_id')
+            ->groupByRaw($group)->toBase()->get()->keyBy('g');
+        // Собеседник пачки «Цепочек», где последнее письмо наше, — отправитель последнего входящего: кружок и имя как в мессенджере.
+        $peerIds = $box === 'chains' && $stack
+            ? $items->reject(fn (Message $m) => $m->outside)->map(fn (Message $m) => $stats[$key($m)]->peer_id ?? null)->filter()->values()->all() : [];
+        $peers = $peerIds ? Message::with(['account', 'author', 'addresses', 'thread'])->findMany($peerIds)->keyBy('id') : collect();
+        $rows = $members->map(function (Message $m) use ($key, $stats, $stack, $box, $peers, $files) {
+            $s = $stats[$key($m)] ?? null;
+            $mine = match ($box) {
+                'in' => $s?->n_in, 'sent' => $s?->n_out, default => ($s?->n_in ?? 0) + ($s?->n_out ?? 0)
+            };
+            $hidden = $stack ? (int) $mine - 1 : 0;
+            $unread = $stack && $box !== 'sent' && $s?->unread_id ? (int) $s->unread_id : null;
+
+            return (object) ['message' => $m, 'chain' => $key($m), 'files' => $files[$m->id] ?? 0, 'size' => (int) ($s->n ?? 1),
+                'sheets' => min(2, max(0, $hidden)), 'unread' => $unread, 'open' => $unread ?? $m->id,
+                'peer' => $box === 'chains' && $stack && ! $m->outside && $s?->peer_id ? $peers->get((int) $s->peer_id) : null];
+        });
+        $view = ['rows' => $rows, 'page' => $page, 'box' => $box, 'base' => $this->base, 'park' => $data['park'],
+            'filtered' => $facets->active(), 'queue' => $this->queue, 'stack' => $stack, 'plates' => $plates];
         if ($request->header('X-List')) {
             return response()->view('admin.mail.letters', $view + ['more' => true]);
         }

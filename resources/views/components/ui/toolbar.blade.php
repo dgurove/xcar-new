@@ -22,7 +22,7 @@
      rows — шапка вкладок колеса «Предложений» (`x-admin.tab-head`, 17.11.2026, владелец): ряд кнопок (слева лупа, сортировка и
      вид из слота `extra`, справа «Фильтр» — `x-ui.filter-button`, окно во фрейме карточки), под ним переключатели вкладки
      (`Facet::quick`); на ПК — теми же рядами. Пилюль, действий и «Сбросить» в этом виде нет. --}}
-@props(['rows' => false, 'sort' => null, 'sortParam' => 'sort', 'pills' => [], 'dots' => [], 'pill' => '', 'pillParam' => 'view', 'pillDefault' => true, 'pillHome' => null, 'pillDrop' => [], 'counts' => [], 'badges' => [], 'bumps' => [], 'tones' => [], 'name' => 'list', 'action' => null, 'search' => null, 'searchTarget' => '#list', 'searchUrl' => null, 'q' => null, 'facets' => null, 'searchOpen' => false, 'sortToggles' => [], 'facetsReset' => true])
+@props(['fit' => null, 'rows' => false, 'sort' => null, 'sortParam' => 'sort', 'pills' => [], 'dots' => [], 'pill' => '', 'pillParam' => 'view', 'pillDefault' => true, 'pillHome' => null, 'pillDrop' => [], 'counts' => [], 'badges' => [], 'bumps' => [], 'tones' => [], 'name' => 'list', 'action' => null, 'search' => null, 'searchTarget' => '#list', 'searchUrl' => null, 'q' => null, 'facets' => null, 'searchOpen' => false, 'sortToggles' => [], 'facetsReset' => true])
 @php
     $action ??= '/'.ltrim(request()->path(), '/');
     $query = request()->query();
@@ -32,7 +32,8 @@
     // searchOpen — поле открыто всегда, без лупы и «Отмена» (колонка чатов, 06.10.2026: «нет смысла сворачивать»).
     $searching = $search && ($searchOpen || trim($q) !== '');
     // Короткий ряд пилюль — на широком экране чипы встают в его строку (`.toolbar--fit`, app.css).
-    $fit = $pills && mb_strlen(implode('', $pills)) <= 40;
+    // fit — ряд всегда в одну строку (почта: на парковке лишняя пилюля «Требуют внимания», а места хватает, 22.11.2026).
+    $fit = $fit ?? ($pills && mb_strlen(implode('', $pills)) <= 40);
 @endphp
 @if ($rows)
 <div {{ $attributes->merge(['class' => 'toolbar toolbar--rows']) }} @if ($search) data-controller="live-search" data-live-search-target-value="{{ $searchTarget }}" @if ($searchUrl) data-live-search-url-value="{{ $searchUrl }}" @endif @endif @if ($searching) data-searching @endif>

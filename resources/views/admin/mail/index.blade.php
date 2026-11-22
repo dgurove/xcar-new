@@ -1,7 +1,8 @@
-{{-- Почта (17.11.2026, вид выбран владельцем по макетам): пилюли «Входящие · Отправленные · Все делами · Архив», на
-     парковке первой — «Требуют внимания» (там задачи: осмотр, документы); в CRM её нет — только прочитанные и непрочитанные.
-     «Входящие» и «Отправленные» ($letters) — письма строками, как в Gmail, без цепочек: слева список (кто, тема, машина),
-     справа открытое письмо (`Detail`, ключ — id письма, ↑/↓ листают). «Все делами» и «Архив» — дела карточками: машина,
+{{-- Почта (17.11.2026, вид выбран владельцем по макетам): пилюли «Цепочки · Входящие · Отправленные · Архив» (открываются
+     «Цепочки», 22.11.2026), на парковке первой — «Требуют внимания» (там задачи: осмотр, документы); в CRM её нет — только
+     прочитанные и непрочитанные. «Цепочки», «Входящие» и «Отправленные» ($letters) — письма строками, как в Gmail: слева
+     список (кто, тема, машина), справа открытое письмо (`Detail`, ключ — id письма, ↑/↓ листают); значок «Пачками» у
+     «Проверить почту» складывает письма по цепочке ($stack, `admin.mail.letters`). «Архив» — дела карточками: машина,
      цепочка «Из писем», предложение или письмо без них, в карточке все письма дела (`admin.mail.list`).
      Верх — заголовок с «Написать» справа, пилюли, ящик (offer@ / deal@) чипом с меню, лупа, справа
      «Проверить почту», ниже чипы (вендор, непрочитанные, с файлами; во «Все делами» ещё смысл и «Без прочего»). Лупа ищет
@@ -19,30 +20,34 @@
 {{-- XCAR Mail: «Из писем» — назад к «Почте» строкой над заголовком, шапки с «‹» там нет. --}}
 @php $app = \App\Support\Surface::current() === \App\Support\Surface::Mail; @endphp
 <x-ui.shell :title="$title" :count="$crm || $letters ? null : $threads->total()" :back="$app && $forced ? ['Почта', $base] : null">
+    {{-- Ящик (13.10.2026, владелец: «письма только с offer и только с deal»): выбран — дела и письма только этого ящика. С 22.11.2026
+         — у заголовка, а не в ряду фильтров (владелец: «выбор почты возле заголовка»), без выбора — deal@. --}}
+    @if ($crm && ! $forced && $accounts->count() > 1)
+        <x-slot:badge>
+            <span class="contents" data-controller="menu">
+                <button type="button" class="pill mail-box-pick" data-action="menu#toggle" aria-haspopup="menu" aria-controls="mail-box-menu">{{ $mailbox ? \Illuminate\Support\Str::before($mailbox->email, '@').'@' : 'Все ящики' }}<x-ui.icon name="chevron-down" class="ml-1 size-4"/></button>
+                <span id="mail-box-menu" class="menu" popover data-menu-target="list" role="menu">
+                    <a href="{{ $boxUrl(null) }}" class="menu-item" role="menuitem" data-turbo-action="replace" data-action="menu#close" @unless ($mailbox) aria-current="true" @endunless>Все ящики</a>
+                    @foreach ($accounts as $account)
+                        <a href="{{ $boxUrl($account->slug) }}" class="menu-item" role="menuitem" data-turbo-action="replace" data-action="menu#close" @if ($mailbox?->is($account)) aria-current="true" @endif>{{ $account->email }}</a>
+                    @endforeach
+                </span>
+            </span>
+        </x-slot:badge>
+    @endif
     {{-- Кнопки стоят в строке заголовка и на телефоне: своей строки они не стоят. --}}
     @if (! $forced || $app)
         <x-slot:actions class="!ml-auto !w-auto">@include('admin.mail.actions')</x-slot:actions>
     @endif
 
-    <x-ui.toolbar :class="$crm && ! $forced ? 'mt-4' : ''" :sort="$letters ? null : $sort" :pills="$pills" :pill="$forced ? '' : $box" pill-param="box" pill-home="in" :pill-drop="['peek']" :counts="$counts" :tones="['attention' => ! empty($counts['attention']) ? 'pill-urgent' : '']" :name="$forced ? 'from-mail' : 'mail'"
-                  search="Найти письмо" search-target="#threads" :q="$q" :facets="$facets">
-        {{-- Ящик (13.10.2026, владелец: «письма только с offer и только с deal»; с 17.11.2026 — чипом с меню в ряду пилюль, а не
-             сегментом над ними): выбран — дела и письма только этого ящика. --}}
-        @if ($crm && ! $forced && $accounts->count() > 1)
-            <x-slot:pillsExtra>
-                <span class="toolbar-sep" aria-hidden="true"></span>
-                <div class="contents" data-controller="menu">
-                    <button type="button" class="pill" data-action="menu#toggle" aria-haspopup="menu" aria-controls="mail-box-menu" @if ($mailbox) aria-current="true" @endif>{{ $mailbox ? \Illuminate\Support\Str::before($mailbox->email, '@').'@' : 'Все ящики' }}<x-ui.icon name="chevron-down" class="ml-1 size-4"/></button>
-                    <div id="mail-box-menu" class="menu" popover data-menu-target="list" role="menu">
-                        <a href="{{ $boxUrl(null) }}" class="menu-item" role="menuitem" data-turbo-action="replace" data-action="menu#close" @unless ($mailbox) aria-current="true" @endunless>Все ящики</a>
-                        @foreach ($accounts as $account)
-                            <a href="{{ $boxUrl($account->slug) }}" class="menu-item" role="menuitem" data-turbo-action="replace" data-action="menu#close" @if ($mailbox?->is($account)) aria-current="true" @endif>{{ $account->email }}</a>
-                        @endforeach
-                    </div>
-                </div>
-            </x-slot:pillsExtra>
-        @endif
+    <x-ui.toolbar :class="$crm && ! $forced ? 'mt-4' : ''" :sort="$letters ? null : $sort" :pills="$pills" :pill="$forced ? '' : $box" pill-param="box" pill-home="chains" :pill-drop="['peek', 'stack']" :counts="$counts" :tones="['attention' => ! empty($counts['attention']) ? 'pill-urgent' : '']" :name="$forced ? 'from-mail' : 'mail'"
+                  search="Найти письмо" search-target="#threads" :q="$q" :facets="$facets" fit>
         <x-slot:actions>
+            {{-- «Пачками» — письма по цепочке, видно последнее (22.11.2026, владелец); включено — лаймовым, помнится у пилюли. --}}
+            @if ($letters)
+                <a href="{{ request()->fullUrlWithQuery(['stack' => $stack ? '0' : '1', 'page' => null, 'peek' => null]) }}" data-turbo-action="replace" @class(['btn btn-s btn-round shrink-0', 'btn-accent' => $stack, 'btn-quiet' => ! $stack])
+                   aria-pressed="{{ $stack ? 'true' : 'false' }}" aria-label="Пачками" title="{{ $stack ? 'Пачками: видно последнее письмо цепочки' : 'Сложить в пачки по цепочкам' }}"><x-ui.icon name="layers" class="size-5"/></a>
+            @endif
             {{-- «Проверить почту» — ящики забираются тут же, тост — сколько пришло. --}}
             <form method="post" action="{{ $base }}/sync" class="contents">@csrf<button class="btn btn-s btn-quiet btn-round shrink-0" aria-label="Проверить почту" title="Проверить почту"><x-ui.icon name="refresh" class="size-5"/></button></form>
         </x-slot:actions>
