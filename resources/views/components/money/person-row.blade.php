@@ -3,7 +3,7 @@
      не две строки»). Слева — значок типа, марка с годом; «Статус» — этап сделки (`MoneyStage`), «Оплата» — что с деньгами словом
      (`MoneyRows::state`, у оплаченной — как заплатили, у сделки без счёта — чего не хватает). Справа — сумма и сколько прошло с
      выставления («6д 5ч», срок прошёл — красным), у оплаченной — день оплаты. На ПК — кнопки строки (владелец: «без необходимости
-     проваливаться внутрь»): «Выставить» и «Оплатил наличными»; «Напомнить» и «Оплатил наличными»; «Пришли»; «Назначить менеджера»;
+     проваливаться внутрь»): «Выставить» и «Оплатил наличными»; «Оплатил наличными» (без «Напомнить» — владелец 22.11.2026); «Пришли»; «Назначить менеджера»;
      «Выплатить». На телефоне — два этажа и одна главная кнопка во втором. Нажатие — окно машины рядом, без машины — карточка счёта. --}}
 @props(['table', 'row' => null, 'invoice' => null, 'tab' => null, 'attempts' => null, 'tried' => null])
 @php
@@ -46,7 +46,6 @@
     };
     // Наличными у ручной ссылки — только у назначенной (в «Без менеджера» кнопка строки одна: «Назначить менеджера»).
     $cash = ! $paid && ! $payout && ! $claim && $first && ! ($service && ! $r->personId());
-    $nudge = ! $paid && ! $unsent && ! $claim && $deal && $first && $first->isShownToManager();
     $assign = $service && $admin && ! $r->service->manager_id && ! $r->service->credit_deal_id;
 @endphp
 @php ob_start(); @endphp
@@ -93,7 +92,6 @@
     {{-- ПК: кнопки строки рядом, без захода в окно (22.11.2026). --}}
     <td class="{{ $col->classes() }}"><span class="row-acts">
         @if ($main === 'claim' || $main === 'payout'){!! $button !!}@endif
-        @if ($nudge)<x-deal.nudge-sheet :deal="$deal" :invoice="$first" label="Напомнить" small/>@endif
         @if ($cash)
             <span class="contents" data-controller="sheet">
                 <button type="button" class="btn btn-quiet btn-xs" data-action="sheet#open" aria-controls="cash-{{ $first->id }}">Оплатил наличными</button>

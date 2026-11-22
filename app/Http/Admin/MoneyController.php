@@ -602,7 +602,7 @@ class MoneyController
             new Column('pay', $payout ? 'Статус' : 'Оплата', from: 'sm', role: ColRole::State, rem: 10, fixed: true),
             // Сумма — у правого края, под суммой заголовка группы (22.11.2026, владелец: «суммы логичнее справа»): кнопки, дата, сумма.
             // С окном справа кнопок нет (`aside`): действие — в самом окне.
-            new Column('acts', '', from: 'lg', num: true, aside: true, role: ColRole::When, rem: 17, fixed: true),
+            new Column('acts', '', from: 'lg', num: true, aside: true, role: ColRole::When, rem: 10, fixed: true),
             // «Выставлено» — дата или, пока не выставлена, сама кнопка «Выставить» (владелец: «либо не выставлена, либо есть дата»).
             new Column('since', 'Выставлено', from: 'sm', num: true, role: ColRole::When, cell: 'nums', rem: 7.5, fixed: true),
             new Column('amount', 'Сумма', num: true, role: ColRole::When, cell: 'nums', rem: 7, fixed: true));
