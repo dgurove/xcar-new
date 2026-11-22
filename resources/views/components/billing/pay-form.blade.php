@@ -14,11 +14,16 @@
 @endphp
 <form method="post" action="{{ $action }}" enctype="multipart/form-data" class="flex flex-col gap-3" data-controller="reveal" @unless ($sheet) data-turbo-confirm="{{ $invoice->isOwed() ? 'Записать выплату?' : 'Записать оплату?' }}" data-turbo-confirm-label="{{ $done }}" @endunless>
     @csrf
-    <div class="segment">
-        @foreach ($sources as $value => $label)
-            <label><input type="radio" name="source" value="{{ $value }}" @checked($source === $value) data-action="reveal#pick"><span>{{ $label }}</span></label>
-        @endforeach
-    </div>
+    {{-- Один способ («Оплатил наличными…») — без сегмента: только когда и сколько. --}}
+    @if (count($sources) > 1)
+        <div class="segment">
+            @foreach ($sources as $value => $label)
+                <label><input type="radio" name="source" value="{{ $value }}" @checked($source === $value) data-action="reveal#pick"><span>{{ $label }}</span></label>
+            @endforeach
+        </div>
+    @else
+        <input type="hidden" name="source" value="{{ $source }}">
+    @endif
     <div class="fields">
         {{-- Разрядами и с копейками, как в «Оплатить»: «15 000,50», а не «15000.5». --}}
         <x-ui.field name="amount" label="Сумма" :value="Money::nums($invoice->remaining(), fmod($invoice->remaining(), 1) ? 2 : 0)" required data-digits-decimals-value="2"/>

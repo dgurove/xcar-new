@@ -333,10 +333,15 @@ class Invoice extends Model implements HasMedia
         join workflow_exits e on e.stage_id = p.stage_id and e.actor = 'manager'
         where d.id = billing_invoices.deal_id and (lower(e.label) like 'платёжное поручение%' or lower(e.label) like 'оплатил, документ%'))";
 
-    /** Наш счёт сделки (`issued`) — после отправки или первой оплаты (деньги пришли — проверять поздно); выплата ему и счета без сделки — сразу. */
+    /**
+     * Наш счёт сделки (`issued`) — после отправки или первой оплаты (деньги пришли — проверять поздно); выплата ему и счета без сделки — сразу.
+     * Ссылка на подбор (не документ), оплаченная наличными частью, — не выставлена, пока её не выставят (22.11.2026, владелец: «остаток
+     * ссылкой, просто за вычетом наличных»): иначе остаток молча вставал ссылкой без «Выставить». Оплачена целиком — отправлена.
+     */
     public function isShownToManager(): bool
     {
-        return ! $this->deal_id || $this->direction !== 'issued' || $this->shown_at !== null || $this->paidMoney() > 0;
+        return ! $this->deal_id || $this->direction !== 'issued' || $this->shown_at !== null
+            || ($this->paidMoney() > 0 && ($this->isDocument() || $this->state === InvoiceState::Paid));
     }
 
     /**

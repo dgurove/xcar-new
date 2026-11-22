@@ -99,7 +99,7 @@
         @if ($main === 'claim' || $main === 'payout'){!! $button !!}@endif
         @if ($cash)
             <span class="contents" data-controller="sheet">
-                <button type="button" class="btn btn-quiet btn-xs" data-action="sheet#open" aria-controls="cash-{{ $first->id }}">Оплатил наличными</button>
+                <button type="button" class="btn btn-quiet btn-xs" data-action="sheet#open" aria-controls="cash-{{ $first->id }}">Оплатил наличными…</button>
                 <x-ui.sheet :id="'cash-'.$first->id" :title="'Наличными '.($offer ? $offer->title() : $title)">
                     <x-billing.pay-form :invoice="$first" :action="'/work/money/invoices/'.$first->id.'/payments'" :sources="['cash' => 'Наличные']" source="cash" sheet/>
                 </x-ui.sheet>

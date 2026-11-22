@@ -38,7 +38,9 @@ final class MoneyBook
     }
 
     /** Счёт `bi` виден менеджеру — как `Invoice::scopeShownToManager`: отправлен или по нему пришли настоящие деньги (не зачёт). */
-    private const SHOWN = "(bi.shown_at is not null or bi.paid > coalesce((select sum(p.amount) from billing_payments p where p.invoice_id = bi.id and p.source = 'offset'), 0) + 0.005)";
+    // Как `Invoice::isShownToManager`: ссылка на подбор ПРАЙМ без запрошенного счёта, оплаченная наличными частью, — ещё не выставлена.
+    private const SHOWN = "(bi.shown_at is not null or (bi.paid > coalesce((select sum(p.amount) from billing_payments p where p.invoice_id = bi.id and p.source = 'offset'), 0) + 0.005
+        and (bi.kind <> 'selection' or bi.seller <> 'prime' or bi.requested_at is not null or bi.state = 'paid')))";
 
     private const NO_INVOICES = "not exists (select 1 from billing_invoices bi where bi.deal_id = deals.id and bi.direction = 'issued' and bi.state <> 'void')";
 

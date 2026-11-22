@@ -56,7 +56,7 @@
         $payerEdit = $payerRow && auth()->user()?->canEditDeals() && ! \App\Offers\Actions\SetDealPayer::locked($deal);
         $feeSellerEdit = $deal->buyer_id && auth()->user()?->canEditDeals() && $deal->moneyOpen() && ! \App\Offers\Actions\SetFeeSeller::locked($deal)
             && $invoices->contains(fn ($i) => $i->kind === \App\Billing\ChargeKind::Selection && ! $i->isOwed());
-        $moreMoney = $editMoney || $withContract || $schemeEdit || $payerEdit || $feeSellerEdit || $paidBy->isNotEmpty() || ($deal->moneyOpen() && $issued->isNotEmpty());
+        $moreMoney = $editMoney || $withContract || $schemeEdit || $payerEdit || $feeSellerEdit || $paidBy->contains->isDocument() || ($deal->moneyOpen() && $issued->isNotEmpty());
     @endphp
     {{-- «Изменить» — лаймовым словом в заголовке, как у ТС, цен, ДКП и заметки (07.10.2026), а не чипом среди схемы. --}}
     {{-- Гаражная Совкомбанка (`namesBuyer`): вознаграждение назначаем, когда менеджер назвал цену продажи. --}}
@@ -78,12 +78,15 @@
                             @if ($withContract)<button type="button" class="menu-item w-full" data-controller="emit" data-action="emit#send" data-emit-event-param="dkp-{{ $deal->id }}:open">Данные договора…</button>@endif
                         </div>
                     @endif
+                    @if ($paidBy->contains->isDocument() || ($deal->moneyOpen() && $issued->isNotEmpty()))
                     <div class="menu-group">
-                        @foreach ($paidBy as $i)
-                            <button type="button" class="menu-item w-full" data-controller="emit" data-action="emit#send" data-emit-event-param="paid-{{ $i->id }}:open">Оплатили без ссылки{{ $paidBy->count() > 1 ? ($i->isDocument() ? ' по счёту '.$i->label() : ' за подбор') : '' }}…</button>
+                        {{-- Подбор — кнопкой «Оплатил наличными…» под своей ссылкой, в «⋯» его нет. --}}
+                        @foreach ($paidBy->filter->isDocument() as $i)
+                            <button type="button" class="menu-item w-full" data-controller="emit" data-action="emit#send" data-emit-event-param="paid-{{ $i->id }}:open">Оплатили без ссылки{{ $paidBy->filter->isDocument()->count() > 1 ? ($i->isDocument() ? ' по счёту '.$i->label() : ' за подбор') : '' }}…</button>
                         @endforeach
                         @if ($deal->moneyOpen() && $issued->isNotEmpty())<a href="/work/invoices/new?offer={{ $offer->number }}" class="menu-item w-full">Ещё счёт</a>@endif
                     </div>
+                    @endif
                 </x-ui.more>
             @endif
             @if ($editMoney)
@@ -415,7 +418,13 @@
     {{-- Шторки «Оплатили без ссылки…» — их открывает пункт «⋯» карточки. --}}
     @foreach ($paidBy as $i)
         <div class="contents" data-controller="sheet" data-action="paid-{{ $i->id }}:open@window->sheet#open">
-            <x-ui.sheet id="paid-{{ $i->id }}" :title="$i->isDocument() ? 'Оплата по счёту '.$i->label() : 'Оплата подбора'"><x-billing.pay-form :invoice="$i" :action="'/work/money/invoices/'.$i->id.'/payments'" :source="$i->isDocument() ? null : 'cash'" sheet/></x-ui.sheet>
+            <x-ui.sheet id="paid-{{ $i->id }}" :title="$i->isDocument() ? 'Оплата по счёту '.$i->label() : 'Оплатил наличными'">
+                @if ($i->isDocument())
+                    <x-billing.pay-form :invoice="$i" :action="'/work/money/invoices/'.$i->id.'/payments'" sheet/>
+                @else
+                    <x-billing.pay-form :invoice="$i" :action="'/work/money/invoices/'.$i->id.'/payments'" :sources="['cash' => 'Наличные']" source="cash" sheet/>
+                @endif
+            </x-ui.sheet>
         </div>
     @endforeach
 </x-ui.card>

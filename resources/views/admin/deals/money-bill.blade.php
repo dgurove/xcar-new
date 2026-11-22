@@ -10,15 +10,9 @@
         @if (! $i->isShownToManager())
             <div class="row">
                 <x-ui.icon name="link" class="size-5 shrink-0 text-ink-dim"/>
-                <span class="min-w-0 flex-1"><span class="block">Ссылка на оплату</span><span class="row-sub">не выставлена</span></span>
+                <span class="min-w-0 flex-1"><span class="block">Ссылка на оплату</span><span class="row-sub">не выставлена@if ($i->paid > 0), на <span class="nums">{{ Money::rub($i->remaining()) }}</span>@endif</span></span>
                 <x-deal.issue-button :deal="$deal" :invoice="$i"/>
             </div>
-            {{-- Наличными мимо ссылки — кнопкой тут же (22.11.2026, владелец: «где нажать, что уже наличными оплатил», пункт «⋯» не находили). --}}
-            @if ($paidBy->contains('id', $i->id))
-                <div class="send-under send-pair">
-                    <button type="button" class="btn btn-quiet btn-s gap-2" data-controller="emit" data-action="emit#send" data-emit-event-param="paid-{{ $i->id }}:open"><x-ui.icon name="check" class="size-4"/>Оплатили наличными</button>
-                </div>
-            @endif
         @elseif ($link && $link->isOpen())
             <x-ui.share-link variant="row" :url="$link->url()" title="Оплата по ссылке" :text="$link->message()" done="Ссылка на оплату в буфере">
                 <x-slot:lead>
@@ -27,11 +21,13 @@
                 </x-slot:lead>
             </x-ui.share-link>
         @endif
-        {{-- Выставлена — «Оплата получена» | «Напомнить менеджеру» под строкой, как у счёта (19.11.2026). --}}
-        @if ($i->isShownToManager() && $paidBy->contains('id', $i->id))
+        {{-- «Оплатил наличными…» под ссылкой — выставлена она или нет (22.11.2026, владелец: «где нажать, что уже наличными оплатил»;
+             пункт «⋯» не находили): шторка — дата и сумма, остаток платят по ссылке (`KeepPayLink` ставит её на остаток). Выставлена —
+             рядом «Напомнить менеджеру». --}}
+        @if ($paidBy->contains('id', $i->id))
             <div class="send-under send-pair">
-                <button type="button" class="btn btn-accent btn-s gap-2" data-controller="emit" data-action="emit#send" data-emit-event-param="paid-{{ $i->id }}:open"><x-ui.icon name="check" class="size-4"/>Оплата получена</button>
-                @if (\App\Billing\Actions\NudgeInvoice::allows($i))<x-deal.nudge-sheet :deal="$deal" :invoice="$i"/>@endif
+                <button type="button" class="btn btn-quiet btn-s" data-controller="emit" data-action="emit#send" data-emit-event-param="paid-{{ $i->id }}:open">Оплатил наличными…</button>
+                @if ($i->isShownToManager() && \App\Billing\Actions\NudgeInvoice::allows($i))<x-deal.nudge-sheet :deal="$deal" :invoice="$i"/>@endif
             </div>
         @endif
     @endif
