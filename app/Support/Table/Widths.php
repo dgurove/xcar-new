@@ -78,7 +78,8 @@ final class Widths
         $full = [];
         $cols = array_values($table->columns);
         $values = $whole = [];
-        if (preg_match_all('#<tr\b[^>]*\bdata-detail-key\b[^>]*>(.*?)</tr>#s', $rows, $trs)) {
+        // Строки данных — с ключом карточки рядом или со шторкой сделки (XCAR Pay, `data-deal-sheet-row`).
+        if (preg_match_all('#<tr\b[^>]*\bdata-(?:detail-key|deal-sheet-row)\b[^>]*>(.*?)</tr>#s', $rows, $trs)) {
             foreach ($trs[1] as $tr) {
                 if (! preg_match_all('#<td\b[^>]*>(.*?)</td>#s', $tr, $tds)) {
                     continue;

@@ -17,8 +17,13 @@
     $paidCount = $portion->total() + ($start ? $paid->filter(fn ($r) => $r->service && ! $r->service->isOwed())->count() : 0);
     $empty = $rows->isEmpty() && $paid->isEmpty();
     $creates = ! $payout && auth()->user()->isAdmin() && app(\App\Billing\Acquiring\Gateway::class)->configured();
+    $pay = \App\Billing\PayView::here();
 @endphp
 <x-ui.shell :title="$name" :detail="$detail">
+    {{-- XCAR Pay (22.11.2026): шапки нет — аватар с меню в строке заголовка, как у XCAR Mail. --}}
+    @if ($pay)<x-slot:actions class="!w-auto ml-auto"><x-ui.me-menu/></x-slot:actions>@endif
+    {{-- Заработок менеджера за месяц (22.11.2026) — тот же кусок, что у него в «Оплатах»: начальник видит, сколько он заработал. --}}
+    @if ($user && ! $payout)<x-money.earned :user="$user" class="mb-3"/>@endif
     {{-- Разделы человека — пилюлями самого тулбара (22.11.2026, владелец: отдельный ряд пилюль над рядом лупы и чипа — «вёрстка
          ужасно выглядит»): на ПК одной строкой с лупой и «Статусом», на телефоне пилюли — своей строкой сверху. --}}
     <x-ui.toolbar name="money-person" :pills="$tabs" :pill="$tab" pill-param="tab" pill-home="fees" :pill-drop="['peek', 'q']" :counts="array_filter($counts)"
@@ -50,6 +55,7 @@
             </x-ui.table>
         @endif
     </div>
-    {{-- Окно писем машины: письмо в окне сделки открывается поверх (22.11.2026: «жму на письмо в окошке — не открывается»). --}}
-    <x-mail.window/>
+    {{-- Окно писем машины: письмо в окне сделки открывается поверх (22.11.2026: «жму на письмо в окошке — не открывается»). В XCAR Pay
+         окна машины нет — машина шторкой со страницей CRM, письма — там. --}}
+    @unless ($pay)<x-mail.window/>@endunless
 </x-ui.shell>

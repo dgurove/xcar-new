@@ -26,11 +26,12 @@ final class WebPushChannel
         }
         // Пуш — в приложение уведомления: парковки, логистики и CRM — только на подписки своего хоста, общее — на сайт и CRM.
         // Чат и почта (20.11.2026): есть подписка XCAR Chat (XCAR Mail) — сообщение (письмо) только туда, где его и читают; нет —
-        // как было. В XCAR Chat и XCAR Mail ничего, кроме своего, не идёт.
+        // как было. В XCAR Chat и XCAR Mail ничего, кроме своего, не идёт. Так же деньги и XCAR Pay (22.11.2026).
         $only = $notice->surface();
         $app = match (true) {
             $notice instanceof \App\Notifications\ChatNotice => Surface::Chat,
             $notice->aboutMail() => Surface::Mail,
+            $notice->aboutMoney() => Surface::Pay,
             default => null,
         };
         $own = $app && $subs->contains(fn ($s) => $s->host && Surface::fromHost($s->host) === $app);

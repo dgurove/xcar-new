@@ -1387,6 +1387,8 @@ html.kb-open { --home-gap: 0px; }
   /* На ПК при ˄ ˅ «›» у названия нет (владелец): выбор и так виден; в колесе у выбранной «›» остаётся. */
   @media (min-width: 1024px) { .tab-title.has-step .tab-title-chev { display: none; } }
   .title-actions { @apply ml-auto flex shrink-0 items-center gap-1.5; }
+  /* «Заработок» за месяц (`x-money.earned`, 22.11.2026): подпись, месяц пилюлей с меню, сумма — одной строкой. */
+  .earned { @apply flex flex-wrap items-center gap-x-2 gap-y-1; }
   .title-actions .btn-s { height: 2rem; padding-inline: .75rem; }
   .title-actions .btn-round { width: 2rem; height: 2rem; }
   /* Кружки тулбара (сортировка, вид, лупа), действия справа («Скачать»), чипы фильтров и кнопки строки названия (письма,
@@ -1444,6 +1446,10 @@ html.kb-open { --home-gap: 0px; }
   /* Разделы крупными заголовками в ряд (`x-ui.big-tabs`, «Оплаты» — 17.11.2026; вид прежних заголовков «Работы»): текущий — цветом
      текста, остальные серые; число — серой капсулой, есть дело — красной, как счётчики CRM. */
   .big-tabs { display: flex; align-items: baseline; gap: 1rem; white-space: nowrap; font-size: var(--text-xl); font-weight: 500; line-height: 1.2; }
+  /* Приложение одного раздела (XCAR Pay, 22.11.2026): аватар — в ряду разделов и на телефоне; разделы, что не влезли, листаются вбок. */
+  .title-row--app { flex-wrap: nowrap; align-items: center; }
+  .title-row--app .big-tabs { min-width: 0; overflow-x: auto; scrollbar-width: none; }
+  .title-row--app .big-tabs::-webkit-scrollbar { display: none; }
   .big-tab { color: var(--color-ink-muted); transition: color .15s; -webkit-tap-highlight-color: transparent; }
   .big-tab[aria-current] { color: var(--color-ink); }
   @media (hover: hover) { .big-tab:hover { color: var(--color-ink); } }

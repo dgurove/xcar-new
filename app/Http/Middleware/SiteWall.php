@@ -20,7 +20,8 @@ class SiteWall
     {
         // XCAR Chat (20.11.2026) — чаты и сотрудников, и менеджеров: в свой дом никого не уводим, а закрытый доступ покупателя
         // закрыт и здесь.
-        $chat = Surface::current() === Surface::Chat;
+        // XCAR Pay (22.11.2026) — так же: «Оплаты» менеджера `/account/money` живут и там.
+        $chat = in_array(Surface::current(), [Surface::Chat, Surface::Pay], true);
         if (Surface::current() !== Surface::Site && ! $chat) {
             return $next($request);
         }

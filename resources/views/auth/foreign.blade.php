@@ -7,6 +7,7 @@
         \App\Support\Surface::Partner => 'кабинет поставщиков',
         \App\Support\Surface::Chat => 'чат',
         \App\Support\Surface::Mail => 'почта',
+        \App\Support\Surface::Pay => 'оплаты',
         default => 'администрация',
     };
 @endphp

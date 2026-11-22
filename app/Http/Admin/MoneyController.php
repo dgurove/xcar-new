@@ -16,6 +16,8 @@ use App\Billing\Actions\SwapPaymentProof;
 use App\Billing\ChargeKind;
 use App\Billing\Seller;
 use App\Billing\Invoice;
+use App\Billing\MoneyBook;
+use App\Billing\MoneyRow;
 use App\Billing\InvoiceState;
 use App\Billing\Party;
 use App\Billing\Payment;
@@ -70,6 +72,21 @@ class MoneyController
      */
     public const TABS = ['fees' => 'Комиссии', 'dkp' => 'ДКП', 'payouts' => 'Выплаты'];
 
+    /**
+     * Разделы, что видит человек: модератору (22.11.2026, «Оплаты» ему открыты — начальник: «чтобы и модераторы видели») — без
+     * «Выплат»: счёт без сделки ему закрыт (`guardDeal`).
+     */
+    public static function tabs(): array
+    {
+        return auth()->user()?->canManageCrm() ? self::TABS : array_diff_key(self::TABS, ['payouts' => 0]);
+    }
+
+    /** Счета без сделки (разовые ссылки, парковка) — только админу; модератору — счета сделок и засчитанные в сделку (`guardDeal`). */
+    public static function dealOnly($q)
+    {
+        return $q->when(! auth()->user()?->canManageCrm(), fn ($x) => $x->where(fn ($w) => $w->whereNotNull('billing_invoices.deal_id')->orWhereNotNull('billing_invoices.credit_deal_id')));
+    }
+
     /** Разделы «нам должны»: группы «Проверить», «Ждём», чип «Откуда», номер счёта. */
     private const OWED = ['fees', 'dkp'];
 
@@ -111,15 +128,15 @@ class MoneyController
         // Ключ карточки с `tab=links` — ссылка (строка ссылки в карточке счёта); иначе — счёт. Номера ссылок и счетов
         // пересекаются, угадывать по одному числу нельзя.
         $detail = Detail::of($request, fn (string $key) => $request->query('tab') === 'links'
-            ? (($link = PayLink::find($key)) ? $this->link($link) : null)
-            : (($invoice = Invoice::find($key)) ? $this->card($invoice) : null));
+            ? (($link = PayLink::whereHas('invoice', fn ($i) => self::dealOnly($i))->find($key)) ? $this->link($link) : null)
+            : (($invoice = self::dealOnly(Invoice::query())->find($key)) ? $this->card($invoice) : null));
         if ($detail->framed()) {
             return $detail->response();
         }
         // Вкладки ссылок больше нет (17.11.2026): `tab=links` — только карточка ссылки, список под ней — «Комиссии». Прежнее
         // `tab=owed` (закладки, уведомления) — раздел открытого счёта, без него — «Комиссии».
         $tab = (string) $request->query('tab');
-        if (! array_key_exists($tab, self::TABS)) {
+        if (! array_key_exists($tab, self::tabs())) {
             $peek = $tab === 'owed' && ctype_digit((string) $request->query('peek')) ? Invoice::find((int) $request->query('peek')) : null;
             $tab = $peek ? self::tabOf($peek) : 'fees';
         }
@@ -133,7 +150,7 @@ class MoneyController
         $qs = trim((string) $request->query('q'));
         // Лупа — по всем разделам сразу (мимо пилюли и чипов), открытые и оплаченные.
         $sort = fn (string $t) => Sort::from($request->query('sort'), self::sorts($t), '-auto');
-        $sections = $qs === '' ? [] : collect(array_keys(self::TABS))->mapWithKeys(fn ($t) => [$t => $this->section($t, $qs, $sort($t))])->all();
+        $sections = $qs === '' ? [] : collect(array_keys(self::tabs()))->mapWithKeys(fn ($t) => [$t => $this->section($t, $qs, $sort($t))])->all();
         $paid = collect($sections)->flatMap(fn ($s) => $s['paid'])->flatMap(fn ($i) => $i->payments->pluck('id'));
 
         return view('admin.money.index', [
@@ -178,7 +195,7 @@ class MoneyController
      */
     public static function of(string $tab, ?Facets $facets = null)
     {
-        $q = Invoice::crmMoney();
+        $q = self::dealOnly(Invoice::crmMoney());
         // Неотправленный менеджеру счёт сделки — только на шаге оплаты (`Invoice::ON_PAY_STEP_SQL`): так его ищет лупа и считает
         // вкладка «Оплата за подбор» (`SelectionController`). Страница человека видит все сделки сама (`MoneyBook`, 22.11.2026).
         $ours = fn () => ($facets ? $facets->applyTo($q) : $q)->where('direction', 'issued')
@@ -249,7 +266,7 @@ class MoneyController
     private static function counts(Facets $facets, User|null|false $person = false): array
     {
         $counts = $tones = [];
-        foreach (array_keys(self::TABS) as $t) {
+        foreach (array_keys(self::tabs()) as $t) {
             if ($t === 'payouts') {
                 $n = self::payouts($person)->where('state', InvoiceState::Issued)->count();
                 [$counts[$t], $tones[$t]] = [$n, $n ? 'pill-todo' : ''];
@@ -338,12 +355,12 @@ class MoneyController
     {
         $user = $person === 'none' ? null : User::findOrFail((int) $person);
         $detail = Detail::of($request, fn (string $key) => str_starts_with($key, 's')
-            ? (($i = Invoice::crmMoney()->find((int) substr($key, 1))) ? $this->card($i) : null)
+            ? (($i = self::dealOnly(Invoice::crmMoney())->find((int) substr($key, 1))) ? $this->card($i) : null)
             : \App\Offers\CarWindow::of($request, OfferNumber::find($key)), invoices: true);
         if ($detail->framed()) {
             return $detail->response();
         }
-        $tab = array_key_exists((string) $request->query('tab'), self::TABS) ? (string) $request->query('tab') : 'fees';
+        $tab = array_key_exists((string) $request->query('tab'), self::tabs()) ? (string) $request->query('tab') : 'fees';
         ListPrefs::sync($request, 'crm-money');
         $facets = self::facets($request, $tab);
         $qs = trim((string) $request->query('q'));
@@ -372,7 +389,7 @@ class MoneyController
             'detail' => $detail, 'user' => $user, 'tab' => $tab, 'counts' => self::counts($tab === 'payouts' ? MoneyBook::facets($request) : $facets, $user)['counts'], 'facets' => $facets, 'q' => $qs,
             'rows' => $open, 'paid' => $paid, 'portion' => $portion, 'attempts' => $attempts, 'tried' => $tried,
             // «Выплаты» пилюлей — только если человеку есть что выплачивать или выплачивали (22.11.2026, владелец: «пустые не отображать»).
-            'tabs' => $tab === 'payouts' || self::payouts($user)->exists() ? self::TABS : array_diff_key(self::TABS, ['payouts' => 0]),
+            'tabs' => $tab === 'payouts' || self::payouts($user)->exists() ? self::tabs() : array_diff_key(self::tabs(), ['payouts' => 0]),
         ]);
     }
 

@@ -79,6 +79,8 @@ Route::domain(config('xcar.crm_host'))->middleware(['auth', 'ability:isStaff'])-
     Route::post('/offers', [OfferController::class, 'store']);
     // Почта и «Из писем» — общим куском с XCAR Mail (`routes/mail-shared.php`); до `/offers/{offer}`, иначе from-mail примут за номер.
     require __DIR__.'/mail-shared.php';
+    // «Оплаты» — общим куском с XCAR Pay (`routes/money-shared.php`, 22.11.2026).
+    require __DIR__.'/money-shared.php';
     Route::get('/offers/twins', [OfferController::class, 'twins']);
     // Окно «Выгрузка» над списком: вкладка, чипы и лупа — файлом или данными для буфера (`format=json`).
     Route::get('/offers/export', [OfferController::class, 'export']);
@@ -174,15 +176,12 @@ Route::domain(config('xcar.crm_host'))->middleware(['auth', 'ability:isStaff'])-
         Route::put('/work/deals/{deal}/fee-seller', [DealContractController::class, 'feeSeller']);
         // «Отправить менеджеру» у счёта и договора (16.11.2026): сотрудник проверил — менеджер видит.
         Route::post('/work/deals/{deal}/invoices/{invoice}/show', [DealContractController::class, 'showInvoice']);
-        Route::post('/work/deals/{deal}/invoices/{invoice}/issue', [DealContractController::class, 'issueInvoice']);
         // «Запросили счёт…» у комиссии (18.11.2026): обычно только ссылка или наличные.
         Route::post('/work/deals/{deal}/invoices/{invoice}/paper', [DealContractController::class, 'paperInvoice']);
         Route::post('/work/deals/{deal}/contract/show', [DealContractController::class, 'showContract']);
         // «Отозвать» отправленный счёт и договор (19.11.2026, владелец: «поправить и заново отправить», `ShowToManager::recall*`).
         Route::post('/work/deals/{deal}/invoices/{invoice}/recall', [DealContractController::class, 'recallInvoice']);
         Route::post('/work/deals/{deal}/contract/recall', [DealContractController::class, 'recallContract']);
-        // «Напомнить менеджеру» про отправленный счёт (19.11.2026, `NudgeInvoice`).
-        Route::post('/work/deals/{deal}/invoices/{invoice}/nudge', [DealContractController::class, 'nudgeInvoice']);
         // Исправленный договор (19.11.2026, вариант Б): приложить исправленный, вернуть сформированный (Word для правки — `dkp.docx?edit=1`).
         Route::post('/work/deals/{deal}/contract/edited', [DealContractController::class, 'edited']);
         Route::delete('/work/deals/{deal}/contract/edited', [DealContractController::class, 'unedit']);
@@ -202,11 +201,6 @@ Route::domain(config('xcar.crm_host'))->middleware(['auth', 'ability:isStaff'])-
         // покупателей, отправка счёта и договора менеджеру и так далее»; чат с менеджером и гараж): шаги пути без выходов в тупик
         // (`RouteController::exit`), разбор писем, подписание, документ об оплате за менеджера, чаты, гараж. Деньги («Поступила»,
         // ссылки, «Оплаты») и решения (отмена, отказ, «Отдать», подтверждения, переоценка) — у админа ниже.
-        // Счёт сделки — смотреть (окно счёта, PDF, печать, акт); оплаты и аннулирование — у админа.
-        Route::get('/work/money/invoices/{invoice}', [MoneyController::class, 'show']);
-        Route::get('/work/money/invoices/{invoice}/pdf', [MoneyController::class, 'file']);
-        Route::get('/work/money/invoices/{invoice}/print', [MoneyController::class, 'print']);
-        Route::get('/work/money/invoices/{invoice}/act', [MoneyController::class, 'act']);
         Route::get('/garage/cars/{offer}/invoice/pdf', [GarageSettlementController::class, 'pdf']);
         Route::delete('/garage/cars/{offer}/links/{link}', [GarageSettlementController::class, 'cancelLink']);
         Route::post('/garage/cars/{offer}/costs', [GarageCarController::class, 'storeCost']);
@@ -269,22 +263,8 @@ Route::domain(config('xcar.crm_host'))->middleware(['auth', 'ability:isStaff'])-
         Route::get('/chats/{chat}', fn (int $chat) => redirect("/work/chats/{$chat}", 301))->whereNumber('chat');
         // Счета и деньги сделки — модератору тоже (18.11.2026, владелец: «у модераторов должен быть полный доступ ко всему, что
         // касается договоров и счетов», «пусть цену продажи и сумму вознаграждения тоже могут менять»): цена и вознаграждение,
-        // оплаты и аннулирование счёта, заявки менеджера об оплате, ссылки у счёта, «Ещё счёт». Счёт без сделки модератору
-        // закрыт (`MoneyController::guardInvoice`, `PayLinkController`); раздел «Оплаты» и возврат эквайринга — админу.
+        // «Ещё счёт»; оплаты, ссылки и заявки об оплате — кусок «Оплат» `routes/money-shared.php`.
         Route::put('/work/deals/{deal}/money', [DealController::class, 'money']);
-        Route::post('/work/payments/{payment}/confirm', [MoneyController::class, 'confirm']);
-        Route::post('/work/payments/{payment}/reject', [MoneyController::class, 'reject']);
-        Route::post('/work/payments/{payment}/to-supplier', [MoneyController::class, 'toSupplier']);
-        Route::post('/work/money/invoices/{invoice}/links', [PayLinkController::class, 'store']);
-        Route::delete('/work/money/links/{link}', [PayLinkController::class, 'destroy']);
-        Route::put('/work/money/links/{link}/email', [PayLinkController::class, 'email']);
-        Route::prefix('work/money/invoices/{invoice}')->group(function () {
-            Route::put('/', [MoneyController::class, 'update']);
-            Route::post('/payments', [MoneyController::class, 'pay']);
-            Route::get('/payments/{payment}/slip', [MoneyController::class, 'slip']);
-            Route::delete('/payments/{payment}', [MoneyController::class, 'unpay']);
-            Route::post('/void', [MoneyController::class, 'void']);
-        });
         Route::get('/work/invoices/new', [InvoiceController::class, 'create']);
         Route::post('/work/invoices', [InvoiceController::class, 'store']);
     });
@@ -377,20 +357,6 @@ Route::domain(config('xcar.crm_host'))->middleware(['auth', 'ability:isStaff'])-
         // «Работа → Вывоз» заменила логистика (10.10.2026): перевозки — на logistics.xcar.ru.
         Route::get('/work/pickups', fn () => redirect()->away(Surface::Logistics->url('/transports'), 301));
         // Скан паспорта покупателя, которого админ указывает за менеджера (20.10.2026) — та же загрузка, что в кабинете.
-        // Оплаты — вкладки «По ссылкам / Нам должны / Мы должны» (07.10.2026); карточка счёта — общая со стоянкой.
-        Route::get('/work/money', [MoneyController::class, 'index']);
-        Route::get('/work/money/managers', [MoneyController::class, 'managers']); // бывшие «Расчёты с менеджерами» — редирект
-        // Человек в «Оплатах» (18.11.2026): его машины в разделе; `none` — без менеджера.
-        Route::get('/work/money/managers/{person}', [MoneyController::class, 'person'])->where('person', '\d+|none');
-        // Разовая оплата услуг по ссылке без сделки — только админ (05.10.2026).
-        Route::post('/work/money/service', [MoneyController::class, 'service'])->middleware('ability:isAdmin');
-        Route::get('/work/money/cars', [MoneyController::class, 'cars'])->middleware('ability:isAdmin');
-        Route::get('/work/money/links/existing', [MoneyController::class, 'existing'])->middleware('ability:isAdmin');
-        // «Назначить менеджера» ручной ссылке, по желанию — со сделкой (22.11.2026, `AssignServiceManager`).
-        Route::post('/work/money/invoices/{invoice}/manager', [MoneyController::class, 'assign'])->middleware('ability:isAdmin');
-        Route::put('/work/money/links/{link}/car', [PayLinkController::class, 'car'])->middleware('ability:isAdmin');
-        Route::get('/work/money/links/{link}/attach', [PayLinkController::class, 'attach'])->middleware('ability:isAdmin');
-        Route::post('/work/money/acquiring/{attempt}/refund', [PayLinkController::class, 'refund']);
         // Выписка СберБизнеса переехала в Настройки → Банк (07.10.2026): связь толком не настроена, в «Оплатах» она была мусором.
         Route::permanentRedirect('/work/money/bank', '/settings/bank/statement');
 

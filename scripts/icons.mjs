@@ -11,10 +11,10 @@ import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 
 const at = (p) => new URL(p, import.meta.url).pathname;
 const BLACK = '#000000';
-const SURFACES = ['site', 'crm', 'park', 'logistics', 'partner', 'chat', 'mail'];
+const SURFACES = ['site', 'crm', 'park', 'logistics', 'partner', 'chat', 'mail', 'pay'];
 
 // Ярлыки манифеста по поверхностям → иконки кита; тот же список — в PwaController::manifest.
-const SHORTCUT_ICONS = { site: ['cat-car', 'chat', 'bell'], crm: ['cat-car', 'mail', 'chat', 'deal'], park: ['flag', 'cat-car'], logistics: ['cat-car'], partner: ['cat-car'], chat: ['chat'], mail: ['mail', 'flag'] };
+const SHORTCUT_ICONS = { site: ['cat-car', 'chat', 'bell'], crm: ['cat-car', 'mail', 'chat', 'deal'], park: ['flag', 'cat-car'], logistics: ['cat-car'], partner: ['cat-car'], chat: ['chat'], mail: ['mail', 'flag'], pay: ['deal'] };
 
 // Экраны iPhone в точках и плотности; тот же список — в components/ui/startup.blade.php.
 const SCREENS = [

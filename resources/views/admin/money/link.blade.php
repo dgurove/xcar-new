@@ -89,7 +89,7 @@
                     <x-ui.chevron/>
                 </button>
             @elseif ($car)
-                <a @if ($offer) href="{{ $offer->crmPath() }}" data-turbo-frame="_top" @endif class="row">
+                <a @if ($offer) {!! \App\Support\DealSheet::crmLink($offer->crmPath()) !!} @endif class="row">
                     <span class="shrink-0 text-ink-muted">ТС</span>
                     <span class="min-w-0 flex-1 truncate text-right nums">{{ $car }}</span>
                     @if ($offer)<x-ui.chevron/>@endif
@@ -100,7 +100,7 @@
                 <x-money.assign-sheet :invoice="$i" row/>
             @endif
             @if ($manual && $i->creditDeal)
-                <a @if ($dealUrl) href="{{ $dealUrl }}" data-turbo-frame="_top" @endif class="row">
+                <a @if ($dealUrl) {!! \App\Support\DealSheet::crmLink($dealUrl) !!} @endif class="row">
                     <span class="shrink-0 text-ink-muted">Сделка</span>
                     <span class="min-w-0 flex-1 text-right">
                         <span class="block truncate">{{ $i->creditDeal->buyer?->shortName() ?? 'есть' }}</span>
@@ -109,7 +109,7 @@
                     @if ($dealUrl)<x-ui.chevron/>@endif
                 </a>
             @elseif (! $manual)
-                <a @if ($dealUrl) href="{{ $dealUrl }}" @elseif ($offer) href="{{ $offer->crmPath() }}" @endif class="row" data-turbo-frame="_top">
+                <a @if ($dealUrl) {!! \App\Support\DealSheet::crmLink($dealUrl) !!} @elseif ($offer) {!! \App\Support\DealSheet::crmLink($offer->crmPath()) !!} @endif class="row">
                     <span class="shrink-0 text-ink-muted">{{ $link->origin() === 'deal' ? 'Сделка' : 'Гараж' }}</span>
                     <span class="min-w-0 flex-1 truncate text-right nums">{{ $i->manager()?->shortName() ?? ($offer ? '№ '.$offer->number : '') }}</span>
                     <x-ui.chevron/>
@@ -117,7 +117,7 @@
             @endif
             {{-- Комиссия без счёта (18.11.2026) — строки «Счёт» нет: машина и сделка — строкой выше. --}}
             @if ($i->isDocument())
-            <a href="{{ $i->crmHref() }}" class="row" data-turbo-frame="_top">
+            <a {!! \App\Support\DealSheet::crmLink($i->crmHref()) !!} class="row">
                 <span class="shrink-0 text-ink-muted">Счёт</span>
                 <span class="min-w-0 flex-1 truncate text-right nums">{{ $i->label() }}@if ($i->issued_at) от {{ \App\Support\Ago::html($i->issued_at, words: false) }}@endif</span>
                 <x-ui.chevron/>

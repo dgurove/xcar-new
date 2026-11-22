@@ -20,6 +20,7 @@
         $home = match ($surface) {
             \App\Support\Surface::Chat => ['Чаты', $surface->home()],
             \App\Support\Surface::Mail => ['Почта', $surface->home()],
+            \App\Support\Surface::Pay => ['Оплаты', \App\Billing\PayView::home()],
             default => ['Предложения', '/offers'],
         };
         $back = $back && $back[1] !== '/account' ? $back : $home;

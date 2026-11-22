@@ -18,7 +18,7 @@
     $sum = $i->remaining() > 0 ? $i->remaining() : $i->total;
 @endphp
 <x-ui.detail>
-    <x-ui.row-card :href="$i->carOffer()?->crmPath()" :title="$i->isOwed() ? 'Выплата менеджеру '.$i->party->name : ($i->isDocument() ? 'Счёт '.$i->label().', '.$i->party->name : \App\Billing\PayOffer::name($i))" :head="false" :photo="false" :action="false">
+    <x-ui.row-card :href="\App\Support\DealSheet::here() ? null : $i->carOffer()?->crmPath()" :title="$i->isOwed() ? 'Выплата менеджеру '.$i->party->name : ($i->isDocument() ? 'Счёт '.$i->label().', '.$i->party->name : \App\Billing\PayOffer::name($i))" :head="false" :photo="false" :action="false">
         <div class="money-hero">
             @if ($issued)<div class="money-hero-cap">{{ $i->isOwed() ? 'должны ему' : 'должен нам' }}</div>@endif
             <div class="money-hero-sum nums">{{ Money::nums($sum, fmod($sum, 1) ? 2 : 0) }}<small> ₽</small></div>
@@ -53,7 +53,7 @@
             <div class="row"><span class="shrink-0 text-ink-muted">{{ $i->isOwed() ? 'Выплата' : ($i->isDocument() ? 'Счёт' : 'Выставлено') }}</span><span class="min-w-0 flex-1 truncate text-right nums">{{ $i->isOwed() || ! $i->isDocument() ? '' : $i->label().' ' }}{{ $i->isDocument() || $i->isOwed() ? 'от ' : '' }}{!! \App\Support\Ago::html($i->issued_at, words: false) !!}</span></div>
             <div class="row"><span class="shrink-0 text-ink-muted">За что</span><span class="min-w-0 flex-1 truncate text-right">{{ \App\Http\Admin\MoneyRows::payoutKind($i) }}</span></div>
             @if ($offer)
-                <a href="{{ $offer->crmPath() }}" class="row" data-turbo-frame="_top">
+                <a {!! \App\Support\DealSheet::crmLink($offer->crmPath()) !!} class="row">
                     <span class="shrink-0 text-ink-muted">ТС</span><span class="min-w-0 flex-1 truncate text-right">{{ $offer->titleWithYear() }}</span><x-ui.chevron/>
                 </a>
             @endif

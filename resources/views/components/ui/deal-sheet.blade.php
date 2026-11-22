@@ -3,8 +3,10 @@
      Один лист на экран чата: ссылки к машине и сделке помечены `data-deal-sheet` (`Chat::carHref`, `sheetAttrs`), их ловит
      `deal_sheet_controller` и грузит страницу во фрейм; закрыли — фрейм пустеет. Заголовка у листа нет: название и номер
      (копируется нажатием) — в самой странице. --}}
-{{-- `deal-sheet` во flash — открыть сразу эту страницу: «Завести» из письма в XCAR Mail возвращает к письму с черновиком поверх. --}}
-<div class="contents" data-controller="deal-sheet" data-action="click@window->deal-sheet#click" @if (session('deal-sheet')) data-deal-sheet-open-value="{{ session('deal-sheet') }}" @endif>
+{{-- `deal-sheet` во flash — открыть сразу эту страницу: «Завести» из письма в XCAR Mail возвращает к письму с черновиком поверх;
+     `?deal=` / `?car=` в адресе (ссылки уведомлений XCAR Pay) — сделку или машину (`DealSheet::requested`). --}}
+@php $open = session('deal-sheet') ?? \App\Support\DealSheet::requested(); @endphp
+<div class="contents" data-controller="deal-sheet" data-action="click@window->deal-sheet#click" @if ($open) data-deal-sheet-open-value="{{ $open }}" @endif>
     <div class="contents" data-controller="sheet" data-action="deal-sheet:open@window->sheet#open">
         <x-ui.sheet id="deal-sheet" tall class="sheet-deal" data-deal-sheet-target="dialog">
             {{-- Имя окна `xcar-deal` — метка «я во фрейме шторки» для страницы (`x-ui.layout`): держится при переходах внутри фрейма.

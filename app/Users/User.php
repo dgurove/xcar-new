@@ -1022,6 +1022,8 @@ class User extends Authenticatable implements HasMedia, WebAuthnAuthenticatable
             Surface::Chat => $this->notifications()->where('data->surface', 'chat'),
             // И у XCAR Mail: на значке — непрочитанные «Входящие».
             Surface::Mail => $this->notifications()->where('data->surface', 'mail'),
+            // И у XCAR Pay: на значке — что ждёт в «Оплатах».
+            Surface::Pay => $this->notifications()->where('data->surface', 'pay'),
         };
     }
 
@@ -1062,6 +1064,13 @@ class User extends Authenticatable implements HasMedia, WebAuthnAuthenticatable
         // XCAR Mail — непрочитанные «Входящие», то же число, что у «Почты» в таб-баре CRM.
         if ($here === Surface::Mail) {
             return $this->canCrmMail() ? \App\Mail\Boxes::unreadCount(\App\Mail\Scope::Offers) : 0;
+        }
+
+        // XCAR Pay — сотруднику то же число, что у «Оплат» в таб-баре CRM (проверить «Пришли?», не прошла по ссылке, выплаты),
+        // менеджеру — сколько его счетов ждут оплаты.
+        if ($here === Surface::Pay) {
+            return \App\Billing\PayView::staff($this) ? \App\Http\Admin\MoneyController::todo()
+                : ($this->hasDeals() ? \App\Billing\Invoice::visibleToManager($this)->where('direction', 'issued')->where('state', \App\Billing\InvoiceState::Issued)->count() : 0);
         }
 
         // Чаты площадки — работа CRM: на значке сайта их нет (08.10.2026).

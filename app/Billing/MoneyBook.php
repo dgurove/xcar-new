@@ -1,12 +1,9 @@
 <?php
 
-namespace App\Http\Admin;
+namespace App\Billing;
 
-use App\Billing\ChargeKind;
-use App\Billing\Invoice;
-use App\Billing\InvoiceState;
-use App\Billing\MoneyStage;
 use App\Garage\GaragePayer;
+use App\Http\Admin\MoneyRows;
 use App\Offers\Deal;
 use App\Support\Facets\Facets;
 use App\Users\User;
@@ -38,6 +35,9 @@ final class MoneyBook
             .($open ? "= 'issued'" : "<> 'void'").' and '.self::tabSql($tab, 'bi').($extra !== '' ? ' and ('.$extra.')' : '').')';
     }
 
+    /** Счёт `bi` виден менеджеру — как `Invoice::scopeShownToManager`: отправлен или по нему пришли настоящие деньги (не зачёт). */
+    private const SHOWN = "(bi.shown_at is not null or bi.paid > coalesce((select sum(p.amount) from billing_payments p where p.invoice_id = bi.id and p.source = 'offset'), 0) + 0.005)";
+
     private const NO_INVOICES = "not exists (select 1 from billing_invoices bi where bi.deal_id = deals.id and bi.direction = 'issued' and bi.state <> 'void')";
 
     /**
@@ -55,10 +55,14 @@ final class MoneyBook
             and (deals.garage_payer = 'manager' or deals.scheme in {$schemes}))";
     }
 
-    /** Сделки раздела: со счётом раздела или идущие без счетов, которым он положен (`awaits`, точно — `expects`). */
-    public static function deals(string $tab, User|null|false $person, string $search = ''): Builder
+    /**
+     * Сделки раздела: со счётом раздела или идущие без счетов, которым он положен (`awaits`, точно — `expects`). `$own` — экран
+     * самого менеджера (`/account/money`, 22.11.2026): покупателю гаража без галки цены гаражных сделок нет (`Invoice::visibleToManager`).
+     */
+    public static function deals(string $tab, User|null|false $person, string $search = '', bool $own = false): Builder
     {
         return Deal::query()->where('deals.parallel', false)
+            ->when($own && $person && ! $person->seesGaragePrice(), fn ($q) => $q->whereNull('deals.garage_payer'))
             ->when($person !== false, fn ($q) => $person ? $q->where('deals.buyer_id', $person->id) : $q->whereNull('deals.buyer_id'))
             // Лупа — по машине: номер, убыток, VIN, марка (`Offer::searchCrm`).
             ->when($search !== '', fn ($q) => $q->whereHas('offer', fn ($o) => $o->searchCrm($search)))
@@ -66,10 +70,11 @@ final class MoneyBook
     }
 
     /** Чип «Статус» раздела, умолчание — после «Беру в работу» и не отменённые; лупа и адрес умолчание снимают. */
-    public static function facets(\Illuminate\Http\Request $request): Facets
+    public static function facets(\Illuminate\Http\Request $request, string $key = 'crm-money'): Facets
     {
         // Умолчание — не выбор: чип серым «Статус ▾» (`x-ui.facet-chip`), в окне отмечены все, кроме «Не взял в работу» и отменённых.
-        $facets = Facets::for($request, 'crm-money', MoneyStage::facet());
+        // Экран менеджера (`account-money`) чипа не рисует — умолчание действует молча.
+        $facets = Facets::for($request, $key, MoneyStage::facet());
         if (! $request->query->has('stage') && trim((string) $request->query('q')) === '') {
             $facets->implied('stage', MoneyStage::DEFAULT);
         }
@@ -77,10 +82,12 @@ final class MoneyBook
         return $facets;
     }
 
-    private static function with(string $tab): array
+    /** Счета раздела строки; менеджеру — только отправленные ему (`Invoice::shownToManager`): неотправленный ещё проверяют. */
+    private static function with(string $tab, bool $own = false): array
     {
         return ['offer', 'offer.vendor', 'buyer', 'contract', 'garageCar',
-            'invoices' => fn ($q) => $q->where('direction', 'issued')->whereRaw(self::tabSql($tab))->with(['payments', 'claims', 'payLinks.attempts', 'party'])];
+            'invoices' => fn ($q) => $q->where('direction', 'issued')->whereRaw(self::tabSql($tab))->when($own, fn ($x) => $x->shownToManager())
+                ->with(['payments', 'claims', 'payLinks.attempts', 'party'])];
     }
 
     /**
@@ -89,25 +96,30 @@ final class MoneyBook
      *
      * @return Collection<int, MoneyRow>
      */
-    public static function open(string $tab, User|null|false $person, ?Facets $facets = null, string $search = ''): Collection
+    public static function open(string $tab, User|null|false $person, ?Facets $facets = null, string $search = '', bool $own = false): Collection
     {
-        $q = self::deals($tab, $person, $search)->where(fn ($w) => $w->whereRaw(self::hasTabInvoice($tab, open: true))->orWhereRaw(self::awaits($tab)));
+        $q = self::deals($tab, $person, $search, $own)->where(fn ($w) => $w->whereRaw(self::hasTabInvoice($tab, open: true))->orWhereRaw(self::awaits($tab)));
         $facets?->applyTo($q);
-        $rows = $q->select('deals.*')->selectRaw(MoneyStage::sql().' as money_stage')->with(self::with($tab))->get()
-            ->map(fn (Deal $d) => self::row($d, $tab))->filter();
+        $rows = $q->select('deals.*')->selectRaw(MoneyStage::sql().' as money_stage')
+            ->when($own, fn ($x) => $x->selectRaw(self::hasTabInvoice($tab, open: true).' as tab_open'))
+            ->with(self::with($tab, $own))->get()
+            ->map(fn (Deal $d) => $own ? self::ownRow($d, $tab) : self::row($d, $tab))->filter();
+        // Ручные ссылки менеджеру не видны (`Invoice::visibleToManager`): их сторона — служебная.
+        $services = $tab === 'fees' && ! $own ? self::services($person, open: true)->search($search)->get()->map(fn (Invoice $i) => MoneyRow::service($i)) : [];
 
-        return $rows->concat($tab === 'fees' ? self::services($person, open: true)->search($search)->get()->map(fn (Invoice $i) => MoneyRow::service($i)) : [])->values();
+        return $rows->concat($services)->values();
     }
 
     /**
      * Оплаченные сделки раздела (все счета раздела оплачены) — запросом, для ленты порциями: свежая оплата сверху.
      */
-    public static function paid(string $tab, User|null|false $person, ?Facets $facets = null, string $search = ''): Builder
+    public static function paid(string $tab, User|null|false $person, ?Facets $facets = null, string $search = '', bool $own = false): Builder
     {
-        $q = self::deals($tab, $person, $search)->whereRaw(self::hasTabInvoice($tab))->whereRaw('not '.self::hasTabInvoice($tab, open: true));
+        // Менеджеру — где есть видимый ему счёт: оплаченное старым зачётом вознаграждения (`Offset`) ему не показывается.
+        $q = self::deals($tab, $person, $search, $own)->whereRaw(self::hasTabInvoice($tab, extra: $own ? self::SHOWN : ''))->whereRaw('not '.self::hasTabInvoice($tab, open: true));
         $facets?->applyTo($q);
 
-        return $q->select('deals.*')->selectRaw(MoneyStage::sql().' as money_stage')->with(self::with($tab))
+        return $q->select('deals.*')->selectRaw(MoneyStage::sql().' as money_stage')->with(self::with($tab, $own))
             ->orderByRaw("(select max(bi.paid_at) from billing_invoices bi where bi.deal_id = deals.id and bi.direction = 'issued' and bi.state = 'paid' and ".self::tabSql($tab, 'bi').') desc nulls last')
             ->orderByDesc('deals.id');
     }
@@ -118,10 +130,13 @@ final class MoneyBook
         return collect($deals)->map(fn (Deal $d) => MoneyRow::deal($d, $d->invoices))->values();
     }
 
-    /** Сделки с неоплаченным счётом раздела — числа разделов (без строк «счёта ещё нет»: денег по ним пока не ждём). */
-    public static function openDeals(string $tab, User|null|false $person, ?Facets $facets = null): Builder
+    /**
+     * Сделки с неоплаченным счётом раздела — числа разделов (без строк «счёта ещё нет»: денег по ним пока не ждём); `$own` —
+     * менеджеру: только с отправленным ему счётом.
+     */
+    public static function openDeals(string $tab, User|null|false $person, ?Facets $facets = null, bool $own = false): Builder
     {
-        $q = self::deals($tab, $person)->whereRaw(self::hasTabInvoice($tab, open: true));
+        $q = self::deals($tab, $person, '', $own)->whereRaw(self::hasTabInvoice($tab, open: true, extra: $own ? self::SHOWN : ''));
         $facets?->applyTo($q);
 
         return $q;
@@ -149,7 +164,8 @@ final class MoneyBook
     {
         $who = 'coalesce('.self::SERVICE_PERSON.', billing_invoices.manager_id)';
 
-        return Invoice::query()->where('kind', ChargeKind::Service->value)->where('direction', 'issued')->whereNull('deal_id')->whereNull('vehicle_id')
+        // Модератору — только засчитанные в сделку: счёт без сделки ему закрыт (`MoneyController::dealOnly`).
+        return \App\Http\Admin\MoneyController::dealOnly(Invoice::query())->where('kind', ChargeKind::Service->value)->where('direction', 'issued')->whereNull('deal_id')->whereNull('vehicle_id')
             ->where('state', '!=', InvoiceState::Void->value)->whereRaw(self::CREDIT_SHOWN)
             ->select('billing_invoices.*')->selectRaw(self::CREDITED.' as credited')
             ->when($open !== null, fn ($q) => $q->where('state', $open ? InvoiceState::Issued->value : InvoiceState::Paid->value))
@@ -177,6 +193,22 @@ final class MoneyBook
         }
 
         return $gap === null ? null : MoneyRow::deal($deal, collect(), MoneyRows::gap($gap));
+    }
+
+    /**
+     * Строка экрана менеджера: есть отправленный ему неоплаченный счёт — к оплате (с оплаченными рядом — их итог не мешает);
+     * нет — «Готовим счёт» без суммы: неотправленный ещё проверяют, а сделке без счетов он положен (как `row`).
+     */
+    private static function ownRow(Deal $deal, string $tab): ?MoneyRow
+    {
+        if ($deal->invoices->contains(fn (Invoice $i) => $i->state === InvoiceState::Issued)) {
+            return MoneyRow::deal($deal, $deal->invoices);
+        }
+        if (! $deal->getAttribute('tab_open') && (! self::expects($deal, $tab) || ($deal->invoices->isEmpty() && $deal->invoiceGap() === null))) {
+            return null;
+        }
+
+        return MoneyRow::deal($deal, collect());
     }
 
     /**

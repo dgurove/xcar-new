@@ -106,14 +106,20 @@ final class Nav
         if ($surface === Surface::Mail) {
             return $user ? [self::item('Почта', '/work/mail', icon: 'mail', capsule: false) + ['own' => true]] : [];
         }
+        // XCAR Pay (22.11.2026): только «Оплаты» и профиль — сотруднику CRM, менеджеру свои (`Billing\PayView`).
+        if ($surface === Surface::Pay) {
+            return $user ? [self::item('Оплаты', \App\Billing\PayView::home($user), icon: 'wallet', capsule: false) + ['own' => true]] : [];
+        }
 
         // Модератор: черновики, сделки и гараж вкладками «Предложений» (17.11.2026 — вся работа со сделками), почта по галке, чаты
-        // с менеджерами и профиль; оплаты и остальное CRM — админу. Значки — как у админа.
+        // с менеджерами, «Оплаты» (22.11.2026, начальник: «чтобы и модераторы видели, что по оплатам менеджеров») и профиль;
+        // остальное CRM — админу. Значки — как у админа.
         if ($surface === Surface::Crm && ! $user?->canManageCrm()) {
             return array_values(array_filter([
                 self::item('Предложения', '/offers', ['/offers', '/gallery'], icon: 'feed') + ['go' => self::offersHome($user)],
                 $user?->canCrmMail() ? self::item('Почта', '/work/mail', icon: 'mail') : null,
                 $user?->canEditDeals() ? self::item('Чаты', '/work/chats', icon: 'chats') : null,
+                $user?->canEditDeals() ? self::item('Оплаты', '/work/money', icon: 'wallet') : null,
                 self::item('Настройки', '/settings', ['/settings', '/account'], tab: false, capsule: false),
             ]));
         }
@@ -712,11 +718,15 @@ final class Nav
         if ($surface === Surface::Mail) {
             return $user->canCrmMail() ? array_filter(['/work/mail' => Boxes::unreadCount(Scope::Offers), '/offers/from-mail' => Boxes::registerCount(Scope::Offers)]) : [];
         }
+        // Оплатам — сотруднику оплаты «Пришли?», менеджеру — счета к оплате (то же число, что на значке, `User::badgeCount`).
+        if ($surface === Surface::Pay) {
+            return array_filter([\App\Billing\PayView::home($user) => $user->badgeCount(Surface::Pay)]);
+        }
         $badges = ['/account/notifications' => $user->unreadCount()];
 
         if ($surface === Surface::Crm && ! $user->canManageCrm()) {
-            // Модератору из общих бейджей — почта по галке и чаты площадки.
-            $keys = [...($user->canCrmMail() ? ['/offers/from-mail', '/work/mail'] : []), ...($user->canEditDeals() ? ['/work/chats'] : [])];
+            // Модератору из общих бейджей — почта по галке, чаты площадки и «Оплаты».
+            $keys = [...($user->canCrmMail() ? ['/offers/from-mail', '/work/mail'] : []), ...($user->canEditDeals() ? ['/work/chats', '/work/money'] : [])];
 
             return array_filter($badges + array_intersect_key(self::staffCounts($surface), array_flip($keys)));
         }

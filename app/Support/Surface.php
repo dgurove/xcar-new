@@ -10,7 +10,8 @@ use App\Users\User;
  * Поверхность — одно из пяти приложений на своём хосте: сайт, CRM, стоянка, логистика (гараж — раздел сайта /garage) и
  * партнёр — partner.xcar.ru для поставщиков (07.11.2026), чат — chat.xcar.ru (20.11.2026): те же чаты сайта и CRM отдельным
  * приложением, вид — по человеку (`Chat::staffView`), сделка — листом поверх чата (`x-ui.deal-sheet`); почта — mail.xcar.ru
- * (20.11.2026): почта CRM своим приложением, сделка письма — тем же листом.
+ * (20.11.2026): почта CRM своим приложением, сделка письма — тем же листом; оплаты — pay.xcar.ru (22.11.2026): «Оплаты» CRM
+ * сотрудникам и «Оплаты» менеджера своим приложением, вид — по человеку (`Billing\PayView`), сделка — тем же листом.
  * Определяется по хосту запроса в ResolveSurface; вне запроса — сайт.
  */
 enum Surface: string
@@ -22,6 +23,7 @@ enum Surface: string
     case Partner = 'partner';
     case Chat = 'chat';
     case Mail = 'mail';
+    case Pay = 'pay';
 
     public static function fromHost(string $host): self
     {
@@ -32,6 +34,7 @@ enum Surface: string
             config('xcar.partner_host') => self::Partner,
             config('xcar.chat_host') => self::Chat,
             config('xcar.mail_host') => self::Mail,
+            config('xcar.pay_host') => self::Pay,
             default => self::Site,
         };
     }
@@ -62,6 +65,7 @@ enum Surface: string
             self::Partner => config('xcar.partner_host'),
             self::Chat => config('xcar.chat_host'),
             self::Mail => config('xcar.mail_host'),
+            self::Pay => config('xcar.pay_host'),
         };
     }
 
@@ -115,6 +119,8 @@ enum Surface: string
             self::Partner => (bool) $user?->isSupplier(),
             self::Chat => (bool) $user && ($user->canEditDeals() || $user->canChat()),
             self::Mail => (bool) $user?->canCrmMail(),
+            // XCAR Pay: сотрудникам со сделками (админ, модератор) — «Оплаты» CRM, менеджеру и покупателю со сделками — свои.
+            self::Pay => (bool) $user && ($user->canEditDeals() || $user->hasDeals()),
         };
     }
 
@@ -129,6 +135,7 @@ enum Surface: string
             self::Partner => 'XCAR Partner',
             self::Chat => 'XCAR Chat',
             self::Mail => 'XCAR Mail',
+            self::Pay => 'XCAR Pay',
         };
     }
 
@@ -150,16 +157,18 @@ enum Surface: string
             self::Logistics => '/transports',
             self::Chat => '/chats',
             self::Mail => '/work/mail',
+            // Корень сам ведёт по человеку: сотруднику — `/work/money`, менеджеру — `/account/money` (`routes/pay.php`).
+            self::Pay => '/',
         };
     }
 
     /**
-     * Приложение одного раздела — XCAR Chat и XCAR Mail (20.11.2026): ни таб-бара, ни поиска, ни колокольчика, ни переходов в
+     * Приложение одного раздела — XCAR Chat, XCAR Mail (20.11.2026) и XCAR Pay (22.11.2026): ни таб-бара, ни поиска, ни колокольчика, ни переходов в
      * другие приложения (iPhone открыл бы их в Safari, где человек не вошёл); сделка — шторкой поверх (`x-ui.deal-sheet`).
      */
     public function single(): bool
     {
-        return $this === self::Chat || $this === self::Mail;
+        return in_array($this, [self::Chat, self::Mail, self::Pay], true);
     }
 
     /**

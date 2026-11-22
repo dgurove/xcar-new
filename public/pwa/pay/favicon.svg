@@ -1,0 +1,5 @@
+<svg width="1500" height="1500" viewBox="0 0 1500 1500" fill="none" xmlns="http://www.w3.org/2000/svg">
+<rect width="1500" height="1500" fill="black"/>
+<!-- XCAR Pay (22.11.2026): кошелёк, как «Оплаты» таб-бара CRM, — карта за ним и застёжка лаймом, сам белым, углы прямые, как у XCAR Mail. -->
+<g transform="translate(30 30) scale(60)"><path fill="#97BF0D" d="M4 4h13v3H4Z"/><path fill="white" d="M2 7h20v13H2Z"/><path fill="#97BF0D" d="M14.5 11h7.5v5h-7.5Z"/><circle cx="17" cy="13.5" r="1" fill="black"/></g>
+</svg>

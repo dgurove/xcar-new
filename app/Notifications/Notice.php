@@ -302,6 +302,15 @@ abstract class Notice extends Notification implements ShouldQueue
         return in_array($this->category(), ['supplier_mail', 'letters'], true);
     }
 
+    /**
+     * Уведомление о деньгах (счёт, оплата, заявка «оплатил», напоминание об оплате): есть подписка XCAR Pay — пуш только туда
+     * (`WebPushChannel`, 22.11.2026).
+     */
+    public function aboutMoney(): bool
+    {
+        return $this instanceof MoneyNotice || $this instanceof InvoiceNudgeNotice;
+    }
+
     /** Критичное приходит всегда: ответ на подтверждение, сделки, выбор цены. */
     public function critical(): bool
     {

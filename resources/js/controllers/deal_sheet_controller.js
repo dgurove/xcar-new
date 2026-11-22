@@ -22,6 +22,13 @@ export default class extends Controller {
     openValueChanged(href) {
         if (!href) return;
         this.element.removeAttribute('data-deal-sheet-open-value');
+        // `?deal=` / `?car=` из ссылки уведомления (XCAR Pay) — разовые: обновление страницы шторку второй раз не откроет.
+        const url = new URL(location.href);
+        if (url.searchParams.has('deal') || url.searchParams.has('car')) {
+            url.searchParams.delete('deal');
+            url.searchParams.delete('car');
+            history.replaceState(history.state, '', url);
+        }
         requestAnimationFrame(() => this.show(href));
     }
 
@@ -30,7 +37,11 @@ export default class extends Controller {
     }
 
     click(event) {
-        const link = event.target instanceof Element ? event.target.closest('a[data-deal-sheet]') : null;
+        let link = event.target instanceof Element ? event.target.closest('a[data-deal-sheet]') : null;
+        // Строка таблицы со шторкой (XCAR Pay, `x-ui.row-link sheet`): нажатие мимо кнопок и ссылок строки — её ссылка.
+        if (!link && event.target instanceof Element && !event.target.closest('a, button, input, select, textarea, label, form, dialog')) {
+            link = event.target.closest('[data-deal-sheet-row]')?.querySelector('a[data-deal-sheet]') ?? null;
+        }
         if (!link || event.defaultPrevented || event.button > 0 || event.metaKey || event.ctrlKey || event.shiftKey) return;
         event.preventDefault();
         event.stopPropagation();

@@ -219,7 +219,7 @@ class NotificationController
         return Subscription::where('user_id', $user->id)->whereNull('failed_at')->get()->map(function (Subscription $s) {
             $app = match ($s->host ? \App\Support\Surface::fromHost($s->host) : \App\Support\Surface::Site) {
                 \App\Support\Surface::Crm => 'CRM', \App\Support\Surface::Park => 'парковка', \App\Support\Surface::Logistics => 'логистика',
-                \App\Support\Surface::Partner => 'partner.xcar.ru', \App\Support\Surface::Chat => 'XCAR Chat', \App\Support\Surface::Mail => 'XCAR Mail', default => 'xcar.ru',
+                \App\Support\Surface::Partner => 'partner.xcar.ru', \App\Support\Surface::Chat => 'XCAR Chat', \App\Support\Surface::Mail => 'XCAR Mail', \App\Support\Surface::Pay => 'XCAR Pay', default => 'xcar.ru',
             };
             $agent = (string) $s->agent;
             $device = match (true) {

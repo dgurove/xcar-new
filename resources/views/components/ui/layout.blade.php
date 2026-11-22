@@ -14,6 +14,7 @@
     $skin = match ($surface) {
         \App\Support\Surface::Mail => ' surface-crm',
         \App\Support\Surface::Chat => \App\Chats\Chat::staffView(auth()->user()) ? ' surface-crm' : ' surface-site',
+        \App\Support\Surface::Pay => \App\Billing\PayView::staff() ? ' surface-crm' : ' surface-site',
         default => '',
     };
     $lock = $surface->opensFor(auth()->user()) ? \App\Users\Access\Lock::state() : null;

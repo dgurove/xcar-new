@@ -49,6 +49,9 @@ final class NoticeLink
             } elseif ($surface === Surface::Mail && $host === Surface::Crm->host()) {
                 // Письмо в CRM — то же письмо в XCAR Mail: адреса почты те же.
                 $href = $local;
+            } elseif ($surface === Surface::Pay && in_array($host, [Surface::Crm->host(), Surface::Site->host()], true)) {
+                // «Оплаты» CRM и сайта — те же адреса в XCAR Pay, сделка — шторкой (`pay`).
+                $href = $local;
             } else {
                 return $href;
             }
@@ -65,6 +68,7 @@ final class NoticeLink
             Surface::Park, Surface::Logistics, Surface::Partner => $href,
             // XCAR Chat: в нём только чаты — обращение гостя по своей теме, остальное — список чатов.
             Surface::Mail => self::mail($href, $path),
+            Surface::Pay => self::pay($href, $path),
             Surface::Chat => match (true) {
                 $path === '/contacts' => preg_match('~^/account/chats/(\d+)$~', (string) $subject, $m) ? Chat::path((int) $m[1]) : Chat::ROOT,
                 (bool) preg_match('~^/chats(?:/\d+)?$~', $path) => $href,
@@ -104,6 +108,23 @@ final class NoticeLink
         }
 
         return '/work/mail';
+    }
+
+    /**
+     * XCAR Pay (22.11.2026): «Оплаты» CRM и менеджера — как есть; сделка и машина — поверх «Оплат» шторкой (`?deal=` / `?car=`,
+     * `x-ui.deal-sheet`): сотруднику CRM, менеджеру его сделка на сайте; остальное — корень, он ведёт по человеку.
+     */
+    private static function pay(string $href, string $path): string
+    {
+        return match (true) {
+            (bool) preg_match('~^/account/money/deals/(\d+)~', $path, $m) => '/account/money?deal='.$m[1],
+            (bool) preg_match('~^/(?:work/money|account/money)(?:/|$)~', $path) => $href,
+            (bool) preg_match('~^/deals/(\d+)~', $path, $m) => '/account/money?deal='.$m[1],
+            (bool) preg_match('~^/work/deals/(\d+)~', $path, $m) => '/work/money?deal='.$m[1],
+            // Машина: корень уводит к «Оплатам» человека с тем же `?car=` (в очереди пуша не знаем, кто откроет).
+            (bool) preg_match('~^/(?:offers|garage/cars)/(\d+)~', $path, $m) => '/?car='.$m[1],
+            default => '/',
+        };
     }
 
     private static function site(string $href, string $path, ?string $subject): string

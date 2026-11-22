@@ -9,7 +9,8 @@ use App\Billing\Acquiring\Gateway;
 use App\Billing\Acquiring\PayerKind;
 use App\Billing\Acquiring\PayLink;
 use App\Billing\Actions\SaveRequisites;
-use App\Billing\DealMoney;
+use App\Billing\Acquiring\AcquiringPayment;
+use App\Billing\MoneyBook;
 use App\Billing\Documents\StatementPdf;
 use App\Billing\Export\ManagerStatement;
 use App\Billing\Invoice;
@@ -25,41 +26,68 @@ use App\Offers\Actions\SyncDealInvoices;
 use App\Offers\Deal;
 use App\Support\Money;
 use App\Support\OfficePreview;
-use App\Support\Sort;
+use App\Support\Portion;
+use App\Support\Table\ColRole;
+use App\Support\Table\Column;
+use App\Support\Table\Table;
 use App\Support\Surface;
 use App\Support\TempFile;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
 
 /**
- * «Деньги» менеджера: положение (оплатить / к выплате), сделки-расчёты по пресетам,
- * расчёт сделки с заявкой об оплате, реквизиты, акт сверки и выгрузка в «···».
+ * «Оплаты» менеджера: его сделки по разделам «Комиссии · ДКП» и заработок за месяц (с 22.11.2026 — тем же складом, что «Оплаты»
+ * CRM), оплата сделки (шторка «Оплатить» — на странице сделки), реквизиты, акт сверки и выгрузка в «···».
  * Всё — только своё, одной дверью `Invoice::visibleToManager`; закупочной и «нам» тут нет.
  */
 class MoneyController
 {
-    /** «Срочное» — требующие действия первыми, дальше свежие (`ManagerLedger::rows`); дата и сумма — выбором. */
-    public const SORTS = ['urgent' => ['Срочное', 'desc'], 'fresh' => ['Дата', 'desc'], 'amount' => ['Сумма', 'desc']];
+    /** Разделы экрана: как в «Оплатах» CRM — «Комиссии» и «ДКП»; «Выплаты» — его перевозки, когда есть (`ManagerLedger::transports`). */
+    public const TABS = ['fees' => 'Комиссии', 'dkp' => 'ДКП', 'payouts' => 'Выплаты'];
 
+    /**
+     * «Оплаты» менеджера — один экран на xcar.ru и XCAR Pay (22.11.2026, начальник: «менеджеры видят, что должны по комиссиям и по
+     * ДКП и сколько заработали»; владелец: «один экран везде»). Тот же склад, что страница человека в «Оплатах» CRM (`MoneyBook`
+     * своим режимом: только отправленные ему счета, `Invoice::shownToManager`): разделы крупными заголовками, заработок за месяц
+     * (`x-money.earned`), группы «К оплате» · «Готовим счёт» · «Оплачены» лентой. Сделки — с «Беру в работу», без отменённых
+     * (умолчание чипа CRM, сам чип не нужен: этапы маршрута — наши).
+     */
     public function index(Request $request)
     {
         $me = $request->user();
-        $ledger = new ManagerLedger($me);
-        $preset = array_key_exists($request->query('preset', ''), DealMoney::PRESETS) ? $request->query('preset') : 'all';
-        $sort = Sort::from($request->query('sort'), self::SORTS, '-urgent');
-        $rows = $ledger->rows($preset);
-        if ($sort->key !== 'urgent' || ! $sort->desc) {
-            $rows = $rows->sortBy(fn ($r) => match ($sort->key) {
-                'fresh' => ($r->created_at ?? $r->stage_at)?->timestamp ?? 0,
-                'amount' => $r->money->amount ?? 0,
-                default => [$r->money->needsAction(), ($r->created_at ?? $r->stage_at)?->timestamp ?? 0],
-            }, SORT_REGULAR, $sort->desc)->values();
-        }
-
-        return view('cabinet.money.index', [
-            'deals' => $rows, 'counts' => $ledger->counts(), 'preset' => $preset, 'sort' => $sort,
-            'position' => $ledger->position(), 'sums' => $ledger->sums(), 'party' => Party::forUser($me, false),
+        $transports = (new ManagerLedger($me))->transports();
+        $tabs = $transports->isNotEmpty() ? self::TABS : array_diff_key(self::TABS, ['payouts' => 0]);
+        $facets = MoneyBook::facets($request, 'account-money');
+        $counts = array_filter([
+            'fees' => MoneyBook::openDeals('fees', $me, $facets, own: true)->count(),
+            'dkp' => MoneyBook::openDeals('dkp', $me, $facets, own: true)->count(),
+            'payouts' => $transports->filter(fn ($r) => $r->money->preset === 'payout')->count(),
         ]);
+        // Раздел — из адреса; без него — первый, где есть что оплатить.
+        $tab = array_key_exists((string) $request->query('tab'), $tabs) ? (string) $request->query('tab')
+            : (array_key_first(array_intersect_key($counts, $tabs)) ?? 'fees');
+        $view = ['tabs' => $tabs, 'tab' => $tab, 'counts' => $counts, 'party' => Party::forUser($me, false), 'me' => $me];
+        if ($tab === 'payouts') {
+            return view('cabinet.money.index', $view + ['transports' => $transports, 'rows' => collect(), 'paid' => collect(), 'portion' => null]);
+        }
+        $open = MoneyBook::open($tab, $me, $facets, own: true);
+        $paidQ = MoneyBook::paid($tab, $me, $facets, own: true);
+        $portion = Portion::of($request, $paidQ, (clone $paidQ)->reorder()->count());
+        $paid = MoneyBook::paidRows($portion->items());
+        $attempts = AcquiringPayment::whereIn('payment_id', $paid->flatMap(fn ($r) => $r->invoices->flatMap(fn ($i) => $i->payments->pluck('id'))))->get()->keyBy('payment_id');
+
+        return view('cabinet.money.index', $view + ['rows' => $open, 'paid' => $paid, 'portion' => $portion, 'attempts' => $attempts, 'table' => self::table()]);
+    }
+
+    /** Столбцы экрана: что за машина, что по сделке его словами, что с оплатой, его вознаграждение, когда выставили, сколько. */
+    public static function table(): Table
+    {
+        return Table::of(new Column('title', 'Марка, модель', grow: true, rem: 14),
+            new Column('state', 'Статус', from: 'sm', role: ColRole::State, rem: 13),
+            new Column('pay', 'Оплата', from: 'sm', role: ColRole::State, rem: 10, fixed: true),
+            new Column('commission', 'Вознаграждение', from: 'md', num: true, role: ColRole::When, cell: 'nums', rem: 8, fixed: true),
+            new Column('since', 'Выставлено', from: 'sm', num: true, role: ColRole::When, cell: 'nums', rem: 7.5, fixed: true),
+            new Column('amount', 'Сумма', num: true, role: ColRole::When, cell: 'nums', rem: 7, fixed: true));
     }
 
     /** Страница счёта у менеджера — это расчёт сделки (или машина в гараже); старые ссылки и уведомления ведут туда. */

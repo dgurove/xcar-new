@@ -1,10 +1,7 @@
 <?php
 
-namespace App\Http\Admin;
+namespace App\Billing;
 
-use App\Billing\Invoice;
-use App\Billing\InvoiceState;
-use App\Billing\MoneyStage;
 use App\Offers\Deal;
 use App\Offers\Offer;
 use Carbon\CarbonInterface;

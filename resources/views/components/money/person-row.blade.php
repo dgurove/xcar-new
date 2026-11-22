@@ -1,13 +1,14 @@
 {{-- Строка страницы человека в «Оплатах» — сделка со всеми её счетами раздела, ручная ссылка без сделки или выплата
-     (`Http\Admin\MoneyRow`; 22.11.2026, владелец: «ВСЕ сделки, столбец „Статус“ — этап», «несколько поступлений по тачке — сумма, а
+     (`Billing\MoneyRow`; 22.11.2026, владелец: «ВСЕ сделки, столбец „Статус“ — этап», «несколько поступлений по тачке — сумма, а
      не две строки»). Слева — значок типа, марка с годом; «Статус» — этап сделки (`MoneyStage`), «Оплата» — что с деньгами словом
      (`MoneyRows::state`, у оплаченной — как заплатили, у сделки без счёта — чего не хватает). Справа — сумма и сколько прошло с
      выставления («6д 5ч», срок прошёл — красным), у оплаченной — день оплаты. На ПК — кнопки строки (владелец: «без необходимости
      проваливаться внутрь»): «Выставить» и «Оплатил наличными»; «Оплатил наличными» (без «Напомнить» — владелец 22.11.2026); «Пришли»; «Назначить менеджера»;
-     «Выплатить». На телефоне — два этажа и одна главная кнопка во втором. Нажатие — окно машины рядом, без машины — карточка счёта. --}}
+     «Выплатить». На телефоне — два этажа и одна главная кнопка во втором. Нажатие — окно машины рядом, без машины — карточка счёта;
+     в XCAR Pay (22.11.2026) машина — шторкой со страницей CRM (`Support\DealSheet`): окно машины там не живёт, его действия — в CRM. --}}
 @props(['table', 'row' => null, 'invoice' => null, 'tab' => null, 'attempts' => null, 'tried' => null])
 @php
-    use App\Support\Money; use App\Http\Admin\MoneyRows as R; use App\Http\Admin\MoneyRow;
+    use App\Support\Money; use App\Http\Admin\MoneyRows as R; use App\Billing\MoneyRow;
     // Строка одним счётом — вкладка «Оплата за подбор» (`SelectionController`): столбцы «Статус» (что с оплатой) и «Менеджер».
     $r = $row ?? ($invoice->deal ? MoneyRow::deal($invoice->deal, collect([$invoice])) : MoneyRow::service($invoice));
     $offer = $r->offer();
@@ -47,6 +48,8 @@
     // Наличными у ручной ссылки — только у назначенной (в «Без менеджера» кнопка строки одна: «Назначить менеджера»).
     $cash = ! $paid && ! $payout && ! $claim && $first && ! ($service && ! $r->personId());
     $assign = $service && $admin && ! $r->service->manager_id && ! $r->service->credit_deal_id;
+    // XCAR Pay: машина — шторкой поверх оплат, строку целиком ловит `deal_sheet_controller`.
+    $sheet = $offer && \App\Billing\PayView::here() ? \App\Support\DealSheet::crm($offer) : null;
 @endphp
 @php ob_start(); @endphp
 @switch($main)
@@ -55,14 +58,14 @@
     @case('payout')<button type="button" class="btn btn-accent btn-xs" data-controller="emit" data-action="emit#send" data-emit-event-param="pay-{{ $r->service->id }}:open">Выплатить</button>@break
 @endswitch
 @php $button = trim(ob_get_clean()); @endphp
-<tr data-detail-key="{{ $r->key() }}" data-search-row>
+<tr @if ($sheet) data-deal-sheet-row @else data-detail-key="{{ $r->key() }}" @endif data-search-row>
     @foreach ($table->columns as $key => $col)
         @switch($key)
         @case('title')
     <td class="{{ $col->classes() }}">
         {{-- Телефон: первый этаж — название и сумма, второй — этап (или тревога оплаты) и справа кнопка или сколько прошло
              (22.11.2026: под названием теперь этап, сумма невыставленной — тоже справа). --}}
-        <x-cell.title :key="$r->key()" :offer="$offer" :title="$title" :category="$offer ? null : \App\Cars\Category::Passenger" :with="$tab ? ['tab' => $tab] : []">@if ($amount > 0)<span class="line-end sm:hidden nums {{ $paid ? 'text-open' : '' }}">{{ Money::rub($amount) }}</span>@endif</x-cell.title>
+        <x-cell.title :key="$r->key()" :offer="$offer" :title="$title" :category="$offer ? null : \App\Cars\Category::Passenger" :with="$tab ? ['tab' => $tab] : []" :sheet="$sheet">@if ($amount > 0)<span class="line-end sm:hidden nums {{ $paid ? 'text-open' : '' }}">{{ Money::rub($amount) }}</span>@endif</x-cell.title>
         <span class="cell-sub cell-sub--one sm:hidden">@if ($alarm)<span class="{{ $tone }}">{{ $word }}</span>@elseif ($r->stage)<span>{{ $r->stage }}</span>@elseif ($word)<span class="{{ $tone }}">{{ $word }}</span>@endif<span class="line-end">@if ($button){!! $button !!}@elseif ($sinceText)<span class="nums {{ $sinceTone }}">{{ $sinceText }}</span>@endif</span></span>
     </td>
         @break

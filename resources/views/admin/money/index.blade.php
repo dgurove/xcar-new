@@ -9,8 +9,8 @@
     $view = ListView::fromRequest(request()) === ListView::LIST ? ListView::LIST : ListView::TABLE;
 @endphp
 <x-ui.shell title="Оплаты" :heading="false" :detail="$detail">
-    <div class="title-row"><x-ui.big-tabs label="Оплаты" :tabs="MoneyController::TABS" :current="$tab" :href="fn ($k) => '/work/money?tab='.$k"
-        :badges="$counts['counts']" :todo="$counts['tones']"/></div>
+    <div @class(['title-row', 'title-row--app' => \App\Billing\PayView::here()])><x-ui.big-tabs label="Оплаты" :tabs="MoneyController::tabs()" :current="$tab" :href="fn ($k) => '/work/money?tab='.$k"
+        :badges="$counts['counts']" :todo="$counts['tones']"/>@if (\App\Billing\PayView::here())<span class="ml-auto shrink-0"><x-ui.me-menu/></span>@endif</div>
     <x-ui.toolbar name="money" :sort="$sort" :facets="$facets" search="Имя, ТС, номер" search-target="#money-feed">
         {{-- На телефоне обе раскладки — строки: переключателя нет, шапка в два ряда (09.10.2026). --}}
         <x-slot:extra><span class="contents max-sm:hidden"><x-ui.view-switch :views="[ListView::TABLE, ListView::LIST]" :current="$view"/></span></x-slot:extra>
