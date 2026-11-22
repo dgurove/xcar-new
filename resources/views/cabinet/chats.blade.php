@@ -7,7 +7,9 @@
     $base ??= \App\Chats\Chat::ROOT;
     $chat ??= null;
     $offer ??= null;
-    $other = $chat ? ($chat->isCounterpart($me) ? $chat->user : $chat->manager) : (($offer || $current === 'support') && $me->isBuyer() ? $me->manager : null);
+    // Пустой экран лички (`/chats/with/{user}`, 22.11.2026): собеседник — тот, кому пишут.
+    $with ??= null;
+    $other = $chat ? ($chat->isCounterpart($me) ? $chat->user : $chat->manager) : ($with ?? (($offer || $current === 'support') && $me->isBuyer() ? $me->manager : null));
     $name = $chat ? $chat->counterpartName($me) : ($other?->shortName() ?? \App\Chats\Chat::PLATFORM);
     // Шапка ведёт к собеседнику: менеджеру — страница покупателя с возвратом в чат; покупателю и всем,
     // кто пишет площадке, — шторка-контакт; статус там по рабочему времени, а не по seen_at.
@@ -20,7 +22,9 @@
         $other->manager_id === $me->id => '/buyers/'.$other->id.'?chat='.$chat->id,
         default => null,
     };
-    $status = $mine ? false : \App\Chats\Hours::presence(feminine: $other === null);
+    // В личке (кроме покупателя с его менеджером) — настоящий «в сети» собеседника, а не часы работы площадки.
+    $direct = $with || ($chat?->isDirect() && ! $me->isBuyer());
+    $status = $mine || $direct ? false : \App\Chats\Hours::presence(feminine: $other === null);
     $others = $mine || ! $other ? collect() : $chats->filter(fn ($c) => $c->manager_id === $other->id && $c->id !== $chat?->id);
     // «Администрация XCAR» в списке есть всегда: обращения ещё нет — строка ведёт на пустой экран. Покупателю менеджера —
     // вместо неё его менеджер (12.10.2026, владелец: «покупатель пишет менеджеру, площадку убрать»).

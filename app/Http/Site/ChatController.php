@@ -6,9 +6,11 @@ use App\Chats\Actions\DeleteMessage;
 use App\Chats\Actions\EditMessage;
 use App\Chats\Actions\MarkChatRead;
 use App\Chats\Actions\OpenChat;
+use App\Chats\Actions\OpenDirect;
 use App\Chats\Actions\OpenEnquiry;
 use App\Chats\Actions\PostMessage;
 use App\Chats\Chat;
+use App\Chats\Direct;
 use App\Chats\File;
 use App\Chats\GuestEnquiry;
 use App\Chats\Message;
@@ -20,6 +22,7 @@ use App\Media\Thumb;
 use App\Media\WebpJpeg;
 use App\Offers\Offer;
 use App\Support\OfficePreview;
+use App\Users\User;
 use Illuminate\Http\Exceptions\HttpResponseException;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
@@ -60,6 +63,20 @@ class ChatController
         $messages = $chat->messages()->with(['author', 'files', 'deletedBy'])->get();
 
         return response(view('chat.messages', ['chat' => $chat, 'messages' => $messages, 'user' => $user]))
+            ->header('X-Chat-Id', (string) $chat->id)->header('X-Chat-Url', "/chats/{$chat->id}/messages");
+    }
+
+    /** Первое сообщение лички (`Chats\Direct`): личка заводится здесь же, как чат по ТС в open(). */
+    public function direct(Request $request, User $user, OpenDirect $open, PostMessage $post)
+    {
+        $me = $request->user();
+        abort_unless(Direct::between($me, $user) || Direct::canStart($me, $user), 404);
+        $this->validateMessage($request);
+        $chat = $open($me, $user);
+        $this->guarded(fn () => $post($chat, $me, $request->input('text'), $request->file('files', []), $request->integer('reply_to') ?: null));
+        $messages = $chat->messages()->with(['author', 'files', 'deletedBy'])->get();
+
+        return response(view('chat.messages', ['chat' => $chat, 'messages' => $messages, 'user' => $me]))
             ->header('X-Chat-Id', (string) $chat->id)->header('X-Chat-Url', "/chats/{$chat->id}/messages");
     }
 

@@ -4,6 +4,7 @@ namespace App\Http\Cabinet;
 
 use App\Chats\Actions\MarkChatRead;
 use App\Chats\Chat;
+use App\Chats\Direct;
 use App\Chats\Presence;
 use App\Http\Site\ChatController as Feed;
 use App\Offers\Offer;
@@ -81,12 +82,41 @@ class ChatController
         ]);
     }
 
+    /**
+     * Личка с человеком (22.11.2026, `Chats\Direct`): есть — на её экран, нет — пустой экран, первое сообщение её заведёт.
+     * Выбор из шторки «Написать» приходит `?user=` (форма GET): «Администрация XCAR» — `support`.
+     */
+    public function with(Request $request, ?User $user = null)
+    {
+        $me = $request->user();
+        $to = Direct::target($request, $user);
+        if ($to === 'support') {
+            return redirect(Chat::path('support'));
+        }
+        if ($chat = Direct::between($me, $to)) {
+            return redirect(Chat::path($chat->id));
+        }
+        abort_unless(Direct::canStart($me, $to), 404);
+        if (! $user) {
+            return redirect(Chat::directPath($to->id));
+        }
+
+        return view('cabinet.chats', [
+            'chat' => null, 'offer' => null, 'with' => $to, 'messages' => collect(), 'user' => $me, 'firstUnread' => 0, 'more' => false,
+            'chats' => $this->list($me, $request), 'current' => 'with', 'base' => Chat::ROOT,
+        ]);
+    }
+
     /** Мои чаты; лупа над списком (`q`) — имя собеседника, марка или модель ТС, номер предложения. */
     private function list(User $me, ?Request $request = null)
     {
         $q = trim((string) $request?->query('q'));
+        // Люди под запрос — первыми над чатами (`Direct::people`, 22.11.2026), только на первой странице; их лички ниже не повторяются.
+        $people = $q !== '' && (int) $request?->query('page', 1) <= 1 ? Direct::people($me, $q) : collect();
+        view()->share('people', $people);
 
-        return Chat::where('messages_count', '>', 0)->where(fn ($w) => $w->where('user_id', $me->id)->orWhere('manager_id', $me->id)->when($me->isAdmin(), fn ($w) => $w->orWhereNull('manager_id')))
+        return Chat::where('messages_count', '>', 0)
+            ->when($people->isNotEmpty(), fn ($w) => $w->whereNotIn('chats.id', $people->pluck('chat.id')->filter()))->where(fn ($w) => $w->where('user_id', $me->id)->orWhere('manager_id', $me->id)->when($me->isAdmin(), fn ($w) => $w->orWhereNull('manager_id')))
             ->search($q)
             ->withLast()->orderByDesc('last_message_at')->paginate(30)->withPath(Chat::ROOT)->withQueryString();
     }

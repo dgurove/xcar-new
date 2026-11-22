@@ -7,6 +7,7 @@ use App\Chats\Actions\MarkChatRead;
 use App\Chats\Chat;
 use App\Http\Admin\ChatController as Staff;
 use App\Http\Cabinet\ChatController as Cabinet;
+use App\Users\User;
 use Illuminate\Http\Request;
 
 /**
@@ -26,7 +27,14 @@ class ChatController
         $user = $request->user();
         $own = $chat->manager_id === $user->id || $chat->user_id === $user->id;
 
-        return Chat::staffView($user) && ! $own ? app(Staff::class)->show($request, $chat, $read) : app(Cabinet::class)->show($request, $chat, $read);
+        // Своя личка сотрудника — экраном сотрудника (22.11.2026): у модератора сайта нет, и список слева не должен меняться.
+        return Chat::staffView($user) && (! $own || $chat->isDirect()) ? app(Staff::class)->show($request, $chat, $read) : app(Cabinet::class)->show($request, $chat, $read);
+    }
+
+    /** Личка (`Chats\Direct`): сотруднику — экран CRM, остальным — сайта. */
+    public function with(Request $request, ?User $user = null)
+    {
+        return Chat::staffView($request->user()) ? app(Staff::class)->with($request, $user) : app(Cabinet::class)->with($request, $user);
     }
 
     public function destroy(Request $request, Chat $chat, DeleteChat $delete)

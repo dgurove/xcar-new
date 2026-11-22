@@ -6,7 +6,8 @@
         <x-chat.avatar :user="$user" :size="72" :online="$status === 'в сети'" class="text-2xl"/>
         <div class="mt-3 text-lg font-medium">{{ $name }}</div>
         @if ($status)<div class="text-sm text-ink-muted">{{ $status }}</div>@endif
-        @if ($user?->phone)
+        {{-- Телефон сотрудника менеджеру не показываем (личка, 22.11.2026): только имя и «в сети». --}}
+        @if ($user?->phone && ! ($user->canEditDeals() && ! $me?->canEditDeals()))
             <div class="mt-3">
                 <x-ui.phone :user="$user"/>
             </div>

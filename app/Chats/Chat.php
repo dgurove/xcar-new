@@ -2,22 +2,27 @@
 
 namespace App\Chats;
 
+use App\Offers\Deal;
 use App\Offers\Offer;
 use App\Search\Term;
+use App\Support\DealSheet;
 use App\Support\FastAttributes;
 use App\Support\Linkify;
+use App\Support\Surface;
 use App\Users\User;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Str;
 
 /**
  * Чат по предложению (пара оффер + участник) или обращение с сайта (без предложения; у гостя — по токену).
- * Вторая сторона — сотрудники площадки, а с manager_id — менеджер, с которым говорит его покупатель:
- * тогда счётчик unread_for_staff и AuthorKind::Staff означают «вторая сторона», сотрудники в чате не участвуют.
+ * Вторая сторона — сотрудники площадки, а с manager_id — второй человек пары: менеджер, с которым говорит его покупатель,
+ * или собеседник лички (`Chats\Direct`, 22.11.2026: без машины, сотрудник ↔ сотрудник или менеджер): тогда счётчик
+ * unread_for_staff и AuthorKind::Staff означают «вторая сторона», сотрудники площадки в чате не участвуют.
  */
 #[Fillable(['offer_id', 'user_id', 'manager_id', 'guest_name', 'guest_email', 'guest_token', 'messages_count', 'unread_for_user', 'unread_for_staff', 'read_seq_user', 'read_seq_staff', 'last_message_at'])]
 class Chat extends Model
@@ -119,7 +124,7 @@ class Chat extends Model
     }
 
     /** Чаты площадки по машине — по менеджеру: строки подтверждений, резерва и интереса берут свой отсюда (`x-offer.chat-button`). */
-    public static function byManager(Offer $offer): \Illuminate\Support\Collection
+    public static function byManager(Offer $offer): Collection
     {
         return self::where('offer_id', $offer->id)->whereNull('manager_id')->where('messages_count', '>', 0)->get()->keyBy('user_id');
     }
@@ -140,6 +145,30 @@ class Chat extends Model
         return $this->offer_id === null;
     }
 
+    /** Личка двух людей без машины (`Chats\Direct`); переписка покупателя со своим менеджером — она же. */
+    public function isDirect(): bool
+    {
+        return $this->offer_id === null && $this->manager_id !== null;
+    }
+
+    /** Человек — одна из сторон пары (участник или вторая сторона по `manager_id`), а не сотрудник площадки или читатель. */
+    public function hasParty(?User $user): bool
+    {
+        return $user !== null && ($user->id === $this->user_id || ($this->manager_id !== null && $user->id === $this->manager_id));
+    }
+
+    /** Собеседник читающего: второй стороне — участник, участнику — менеджер пары (у чата площадки — никто, это XCAR). */
+    public function otherFor(?User $user): ?User
+    {
+        return $this->isCounterpart($user) ? $this->user : $this->manager;
+    }
+
+    /** Экран лички с человеком на этом хосте: есть — откроется она, нет — пустой экран, первое сообщение её заведёт. */
+    public static function directPath(int|string $userId): string
+    {
+        return self::base().'/with/'.$userId;
+    }
+
     /**
      * Вид чатов CRM — сотрудник, что отвечает за площадку (`canEditDeals`): в CRM всегда, в XCAR Chat (20.11.2026) — по
      * человеку, а не по хосту: одно приложение на всех, каждому — привычный вид. Им решают список (`Chat\ChatController`),
@@ -147,10 +176,10 @@ class Chat extends Model
      */
     public static function staffView(?User $user = null): bool
     {
-        $surface = \App\Support\Surface::current();
+        $surface = Surface::current();
 
-        return $surface === \App\Support\Surface::Crm
-            || ($surface === \App\Support\Surface::Chat && (bool) ($user ?? auth()->user())?->canEditDeals());
+        return $surface === Surface::Crm
+            || ($surface === Surface::Chat && (bool) ($user ?? auth()->user())?->canEditDeals());
     }
 
     /**
@@ -159,30 +188,30 @@ class Chat extends Model
      */
     public static function carHref(Offer $offer, ?User $user = null, ?string $sitePath = null): string
     {
-        if (\App\Support\Surface::current() !== \App\Support\Surface::Chat) {
+        if (Surface::current() !== Surface::Chat) {
             return $sitePath ?? '/offers/'.$offer->number;
         }
         $user ??= auth()->user();
         if (self::staffView($user)) {
-            return \App\Support\Surface::Crm->url('/offers/'.$offer->number);
+            return Surface::Crm->url('/offers/'.$offer->number);
         }
         // Менеджеру из плашки ТС — его идущая сделка по машине, если есть: ради неё шторку и открывают.
-        $path = $sitePath ?? ($user ? \App\Offers\Deal::where('offer_id', $offer->id)->where('buyer_id', $user->id)->active()->latest('id')->first()?->href() : null)
+        $path = $sitePath ?? ($user ? Deal::where('offer_id', $offer->id)->where('buyer_id', $user->id)->active()->latest('id')->first()?->href() : null)
             ?? '/offers/'.$offer->number;
 
-        return str_starts_with($path, 'http') ? $path : \App\Support\Surface::Site->url($path);
+        return str_starts_with($path, 'http') ? $path : Surface::Site->url($path);
     }
 
     /** Атрибуты ссылки, что открывает шторку сделки в XCAR Chat; на других хостах — ничего (`Support\DealSheet`). */
     public static function sheetAttrs(Offer $offer): string
     {
-        return \App\Support\Surface::current() === \App\Support\Surface::Chat ? \App\Support\DealSheet::attrs() : '';
+        return Surface::current() === Surface::Chat ? DealSheet::attrs() : '';
     }
 
     /** Корень экрана чатов на этом хосте: в CRM — «Чаты» работы, на сайте и в XCAR Chat — `/chats`. */
     public static function base(): string
     {
-        return \App\Support\Surface::inCrm() ? '/work/chats' : self::ROOT;
+        return Surface::inCrm() ? '/work/chats' : self::ROOT;
     }
 
     /** Чат покупателя со своим менеджером, а не с площадкой. */

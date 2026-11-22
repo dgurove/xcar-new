@@ -28,7 +28,8 @@ final class MarkChatRead
         $side = match (true) {
             ! $counterpart => [$chat->user_id],
             $chat->isBuyerChat() => [$chat->manager_id],
-            default => User::withRole(Role::Admin)->pluck('id')->all(),
+            // Сторона площадки — и модераторы: `Notify::chat` шлёт им те же строки ленты (до 22.11.2026 у них они не гасли).
+            default => User::withRole(Role::Admin, Role::Moderator)->pluck('id')->all(),
         };
         ($this->readNotices)($side, [Chat::subject($chat->id)]);
         $column = $counterpart ? 'unread_for_staff' : 'unread_for_user';

@@ -23,7 +23,8 @@ class EnquiryController
             return view('site.pages.kontakty', ['chat' => null, 'messages' => null, 'user' => $user, 'staff' => true]);
         }
         $chat = $user
-            ? Chat::whereNull('offer_id')->where('user_id', $user->id)->latest('last_message_at')->first()
+            // Обращение к площадке (покупателю — к своему менеджеру), а не личка с сотрудником (22.11.2026).
+            ? Chat::whereNull('offer_id')->where('user_id', $user->id)->where('manager_id', $user->isBuyer() ? $user->manager_id : null)->latest('last_message_at')->first()
             : $guest->chat($request);
         if ($chat) {
             $read($chat, $user, $guest->token($request));

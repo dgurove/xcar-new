@@ -53,6 +53,9 @@
             @if ($chosen)<span class="truncate">{{ $chosen['name'] }}</span>@else<span class="text-accent-text">{{ $none && $value === null ? $none : $placeholder }}</span>@endif
             <x-ui.chevron/>
         </button>
+    @elseif ($variant === 'pill')
+        {{-- Лаймовой пилюлей с карандашом в строке заголовка — «Написать» чатов (22.11.2026, как в Почте): на телефоне кружок без подписи. --}}
+        <button type="button" class="btn btn-s btn-accent shrink-0 rounded-full" data-action="sheet#open" aria-label="{{ $placeholder }}"><x-ui.icon name="edit" class="size-4"/><span class="hidden sm:inline">{{ $placeholder }}</span></button>
     @elseif ($variant === 'none')
         {{-- Без своей строки: шторку открывает событие (строка «Покупатель» в «Оформлении» сделки, 16.11.2026). --}}
     @else

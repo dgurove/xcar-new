@@ -2,13 +2,16 @@
 
 namespace App\Notifications;
 
+use App\Chats\Actions\AutoReply;
 use App\Chats\AuthorKind;
 use App\Chats\Chat;
+use App\Chats\Jobs\RetractChatMessage;
 use App\Chats\Message;
 use App\Push\WebPushChannel;
 use App\Support\Surface;
 use App\Telegram\Text;
 use App\Users\User;
+use Illuminate\Support\Collection;
 
 /**
  * Сообщение в чате: пуш и Telegram — на каждое (пуши одного чата заменяют друг друга по tag, в Telegram — каждое со
@@ -41,14 +44,28 @@ final class ChatNotice extends Notice
     /** Адресат — не сотрудник площадки: менеджер чата (ему пишет покупатель или площадка) или покупатель. */
     private function toManagerSide(User $user): bool
     {
+        // Сотрудник в своей личке (22.11.2026) — как в чате площадки: каждое сообщение строкой ленты, Telegram — по его настройкам.
+        if ($this->toStaffInDirect($user)) {
+            return false;
+        }
+
         return ! $this->forStaff || ($this->message->chat->manager_id !== null && $this->message->chat->manager_id === $user->id);
+    }
+
+    /** Личка, а адресат — сотрудник (`canEditDeals`): ему чат — работа CRM (`/work/chats/{id}`), а не сайта. */
+    private function toStaffInDirect(?User $user = null): bool
+    {
+        $chat = $this->message->chat;
+        $user ??= $this->forStaff ? $chat->manager : $chat->user;
+
+        return $chat->isDirect() && (bool) $user?->canEditDeals();
     }
 
     /**
      * Файлы сообщения — в Telegram вслед за текстом, ответом на него (`TelegramChannel`, 16.11.2026: «всё в телегу» — и счёт
      * страховой вложением, и фото от покупателя). @return \Illuminate\Support\Collection<int, \App\Chats\File>
      */
-    public function telegramFiles(): \Illuminate\Support\Collection
+    public function telegramFiles(): Collection
     {
         return $this->message->loadMissing('files')->files->take(10)->values();
     }
@@ -71,11 +88,11 @@ final class ChatNotice extends Notice
     /** Сообщения бота об этом сообщении чата — удалить у всех, когда его удалили (`Chats\Jobs\RetractChatMessage`, 17.11.2026). */
     public function telegramSubject(): ?string
     {
-        return \App\Chats\Jobs\RetractChatMessage::subjectOf($this->message->id);
+        return RetractChatMessage::subjectOf($this->message->id);
     }
 
     /** Строка ленты знает своё сообщение — убрать её вместе с ним. */
-    public function toArray(\App\Users\User $user): array
+    public function toArray(User $user): array
     {
         return parent::toArray($user) + ['chat_message' => $this->message->id];
     }
@@ -87,7 +104,7 @@ final class ChatNotice extends Notice
     public function toTelegram(): ?array
     {
         $m = $this->message;
-        if ($m->author_kind !== AuthorKind::Participant && ! $m->author_id && str_contains((string) $m->text, \App\Chats\Actions\AutoReply::MARK)) {
+        if ($m->author_kind !== AuthorKind::Participant && ! $m->author_id && str_contains((string) $m->text, AutoReply::MARK)) {
             return null;
         }
         $chat = $m->chat;
@@ -115,7 +132,7 @@ final class ChatNotice extends Notice
     {
         $chat = $this->message->chat;
 
-        return $this->forStaff && ! $chat->isBuyerChat() ? Surface::Crm->url('/work/chats/'.$chat->id) : parent::telegramUrl();
+        return ($this->forStaff && ! $chat->isBuyerChat()) || $this->toStaffInDirect() ? Surface::Crm->url('/work/chats/'.$chat->id) : parent::telegramUrl();
     }
 
     private function who(): string
@@ -135,7 +152,11 @@ final class ChatNotice extends Notice
         $chat = $this->message->chat;
         $who = $this->who();
 
-        return $chat->isEnquiry() ? "{$who}: обращение с сайта" : "{$who}: сообщение по № {$chat->offer->number}";
+        return match (true) {
+            $chat->isDirect() => "{$who} пишет",
+            $chat->isEnquiry() => "{$who}: обращение с сайта",
+            default => "{$who}: сообщение по № {$chat->offer->number}",
+        };
     }
 
     public function text(): ?string
@@ -146,7 +167,7 @@ final class ChatNotice extends Notice
     /** Чат площадки сотруднику — работа CRM: только там (адрес у него сайтовый, `Chat::path`). */
     public function surface(): ?Surface
     {
-        return $this->forStaff && ! $this->message->chat->isBuyerChat() ? Surface::Crm : parent::surface();
+        return ($this->forStaff && ! $this->message->chat->isBuyerChat()) || $this->toStaffInDirect() ? Surface::Crm : parent::surface();
     }
 
     public function href(): string

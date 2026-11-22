@@ -3,6 +3,8 @@
 namespace App\Live;
 
 use App\Billing\Events\InvoiceIssued;
+use App\Billing\Events\InvoiceRecalled;
+use App\Billing\Events\InvoiceShown;
 use App\Billing\Events\InvoiceVoided;
 use App\Billing\Events\PaymentClaimed;
 use App\Billing\Events\PaymentRecorded;
@@ -77,8 +79,8 @@ final class PublishLiveUpdates
             PaymentRejected::class => 'payment',
             PaymentVoided::class => 'payment',
             InvoiceIssued::class => 'invoice',
-            \App\Billing\Events\InvoiceShown::class => 'invoice',
-            \App\Billing\Events\InvoiceRecalled::class => 'invoice',
+            InvoiceShown::class => 'invoice',
+            InvoiceRecalled::class => 'invoice',
             InvoiceVoided::class => 'invoice',
         ];
     }
@@ -208,16 +210,18 @@ final class PublishLiveUpdates
         // Карточка второй стороне — только когда пишет участник. Ответ сотрудника в чате площадки остальным сотрудникам —
         // одни данные для ленты, без карточки (06.10.2026, владелец: «уведомлять надо только если нам пишут»).
         ($this->publish)($other, 'chat', $m->author_kind === AuthorKind::Participant ? $data + $card($chat->displayName(), ChatNotice::hrefFor($chat, true), $chat->manager_id ? null : Surface::Crm) : $data);
+        // Переписку пары читают админы (`Chat::allows`) — им сигнал догнать ленту, без текста: тема общая на всех сотрудников.
         if ($chat->manager_id) {
-            ($this->publish)(Topics::STAFF, 'chat', $data);
+            ($this->publish)(Topics::STAFF, 'chat', array_diff_key($data, ['text' => true]));
         }
         $this->publish->badges($other);
         if ($chat->user_id) {
             $this->publish->badges(Topics::user($chat->user_id));
         }
-        $this->publish->refresh($other, $chat->manager_id ? [Chat::ROOT] : ['/work/chats', Chat::ROOT]);
+        // Личка (22.11.2026): сторона может быть сотрудником — у него список «Чатов» CRM, перечитать оба адреса.
+        $this->publish->refresh($other, $chat->manager_id && ! $chat->isDirect() ? [Chat::ROOT] : ['/work/chats', Chat::ROOT]);
         if ($chat->user_id) {
-            $this->publish->refresh(Topics::user($chat->user_id), [Chat::ROOT]);
+            $this->publish->refresh(Topics::user($chat->user_id), $chat->isDirect() ? ['/work/chats', Chat::ROOT] : [Chat::ROOT]);
         }
     }
 
@@ -226,7 +230,7 @@ final class PublishLiveUpdates
     {
         $chat = $e->message->chat;
         ($this->publish)($this->allSides($chat), 'chat-edit', ['chat' => $chat->id, 'seq' => $e->message->seq]);
-        $this->publish->refresh($this->otherSide($chat), $chat->manager_id ? [Chat::ROOT] : ['/work/chats', Chat::ROOT]);
+        $this->publish->refresh($this->otherSide($chat), $chat->manager_id && ! $chat->isDirect() ? [Chat::ROOT] : ['/work/chats', Chat::ROOT]);
     }
 
     /**
@@ -240,7 +244,7 @@ final class PublishLiveUpdates
         $reader = $e->byCounterpart ? $this->otherSide($chat) : $participant;
         ($this->publish)($e->byCounterpart ? $participant : $this->otherSide($chat), 'chat-read', ['chat' => $chat->id, 'seq' => $e->seq]);
         $this->publish->badges($reader);
-        $this->publish->refresh($reader, $e->byCounterpart && ! $chat->manager_id ? ['/work/chats', Chat::ROOT] : [Chat::ROOT]);
+        $this->publish->refresh($reader, ($e->byCounterpart && ! $chat->manager_id) || $chat->isDirect() ? ['/work/chats', Chat::ROOT] : [Chat::ROOT]);
     }
 
     /** Вторая сторона — менеджер покупателя или сотрудники площадки. */
@@ -279,7 +283,7 @@ final class PublishLiveUpdates
     }
 
     /** Счёт выставлен или аннулирован: у менеджера появляется «К оплате» и его ход, в CRM — строка и шаг сделки. */
-    public function invoice(InvoiceIssued|InvoiceVoided|\App\Billing\Events\InvoiceShown|\App\Billing\Events\InvoiceRecalled $e): void
+    public function invoice(InvoiceIssued|InvoiceVoided|InvoiceShown|InvoiceRecalled $e): void
     {
         $this->invoiceChanged($e->invoice);
     }

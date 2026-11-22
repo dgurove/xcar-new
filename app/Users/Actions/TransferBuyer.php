@@ -2,8 +2,11 @@
 
 namespace App\Users\Actions;
 
+use App\Chats\Chat;
+use App\Chats\Direct;
 use App\Notifications\BuyerJoinedNotice;
 use App\Offers\Events\OffersHidden;
+use App\Offers\Jobs\RetractOfferNotices;
 use App\Offers\Offer;
 use App\Offers\OfferState;
 use App\Offers\Showing;
@@ -25,14 +28,20 @@ final class TransferBuyer
 
         // Что человек видел до передачи — эти карточки должны уйти из его открытой ленты.
         $seen = Offer::where('state', OfferState::Open)->visibleTo($buyer)->pluck('number')->all();
-        DB::transaction(function () use ($buyer, $to) {
+        $from = $buyer->manager_id;
+        DB::transaction(function () use ($buyer, $to, $from) {
             Showing::where('user_id', $buyer->id)->delete();
             $buyer->groups()->detach();
             $buyer->forceFill(['manager_id' => $to->id, 'invite_id' => null])->save();
             // Переписка покупателя переезжает к новому менеджеру: прежний ему больше не пишет (13.10.2026).
-            \App\Chats\Chat::where('user_id', $buyer->id)->whereNotNull('manager_id')->update(['manager_id' => $to->id]);
+            // Только переписка с прежним менеджером; общая (личка пары) — если с новым её ещё нет: пара у лички одна (22.11.2026).
+            $moved = Chat::where('user_id', $buyer->id)->where('manager_id', $from);
+            if (Direct::between($buyer->id, $to->id)) {
+                $moved->whereNotNull('offer_id');
+            }
+            $moved->update(['manager_id' => $to->id]);
         });
-        \App\Offers\Jobs\RetractOfferNotices::forUser($buyer);
+        RetractOfferNotices::forUser($buyer);
         if ($seen) {
             OffersHidden::dispatch($to, [$buyer->id => $seen]);
         }

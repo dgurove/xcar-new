@@ -1,7 +1,7 @@
 {{-- Экран чата: шапка с собеседником, плашка ТС, лента и поле. Аватар и имя в шапке ведут к человеку:
      link — страница (менеджеру покупатель, сотруднику карточка в CRM), sheet — шторка-контакт
      (покупателю менеджер или площадка); status — подпись под именем вместо реального seen_at. --}}
-@props(['chat', 'messages', 'user', 'name', 'other' => null, 'offer' => null, 'back' => \App\Chats\Chat::ROOT, 'open' => null, 'firstUnread' => 0, 'more' => false, 'readonly' => false, 'link' => null, 'sheet' => false, 'status' => false, 'chats' => null])
+@props(['chat', 'messages', 'user', 'name', 'other' => null, 'offer' => null, 'back' => \App\Chats\Chat::ROOT, 'open' => null, 'firstUnread' => 0, 'more' => false, 'readonly' => false, 'link' => null, 'sheet' => false, 'status' => false, 'chats' => null, 'greet' => true])
 @php
     $offer ??= $chat?->offer;
     // Машина ушла от человека (круг сузили, сделка, снята) — переписка остаётся, а цены и перехода к машине нет.
@@ -29,7 +29,7 @@
         @if ($readonly && $chat?->manager)
             @if ($inCrm)<a href="/settings/users/{{ $chat->manager_id }}?chat={{ $chat->id }}" class="chip person shrink-0"><x-ui.avatar :user="$chat->manager" :size="20"/>{{ $chat->manager->shortName() }}</a>@else<x-ui.person :user="$chat->manager" class="shrink-0"/>@endif
         @endif
-        @if ($crm && ! $readonly && $chat?->exists && $user?->isAdmin())
+        @if ($crm && ! $readonly && $chat?->exists && ! $chat->manager_id && $user?->isAdmin())
             {{-- Спам и реклама — удалить чат целиком (06.10.2026). --}}
             <x-ui.more :id="'chat-more-'.$chat->id" class="shrink-0">
                 <div class="menu-group">
@@ -48,5 +48,5 @@
             @if ($carOpen)<x-ui.icon name="chevron-right" class="size-4 shrink-0 text-ink-dim"/>@endif
         @if ($carOpen)</a>@else</div>@endif
     @endif
-    <x-chat.box :chat="$chat" :messages="$messages" :user="$user" :first-unread="$firstUnread" :more="$more" :readonly="$readonly" :open="$open ?? ($chat || !$offer ? null : '/offers/'.$offer->number.'/chat')" screen/>
+    <x-chat.box :chat="$chat" :messages="$messages" :user="$user" :first-unread="$firstUnread" :more="$more" :readonly="$readonly" :open="$open ?? ($chat || !$offer ? null : '/offers/'.$offer->number.'/chat')" :greet="$greet" screen/>
 </div>

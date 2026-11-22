@@ -6,6 +6,8 @@ use App\Billing\ChargeKind;
 use App\Billing\Closing;
 use App\Billing\Invoice;
 use App\Billing\InvoiceState;
+use App\Billing\MoneyBook;
+use App\Billing\PayView;
 use App\Chats\Chat;
 use App\Garage\Car as GarageCar;
 use App\Garage\CarState;
@@ -23,11 +25,11 @@ use App\Offers\BidState;
 use App\Offers\CatalogQuery;
 use App\Offers\Deal;
 use App\Offers\DealTabs;
-use App\Offers\OfferTabs;
 use App\Offers\Interest;
 use App\Offers\InterestState;
 use App\Offers\Offer;
 use App\Offers\OfferState;
+use App\Offers\OfferTabs;
 use App\Offers\Partner\PartnerOffers;
 use App\Park\City;
 use App\Park\Request;
@@ -35,7 +37,6 @@ use App\Park\RequestState;
 use App\Park\Vehicle;
 use App\Park\VehicleState;
 use App\Park\Yard;
-use App\Purchases\Purchase;
 use App\Users\Role;
 use App\Users\User;
 use App\Workflow\Position;
@@ -107,7 +108,7 @@ final class Nav
         }
         // XCAR Pay (22.11.2026): только «Оплаты» и профиль — сотруднику CRM, менеджеру свои (`Billing\PayView`).
         if ($surface === Surface::Pay) {
-            return $user ? [self::item('Оплаты', \App\Billing\PayView::home($user), icon: 'wallet', capsule: false) + ['own' => true]] : [];
+            return $user ? [self::item('Оплаты', PayView::home($user), icon: 'wallet', capsule: false) + ['own' => true]] : [];
         }
 
         // Модератор: черновики, сделки и гараж вкладками «Предложений» (17.11.2026 — вся работа со сделками), почта по галке, чаты
@@ -662,7 +663,9 @@ final class Nav
                     : CatalogQuery::fresh(clone $open, $user)->count(),
                 '/gallery' => (clone $gallery)->where('gallery_from', '>', $day)->count(),
             ]];
-        }, match (true) { ! $own => StaffCache::COUNTS, $site => StaffCache::SITE, default => null });
+        }, match (true) {
+            ! $own => StaffCache::COUNTS, $site => StaffCache::SITE, default => null
+        });
     }
 
     /**
@@ -719,7 +722,7 @@ final class Nav
         }
         // Оплатам — сотруднику оплаты «Пришли?», менеджеру — счета к оплате (то же число, что на значке, `User::badgeCount`).
         if ($surface === Surface::Pay) {
-            return array_filter([\App\Billing\PayView::home($user) => $user->badgeCount(Surface::Pay)]);
+            return array_filter([PayView::home($user) => $user->badgeCount(Surface::Pay)]);
         }
         $badges = ['/account/notifications' => $user->unreadCount()];
 
@@ -729,11 +732,18 @@ final class Nav
 
             $staff = self::staffCounts($surface);
             $staff['/work/money'] = $staff['money:deals'] ?? 0;
+            $staff['/work/chats'] = ($staff['/work/chats'] ?? 0) + $user->unreadDirectChats();
 
             return array_filter($badges + array_intersect_key($staff, array_flip($keys)));
         }
         if ($surface === Surface::Park || $surface === Surface::Crm) {
-            return array_filter($badges + self::staffCounts($surface));
+            $staff = self::staffCounts($surface);
+            // Чаты площадки — общие на всех сотрудников (кэш), свои лички — каждому свои (22.11.2026).
+            if ($surface === Surface::Crm && $user->canEditDeals()) {
+                $staff['/work/chats'] = ($staff['/work/chats'] ?? 0) + $user->unreadDirectChats();
+            }
+
+            return array_filter($badges + $staff);
         }
         // Бейдж — что ждёт этого человека: админу — без исполнителя, логисту — у него, исполнителю — его ход; Лизе — отправить
         // документы.
@@ -766,7 +776,7 @@ final class Nav
             // тяжёлый (все сделки человека со счетами) — до события о нём (`touch`), срок — запасной.
             // С 22.11.2026 «Оплаты» — экран «Комиссии · ДКП»: число — его «К оплате» (`MoneyBook::ownToPay`), как у значка XCAR Pay.
             $badges['/account/money'] = StaffCache::remember("nav.money:{$user->id}", 600,
-                fn () => \App\Billing\MoneyBook::ownToPay($user), null);
+                fn () => MoneyBook::ownToPay($user), null);
         }
         if ($user->holdsAsBuyer()) {
             // Что ждут от него по сделкам — на табе «Сделки», как у менеджера; по гаражной — на табе «Гараж» (20.10.2026).
@@ -841,6 +851,7 @@ final class Nav
                 // Модератору — только его часть «Оплат» (без выплат и ссылок без сделки), `count` подменяет ею '/work/money'.
                 'money:deals' => MoneyController::todo(dealsOnly: true),
             ];
+
             return $badges;
         }, StaffCache::COUNTS);
     }
@@ -1041,7 +1052,7 @@ final class Nav
      */
     private static function offersHome(?User $user): ?string
     {
-        return $user ? '/offers?preset='.\App\Http\Admin\OfferController::home($user) : null;
+        return $user ? '/offers?preset='.OfferController::home($user) : null;
     }
 
     private static function item(string $label, string $href, string|array|null $match = null, bool $tab = true, bool $capsule = true, ?string $icon = null): array

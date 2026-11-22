@@ -10,6 +10,7 @@ use App\Billing\Party;
 use App\Billing\PartyRules;
 use App\Chats\Chat;
 use App\Garage\Car;
+use App\Http\Cabinet\BuyerController;
 use App\Http\Cabinet\InviteController;
 use App\Offers\Actions\SyncViewers;
 use App\Offers\Bid;
@@ -259,8 +260,10 @@ class UserController
         $me = $request->user();
         abort_unless(self::sees($me, $user), 404);
         $user->load('manager');
-        $chats = Chat::where('user_id', $user->id)->when($user->isManager(), fn ($q) => $q->orWhere('manager_id', $user->id))
-            ->withLast()->with(['offer', 'offer.media', 'user', 'manager'])->orderByDesc('last_message_at')->limit(50)->get();
+        // И лички человека (22.11.2026, `Chats\Direct`) — те, что смотрящему можно открыть (`Chat::allows`).
+        $chats = Chat::where(fn ($q) => $q->where('user_id', $user->id)->orWhere('manager_id', $user->id))
+            ->withLast()->with(['offer', 'offer.media', 'user', 'manager'])->orderByDesc('last_message_at')->limit(50)->get()
+            ->filter(fn (Chat $c) => $c->allows($me))->values();
         // Пришли из шапки чата — «‹ Чат» вместо «‹ Пользователи».
         $chat = $request->integer('chat') ? Chat::find($request->integer('chat')) : null;
         $deals = $user->hasDeals() ? Deal::where('buyer_id', $user->id)->with(['offer', 'offer.media', 'buyer'])->latest()->get() : collect();
@@ -288,7 +291,7 @@ class UserController
             'party' => $pill === 'money' ? Party::forUser($user, false) : null,
             // Сделки и машины гаража — те же строки, из которых сложены суммы в заголовке.
             'moneyDeals' => $ledger?->rows() ?? collect(),
-            'back' => $chat ? ['Чат', Surface::current() === Surface::Crm ? '/work/chats/'.$chat->id : \App\Chats\Chat::path($chat->id)] : null,
+            'back' => $chat ? ['Чат', Surface::current() === Surface::Crm ? '/work/chats/'.$chat->id : Chat::path($chat->id)] : null,
             'chats' => $chats,
             'deals' => $deals,
             'buyersCount' => $user->isManager() ? $user->buyers()->count() : 0,
@@ -307,7 +310,7 @@ class UserController
     {
         abort_unless($request->user()->canManageCrm() && $user->isBuyer(), 404);
 
-        return app(\App\Http\Cabinet\BuyerController::class)->passport($request, $user);
+        return app(BuyerController::class)->passport($request, $user);
     }
 
     /** Реквизиты менеджера — сотрудник правит те же, что менеджер в кабинете. */

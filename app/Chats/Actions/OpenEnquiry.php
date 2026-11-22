@@ -17,8 +17,9 @@ final class OpenEnquiry
     public function __invoke(?User $user, ?string $name, ?string $token, ?string $email = null): Chat
     {
         return DB::transaction(function () use ($user, $name, $token, $email) {
-            if ($user?->isBuyer() && $user->manager_id) {
-                return Chat::firstOrCreate(['offer_id' => null, 'user_id' => $user->id, 'manager_id' => $user->manager_id]);
+            // Переписка покупателя со своим менеджером — личка пары (`OpenDirect`, 22.11.2026): та же строка, с какой стороны ни начни.
+            if ($user?->isBuyer() && $user->manager_id && ($manager = $user->manager)) {
+                return app(OpenDirect::class)($user, $manager);
             }
             if ($user) {
                 return Chat::firstOrCreate(['offer_id' => null, 'user_id' => $user->id, 'manager_id' => null]);

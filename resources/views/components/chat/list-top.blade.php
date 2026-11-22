@@ -4,8 +4,12 @@
 <div class="chat-crm-top">
     <div class="flex items-center justify-between gap-3">
         <h1 class="head-title text-xl sm:text-2xl">Чаты</h1>
-        @if (\App\Support\Surface::current() === \App\Support\Surface::Chat)
-            <x-ui.me-menu/>
-        @endif
+        {{-- «Написать» — личка с кем угодно из тех, кому можно (22.11.2026), слева от аватара. --}}
+        <div class="flex items-center gap-2">
+            <x-chat.new/>
+            @if (\App\Support\Surface::current() === \App\Support\Surface::Chat)
+                <x-ui.me-menu/>
+            @endif
+        </div>
     </div>
 </div>

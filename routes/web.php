@@ -135,6 +135,8 @@ Route::middleware(['auth', 'wall'])->group(function () {
     Route::get('/offers/{offer}/chat', [OfferController::class, 'chat']);
     Route::post('/offers/{offer}/chat', [ChatController::class, 'open']);
     Route::post('/chats/support', [ChatController::class, 'support'])->middleware(['ability:usesSite', 'throttle:30,1']);
+    // Первое сообщение лички (22.11.2026, `Chats\Direct`): сайт, CRM и XCAR Chat — один путь, личка заводится здесь же.
+    Route::post('/chats/with/{user}', [ChatController::class, 'direct'])->whereNumber('user')->middleware('throttle:30,1');
 
     Route::get('/account', [ProfileController::class, 'profile'])->name('cabinet');
     Route::put('/account', [ProfileController::class, 'update']);
@@ -147,6 +149,7 @@ Route::middleware(['auth', 'wall'])->group(function () {
         Route::get('/chats', [CabinetChatController::class, 'index']);
         Route::get('/chats/offer/{offer}', [CabinetChatController::class, 'offer']);
         Route::get('/chats/support', [CabinetChatController::class, 'support']);
+        Route::get('/chats/with/{user?}', [CabinetChatController::class, 'with'])->whereNumber('user');
         Route::get('/chats/{chat}', [CabinetChatController::class, 'show'])->whereNumber('chat');
         Route::get('/account/interests', [ListsController::class, 'interests']);
         // Данные для договора у самого покупателя (19.10.2026).

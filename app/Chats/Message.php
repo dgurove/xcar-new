@@ -132,8 +132,11 @@ class Message extends Model
             return true;
         }
 
+        // Чужое удаляет сотрудник только в чате площадки: в личке (22.11.2026) собеседник — человек, а не площадка.
+        $chat ??= $this->chat;
+
         return $user !== null && ! $this->isDeleted() && $this->author_kind !== AuthorKind::System && $user->canEditDeals()
-            && ($chat ?? $this->chat)->isCounterpart($user);
+            && $chat->manager_id === null && $chat->isCounterpart($user);
     }
 
     /**

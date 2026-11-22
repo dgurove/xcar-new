@@ -2,12 +2,18 @@
 
 namespace App\Users;
 
+use App\Billing\MoneyBook;
 use App\Billing\Party;
+use App\Billing\PartyKind;
+use App\Billing\PayView;
 use App\Chats\Chat;
 use App\Garage\Car;
 use App\Garage\CarState;
+use App\Http\Admin\MoneyController;
 use App\Logistics\Channel;
 use App\Logistics\Transport;
+use App\Mail\Boxes;
+use App\Mail\Scope;
 use App\Media\MediaUrl;
 use App\Notifications\Categories;
 use App\Notifications\PasswordResetLetter;
@@ -21,9 +27,11 @@ use App\Support\Ago;
 use App\Support\Demo\HidesDemo;
 use App\Support\FastAttributes;
 use App\Support\Nav;
+use App\Support\OrgName;
 use App\Support\Phone;
 use App\Support\Surface;
 use App\Telegram\Bot;
+use App\Users\Actions\AddPerson;
 use App\Vendors\Vendor;
 use Database\Factories\UserFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
@@ -430,7 +438,7 @@ class User extends Authenticatable implements HasMedia, WebAuthnAuthenticatable
      */
     public function isBuyerDraft(): bool
     {
-        return $this->name === \App\Users\Actions\AddPerson::UNNAMED && blank($this->party?->name);
+        return $this->name === AddPerson::UNNAMED && blank($this->party?->name);
     }
 
     /**
@@ -440,8 +448,8 @@ class User extends Authenticatable implements HasMedia, WebAuthnAuthenticatable
     public function buyerIcon(): string
     {
         return match ($this->party?->kind) {
-            \App\Billing\PartyKind::Company => 'bank',
-            \App\Billing\PartyKind::Entrepreneur => 'bag',
+            PartyKind::Company => 'bank',
+            PartyKind::Entrepreneur => 'bag',
             default => 'user',
         };
     }
@@ -450,15 +458,15 @@ class User extends Authenticatable implements HasMedia, WebAuthnAuthenticatable
     public function buyerLabel(): string
     {
         // Организация и ИП — коротко по названию («ООО «1АВТО»», а не «ОБЩЕСТВО С ОГРАНИЧЕННОЙ ОТВЕТСТВЕННОСТЬЮ…»).
-        if (in_array($this->party?->kind, [\App\Billing\PartyKind::Company, \App\Billing\PartyKind::Entrepreneur], true) && filled($this->party->name)) {
-            return \App\Support\OrgName::short($this->party->name) ?: $this->party->name;
+        if (in_array($this->party?->kind, [PartyKind::Company, PartyKind::Entrepreneur], true) && filled($this->party->name)) {
+            return OrgName::short($this->party->name) ?: $this->party->name;
         }
-        if ($this->name !== \App\Users\Actions\AddPerson::UNNAMED) {
+        if ($this->name !== AddPerson::UNNAMED) {
             // Имя и фамилия, без отчества (18.11.2026, владелец: «отчество тут отображать не надо»).
             return filled($this->first_name) && filled($this->last_name) ? $this->first_name.' '.$this->last_name : $this->name;
         }
 
-        return filled($this->party?->name) ? $this->party->name : ($this->party?->kind ?? \App\Billing\PartyKind::Person)->label();
+        return filled($this->party?->name) ? $this->party->name : ($this->party?->kind ?? PartyKind::Person)->label();
     }
 
     public function buyers(): HasMany
@@ -547,7 +555,7 @@ class User extends Authenticatable implements HasMedia, WebAuthnAuthenticatable
      */
     public function garageStaff(): bool
     {
-        return $this->isAdmin() || ($this->isModerator() && \App\Support\Surface::current() === \App\Support\Surface::Crm);
+        return $this->isAdmin() || ($this->isModerator() && Surface::current() === Surface::Crm);
     }
 
     public function isModerator(): bool
@@ -1058,22 +1066,23 @@ class User extends Authenticatable implements HasMedia, WebAuthnAuthenticatable
 
         // XCAR Chat — только чаты: сотруднику и площадки, как в CRM.
         if ($here === Surface::Chat) {
-            return $this->unreadChats(platform: \App\Chats\Chat::staffView($this));
+            return $this->unreadChats(platform: Chat::staffView($this));
         }
 
         // XCAR Mail — непрочитанные «Входящие», то же число, что у «Почты» в таб-баре CRM.
         if ($here === Surface::Mail) {
-            return $this->canCrmMail() ? \App\Mail\Boxes::unreadCount(\App\Mail\Scope::Offers) : 0;
+            return $this->canCrmMail() ? Boxes::unreadCount(Scope::Offers) : 0;
         }
 
         // XCAR Pay — сотруднику то же число, что у «Оплат» в таб-баре CRM (проверить «Пришли?», не прошла по ссылке, выплаты),
         // менеджеру — сколько его счетов ждут оплаты.
         if ($here === Surface::Pay) {
-            if (\App\Billing\PayView::staff($this)) {
-                return \App\Http\Admin\MoneyController::todo(dealsOnly: ! $this->canManageCrm());
+            if (PayView::staff($this)) {
+                return MoneyController::todo(dealsOnly: ! $this->canManageCrm());
             }
+
             // Менеджеру — то же, что у его разделов «Комиссии» и «ДКП».
-            return $this->hasDeals() ? \App\Billing\MoneyBook::ownToPay($this) : 0;
+            return $this->hasDeals() ? MoneyBook::ownToPay($this) : 0;
         }
 
         // Чаты площадки — работа CRM: на значке сайта их нет (08.10.2026).
@@ -1085,7 +1094,8 @@ class User extends Authenticatable implements HasMedia, WebAuthnAuthenticatable
     public function unreadChats(bool $platform = true): int
     {
         $staff = $this->canEditDeals() && $platform;
-        $own = $this->canChat();
+        // Свои чаты — и у сотрудника: его лички (22.11.2026, `Chats\Direct`).
+        $own = $this->canChat() || $this->canEditDeals();
         if (! $staff && ! $own) {
             return 0;
         }
@@ -1105,6 +1115,17 @@ class User extends Authenticatable implements HasMedia, WebAuthnAuthenticatable
         };
 
         return app()->runningInConsole() ? $sum() : once($sum);
+    }
+
+    /** Сколько личек с непрочитанным у человека (`Chats\Direct`) — к числу «Чатов» CRM, где чаты площадки общие на всех. */
+    public function unreadDirectChats(): int
+    {
+        $count = fn () => Chat::whereNull('offer_id')->whereNotNull('manager_id')
+            ->where(fn ($q) => $q->where(fn ($q) => $q->where('user_id', $this->id)->where('unread_for_user', '>', 0))
+                ->orWhere(fn ($q) => $q->where('manager_id', $this->id)->where('unread_for_staff', '>', 0)))
+            ->count();
+
+        return app()->runningInConsole() ? $count() : once($count);
     }
 
     /** Сколько полных дней не заходил (по отметке «в сети»); null — ни разу. Неделя и больше — красным в «Пользователях». */

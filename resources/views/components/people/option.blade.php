@@ -4,7 +4,9 @@
 @props(['person', 'name', 'checked' => false, 'type' => 'radio', 'action' => 'change->people-pick#choose', 'picker' => true, 'edit' => null, 'editEvent' => null])
 {{-- picker=false — строка вне шторки `x-people.pick` (плательщик, получатель): без её меток поиска и адреса. --}}
 <label @class(['row row-check', 'people-option' => $picker]) @if ($picker) data-people-option data-search-text="{{ str_replace('ё', 'е', mb_strtolower($person['name'].' '.($person['sub'] ?? '').' '.($person['group'] ?? ''))) }}" @isset($person['address']) data-address="{{ $person['address'] }}" @endisset @endif>
-    @if ($person['user'] ?? null)<x-ui.avatar :user="$person['user']" :size="36"/>@else<x-ui.avatar :name="$person['name']" :size="36"/>@endif
+    {{-- `logo` — площадка («Администрация XCAR» в «Написать» чатов): знак приложения, а не буквы. --}}
+    @if ($person['logo'] ?? false)<x-chat.avatar :size="36"/>
+    @elseif ($person['user'] ?? null)<x-ui.avatar :user="$person['user']" :size="36"/>@else<x-ui.avatar :name="$person['name']" :size="36"/>@endif
     <span class="min-w-0 flex-1">
         <span class="block truncate" data-people-name>{{ $person['name'] }}</span>
         @if ($person['sub'] ?? null)<span class="block truncate text-sm text-ink-muted">{{ $person['sub'] }}</span>@endif

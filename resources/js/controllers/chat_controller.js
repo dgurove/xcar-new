@@ -572,10 +572,13 @@ export default class extends Controller {
                 this.idValue = Number(r.headers.get('X-Chat-Id') || 0);
                 // Экран «написать» по ТС стал чатом — адрес теперь его, чтобы обновление и «назад» вели сюда же;
                 // на широком экране страница перечитывается: слева должен появиться и сам чат.
-                // Адрес раздела чатов сайта — `Chat::ROOT` (`/chats/offer/N`, `/chats/support` → `/chats/{id}`).
-                if (this.idValue && this.element.closest('.chat-page') && /^\/chats\/(offer\/|support)/.test(location.pathname)) {
-                    if (matchMedia('(min-width: 1024px)').matches) { window.Turbo.visit(`/chats/${this.idValue}`, { action: 'replace' }); return; }
-                    window.Turbo.session.history.replace(new URL(`/chats/${this.idValue}`, location.href));
+                // Адрес раздела чатов сайта — `Chat::ROOT` (`/chats/offer/N`, `/chats/support` → `/chats/{id}`); личка
+                // (`/chats/with/N`, в CRM `/work/chats/with/N`, 22.11.2026) — так же, со своим корнем.
+                const m = this.idValue && this.element.closest('.chat-page') && location.pathname.match(/^(\/work)?\/chats\/(offer\/|support|with\/)/);
+                if (m) {
+                    const to = `${m[1] ?? ''}/chats/${this.idValue}`;
+                    if (matchMedia('(min-width: 1024px)').matches) { window.Turbo.visit(to, { action: 'replace' }); return; }
+                    window.Turbo.session.history.replace(new URL(to, location.href));
                 }
             }
             this.append(await r.text());

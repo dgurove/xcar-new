@@ -3,12 +3,12 @@
 use App\Http\Admin\AlarmController;
 use App\Http\Admin\BankController;
 use App\Http\Admin\BidController;
-use App\Http\Admin\ResponsibleController;
 use App\Http\Admin\ChatController;
 use App\Http\Admin\DealContractController;
 use App\Http\Admin\DealController;
 use App\Http\Admin\DeliveryController;
 use App\Http\Admin\DisclosureController;
+use App\Http\Admin\ExtraAskController;
 use App\Http\Admin\GalleryController;
 use App\Http\Admin\GarageController;
 use App\Http\Admin\GiveController;
@@ -19,23 +19,21 @@ use App\Http\Admin\LegacyClaimController;
 use App\Http\Admin\MailAccountController;
 use App\Http\Admin\MailController;
 use App\Http\Admin\MailTemplateController;
-use App\Http\Admin\MoneyController;
 use App\Http\Admin\OfferController;
-use App\Http\Admin\SavedFilterController;
 use App\Http\Admin\OfferDraftController;
 use App\Http\Admin\OfferEstimateController;
 use App\Http\Admin\OfferPhotoController;
 use App\Http\Admin\OfferValuationController;
 use App\Http\Admin\ParallelController;
 use App\Http\Admin\ParsingController;
-use App\Http\Admin\PayLinkController;
 use App\Http\Admin\PaymentProofController;
 use App\Http\Admin\PurchaseCarPhotoController;
 use App\Http\Admin\PurchaseController;
 use App\Http\Admin\ReferenceController;
 use App\Http\Admin\RepriceController;
-use App\Http\Admin\ExtraAskController;
+use App\Http\Admin\ResponsibleController;
 use App\Http\Admin\RouteController;
+use App\Http\Admin\SavedFilterController;
 use App\Http\Admin\SigningController;
 use App\Http\Admin\TagController;
 use App\Http\Admin\TelegramChatController;
@@ -255,9 +253,10 @@ Route::domain(config('xcar.crm_host'))->middleware(['auth', 'ability:isStaff'])-
         Route::get('/work/deals/{deal}/chat', [DealController::class, 'chat']);
         Route::post('/work/deals/{deal}/note', [DealController::class, 'note']);
         Route::get('/work/chats', [ChatController::class, 'index']);
-        Route::get('/work/chats/{chat}', [ChatController::class, 'show']);
+        Route::get('/work/chats/with/{user?}', [ChatController::class, 'with'])->whereNumber('user');
+        Route::get('/work/chats/{chat}', [ChatController::class, 'show'])->whereNumber('chat');
         Route::post('/work/chats/offer/{offer}/{user}', [ChatController::class, 'start']);
-        Route::delete('/work/chats/{chat}', [ChatController::class, 'destroy']);
+        Route::delete('/work/chats/{chat}', [ChatController::class, 'destroy'])->whereNumber('chat');
         // Сайтовый адрес чатов (`Chat::path`, уведомления и тосты без хоста; старый `/account/chats` сюда же приводит
         // `Paths::MOVED`) — на CRM это «Чаты» в работе. Только корень и экран чата: `/chats/{id}/messages|files|typing`
         // из web.php должны дойти до ленты.
