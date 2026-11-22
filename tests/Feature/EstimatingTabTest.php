@@ -33,6 +33,7 @@ class EstimatingTabTest extends TestCase
         $this->assertTrue($in('unpriced'));
         $this->assertFalse($in('estimating'));
 
+        $was = $offer->fresh()->tab_at;
         $this->travel(1)->minutes();
         app(AskEstimates::class)($offer->fresh(), [$manager], $admin);
         // И там, и там (18.11.2026, начальник).
@@ -40,11 +41,14 @@ class EstimatingTabTest extends TestCase
         $this->assertTrue($in('unpriced'));
         $this->assertTrue($in('unpriced', admin: false));
         $this->assertSame('На оценке у менеджеров', $offer->fresh()->crmTab($admin));
-        $this->assertEqualsWithDelta(now()->timestamp, $offer->fresh()->tab_at->timestamp, 2);
+        // Время во вкладке не трогается: строка «Без продажной цены» остаётся на своём месте (22.11.2026, владелец: «бесит, что
+        // вверх перескакивает»); «На оценке» считает своё — с первой открытой просьбы.
+        $this->assertEquals($was, $offer->fresh()->tab_at);
         $this->assertArrayNotHasKey('estimating', OfferController::presets(User::create(['name' => 'Мод', 'phone' => '79000000042', 'roles' => [Role::Moderator], 'approved_at' => now()])));
 
         app(CloseEstimates::class)($offer->fresh(), $admin, only: $offer->estimates()->pluck('id')->all());
         $this->assertTrue($in('unpriced'));
         $this->assertFalse($in('estimating'));
+        $this->assertEquals($was, $offer->fresh()->tab_at);
     }
 }

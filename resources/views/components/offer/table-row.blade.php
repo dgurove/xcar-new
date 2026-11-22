@@ -39,13 +39,14 @@
     $has = fn (string $k) => $table->has($k);
     $when = match ($table->context('when')) {
         'published' => $offer->published_at,
-        'tab' => $offer->tab_at,
+        // «На оценке у менеджеров» — с первой открытой просьбы (`OfferController::ESTIMATE_SINCE`).
+        'tab' => $offer->estimate_since ?? $offer->tab_at,
         'created' => $offer->created_at,
         default => null,
     };
     // Аватар у даты: во вкладке шага — кто перевёл сюда (`tab_by`, 18.10.2026), иначе — кто завёл (у черновика).
     $byTab = $table->context('when') === 'tab';
-    $who = $byTab ? $offer->tabBy : $offer->moderator;
+    $who = $byTab ? ($offer->estimate_since ? $offer->estimateBy : $offer->tabBy) : $offer->moderator;
     // Человека нет — система (26.10.2026, владелец: «пустота мне не нравится»): завела почта — конверт, Мигторг, парковка —
     // искра. Во вкладке шага — перевела система (`tab_by` пишется с 18.10.2026, раньше пусто у всех — там не угадываем).
     $system = ! $who && ($byTab ? (bool) $offer->tab_at?->gte('2026-10-18') : (bool) $offer->created_via);

@@ -56,8 +56,6 @@ final class AskEstimates
             if ($created->isNotEmpty()) {
                 // Эксклюзив прежней просьбы не гасится (09.11.2026, `Exclusive`): обещанное за оценку снимают только явно.
                 EstimateLock::lock($offer);
-                // Первая просьба — черновик переходит во вкладку «На оценке у менеджеров».
-                $open === [] && $offer->movedByEstimate($by);
             }
             if ($created->isNotEmpty()) {
                 $offer->log(OfferEventType::Estimate, $by, array_filter(['do' => 'asked', 'users' => $created->map(fn ($e) => $e->user_id)->all(), 'base' => $base,

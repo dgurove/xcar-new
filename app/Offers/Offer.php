@@ -192,7 +192,11 @@ class Offer extends Model
             // Шаг работы сменился — предложение пришло в новую вкладку CRM: там оно первым (`tab_at`, 15.10.2026).
             $now = $o->getAttributes();
             $was = $o->getRawOriginal();
-            if (! $o->exists || self::tabKeyOf($now) !== self::tabKeyOf($was)) {
+            // Черновик на оценке у менеджеров, которому вписали закупочную, у админа и был в «Без продажной цены» (там и черновики
+            // на оценке, `OfferController::scopeFor`) — место его там не меняется (22.11.2026, владелец: «бесит, что вверх перескакивает»).
+            $steps = [self::tabKeyOf($was), self::tabKeyOf($now)];
+            $stays = $o->exists && $steps === ['nofloor', 'unpriced'] && $o->estimates()->open()->exists();
+            if (! $o->exists || ($steps[0] !== $steps[1] && ! $stays)) {
                 $o->tab_at = now();
                 // И кто перевёл (18.10.2026): аватар у времени в строке. Письмо, часы, файл — без человека.
                 $o->tab_by = auth()->id();
@@ -263,6 +267,8 @@ class Offer extends Model
             'insurer_deadline_at' => 'date',
             'answer_by' => 'datetime',
             'tab_at' => 'datetime',
+            // Только в списке «На оценке у менеджеров» (`OfferController::ESTIMATE_SINCE`).
+            'estimate_since' => 'datetime',
             'tags' => 'array',
             'tag_colors' => 'array',
             'show_vin' => 'bool',
@@ -468,6 +474,15 @@ class Offer extends Model
     public function tabBy(): BelongsTo
     {
         return $this->belongsTo(User::class, 'tab_by');
+    }
+
+    /**
+     * Кто попросил оценить первым из открытых просьб — аватар у даты во вкладке «На оценке у менеджеров» (`estimate_by`
+     * выбирает её список, `OfferController::ESTIMATE_BY`).
+     */
+    public function estimateBy(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'estimate_by');
     }
 
     /** Подтверждение знает своё предложение без запроса (`chaperone`): строка спрашивает закупочную и цену предложения. */
@@ -1478,17 +1493,6 @@ class Offer extends Model
         }
 
         return self::onEstimateIds()[$this->id] ?? false;
-    }
-
-    /**
-     * Ушло на оценку или вернулось с неё (01.11.2026): вкладка сменилась, хотя поля предложения те же, — `tab_at` и кто
-     * перевёл ставятся руками, как у `saving` по `tabKeyOf`. Корректировка цены вкладку не меняет — у неё цена есть.
-     */
-    public function movedByEstimate(?User $by): void
-    {
-        if ($this->state === OfferState::Draft && ! $this->asking_price) {
-            $this->forceFill(['tab_at' => now(), 'tab_by' => $by?->id])->save();
-        }
     }
 
     /** `once` в статическом методе — один кэш на запрос, а не на каждый объект. */

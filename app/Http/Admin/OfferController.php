@@ -430,7 +430,7 @@ class OfferController
             $offers->loadMissing('media');
         }
         // Кто завёл — аватар у даты (столбец «Создано» на ПК у черновика, краткая таблица телефона — у всех строк, 09.10.2026).
-        $offers->getCollection()->load(['moderator.media', 'tabBy.media']);
+        $offers->getCollection()->load(['moderator.media', 'tabBy.media', ...($preset === 'estimating' && ! $searching ? ['estimateBy.media'] : [])]);
         // Оценки менеджеров — на месте «Оценить» у черновика без цены продажи (`x-offer.rate-chip`).
         if ($admin) {
             $offers->getCollection()->load(['openEstimates.user', ...User::withAvatar('openEstimates.user.media')]);
@@ -557,6 +557,11 @@ class OfferController
         // строку (10.11.2026: «Без подтверждений» — 216 запросов кадров, секунда на сервере).
         if (self::pickable($request->user(), $preset, $searching)) {
             $q->with('media');
+        }
+        // «На оценке у менеджеров» — своё «во вкладке»: с первой открытой просьбы и кто попросил (`tab_at` просьба не трогает,
+        // 22.11.2026: строка в «Без продажной цены» прыгала наверх).
+        if ($preset === 'estimating' && ! $searching) {
+            $q->addSelect([DB::raw(self::ESTIMATE_SINCE.' as estimate_since'), DB::raw(self::ESTIMATE_BY.' as estimate_by')]);
         }
         // Горит ли срок обязывающего — одним подзапросом на список, а не запросами на строку (`Binding::of`).
         Binding::select($q);
@@ -764,6 +769,14 @@ class OfferController
 
     public const ESTIMATE_GROUP = "case when exists (select 1 from offer_estimates e where e.offer_id = offers.id and e.state = 'given') then 0 else 1 end";
 
+    /**
+     * Когда черновик ушёл на оценку и кто попросил — первая из открытых просьб (22.11.2026, владелец: в «Без продажной цены»
+     * строка после «отдать на оценку» прыгала наверх — `tab_at` просьба больше не ставит, у «На оценке» время своё).
+     */
+    public const ESTIMATE_SINCE = "(select min(e.created_at) from offer_estimates e where e.offer_id = offers.id and e.state in ('asked', 'given'))";
+
+    public const ESTIMATE_BY = "(select e.asked_by from offer_estimates e where e.offer_id = offers.id and e.state in ('asked', 'given') order by e.created_at, e.id limit 1)";
+
     public const PICK_GROUP = "case when bids_close_at is not null and bids_close_at <= now() and exists (select 1 from bids where bids.offer_id = offers.id and bids.state = 'active') then 0 when bids_close_at is null or bids_close_at > now() then 1 else 2 end";
 
     /**
@@ -801,7 +814,11 @@ class OfferController
         }
         $bids = "(select count(*) from bids where bids.offer_id = offers.id and bids.state = '".BidState::Active->value."')";
         match ($sort->key) {
-            'tab' => $q->orderByRaw((self::summary($preset) !== null ? OfferTabs::sinceSql() : 'offers.tab_at')." {$dir} nulls last"),
+            'tab' => $q->orderByRaw(match (true) {
+                self::summary($preset) !== null => OfferTabs::sinceSql(),
+                $preset === 'estimating' => 'coalesce('.self::ESTIMATE_SINCE.', offers.tab_at)',
+                default => 'offers.tab_at',
+            }." {$dir} nulls last"),
             'published' => $q->orderByRaw("published_at {$dir} nulls last"),
             'closing' => $q->orderByRaw("bids_close_at {$dir} nulls last"),
             'number' => $q->orderBy('offers.number', $dir),
