@@ -12,7 +12,7 @@
     <x-admin.tab-head :presets="$presets" preset="garage" :counts="$counts" :sections="$sections" :sort="$sort" name="garage" :facets="$facets" search="Номер, марка, VIN, убыток"
         :views="ListView::SHELVED" :view="$view"/>
 
-    <div id="list">
+    <div id="list" data-detail-stay>
     @if ($groups->isEmpty() && $facets->activeCount() && ! $facets->searching())
         <x-ui.empty class="mt-6" :href="$facets->resetUrl()" link="Сбросить фильтр">По фильтру ничего</x-ui.empty>
     @elseif ($groups->isEmpty())

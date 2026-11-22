@@ -567,11 +567,14 @@ export default class extends Controller {
     // менялась под рукой, и цену с «Выставить в продажу» Андрей сделал не той машине (Evolute 2611093788). Сменилась —
     // тост с названием новой, чтобы это было видно.
     // Письмо открыто над окном (или вот-вот откроется, `hold`) — окно машины само не закрывается и машину не меняет.
+    // Сделки и гараж (`#list[data-detail-stay]`, 22.11.2026, начальник: «пока ты в сделке и сам из неё не вышел — делаешь все
+    // операции»): шаг уводит сделку в другую вкладку, строка уходит, а окно остаётся на этой машине со следующим шагом.
     get keeping() { return !!this.hold || !!document.getElementById('letters-frame')?.closest('dialog')?.open; }
 
     follow(records) {
         const key = this.lastKey;
         if (!key || this.shut || !this.submittedAt || Date.now() - this.submittedAt > 8000) return;
+        if (this.element.querySelector('#list[data-detail-stay]')) return;
         if (this.keeping) return;
         const sel = `[data-detail-key="${CSS.escape(key)}"]`;
         const gone = records.some((r) => [...r.removedNodes].some((n) => n.nodeType === 1 && (n.matches(sel) || n.querySelector(sel))));
