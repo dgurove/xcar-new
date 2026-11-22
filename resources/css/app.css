@@ -5437,6 +5437,7 @@ html[data-theme-switch] #header, html[data-theme-switch] #tabbar, html[data-them
   .photo-packs { grid-template-rows: auto auto auto; row-gap: .375rem; }
   .photo-packs { container-type: inline-size; }
   .photo-pack-short { display: none; }
+  .photo-pack-title--solo { flex-wrap: nowrap; white-space: nowrap; }
   @container (max-width: 20rem) { .photo-pack-full { display: none; } .photo-pack-short { display: inline; } }
   .photo-pack { display: contents; }
   .photo-pack-cover { @apply grid w-full min-w-0 text-left; grid-row: span 3; grid-template-rows: subgrid; row-gap: .375rem; align-items: end; }

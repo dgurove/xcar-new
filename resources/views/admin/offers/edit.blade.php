@@ -163,10 +163,10 @@
                     @if ($nowKind)@include('admin.offers.now-block', ['transitions' => $transitions->except(OfferState::Open->value)])@endif
                 </div>
             @endif
-            {{-- Фото — пачками в правой колонке над «Ценами» (23.11.2026, владелец: «фотки в боковом меню, а не в основном»); на
-                 телефоне — на прежнем месте (order-4). Без заголовка «Фотографии»: подписи пачек и так «Фото …» (владелец). Кадры письма прикрепляются после «Завести» (ImportThreadFiles): строка хода и
+            {{-- Фото — пачками верхом правой колонки, над чатом (23.11.2026, владелец: «фотки в боковом меню, а не в основном»,
+                 «логичнее над блоком с чатами»; чат и «что сейчас» — order-first, фото — ещё выше); на телефоне — на прежнем месте (order-4). Без заголовка «Фотографии»: подписи пачек и так «Фото …» (владелец). Кадры письма прикрепляются после «Завести» (ImportThreadFiles): строка хода и
                  заглушки в пачке, attach_controller переспрашивает их, пока строка есть. --}}
-            <x-ui.card class="order-4" data-controller="attach" data-attach-url-value="/offers/{{ $n }}/attach" data-attach-car-value="{{ $offer->car_id }}">
+            <x-ui.card class="order-4 @4xl:order-[-10000]" data-controller="attach" data-attach-url-value="/offers/{{ $n }}/attach" data-attach-car-value="{{ $offer->car_id }}">
                 <x-mail.attach-line :model="$offer"/>
                 @include('admin.offers.gallery')
             </x-ui.card>

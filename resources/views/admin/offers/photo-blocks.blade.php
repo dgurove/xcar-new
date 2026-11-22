@@ -4,8 +4,8 @@
      порядок и загрузка — у каждой свои, просмотр листает все пачки подряд (группа). Добавляют в любую пачку (кадр ложится
      её стадией); бросают файлы и вставляют из буфера — в первую. Главный кадр один на машину (звезда, `mainId`). Ответ на
      любое действие подменяет обёртку целиком (`gallery-stream`) морфом: открытая шторка остаётся открытой (`app.js`
-     бережёт `open` у диалогов). detail — карточка строки: без корзины и заглушек. Подписи пачек — только когда их больше
-     одной. --}}
+     бережёт `open` у диалогов). detail — карточка строки: без корзины и заглушек. Подпись стадии — всегда, и у единственной
+     пачки (23.11.2026, владелец: «Фото 12.10» — «непонятно, от страховой или при приёме»). --}}
 @props(['offer', 'detail' => false])
 @php
     $n = $offer->number;
@@ -15,14 +15,13 @@
     $vehicle = $offer->parkVehicle;
     $always = $vehicle ? array_values(array_filter(\App\Park\PhotoStage::cases(), fn ($s) => $s->addable($vehicle))) : [];
     $blocks = \App\Media\PhotoBlocks::of($offer->photos(), $always);
-    $titled = count($blocks) > 1;
     $mainId = $offer->mainPhoto()?->id;
     $pending = $detail ? 0 : \App\Offers\Jobs\ImportMigtorgLot::pending($offer) + \App\Mail\Jobs\ImportThreadFiles::pending($offer);
 @endphp
 <div id="{{ $root }}" class="photo-packs">
     @foreach ($blocks as $i => ['stage' => $stage, 'photos' => $photos, 'when' => $when])
         @php $first = $i === 0; $row = $root.'-'.$stage->value; @endphp
-        <x-ui.photo-pack :id="$row" :photos="$photos" :title="$titled ? $stage->label() : null" :when="$when" :main-id="$mainId"
+        <x-ui.photo-pack :id="$row" :photos="$photos" :title="$stage->label()" :when="$when" :main-id="$mainId" :solo="count($blocks) === 1"
             data-photos-url-value="/offers/{{ $n }}/media" data-photos-stage-value="{{ $stage->value }}" data-photos-group-value="offer-{{ $offer->id }}"
             data-photos-order="{{ $i }}" data-photos-mark-value="true" :data-photos-any-value="$first ? 'true' : null">
             @include('admin.offers.photo-upload')

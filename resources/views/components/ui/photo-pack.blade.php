@@ -6,7 +6,7 @@
      sheet_controller; слот — тело шторки: поле выбора файлов и `x-ui.photos grid`. Глаз считается так же, как в ряду
      (`hideBy` или `Media\Hidden`); счёт и тусклую обложку после нажатий пересчитывает контроллер (`count`, `cover`).
      hide=false — глаза нет, под обложкой просто «N фото». --}}
-@props(['id', 'photos', 'title' => null, 'when' => null, 'hide' => true, 'hideBy' => null, 'mainId' => null])
+@props(['id', 'photos', 'title' => null, 'when' => null, 'hide' => true, 'hideBy' => null, 'mainId' => null, 'solo' => false])
 @php
     $hidden = fn ($m) => $hide && ($hideBy ? $hideBy($m) : \App\Media\Hidden::is($m));
     $total = $photos->count();
@@ -15,14 +15,16 @@
     $cover = ($mainId ? $photos->firstWhere('id', $mainId) : null) ?? $photos->first(fn ($m) => ! $hidden($m)) ?? $photos->first();
     $words = $total === 0 ? 'Нет фото' : ($hide ? 'Открыто '.$open.' из '.$total : $total.' фото');
     $label = $title ?? 'Фото';
-    $short = str_starts_with($label, 'Фото ') ? \Illuminate\Support\Str::ucfirst(mb_substr($label, 5)) : $label;
+    // Короткая подпись («От страховой») — только когда рядом соседняя пачка: одна пачка подписана полностью и одной строкой
+    // (`solo`; справа пусто — подпись заходит туда), 23.11.2026, владелец: «не от страховой, а фото от страховой».
+    $short = ! $solo && str_starts_with($label, 'Фото ') ? \Illuminate\Support\Str::ucfirst(mb_substr($label, 5)) : $label;
     $head = new \Illuminate\Support\HtmlString(e($label).($when ? ' <span class="nums text-ink-dim">'.e($when).'</span>' : ''));
 @endphp
 <div {{ $attributes->class('photo-pack') }} data-controller="photos sheet">
     <button type="button" class="photo-pack-cover" data-action="sheet#open">
         {{-- В узком месте (правая колонка страницы) — без «Фото»: «От страховой 08.10» влезает в строку, и подписи соседних пачек
              не скачут (владелец, 23.11.2026); полная — где места хватает. --}}
-        <span class="photo-pack-title">@if ($short !== $label)<span class="photo-pack-full">{{ $label }}</span><span class="photo-pack-short">{{ $short }}</span>@else<span>{{ $label }}</span>@endif{{ "" }}@if ($when)<span class="nums text-ink-dim">{{ $when }}</span>@endif</span>
+        <span @class(['photo-pack-title', 'photo-pack-title--solo' => $solo])>@if ($short !== $label)<span class="photo-pack-full">{{ $label }}</span><span class="photo-pack-short">{{ $short }}</span>@else<span>{{ $label }}</span>@endif{{ "" }}@if ($when)<span class="nums text-ink-dim">{{ $when }}</span>@endif</span>
         <span @class(['photo-pack-img', 'is-hidden' => $hide && $total && ! $open]) data-photos-target="cover">
             @if ($cover)
                 <img src="{{ \App\Media\MediaUrl::for($cover, 'w320') }}" alt="" loading="lazy">
