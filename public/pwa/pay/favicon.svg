@@ -1,5 +1,6 @@
 <svg width="1500" height="1500" viewBox="0 0 1500 1500" fill="none" xmlns="http://www.w3.org/2000/svg">
 <rect width="1500" height="1500" fill="black"/>
-<!-- XCAR Pay (22.11.2026): кошелёк, как «Оплаты» таб-бара CRM, — карта за ним и застёжка лаймом, сам белым, углы прямые, как у XCAR Mail. -->
-<g transform="translate(30 30) scale(60)"><path fill="#97BF0D" d="M4 4h13v3H4Z"/><path fill="white" d="M2 7h20v13H2Z"/><path fill="#97BF0D" d="M14.5 11h7.5v5h-7.5Z"/><circle cx="17" cy="13.5" r="1" fill="black"/></g>
+<!-- XCAR Pay (22.11.2026, владелец выбрал «Кошелёк» из макета): кошелёк Phosphor (MIT, wallet-fill) — ремешок лаймом, сам белым, как клапан у XCAR Mail. -->
+<defs><clipPath id="strap"><rect x="0" y="0" width="256" height="56"/></clipPath><clipPath id="body"><rect x="0" y="56" width="256" height="200"/></clipPath></defs>
+<g transform="translate(37.19999999999993 102.0) scale(5.4)"><path clip-path="url(#strap)" fill="#97BF0D" d="M216,64H56a8,8,0,0,1,0-16H192a8,8,0,0,0,0-16H56A24,24,0,0,0,32,56V184a24,24,0,0,0,24,24H216a16,16,0,0,0,16-16V80A16,16,0,0,0,216,64Zm-36,80a12,12,0,1,1,12-12A12,12,0,0,1,180,144Z"/><path clip-path="url(#body)" fill="white" d="M216,64H56a8,8,0,0,1,0-16H192a8,8,0,0,0,0-16H56A24,24,0,0,0,32,56V184a24,24,0,0,0,24,24H216a16,16,0,0,0,16-16V80A16,16,0,0,0,216,64Zm-36,80a12,12,0,1,1,12-12A12,12,0,0,1,180,144Z"/></g>
 </svg>
