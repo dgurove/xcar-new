@@ -1,5 +1,5 @@
 {{-- Своё подтверждение, когда подтверждать уже нельзя: цена (или «В гараж») и что с ним. Принятое ведёт в сделку,
-     гаражное — в гараж. --}}
+     гаражное — в гараж; ждёт решения — «Изменить» (`x-offer.bid-revise`). --}}
 @props(['offer', 'bid'])
 <x-offer.counter-card :bid="$bid" class="mb-3 w-full"/>
 <x-offer.reprice-ask :bid="$bid" class="mb-3 w-full"/>
@@ -19,3 +19,8 @@
     @endphp
     <span class="text-right text-sm {{ $deal ? 'text-accent-text' : 'text-ink-muted' }}">{{ $deal ? ($deal->isGarage() ? 'В гараже' : 'Сделка') : 'Ждёт решения' }}@if ($lowMine)<span class="block text-warn">Нужно согласование с поставщиком</span>@elseif ($zoneMine === 'high')<span class="block text-danger">Проверьте сумму: больше чем вдвое выше цены</span>@endif</span>
 @if ($deal)</a>@else</div>@endif
+{{-- Ждёт решения — «Изменить» (22.11.2026, владелец): цена и «Для покупателя» ↔ «В гараж», та же шторка, что у админа. --}}
+@if (! $deal && $bid->state === \App\Offers\BidState::Active && in_array($bid->kind, [\App\Offers\BidKind::Buyer, \App\Offers\BidKind::Garage], true))
+    <button type="button" class="btn btn-quiet btn-s mt-2 w-full" data-controller="emit" data-action="emit#send" data-emit-event-param="bid-revise-{{ $bid->id }}:open">Изменить</button>
+    <x-offer.bid-revise :bid="$bid" :offer="$offer" :event="'bid-revise-'.$bid->id"/>
+@endif

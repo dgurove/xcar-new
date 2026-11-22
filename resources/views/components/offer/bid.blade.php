@@ -32,8 +32,9 @@
     $n = $bid->id;
     $accepted = $bid->state === BidState::Accepted;
     $counter = $bid->hasPendingCounter();
-    $fix = $active && ! $garage && $bid->amount;
-    $tenth = $fix ? (int) round($bid->amount / 10, -3) : 0;
+    // «Изменить…» (22.11.2026; прежде «Поправить цену…» только у ценового): цена и вид «Для покупателя» ↔ «В гараж» — у любого
+    // живого ценового или гаражного (`x-offer.bid-revise`, `ReviseBid`).
+    $fix = $active && in_array($bid->kind, [\App\Offers\BidKind::Buyer, \App\Offers\BidKind::Garage], true);
     // Контрпредложение — и резерву при идущей сделке (19.11.2026, владелец): согласится — сделка сразу его (`AnswerCounter`).
     $haggle = $active && ! $garage;
     $who = $bid->user;
@@ -47,7 +48,7 @@
      слева и когда справа. Разница, «в гараже», «внёс» и подписи тревог («ниже закупочной на …» — только красной суммой) — в шторке;
      в строке — лишь контрпредложение и «отклонено». Кнопок в строке нет:
      нажатие — шторка (`x-ui.more`): шапка с ценой и комментарием, «Написать» и главная «Принять…» / «Отдать…» в ряд, ниже
-     списком «Поправить цену…», «Контрпредложение…», ответ за менеджера и красное «Отклонить…». Отклонённые — серой строкой. --}}
+     списком «Изменить…» (цена и вид, 22.11.2026), «Контрпредложение…», ответ за менеджера и красное «Отклонить…». Отклонённые — серой строкой. --}}
 <div @class(['bid-line', 'bid-row--loss' => ($loss && $active) || $high, 'bid-row--low' => $low && ! ($loss && $active), 'bid-row--ok' => $active && ! $garage && ! $low && ! $loss && ! $high, 'bid-line--off' => ! $sheet])>
     @php ob_start(); @endphp
         <span class="bid-amount nums font-semibold">{{ $garage ? 'В гараж' : Money::rub($price) }}</span>
@@ -105,7 +106,7 @@
             </div>
             @if ($fix || $haggle)
                 <div class="menu-group">
-                    @if ($fix)<button type="button" class="menu-item" data-controller="emit" data-action="emit#send" data-emit-event-param="bid-amount-{{ $n }}:open"><x-ui.icon name="edit" class="size-5 text-ink-muted"/>Поправить цену…</button>@endif
+                    @if ($fix)<button type="button" class="menu-item" data-controller="emit" data-action="emit#send" data-emit-event-param="bid-revise-{{ $n }}:open"><x-ui.icon name="edit" class="size-5 text-ink-muted"/>Изменить…</button>@endif
                     @if ($haggle)<button type="button" class="menu-item" data-controller="emit" data-action="emit#send" data-emit-event-param="counter-{{ $n }}:open"><x-ui.icon name="refresh" class="size-5 text-ink-muted"/>{{ $counter ? 'Другая цена…' : 'Контрпредложение…' }}</button>@endif
                 </div>
             @endif
@@ -128,30 +129,6 @@
     @endif
     @if ($active)<x-offer.give-sheet :offer="$offer" :bid="$bid"/>@endif
     {{-- Шторки пунктов — вне шторки строки (поповер прячет вложенное), открываются событием. --}}
-    @if ($fix)
-        <span class="contents" data-controller="sheet" data-action="bid-amount-{{ $n }}:open@window->sheet#open">
-                <x-ui.sheet :id="'bid-amount-'.$bid->id" title="Поправить цену">
-                    <form method="post" action="/confirmations/{{ $bid->id }}/amount" class="flex flex-col gap-4" data-put-scope>
-                        @csrf
-                        <div class="flex flex-wrap items-center gap-x-2 gap-y-1 text-sm"><x-ui.person :user="$bid->user" full/><span class="text-ink-muted">подтвердил <span class="nums">{{ Money::rub($bid->amount) }}</span>@if ($offer->asking_price), цена продажи <span class="nums">{{ Money::rub($offer->asking_price) }}</span>@endif</span></div>
-                        <label class="flex flex-col items-center gap-1">
-                            <span class="flex items-baseline justify-center gap-2">
-                                <input name="amount" inputmode="decimal" autocomplete="off" class="pay-amount nums" aria-label="Цена, ₽" placeholder="0"
-                                       value="{{ old('amount', Money::nums($high && $tenth ? $tenth : $bid->amount)) }}" data-controller="digits" data-action="input->digits#format" autofocus>
-                                <span class="text-xl text-ink-muted">₽</span>
-                            </span>
-                            @error('amount')<span class="text-sm text-danger">{{ $message }}</span>@enderror
-                        </label>
-                        @if ($tenth)
-                            <div class="sheet-chips justify-center">
-                                <button type="button" class="chip nums" data-controller="put" data-action="put#set" data-put-value-param="{{ Money::nums($tenth) }}" data-put-keep-param="true">Без лишнего нуля {{ Money::nums($tenth) }}</button>
-                                <button type="button" class="chip nums" data-controller="put" data-action="put#set" data-put-value-param="{{ Money::nums($bid->amount) }}" data-put-keep-param="true">Как было {{ Money::nums($bid->amount) }}</button>
-                            </div>
-                        @endif
-                        <x-ui.sheet-foot type="submit">Сохранить</x-ui.sheet-foot>
-                    </form>
-                </x-ui.sheet>
-        </span>
-    @endif
+    @if ($fix)<x-offer.bid-revise :bid="$bid" :offer="$offer" :event="'bid-revise-'.$n" staff :in-garage="(int) ($parked[$bid->user_id] ?? 0)"/>@endif
     @if ($haggle)<x-offer.counter-sheet :offer="$offer" :bid="$bid" :event="'counter-'.$n"/>@endif
 </div>

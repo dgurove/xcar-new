@@ -4,7 +4,9 @@ namespace App\Notifications;
 
 use App\Billing\Payment;
 use App\Mail\Message;
+use App\Offers\Actions\ReviseBid;
 use App\Offers\Bid;
+use App\Offers\BidKind;
 use App\Offers\Deal;
 use App\Offers\Offer;
 use App\Support\Money;
@@ -104,6 +106,16 @@ final class DealEventNotice extends Notice
         $bid->loadMissing('offer', 'user');
 
         return new self($bid->offer, 'bid', 'Новое подтверждение', 'подтверждает '.Money::rub((int) $bid->amount), null, 'bids', $by ?? $bid->user,
+            path: '/offers/'.$bid->offer->number);
+    }
+
+    /** Менеджер сам изменил своё подтверждение (22.11.2026, `ReviseBid`): «теперь в гараж» или «теперь 1 150 000 ₽». */
+    public static function bidRevised(Bid $bid, BidKind $wasKind, ?int $was): self
+    {
+        $bid->loadMissing('offer', 'user');
+        $now = $bid->kind === BidKind::Garage ? 'теперь в гараж' : 'теперь подтверждает '.Money::rub((int) $bid->amount);
+
+        return new self($bid->offer, 'bid', 'Подтверждение изменено', $now.', было '.ReviseBid::word($wasKind, $was), null, 'bids', $bid->user,
             path: '/offers/'.$bid->offer->number);
     }
 

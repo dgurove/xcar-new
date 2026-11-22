@@ -116,6 +116,8 @@ Route::middleware(['auth', 'wall'])->group(function () {
     Route::post('/offers/{offer}/estimate/decline', [EstimateController::class, 'decline'])->middleware('ability:isManager');
     // Админ подтверждает за менеджера — выбор в шторке «За какого менеджера?».
     Route::post('/confirmations/{bid}/withdraw', [BidController::class, 'withdraw']);
+    // Своё подтверждение, пока ждёт решения (22.11.2026): цена и вид «Для покупателя» ↔ «В гараж» (`ReviseBid`).
+    Route::post('/confirmations/{bid}/revise', [BidController::class, 'revise']);
     Route::post('/confirmations/{bid}/counter/answer', [BidController::class, 'answerCounter']);
     Route::post('/confirmations/{bid}/counter/remind', [BidController::class, 'remindCounter']);
     // Выросла закупочная — ответ менеджера (28.10.2026, `AnswerReprice`).

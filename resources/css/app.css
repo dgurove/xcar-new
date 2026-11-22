@@ -1915,8 +1915,9 @@ html.kb-open { --home-gap: 0px; }
   .flash-danger { --mark: var(--color-danger); --mark-glyph: '!'; }
   .flash-accent { --mark: var(--color-accent); --mark-glyph: '✦'; }
   .flash-urgent { --mark: var(--color-urgent); --mark-glyph: '!'; }
-  .box-urgent h2::before { content: '!'; display: inline-grid; place-items: center; width: 1.375rem; height: 1.375rem; margin-right: .5rem; vertical-align: .125rem; border-radius: 999px; background: var(--color-urgent); color: #fff; font-size: .8125rem; font-weight: 700; line-height: 1; }
-  .box-nested.box-urgent h2::before { content: none; }
+  /* Только заголовок самого блока: шторки внутри него («Изменить подтверждение», «Контрпредложение») — без «!» (22.11.2026). */
+  .box-urgent > .box-head > h2::before { content: '!'; display: inline-grid; place-items: center; width: 1.375rem; height: 1.375rem; margin-right: .5rem; vertical-align: .125rem; border-radius: 999px; background: var(--color-urgent); color: #fff; font-size: .8125rem; font-weight: 700; line-height: 1; }
+  .box-nested.box-urgent > .box-head > h2::before { content: none; }
   /* Строка с полосой слева — вариант Б. */
   .stripe, .box-nested.box-urgent { --side: var(--stripe, var(--color-urgent)); }
   /* Полоса сбоку — прямая планка во всю высоту у края, а скругление блока её обрезает (22.11.2026, владелец: «даже если строки

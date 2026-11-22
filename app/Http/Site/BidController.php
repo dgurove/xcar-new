@@ -3,15 +3,20 @@
 namespace App\Http\Site;
 
 use App\Offers\Actions\AnswerCounter;
+use App\Offers\Actions\AnswerReprice;
 use App\Offers\Actions\PlaceBid;
 use App\Offers\Actions\PlaceBidFor;
+use App\Offers\Actions\RemindCounter;
+use App\Offers\Actions\ReviseBid;
 use App\Offers\Actions\WithdrawBid;
 use App\Offers\Bid;
 use App\Offers\BidKind;
 use App\Offers\Offer;
+use App\Offers\RepriceAsk;
 use App\Support\Money;
 use App\Users\Role;
 use App\Users\User;
+use App\Workflow\Actions\RemindAsks;
 use Illuminate\Http\Request;
 use Illuminate\Validation\ValidationException;
 
@@ -82,14 +87,14 @@ class BidController
     public function remindCounter(Request $request, Bid $bid)
     {
         abort_unless($bid->user_id === $request->user()->id && $bid->hasPendingCounter(), 404);
-        $at = \App\Workflow\Actions\RemindAsks::at((string) $request->input('when'));
-        \App\Offers\Actions\RemindCounter::set($bid, $at, $request->user());
+        $at = RemindAsks::at((string) $request->input('when'));
+        RemindCounter::set($bid, $at, $request->user());
 
-        return back()->with('toast', $at ? 'Напомним '.\App\Workflow\Actions\RemindAsks::when($at) : 'Напоминание снято');
+        return back()->with('toast', $at ? 'Напомним '.RemindAsks::when($at) : 'Напоминание снято');
     }
 
     /** Выросла закупочная: «Согласен» — новая цена, «Отказываюсь» — сделка отменена или подтверждение снято. */
-    public function answerReprice(Request $request, \App\Offers\RepriceAsk $ask, \App\Offers\Actions\AnswerReprice $answer)
+    public function answerReprice(Request $request, RepriceAsk $ask, AnswerReprice $answer)
     {
         abort_unless($ask->user_id === $request->user()->id, 404);
         // Цена (10.11.2026, владелец: «его просит ввести новую цену подтверждения»), согласие или нет на наше контрпредложение, отказ.
@@ -118,9 +123,23 @@ class BidController
 
             return back()->with('toast', 'Ваша цена в силе — ждём решения');
         }
-        $answer->offer($ask, \App\Support\Money::rubles($request->validate(['price' => 'required'])['price']), $by, $request->boolean('low_ok'));
+        $answer->offer($ask, Money::rubles($request->validate(['price' => 'required'])['price']), $by, $request->boolean('low_ok'));
 
         return back()->with('toast', $ask->deal_id ? 'Цена отправлена — ждём решения' : 'Новая цена принята');
+    }
+
+    /**
+     * «Изменить» у своего подтверждения (22.11.2026, владелец: «пока ждёт решения» — и после конца приёма): «Для покупателя» с
+     * ценой или «В гараж», `ReviseBid` — цена зонами, ниже порога и «вдвое выше» переспрашивает (`low_ok`).
+     */
+    public function revise(Request $request, Bid $bid, ReviseBid $revise)
+    {
+        abort_unless($bid->user_id === $request->user()->id, 403);
+        $kind = BidKind::tryFrom((string) $request->input('kind')) ?? BidKind::Buyer;
+        $data = $request->validate(['amount' => [$kind === BidKind::Buyer ? 'required' : 'nullable', 'string', 'max:20']], ['amount.required' => 'Впишите цену']);
+        $bid = $revise($bid, $kind, Money::rubles($data['amount'] ?? null) ?: null, $request->user(), $request->boolean('low_ok'));
+
+        return back()->with('toast', $bid->kind === BidKind::Garage ? 'Подтверждение: в гараж' : 'Подтверждение: '.Money::rub((int) $bid->amount));
     }
 
     public function withdraw(Request $request, Bid $bid, WithdrawBid $withdraw)

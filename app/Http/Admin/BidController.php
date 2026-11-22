@@ -3,10 +3,10 @@
 namespace App\Http\Admin;
 
 use App\Offers\Actions\AnswerCounter;
-use App\Offers\Actions\CorrectBidAmount;
 use App\Offers\Actions\DeclineBid;
 use App\Offers\Actions\MakeCounter;
 use App\Offers\Actions\PlaceBidFor;
+use App\Offers\Actions\ReviseBid;
 use App\Offers\Bid;
 use App\Offers\BidKind;
 use App\Offers\Offer;
@@ -33,13 +33,17 @@ class BidController
         return back()->with('toast', 'Подтверждение '.$manager->shortName().' внесено');
     }
 
-    /** Опечатка в цене подтверждения (02.11.2026, «9 400 000 вместо 940 000») — карандаш у суммы, `CorrectBidAmount`. */
-    public function amount(Request $request, Bid $bid, CorrectBidAmount $correct)
+    /**
+     * «Изменить…» у подтверждения (22.11.2026; прежде «Поправить цену…» — опечатка в цене, 02.11.2026): цена и вид «Для
+     * покупателя» ↔ «В гараж», `ReviseBid`. Без `kind` — вид прежний (старая форма «Поправить цену», `/amount`).
+     */
+    public function revise(Request $request, Bid $bid, ReviseBid $revise)
     {
-        $data = $request->validate(['amount' => ['required', 'string', 'max:20']], ['amount.required' => 'Впишите цену']);
-        $correct($bid, (int) Money::rubles($data['amount']), $request->user());
+        $kind = BidKind::tryFrom((string) $request->input('kind')) ?? $bid->kind;
+        $data = $request->validate(['amount' => [$kind === BidKind::Buyer ? 'required' : 'nullable', 'string', 'max:20']], ['amount.required' => 'Впишите цену']);
+        $bid = $revise($bid, $kind, Money::rubles($data['amount'] ?? null) ?: null, $request->user());
 
-        return back()->with('toast', 'Цена подтверждения '.$bid->user->shortName().': '.Money::rub($bid->fresh()->amount));
+        return back()->with('toast', 'Подтверждение '.$bid->user->shortName().': '.($bid->kind === BidKind::Garage ? 'в гараж' : Money::rub((int) $bid->amount)));
     }
 
     public function decline(Request $request, Bid $bid, DeclineBid $decline)
