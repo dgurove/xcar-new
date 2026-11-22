@@ -22,7 +22,7 @@
     // ждём — что со ссылкой или заявкой; по ссылке пытались и не вышло — её слово.
     [$word, $tone] = match (true) {
         $paid => [R::paidWays($r->invoices, $attempts ?? collect()), 'text-ink-muted'],
-        $r->gap !== null => [$r->gap, 'text-ink-muted'],
+        $r->gap !== null => [$r->gap, $r->gap === R::gap('commission') ? 'text-accent-text' : 'text-ink-muted'],
         $unsent => [null, ''],
         $first !== null => ($tried && $tried->has($first->id) && ($l = R::linkWord($first))) ? $l : R::state($first),
         default => [null, ''],

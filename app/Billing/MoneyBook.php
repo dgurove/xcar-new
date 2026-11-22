@@ -3,11 +3,13 @@
 namespace App\Billing;
 
 use App\Garage\GaragePayer;
+use App\Http\Admin\MoneyController;
 use App\Http\Admin\MoneyRows;
 use App\Offers\Deal;
 use App\Support\Facets\Facets;
 use App\Users\User;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Http\Request;
 use Illuminate\Support\Collection;
 
 /**
@@ -70,7 +72,7 @@ final class MoneyBook
     }
 
     /** Чип «Статус» раздела, умолчание — после «Беру в работу» и не отменённые; лупа и адрес умолчание снимают. */
-    public static function facets(\Illuminate\Http\Request $request, string $key = 'crm-money'): Facets
+    public static function facets(Request $request, string $key = 'crm-money'): Facets
     {
         // Умолчание — не выбор: чип серым «Статус ▾» (`x-ui.facet-chip`), в окне отмечены все, кроме «Не взял в работу» и отменённых.
         // Экран менеджера (`account-money`) чипа не рисует — умолчание действует молча.
@@ -151,7 +153,7 @@ final class MoneyBook
      */
     public static function ownToPay(User $manager): int
     {
-        $facets = self::facets(\Illuminate\Http\Request::create('/'), 'account-money');
+        $facets = self::facets(Request::create('/'), 'account-money');
 
         return self::openDeals('fees', $manager, $facets, own: true)->count() + self::openDeals('dkp', $manager, $facets, own: true)->count();
     }
@@ -168,7 +170,7 @@ final class MoneyBook
 
     private const CREDIT_SHOWN = "(billing_invoices.credit_deal_id is null or billing_invoices.state = 'issued'
         or exists (select 1 from deals cd where cd.id = billing_invoices.credit_deal_id and cd.state = 'cancelled')
-        or billing_invoices.paid > ".self::CREDITED." + 0.005)";
+        or billing_invoices.paid > ".self::CREDITED.' + 0.005)';
 
     /**
      * Ручные ссылки (разовые оплаты, `Invoice::isService`) этого человека своими строками: без сделки и те, что засчитаны в сделку,
@@ -179,7 +181,7 @@ final class MoneyBook
         $who = 'coalesce('.self::SERVICE_PERSON.', billing_invoices.manager_id)';
 
         // Модератору — только засчитанные в сделку: счёт без сделки ему закрыт (`MoneyController::dealOnly`).
-        return \App\Http\Admin\MoneyController::dealOnly(Invoice::query())->where('kind', ChargeKind::Service->value)->where('direction', 'issued')->whereNull('deal_id')->whereNull('vehicle_id')
+        return MoneyController::dealOnly(Invoice::query())->where('kind', ChargeKind::Service->value)->where('direction', 'issued')->whereNull('deal_id')->whereNull('vehicle_id')
             ->where('state', '!=', InvoiceState::Void->value)->whereRaw(self::CREDIT_SHOWN)
             ->select('billing_invoices.*')->selectRaw(self::CREDITED.' as credited')
             ->when($open !== null, fn ($q) => $q->where('state', $open ? InvoiceState::Issued->value : InvoiceState::Paid->value))
@@ -239,6 +241,7 @@ final class MoneyBook
             return true;
         }
 
-        return $tab === 'dkp' ? $deal->isPrime() || $deal->forGarageBuyer() : ! $deal->isPrime() && $deal->selectionDue() > 0;
+        // Вознаграждение не назначено — подбор ещё неизвестен, но строка стоит: «назначить вознаграждение» (22.11.2026).
+        return $tab === 'dkp' ? $deal->isPrime() || $deal->forGarageBuyer() : ! $deal->isPrime() && ($deal->selectionDue() > 0 || ($deal->paysSelection() && $deal->rewardPending()));
     }
 }

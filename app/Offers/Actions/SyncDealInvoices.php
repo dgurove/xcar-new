@@ -63,6 +63,7 @@ final class SyncDealInvoices
             $deal->contract->update(['price' => $price]);
         }
         DB::transaction(function () use ($deal, $by) {
+            $this->dropPendingSelection($deal, $by);
             $this->slot($deal, $by, ChargeKind::Selection, $this->selection($deal));
             $this->slot($deal, $by, ChargeKind::Sale, $this->prime($deal));
         });
@@ -114,6 +115,22 @@ final class SyncDealInvoices
                 ->whereIn('credit_deal_id', Deal::where('offer_id', $deal->offer_id)->cancelled()->select('id'))
                 ->update(['credit_deal_id' => $deal->id]);
         }
+    }
+
+    /**
+     * Вознаграждение не назначено (`Deal::rewardPending`) — подбор неизвестен: системный счёт подбора, что менеджеру ещё не
+     * отправлен, без денег и заявок, гасится (22.11.2026, владелец: «нельзя писать, что он нам якобы должен 80 тыщ»). Назначили —
+     * встанет заново на долю минус вознаграждение. Отправленный и оплаченный остаются.
+     */
+    private function dropPendingSelection(Deal $deal, User $by): void
+    {
+        if (! $deal->rewardPending() || ! ($deal->paysSelection() || $deal->splitsSelection())) {
+            return;
+        }
+        Invoice::where('deal_id', $deal->id)->where('direction', 'issued')->where('kind', ChargeKind::Selection)->where('state', InvoiceState::Issued)
+            ->whereNull('shown_at')->whereNull('requested_at')->where('paid', '<=', 0)->with(['payments', 'claims'])->get()
+            ->filter(fn (Invoice $i) => $i->claims->isEmpty() && $i->payments->whereNull('voided_at')->isEmpty())
+            ->each(fn (Invoice $i) => ($this->void)($i, $by, 'Вознаграждение не назначено'));
     }
 
     /** @return array{party: Party, lines: list<array>, vat?: ?int}|null */

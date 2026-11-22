@@ -14,7 +14,10 @@ use App\Garage\Car as GarageCar;
 use App\Garage\GaragePayer;
 use App\Garage\Payer;
 use App\Logistics\Channel;
+use App\Mail\Template;
+use App\Notifications\ExtraAskDecisionNotice;
 use App\Offers\Documents\PaymentProofPdf;
+use App\Offers\Documents\SignedContractPdf;
 use App\Park\Pass;
 use App\Park\Vehicle;
 use App\Park\VehicleState;
@@ -24,6 +27,7 @@ use App\Support\Money;
 use App\Support\Surface;
 use App\Users\User;
 use App\Vendors\DealFormat;
+use App\Workflow\Actor;
 use App\Workflow\Asks;
 use App\Workflow\Outcome;
 use App\Workflow\Requirement;
@@ -365,11 +369,11 @@ class Deal extends Model implements HasMedia
      */
     // Доп. просьба (18.11.2026, `ExtraAsk`): пока ждём поставщика или показываем ответ — хода его нет; показали — его ход.
     public const MANAGER_TURN_SQL = "(exists (select 1 from reprice_asks a where a.deal_id = deals.id and a.state in ('pending', 'countered'))
-        or ((not ".ExtraAsk::DEAL_BEFORE_SQL.") and ((".self::ACTIVE_SQL." and deals.signing_asked_at is not null and deals.signing_at is null and coalesce(jsonb_array_length(deals.signing_wish->'slots'), 0) = 0)
+        or ((not ".ExtraAsk::DEAL_BEFORE_SQL.') and (('.self::ACTIVE_SQL." and deals.signing_asked_at is not null and deals.signing_at is null and coalesce(jsonb_array_length(deals.signing_wish->'slots'), 0) = 0)
         or deals.buyer_asked_at is not null or exists (select 1 from requirements r where r.deal_id = deals.id and r.done_at is null)
         or (".self::ACTIVE_SQL." and exists (select 1 from offer_positions p join workflow_stages s on s.id = p.stage_id where p.offer_id = deals.offer_id
             and p.track = 'sale' and coalesce(p.waits_for, s.waits_for) = 'manager'))))
-        or (".self::ACTIVE_SQL." and ".ExtraAsk::DEAL_MANAGER_SQL."))";
+        or (".self::ACTIVE_SQL.' and '.ExtraAsk::DEAL_MANAGER_SQL.'))';
 
     /**
      * Что сделать менеджеру по идущей сделке (27.10.2026, владелец: «глянь так же с точки зрения менеджера»): просьба шага,
@@ -399,7 +403,7 @@ class Deal extends Model implements HasMedia
         // Доп. просьба поставщику держит сделку (18.11.2026, `ExtraAsk`): до показа ответа — ждём, показали — решить, берёт ли.
         if ($ask = ExtraAsk::holding($this)) {
             return $ask->asks_manager && $ask->phase() === ExtraAsk::MANAGER
-                ? ['title' => \App\Notifications\ExtraAskDecisionNotice::question($ask), 'due' => null, 'kind' => 'extra'] : null;
+                ? ['title' => ExtraAskDecisionNotice::question($ask), 'due' => null, 'kind' => 'extra'] : null;
         }
         $req = $this->openRequirement;
         if ($req) {
@@ -622,7 +626,7 @@ class Deal extends Model implements HasMedia
             return false;
         }
         $stage ??= $this->offer->position(Track::Sale)?->stage;
-        if (! $stage || ! $stage->exitsFor(\App\Workflow\Actor::Staff, $this)->contains(fn (Outcome $x) => $x->to?->asksConsent())) {
+        if (! $stage || ! $stage->exitsFor(Actor::Staff, $this)->contains(fn (Outcome $x) => $x->to?->asksConsent())) {
             return false;
         }
 
@@ -632,7 +636,7 @@ class Deal extends Model implements HasMedia
     /** Галки доп. запроса до согласия: «Запросить ПТС» и «Согласовать осмотр» — ид шаблонов по названию, `&pick[]=…`. */
     public static function precheckPicks(): string
     {
-        return collect(\App\Mail\Template::where('kind', 'request')->whereIn('name', ['Запросить ПТС', 'Согласовать осмотр'])->pluck('id'))
+        return collect(Template::where('kind', 'request')->whereIn('name', ['Запросить ПТС', 'Согласовать осмотр'])->pluck('id'))
             ->map(fn ($id) => '&pick[]='.$id)->implode('');
     }
 
@@ -1089,7 +1093,7 @@ class Deal extends Model implements HasMedia
             // Ноль — услуг подбора нет (19.11.2026), не «не вписаны».
             $this->isGarageManager() && $this->share === null => 'share',
             $this->isPrime() && (! $this->isGarage() || $this->namesBuyer()) && ! $this->contract?->buyer_user_id => 'buyer',
-            $this->namesBuyer() && $this->commission === null => 'commission',
+            ($this->namesBuyer() || $this->paysSelection()) && $this->rewardPending() => 'commission',
             // Р.О.С. без реквизитов (пришлёт владелец) — счёт выставить не от кого.
             $this->seller() === Seller::Ros && ! Party::seller(Seller::Ros)->billable() => 'ros_requisites',
             // У покупателя нет того, что счёт печатает (18.11.2026: ФИО и прописка, у ИП и организации — свои поля; скан и
@@ -1144,7 +1148,7 @@ class Deal extends Model implements HasMedia
      * договор» (`contract:unread`); договор готов и не отправлен — «Счёт оплачен» (красным) или «Счёт не оплачен». Дело —
      * в виде `Position::todo`. Нет — null.
      *
-     * @return array{key: string, title: string, rank: int, since: ?\Illuminate\Support\Carbon, button: ?array}|null
+     * @return array{key: string, title: string, rank: int, since: ?Carbon, button: ?array}|null
      */
     public function paperTodo(): ?array
     {
@@ -1161,10 +1165,10 @@ class Deal extends Model implements HasMedia
         if ($contract->buyer && Party::forUser($contract->buyer)->unreadFields()) {
             return $todo('contract:unread', 'Данные не распознались', 1, $fill);
         }
-        if ($contract->shown_at || ! DealContract::for($this)->isReady() || \App\Offers\Documents\SignedContractPdf::files($this)->isNotEmpty()) {
+        if ($contract->shown_at || ! DealContract::for($this)->isReady() || SignedContractPdf::files($this)->isNotEmpty()) {
             return null;
         }
-        $sale = $this->invoices->first(fn (Invoice $i) => $i->direction === 'issued' && $i->kind === \App\Billing\ChargeKind::Sale && $i->state !== InvoiceState::Void);
+        $sale = $this->invoices->first(fn (Invoice $i) => $i->direction === 'issued' && $i->kind === ChargeKind::Sale && $i->state !== InvoiceState::Void);
         $paid = $sale?->state === InvoiceState::Paid;
 
         return $todo($paid ? 'contract:paid' : 'contract:unpaid', $paid ? 'Счёт оплачен' : 'Счёт не оплачен', $paid ? 2 : 3,
@@ -1262,6 +1266,9 @@ class Deal extends Model implements HasMedia
     {
         return match (true) {
             $this->isGarageManager() => (int) $this->share,
+            // Вознаграждение не назначено — подбор неизвестен (22.11.2026, владелец: «пока явно не указали, что вознаграждение 0,
+            // нельзя писать, что он нам якобы должен 80 тыщ»): счёта нет, в «Оплатах» — «назначить вознаграждение».
+            $this->rewardPending() => 0,
             $this->splitsSelection() => max(0, (int) $this->amount - (int) $this->commission - (int) $this->contract?->cash_part - (int) $this->cost),
             $this->paysSelection() => (int) $this->selectionBase() - (int) $this->commission,
             default => 0,
@@ -1671,6 +1678,15 @@ class Deal extends Model implements HasMedia
      * Услуги подбора — что остаётся нам сверх закупочной: ПРАЙМ и Р.О.С. — цена минус вознаграждение минус закупочная; ДКП и
      * страховой — подбор, который менеджер платит нам (взаимозачёт внутри); гаражная «платит менеджер» — наша доля.
      */
+    /**
+     * Вознаграждение менеджеру положено, но не назначено (`commission` пусто; ноль — назначено): не аукцион, не супер-покупатель,
+     * не гаражная, кроме Совкомбанка. От него зависят услуги подбора — пока его нет, их суммы нет нигде (22.11.2026).
+     */
+    public function rewardPending(): bool
+    {
+        return $this->commission === null && ! $this->isAuction() && ! $this->isDirect() && (! $this->isGarage() || $this->namesBuyer());
+    }
+
     public function ours(): ?int
     {
         if ($this->isGarageManager()) {

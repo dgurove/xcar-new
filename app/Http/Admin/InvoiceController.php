@@ -38,7 +38,7 @@ class InvoiceController
             // — услуги подбора `Deal::ours`).
             'bases' => [
                 'sale' => $deal->amount !== null ? max(0, $deal->amount - (int) $deal->commission) : $deal->base(),
-                'selection' => max(0, (int) ($deal->paysSelection() || $deal->isGarageManager() ? $deal->selectionDue() : $deal->ours())),
+                'selection' => $deal->rewardPending() && ! $deal->namesBuyer() ? null : max(0, (int) ($deal->paysSelection() || $deal->isGarageManager() ? $deal->selectionDue() : $deal->ours())),
                 'other' => $deal->amount !== null ? max(0, $deal->amount - (int) $deal->commission) : $deal->base(),
             ],
             'partyKinds' => PartyKind::options(),

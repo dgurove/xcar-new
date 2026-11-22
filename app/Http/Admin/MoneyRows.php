@@ -6,8 +6,8 @@ use App\Billing\Acquiring\PayMethod;
 use App\Billing\ChargeKind;
 use App\Billing\Invoice;
 use App\Billing\PartyName;
-use App\Billing\ServiceTitle;
 use App\Billing\PaymentSource;
+use App\Billing\ServiceTitle;
 use App\Support\Ago;
 use App\Users\User;
 use Illuminate\Support\Collection;
@@ -188,7 +188,8 @@ final class MoneyRows
             'unread' => 'данные не распознались',
             'price' => 'нет цены продажи',
             'share' => 'нет нашей доли',
-            'commission' => 'нет вознаграждения',
+            // Наш ход (22.11.2026): подбор зависит от вознаграждения, суммы у строки нет, пока его не назначили.
+            'commission' => 'назначить',
             'ros_requisites' => 'нет реквизитов Р.О.С.',
             default => 'счёта нет',
         };

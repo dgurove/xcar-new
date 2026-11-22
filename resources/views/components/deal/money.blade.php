@@ -134,6 +134,9 @@
         $feeBilled = ($deal->paysSelection() || $deal->isGarageManager()) && $invoices->contains(fn ($i) => $i->kind === \App\Billing\ChargeKind::Selection && $i->state !== InvoiceState::Void);
         if ($deal->isGarageManager() && ! $feeBilled) {
             $rows[] = ['Услуги подбора', $deal->share !== null ? Money::rub($deal->share) : 'не вписано', $dd, true];
+        } elseif (! $feeBilled && ! $deal->isGarageManager() && $deal->rewardPending()) {
+            // Вознаграждение не назначено — подбора ещё нет (22.11.2026): строкой «Назначить ›» в ту же шторку, что вознаграждение.
+            $rows[] = ['Услуги подбора', null, '', true];
         } elseif (! $feeBilled && ! $deal->isGarageManager() && $ours !== null) {
             $rows[] = ['Услуги подбора', Money::rub($ours), $dd.($ours < 0 ? ' text-danger' : ''), true];
         }
@@ -261,6 +264,14 @@
             {{-- Услуги подбора — последней: что остаётся нам после вознаграждения. --}}
             @foreach ($shown as $r)
                 @continue($r[0] !== 'Услуги подбора')
+                @if ($r[1] === null)
+                    @php $selTag = $editMoney ? 'button' : 'div'; @endphp
+                    <{{ $selTag }} @if ($editMoney) type="button" data-controller="emit" data-action="emit#send" data-emit-event-param="deal-money-{{ $deal->id }}:open" @endif class="row sale-row">
+                        <span class="sale-row-label">Услуги подбора</span>
+                        @if ($editMoney)<span class="sale-row-value text-accent-text">Назначить</span><x-ui.chevron/>@else<span class="sale-row-value text-ink-muted">назначим</span><x-ui.chevron-space/>@endif
+                    </{{ $selTag }}>
+                    @continue
+                @endif
                 <div class="row sale-row"><span class="sale-row-label">{{ $r[0] }}@foreach ($r[4] ?? [] as [$subText, $subTone])<span class="block text-sm {{ $subTone }}">{{ $subText }}</span>@endforeach</span><span class="sale-row-value {{ $r[2] }}">{{ $r[1] }}</span><x-ui.chevron-space/></div>
             @endforeach
             @if ($feeBilled && $selection)

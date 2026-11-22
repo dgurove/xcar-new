@@ -210,7 +210,7 @@
             <div class="deal-money-row deal-money-block flex flex-col gap-3">
                 <div class="flex items-start gap-3">
                     <span class="min-w-0 flex-1"><span class="block font-medium">{{ ($selection?->seller ?? \App\Billing\Seller::Prime)->config()['name'] }}</span>@if ($s = $stateOf($selection))<span @class(['block text-sm', $s[1]])>{{ $s[0] }}</span>@endif</span>
-                    <span class="nums shrink-0">{{ Money::rub((int) ($selection ? ($selection->state === InvoiceState::Paid ? $selection->total : $selection->remaining()) : $deal->ours())) }}</span>
+                    @if ($selection || ! $deal->rewardPending())<span class="nums shrink-0">{{ Money::rub((int) ($selection ? ($selection->state === InvoiceState::Paid ? $selection->total : $selection->remaining()) : $deal->ours())) }}</span>@else<span class="shrink-0 text-ink-muted">уточним</span>@endif
                 </div>
                 @if ($feePay)
                     @php $online = app(\App\Billing\Acquiring\Gateway::class)->configured() && \App\Billing\Acquiring\PayLink::eligible($selection); @endphp

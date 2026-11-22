@@ -14,27 +14,27 @@ use App\Billing\Actions\IssueServiceInvoice;
 use App\Billing\Actions\RejectPayment;
 use App\Billing\Actions\SwapPaymentProof;
 use App\Billing\ChargeKind;
-use App\Billing\Seller;
 use App\Billing\Invoice;
+use App\Billing\InvoiceState;
 use App\Billing\MoneyBook;
 use App\Billing\MoneyRow;
-use App\Billing\InvoiceState;
 use App\Billing\Party;
 use App\Billing\Payment;
 use App\Billing\PaymentSource;
 use App\Billing\PaymentState;
+use App\Billing\PayView;
+use App\Billing\Seller;
 use App\Http\Billing\InvoiceActions;
+use App\Offers\CarWindow;
 use App\Offers\Deal;
 use App\Offers\DealCredit;
 use App\Offers\Offer;
 use App\Offers\OfferNumber;
 use App\Support\Detail;
-use App\Support\Facets\Facet;
 use App\Support\Facets\Facets;
-use App\Support\Facets\Option;
 use App\Support\ListPrefs;
-use App\Support\Portion;
 use App\Support\Money;
+use App\Support\Portion;
 use App\Support\Sort;
 use App\Support\Table\ColRole;
 use App\Support\Table\Column;
@@ -362,7 +362,7 @@ class MoneyController
         $detail = Detail::of($request, fn (string $key) => str_starts_with($key, 's')
             ? (($i = self::dealOnly(Invoice::crmMoney())->find((int) substr($key, 1))) ? $this->card($i) : null)
             // Машина — окном «Оплата сделки» (22.11.2026, начальник: «отдельно редактировать, что касается оплаты»), полное — кнопкой.
-            : \App\Offers\CarWindow::money($request, $o = OfferNumber::find($key), $o && $user ? \App\Offers\Deal::where('offer_id', $o->id)->where('buyer_id', $user->id)->latest('id')->first() : null), invoices: true);
+            : CarWindow::money($request, $o = OfferNumber::find($key), $o && $user ? Deal::where('offer_id', $o->id)->where('buyer_id', $user->id)->latest('id')->first() : null), invoices: true);
         if ($detail->framed()) {
             return $detail->response();
         }
@@ -433,7 +433,7 @@ class MoneyController
     {
         $this->guardInvoice($invoice);
         // XCAR Pay: машины CRM на этом хосте нет — карточка счёта в «Оплатах» (у счёта с машиной — шторка её сделки).
-        if (\App\Billing\PayView::here()) {
+        if (PayView::here()) {
             $offer = $invoice->carOffer();
 
             return redirect($offer && ! $invoice->isService() ? '/work/money?car='.$offer->number : self::url($invoice));
