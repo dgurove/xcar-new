@@ -18,11 +18,12 @@
     <a href="{{ $href }}" {{ $attributes->class(['pill pill-accent nums face !min-h-6 !py-0 gap-1.5 text-sm']) }} data-turbo-action="replace" data-turbo-prefetch="false" title="{{ $given->map(fn ($e) => $e->user->shortName().' '.\App\Support\Money::rub($e->amount))->implode(', ') }}"><x-ui.avatar :user="$best->user" :size="18"/>{{ \App\Support\Money::nums($best->amount) }}@if ($given->count() > 1)<span class="opacity-70">+{{ $given->count() - 1 }}</span>@endif</a>
 @elseif ($waiting->isNotEmpty())
     @php $first = $waiting->first(); @endphp
-    {{-- Строка на телефоне (`chip=false`): ждущие оценки — без аватарок и «просрочено» (18.11.2026, владелец: «мусор»); на ПК и в
-         плитках — как было. Оценённое — лаймовой пилюлей везде. --}}
-    <a href="{{ $href }}" {{ $attributes->class(['face inline-flex items-center gap-1.5 text-sm', 'max-sm:hidden' => ! $chip]) }} data-turbo-action="replace" data-turbo-prefetch="false" title="Оценивает: {{ $waiting->map(fn ($e) => $e->user->shortName())->implode(', ') }}">
+    {{-- Строка на телефоне (`chip=false`): ждущие оценки — только аватарки, без срока и «просрочено» (18.11.2026, владелец:
+         «мусор» — тогда ушли и аватарки; 22.11.2026, начальник: «вернуть авы оценивающих»); на ПК и в плитках — как было.
+         Оценённое — лаймовой пилюлей везде. --}}
+    <a href="{{ $href }}" {{ $attributes->class(['face inline-flex items-center gap-1.5 text-sm']) }} data-turbo-action="replace" data-turbo-prefetch="false" title="Оценивает: {{ $waiting->map(fn ($e) => $e->user->shortName())->implode(', ') }}">
         <span class="flex -space-x-1.5">@foreach ($waiting->take(3) as $e)<x-ui.avatar :user="$e->user" :size="18" class="ring-2 ring-surface"/>@endforeach</span>
-        <x-offer.estimate-left :estimate="$first" word="" short/>
+        <span @class(['max-sm:hidden' => ! $chip])><x-offer.estimate-left :estimate="$first" word="" short/></span>
     </a>
 @elseif ($chip)
 <a href="{{ $href }}" {{ $attributes->class(['pill pill-accent !min-h-6 !py-0 !px-3 text-sm']) }} data-turbo-action="replace" data-turbo-prefetch="false">{{ $label }}</a>

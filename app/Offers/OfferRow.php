@@ -84,9 +84,15 @@ final class OfferRow
         $this->countWord = $gallery ? ($this->count ? 'интерес '.$this->count : '')
             : implode(', ', array_filter([$this->priceBids ? $this->priceBids.' подтв.' : null, $this->garageBids ? $this->garageBids.' в гараж' : null]));
         $this->slot = $offer->isScheduled() ? 'выйдет '.Slots::phrase($offer->slot_at) : null;
-        $this->missing = $checkable && $this->draft && ! $this->slot ? array_map(fn ($m) => 'нет '.match ($m) {
-            'фотографии' => 'фото', 'марка' => 'марки', 'цена продажи' => 'цены', 'закупочная' => 'закупочной', default => $m,
-        }, ChangeOfferState::missing($offer)) : [];
+        $this->missing = match (true) {
+            ! $checkable || ! $this->draft || (bool) $this->slot => [],
+            // «Без продажной цены» (22.11.2026, начальник: отдать на оценку пачкой) — галочка, когда менеджеру есть что
+            // оценить (`Offer::isEstimable`), а не когда готово к продаже.
+            $this->unpriced => $offer->isEstimable() ? [] : ['нет марки и фото'],
+            default => array_map(fn ($m) => 'нет '.match ($m) {
+                'фотографии' => 'фото', 'марка' => 'марки', 'цена продажи' => 'цены', 'закупочная' => 'закупочной', default => $m,
+            }, ChangeOfferState::missing($offer)),
+        };
         $this->todo = $user && OfferController::todo($offer, $user);
         // Логотип — из одной выборки вендоров на страницу, а не связью на каждую строку.
         $this->vendor = $offer->vendor_id ? Vendor::badges()->get($offer->vendor_id) : null;

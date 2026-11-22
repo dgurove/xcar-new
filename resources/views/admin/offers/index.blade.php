@@ -113,10 +113,10 @@
                     @foreach ($groups as $key => $list)
                         @if ($title = $groupTitle($key, $list))
                             <x-table.group :table="$columns" :key="$key" :title="$title" :count="$groupCounts[$key] ?? $list->count()" :count-key="'group-'.$key">
-                                <x-slot:before>@if ($pick)<label class="row-check" aria-label="Выбрать весь слот"><span class="check"><input type="checkbox" id="pick-group-{{ $key }}" data-turbo-permanent data-pick-target="group" data-group="{{ $key }}" data-action="pick#pickGroup"></span></label>@endif</x-slot:before>
+                                <x-slot:before>@if ($pick)<label class="row-check" aria-label="Выбрать группу"><span class="check"><input type="checkbox" id="pick-group-{{ $key }}" data-turbo-permanent data-pick-target="group" data-group="{{ $key }}" data-action="pick#pickGroup"></span></label>@endif</x-slot:before>
                             </x-table.group>
                         @endif
-                        @foreach ($list as $offer)<x-offer.table-row :offer="$offer" :table="$columns" :group="$preset === 'slots' ? $key : null" :arrive="$arrive[$offer->id] ?? null"/>@endforeach
+                        @foreach ($list as $offer)<x-offer.table-row :offer="$offer" :table="$columns" :group="$pick ? $key : null" :arrive="$arrive[$offer->id] ?? null"/>@endforeach
                     @endforeach
                     @if ($ghosts->isNotEmpty())
                         <x-table.group :table="$columns" key="ghosts" title="Не заведены" :count="$ghosts->count()" count-key="ghosts"/>
@@ -133,15 +133,15 @@
                                 @if ($pick)
                                     <x-slot:head><label class="row-check" aria-label="Выбрать всю пачку"><span class="check"><input type="checkbox" id="pick-group-{{ $key }}" data-turbo-permanent data-pick-target="group" data-group="{{ $key }}" data-action="pick#pickGroup"></span></label></x-slot:head>
                                 @endif
-                                @foreach ($list as $offer)<x-offer.crm-card :offer="$offer" :checkable="$pick" :group="$preset === 'slots' ? $key : null"/>@endforeach
+                                @foreach ($list as $offer)<x-offer.crm-card :offer="$offer" :checkable="$pick" :group="$pick ? $key : null"/>@endforeach
                             </x-ui.shelf>
                         @endforeach
                     </div>
                 @else
                 @foreach ($groups as $key => $list)
-                    @if ($title = $groupTitle($key, $list))<h2 class="box-title flex items-center gap-2 {{ $loop->first ? '' : 'mt-6' }}">@if ($pick)<label class="row-check" aria-label="Выбрать весь слот"><span class="check"><input type="checkbox" id="pick-group-{{ $key }}" data-turbo-permanent data-pick-target="group" data-group="{{ $key }}" data-action="pick#pickGroup"></span></label>@endif{{ $title }} <span class="nums text-ink-dim">{{ $list->count() }}</span></h2>@endif
+                    @if ($title = $groupTitle($key, $list))<h2 class="box-title flex items-center gap-2 {{ $loop->first ? '' : 'mt-6' }}">@if ($pick)<label class="row-check" aria-label="Выбрать группу"><span class="check"><input type="checkbox" id="pick-group-{{ $key }}" data-turbo-permanent data-pick-target="group" data-group="{{ $key }}" data-action="pick#pickGroup"></span></label>@endif{{ $title }} <span class="nums text-ink-dim">{{ $list->count() }}</span></h2>@endif
                     <div @if ($loop->first) id="offers" @endif class="{{ \App\Support\ListView::containerClass($view) }}" data-controller="ticker">
-                        @foreach ($list as $offer)<x-offer.crm-card :offer="$offer" :checkable="$pick" :group="$preset === 'slots' ? $key : null" :arrive="$arrive[$offer->id] ?? null"/>@endforeach
+                        @foreach ($list as $offer)<x-offer.crm-card :offer="$offer" :checkable="$pick" :group="$pick ? $key : null" :arrive="$arrive[$offer->id] ?? null"/>@endforeach
                     </div>
                 @endforeach
                 @endif
@@ -159,7 +159,11 @@
             @elseif ($preset === 'done' && ! $searching)
                 <span data-advance-done hidden>Всё разобрано</span>
             @endif
-            @if ($pick && $preset === 'priced')
+            @if ($pick && $preset === 'unpriced')
+                <x-ui.action-bar class="action-bar--pick" data-pick-target="bar" hidden>
+                    <x-offer.estimate-pack :managers="\App\Offers\AudienceRules::people()"/>
+                </x-ui.action-bar>
+            @elseif ($pick && $preset === 'priced')
                 <x-ui.action-bar class="action-bar--pick" data-pick-target="bar" hidden>
                     <div class="contents" data-controller="sheet">
                         <x-ui.button type="button" class="min-w-0 flex-1" data-action="sheet#open">Выставить в продажу <span class="nums" data-pick-target="count"></span></x-ui.button>

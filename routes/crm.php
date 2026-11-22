@@ -313,6 +313,8 @@ Route::domain(config('xcar.crm_host'))->middleware(['auth', 'ability:isStaff'])-
         // Пачкой из «Оцененных» и «Публикации»: галочки строк, `offers[]` — номера.
         Route::post('/offers/schedule', [OfferController::class, 'scheduleMany']);
         Route::post('/offers/unschedule', [OfferController::class, 'unscheduleMany']);
+        // «Без продажной цены» пачкой (22.11.2026, начальник): отдать отмеченные на оценку одному или нескольким менеджерам.
+        Route::post('/offers/estimates', [OfferEstimateController::class, 'storeMany']);
         // «Без подтверждений» пачкой (06.11.2026): вернуть в продажу с одним сроком или в архив.
         Route::post('/offers/relist', [OfferController::class, 'relistMany']);
         Route::post('/offers/archive', [OfferController::class, 'archiveMany']);

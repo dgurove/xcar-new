@@ -50,7 +50,10 @@
     // Человека нет — система (26.10.2026, владелец: «пустота мне не нравится»): завела почта — конверт, Мигторг, парковка —
     // искра. Во вкладке шага — перевела система (`tab_by` пишется с 18.10.2026, раньше пусто у всех — там не угадываем).
     $system = ! $who && ($byTab ? (bool) $offer->tab_at?->gte('2026-10-18') : (bool) $offer->created_via);
-    $late = $checkable && $draft && $offer->insurer_deadline_at && $offer->insurer_deadline_at->copy()->endOfDay()->lt($offer->slot_at ?? \App\Offers\Slots::nearest());
+    // «Срок от вендора раньше ближайшего выхода» — о выставлении в продажу. Только без срока обязывающего: он стоит справа
+    // своим таймером и горит сам, а эта отметка — с датой торгов — была бы рядом второй, другой датой (22.11.2026, владелец:
+    // «странно, что по две даты»); в «Без продажной цены» (галочки на оценку) продавать нечего.
+    $late = $checkable && $draft && ! $unpriced && ! $offer->binding_until && $offer->insurer_deadline_at && $offer->insurer_deadline_at->copy()->endOfDay()->lt($offer->slot_at ?? \App\Offers\Slots::nearest());
 @endphp
 {{-- Правый край строки. На ПК — ячейка цены (и закупочной у «Без закупочной»), на телефоне — концы двух строк ячейки названия
      (15.11.2026, владелец: «зачем обрезается, если до „вчера“ ещё куча места»): столбец справа был шириной в самую длинную цену
@@ -126,7 +129,7 @@
             @endif
             {{-- «в галерее» в строке убрано (14.11.2026, владелец: «нахер не нужна») — это видно в окне. --}}
             @if ($missing)<span class="text-danger">{{ implode(', ', $missing) }}</span>@endif
-            @if ($late)<span class="binding-tag nums" title="Срок обязывающего предложения раньше ближайшего выхода"><x-ui.icon name="timer" class="size-3.5 shrink-0"/>{{ \App\Support\Ago::at($offer->insurer_deadline_at, false, words: false) }}</span>@endif
+            @if ($late)<span class="binding-tag nums" title="Срок от вендора раньше ближайшего выхода"><x-ui.icon name="timer" class="size-3.5 shrink-0"/>{{ \App\Support\Ago::at($offer->insurer_deadline_at, false, words: false) }}</span>@endif
         </span>
     </td>
         @break

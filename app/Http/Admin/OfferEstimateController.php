@@ -29,30 +29,76 @@ final class OfferEstimateController
 {
     public function store(Request $request, Offer $offer, AskEstimates $ask)
     {
-        $ids = array_map('intval', (array) $request->validate(['managers' => ['required', 'array', 'min:1'], 'managers.*' => ['integer']])['managers']);
-        // Заявленная есть — за каждого ответили, показывать её или нет (11.10.2026, владелец: «пусть просто спрашивает»).
-        $declared = [];
-        if ($offer->declaredPrice()) {
-            $answers = (array) $request->input('declared', []);
-            foreach ($ids as $id) {
-                if (! in_array((string) ($answers[$id] ?? ''), ['0', '1'], true)) {
-                    throw ValidationException::withMessages(['managers' => 'Выберите, показывать ли заявленную']);
-                }
-                $declared[$id] = $answers[$id] === '1';
-            }
-        } else {
-            // Заявленной нет вовсе (14.10.2026) — оценка «вслепую» и остаётся такой: вписали закупочную, пока менеджер думает, —
-            // заявленная ему не покажется (как при «Скрыть»).
-            $declared = array_fill_keys($ids, false);
-        }
-        // Сколько дней на оценку и эксклюзив после неё (02.11.2026, Андрей) — сегментами шторки; эксклюзив — только одному.
-        $terms = $request->validate(['days' => ['nullable', Rule::in(Estimate::DAYS)], 'exclusive' => ['nullable', Rule::in(Estimate::EXCLUSIVE)]]);
-        $days = (int) ($terms['days'] ?? 2);
-        $created = $ask($offer, User::withRole(Role::Manager)->whereIn('id', $ids)->get(), $request->user(), $declared, $days, (int) ($terms['exclusive'] ?? 0) ?: null);
+        [$ids, $answers, $days, $exclusive] = $this->terms($request, (bool) $offer->declaredPrice());
+        $created = $ask($offer, User::withRole(Role::Manager)->whereIn('id', $ids)->get(), $request->user(), self::declared($offer, $ids, $answers), $days, $exclusive);
         $exclusive = $created->first()?->exclusive_days;
 
         return back()->with('toast', $created->isEmpty() ? 'Уже на оценке' : 'Отдано на оценку: '.$created->map(fn (Estimate $e) => $e->user->shortName())->implode(', ')
             .' — '.Estimate::daysWord($days).($exclusive ? ', потом только ему '.Estimate::daysWord($exclusive) : ''));
+    }
+
+    /**
+     * Пачкой из «Без продажной цены» (22.11.2026, начальник: «как в Оцененных — галочками»): те же менеджеры, «Показать |
+     * Скрыть» заявленную (один ответ на все машины с ней), срок и эксклюзив — каждой отмеченной, что ещё там; одна не вышла —
+     * остальные уходят, а она — в красный тост.
+     */
+    public function storeMany(Request $request, AskEstimates $ask)
+    {
+        $numbers = $request->validate(['offers' => ['required', 'array', 'max:500'], 'offers.*' => ['integer']])['offers'];
+        [$ids, $answers, $days, $exclusive] = $this->terms($request, true);
+        $managers = User::withRole(Role::Manager)->whereIn('id', $ids)->get();
+        $offers = OfferController::scopeFor('unpriced', Offer::inCrm($request->user())->whereIn('offers.number', $numbers), true)
+            ->orderBy('offers.number')->get();
+        [$done, $failed] = [0, []];
+        foreach ($offers as $offer) {
+            try {
+                $ask($offer, $managers, $request->user(), self::declared($offer, $ids, $answers), $days, $exclusive)->isNotEmpty() && $done++;
+            } catch (ValidationException $e) {
+                $failed[] = $offer->number.': '.mb_strtolower((string) (collect($e->errors())->flatten()->first() ?? 'не вышло'));
+            }
+        }
+        $toast = $done ? 'На оценку '.$done.' ТС: '.$managers->map->shortName()->implode(', ').', '.Estimate::daysWord($days) : null;
+        $back = back(fallback: '/offers?preset=unpriced');
+
+        return $failed
+            ? $back->with('toast-danger', ($toast ? $toast.'. ' : '').'Не ушли '.count($failed).': '.implode('; ', array_slice($failed, 0, 3)))
+            : $back->with('toast', $toast ?? 'Уже на оценке');
+    }
+
+    /**
+     * Кому, «Показать | Скрыть» заявленную, срок и эксклюзив из шторки. Заявленная есть — за каждого ответили, показывать её
+     * или нет (11.10.2026, владелец: «пусть просто спрашивает»).
+     *
+     * @return array{0: list<int>, 1: array<int, bool>, 2: int, 3: ?int}
+     */
+    private function terms(Request $request, bool $declared): array
+    {
+        $ids = array_map('intval', (array) $request->validate(['managers' => ['required', 'array', 'min:1'], 'managers.*' => ['integer']])['managers']);
+        $answers = [];
+        if ($declared) {
+            $given = (array) $request->input('declared', []);
+            foreach ($ids as $id) {
+                if (! in_array((string) ($given[$id] ?? ''), ['0', '1'], true)) {
+                    throw ValidationException::withMessages(['managers' => 'Выберите, показывать ли заявленную']);
+                }
+                $answers[$id] = $given[$id] === '1';
+            }
+        }
+        // Сколько дней на оценку и эксклюзив после неё (02.11.2026, Андрей) — сегментами шторки; эксклюзив — только одному.
+        $terms = $request->validate(['days' => ['nullable', Rule::in(Estimate::DAYS)], 'exclusive' => ['nullable', Rule::in(Estimate::EXCLUSIVE)]]);
+
+        return [$ids, $answers, (int) ($terms['days'] ?? 2), (int) ($terms['exclusive'] ?? 0) ?: null];
+    }
+
+    /**
+     * Кому показать заявленную у этой машины. Её нет вовсе (14.10.2026) — оценка «вслепую» и остаётся такой: вписали
+     * закупочную, пока менеджер думает, — заявленная ему не покажется (как при «Скрыть»).
+     *
+     * @return array<int, bool>
+     */
+    private static function declared(Offer $offer, array $ids, array $answers): array
+    {
+        return $offer->declaredPrice() ? $answers : array_fill_keys($ids, false);
     }
 
     /** «Взять» — как «Оценить»: строка уходит в «Оцененные», карточка — к следующей без цены. */

@@ -841,7 +841,8 @@ class OfferController
      */
     public static function pickable(User $user, ?string $preset, bool $searching): bool
     {
-        return $user->canManageCrm() && ! $searching && in_array($preset, ['priced', 'slots', 'archive', 'done'], true);
+        // «Без продажной цены» — отдать на оценку пачкой (22.11.2026, начальник: «как в Оцененных»).
+        return $user->canManageCrm() && ! $searching && in_array($preset, ['priced', 'slots', 'archive', 'done', 'unpriced'], true);
     }
 
     /**
