@@ -252,6 +252,8 @@ html.is-embedded .header, html.is-embedded #tabbar, html.is-embedded .footer, ht
 @media (max-width: 639.98px) {
   html.is-embedded .container-site .box { margin-inline: -1rem; border-radius: 0; }
   html.is-embedded .container-site .box .box { margin-inline: 0; border-radius: var(--radius-xl); }
+  /* Плашка чата без переписки — кнопка: `w-full` с полями −1rem сдвигала её, а не растягивала (22.11.2026). */
+  html.is-embedded .container-site button.deal-chat:not(.box *) { width: calc(100% + 2rem) !important; }
 }
 /* От планшета таб-бара нет, кнопки действий парят справа внизу. */
 @media (min-width: 768px) {
@@ -447,6 +449,8 @@ html.kb-open { --home-gap: 0px; }
     .surface-crm .container-site .inbox-piles,
     .surface-crm .container-site .inbox-plates,
     .surface-crm .container-site .chain-swipe:not(dialog *, #detail *) { margin-inline: -1rem; }
+    /* Плашка чата без переписки — кнопка: `w-full` с полями −1rem её сдвигала влево, а не растягивала (22.11.2026). */
+    .surface-crm .container-site button.deal-chat:not(dialog *, #detail *, .box *, .list *) { width: calc(100% + 2rem) !important; }
     /* Сайт — так же (18.11.2026, владелец: «хочу сделать xcar побольше похожим на CRM — блоки на телефоне тоже от края до края»). */
     .surface-site .container-site .box:not(dialog *, #detail *, .box *, .list *),
     .surface-site .container-site .list:not(dialog *, #detail *, .box *, .list *),
@@ -4136,18 +4140,12 @@ html.kb-open { --home-gap: 0px; }
   .detail-body .info-sub { font-size: 13px; }
   /* Где машина — текстом у кодов шапки, не чипом. */
   .detail-place { @apply inline-flex items-center gap-1 text-sm text-ink-muted; }
-  /* «Показать» и «Ссылка» в плашке менеджера — тихие ссылки строкой под условиями. */
-  .holder-acts { @apply -mt-1.5 flex basis-full flex-wrap gap-x-4 gap-y-1 pl-8; }
-  .holder-act { @apply inline-flex items-center gap-1 text-[13px] text-accent-text; }
-  .holder-act--hot { @apply text-urgent; }
   /* Документы окна машины чипами (12.11.2026): одна строка, прокрутка вбок без полосы, чип — значок типа и имя. */
   .docs-chips { @apply -mx-4 flex w-[calc(100%+2rem)] gap-1.5 overflow-x-auto px-4; scrollbar-width: none; overscroll-behavior-x: contain; }
   .docs-chips::-webkit-scrollbar { display: none; }
   .doc-chip--add { @apply pl-2.5 text-accent-text; }
   .doc-chip { @apply inline-flex min-h-[1.875rem] max-w-44 shrink-0 items-center gap-1.5 rounded-full bg-surface-3 py-1 pl-1 pr-3 text-sm text-ink; }
   @media (hover: hover) { .doc-chip:hover { @apply bg-hover; } }
-  .holder-act .badge { @apply ml-0.5; }
-  @media (hover: hover) { .holder-act:hover { @apply underline underline-offset-4; } }
   .handover-facts { @apply flex flex-wrap items-center gap-x-4 gap-y-1.5; }
   .handover-facts > span { @apply inline-flex min-w-0 items-center gap-1.5; }
   .handover-facts > span > svg, .handover-facts > .place > svg { @apply size-4 shrink-0 text-ink-dim; }

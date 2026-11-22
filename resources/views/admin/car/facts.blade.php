@@ -1,14 +1,20 @@
 {{-- Сведения шапки окна и страницы машины — строками со значком (12.11.2026, владелец про фразу «Санкт-Петербург, 78, у
      владельца, Владислав Митрофанов, без оплаты, счёт ПРАЙМ при продаже, 8 дней на этапе»: «неадекватно»): где машина, кто
      её держит (`CarView::holder`) и на каких условиях, приём и галерея, публикация для других. Каждое — один раз: ниже в окне
-     не повторяется (шаг пути говорит «Менеджер», срок шага — в шаге). Вид — `x-ui.info`, правило «сведения значками». --}}
+     не повторяется (шаг пути говорит «Менеджер», срок шага — в шаге). Вид — `x-ui.info`, правило «сведения значками»;
+     менеджер сделки — плашкой чата над ними (22.11.2026). --}}
 @php
     $holder = $car->holder();
     $left = $gallery || ! $admin || ! $offer->state->acceptsBids() ? null : $offer->secondsLeft();
-    ob_start();
+    // Держатель — менеджер сделки или гаража (22.11.2026, владелец: «просто такой же блок переписки с менеджером, как на странице
+    // сделки»): плашкой чата `x-deal.chat-card` — аватар, имя, последнее сообщение, непрочитанные; нажатие — чат, переписки нет —
+    // заводит. Без роли («гараж, без оплаты…» — ниже в «Продаже»), телефона, «Что показываем» и ссылки (они — на странице и в шагах).
+    $chatDeal = $car->holderDeal();
 @endphp
+@if ($chatDeal)<x-deal.chat-card :deal="$chatDeal" :chat="$chatDeal->is($car->deal) ? $car->dealChat() : false" class="w-full"/>@endif
+@php ob_start(); @endphp
 {{-- Где машина — текстом у кодов в шапке окна (12.11.2026), здесь не повторяется. --}}
-@if ($holder)
+@if ($holder && ! $chatDeal)
     <div class="info-row flex-wrap">
         @if ($holder['user'])<x-ui.avatar :user="$holder['user']" :size="20" class="mt-px shrink-0"/>@else<x-ui.icon name="user" class="info-icon size-5"/>@endif
         {{-- Гаражную «платим мы» передают другому нажатием на плашку (19.11.2026, `HandOverGarage`), как пунктом «⋯» «Передать…». --}}
@@ -24,18 +30,6 @@
             </span>
         @endif
         @if ($holder['user']?->phone)<x-ui.phone :user="$holder['user']" class="shrink-0"/>@endif
-        {{-- Что показываем ему и ссылка на его сделку (гараж) — тихо, здесь же, одной строкой во всю ширину плашки (12.11.2026,
-             владелец: под именем узко, и они вставали друг под другом). --}}
-        @if ($holderActs ?? false)
-            @php ob_start(); @endphp
-                {{-- Чат с ним — первым (12.11.2026, владелец: «кнопку чат в блок, где менеджер»). --}}
-                @if ($dealChat ?? false)<x-deal.chat-card :deal="$deal" :chat="$car->dealChat()" inline/>@endif
-                @if ($deal?->isActive())<x-deal.reply-review :deal="$deal" inline/>@endif
-                @if ($personDeal ?? null)<x-deal.person-link :deal="$personDeal" inline/>@endif
-            @php $acts = trim(ob_get_clean()); @endphp
-            {{-- Пустая строка действий (отменённая сделка: ни чата, ни ссылки) — не рисуется, иначе пустая полоса внизу плашки. --}}
-            @if ($acts !== '')<span class="holder-acts">{!! $acts !!}</span>@endif
-        @endif
     </div>
 @endif
 @if (! $intake && $left !== null && $left > 0)

@@ -58,8 +58,9 @@
         @endif
         <x-slot:actions>
             {{-- Где машина и кто её держит — строками со значком (`admin.car.facts`), а не фразой через запятую (12.11.2026). --}}
-            {{-- «Показать менеджеру» и «Ссылка менеджеру» — тихими ссылками в плашке менеджера (12.11.2026, владелец: «встроить
-                 компактно в блок, где менеджер написан»); нет менеджера (аукцион) — пилюлями в ряду ниже, как было. --}}
+            {{-- Менеджер сделки — плашкой чата (22.11.2026, владелец: «полноценную плашку чата, как на странице сделки»); «Показать
+                 менеджеру» и «Ссылка» при нём в окне не рисуются (они — в шагах и на странице); нет менеджера (аукцион) — пилюлями
+                 в ряду ниже, как было. --}}
             @php
                 $personDeal = $deals ? ($garageCar?->deal ?? ($deal?->isActive() ? $deal : null)) : null;
                 $holderActs = $deals && ($car->holder()['user'] ?? null) !== null;
@@ -67,8 +68,8 @@
             @include('admin.car.facts')
             @include('admin.car.alerts')
             {{-- Ряд пилюль: остальные чаты; чат с менеджером сделки, «Показать» и ссылка — пилюлями, только когда плашки менеджера
-                 нет (иначе они в ней, 12.11.2026). --}}
-            @php $pillChat = $dealChat && ! $holderActs; @endphp
+                 нет (иначе чат — плашкой выше, 22.11.2026). --}}
+            @php $pillChat = $dealChat && ! $car->holderDeal(); @endphp
             @if ($pillChat || $otherChats->isNotEmpty() || (! $holderActs && (($deals && $deal?->isActive()) || $personDeal)))
                 <div class="flex w-full flex-wrap items-center gap-2">
                     @if ($pillChat)<x-deal.chat-card :deal="$deal" :chat="$car->dealChat()" compact/>@endif

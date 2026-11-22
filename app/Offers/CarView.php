@@ -439,6 +439,17 @@ final class CarView
         return $deal?->buyer ? $this->chats->first(fn (Chat $c) => $c->user_id === $deal->buyer_id && ! $c->manager_id && $c->messages_count > 0) : null;
     }
 
+    /**
+     * Сделка, чей менеджер держит машину (`holder`), — её чат плашкой в окне вместо строки менеджера (`admin.car.facts`,
+     * 22.11.2026): сделка машины или гаража, где он покупатель.
+     */
+    public function holderDeal(): ?Deal
+    {
+        $user = $this->holder()['user'] ?? null;
+
+        return $this->deals && $user ? collect([$this->deal, $this->garageCar?->deal])->first(fn (?Deal $d) => $d?->buyer_id === $user->id) : null;
+    }
+
     /** @return Collection<int, Chat> остальные чаты с перепиской (пустой — заведён и брошен — не строка) */
     public function otherChats(): Collection
     {
