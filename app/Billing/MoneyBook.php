@@ -241,7 +241,7 @@ final class MoneyBook
             return true;
         }
 
-        // Вознаграждение не назначено — подбор ещё неизвестен, но строка стоит: «назначить вознаграждение» (22.11.2026).
+        // Вознаграждение не назначено — подбор ещё неизвестен, но строка стоит: «назначить» (22.11.2026).
         return $tab === 'dkp' ? $deal->isPrime() || $deal->forGarageBuyer() : ! $deal->isPrime() && ($deal->selectionDue() > 0 || ($deal->paysSelection() && $deal->rewardPending()));
     }
 }

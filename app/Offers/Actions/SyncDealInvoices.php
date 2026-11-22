@@ -120,16 +120,22 @@ final class SyncDealInvoices
     /**
      * Вознаграждение не назначено (`Deal::rewardPending`) — подбор неизвестен: системный счёт подбора, что менеджеру ещё не
      * отправлен, без денег и заявок, гасится (22.11.2026, владелец: «нельзя писать, что он нам якобы должен 80 тыщ»). Назначили —
-     * встанет заново на долю минус вознаграждение. Отправленный и оплаченный остаются.
+     * встанет заново на долю минус вознаграждение. Отправленный, оплаченный и выставленный руками («Ещё счёт» — сумма не та, что
+     * считала система без вознаграждения) остаются. Её же зовёт миграция `selection_waits_reward` — без остальной синхронизации.
      */
-    private function dropPendingSelection(Deal $deal, User $by): void
+    public function dropPendingSelection(Deal $deal, User $by): void
     {
         if (! $deal->rewardPending() || ! ($deal->paysSelection() || $deal->splitsSelection())) {
             return;
         }
+        // Сколько система ставила в счёт подбора, пока пустое вознаграждение считалось нулём.
+        $auto = $deal->splitsSelection()
+            ? max(0, (int) $deal->amount - (int) $deal->contract?->cash_part - (int) $deal->cost)
+            : (int) $deal->selectionBase();
         Invoice::where('deal_id', $deal->id)->where('direction', 'issued')->where('kind', ChargeKind::Selection)->where('state', InvoiceState::Issued)
-            ->whereNull('shown_at')->whereNull('requested_at')->where('paid', '<=', 0)->with(['payments', 'claims'])->get()
-            ->filter(fn (Invoice $i) => $i->claims->isEmpty() && $i->payments->whereNull('voided_at')->isEmpty())
+            ->whereNull('shown_at')->whereNull('requested_at')->where('paid', '<=', 0)->with(['payments', 'claims', 'charges'])->get()
+            ->filter(fn (Invoice $i) => $i->claims->isEmpty() && $i->payments->whereNull('voided_at')->isEmpty()
+                && abs((float) $i->charges->whereNull('voided_at')->sum(fn ($c) => $c->price * $c->qty) - $auto) < 0.01)
             ->each(fn (Invoice $i) => ($this->void)($i, $by, 'Вознаграждение не назначено'));
     }
 

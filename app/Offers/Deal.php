@@ -1267,7 +1267,7 @@ class Deal extends Model implements HasMedia
         return match (true) {
             $this->isGarageManager() => (int) $this->share,
             // Вознаграждение не назначено — подбор неизвестен (22.11.2026, владелец: «пока явно не указали, что вознаграждение 0,
-            // нельзя писать, что он нам якобы должен 80 тыщ»): счёта нет, в «Оплатах» — «назначить вознаграждение».
+            // нельзя писать, что он нам якобы должен 80 тыщ»): счёта нет, в «Оплатах» — «назначить».
             $this->rewardPending() => 0,
             $this->splitsSelection() => max(0, (int) $this->amount - (int) $this->commission - (int) $this->contract?->cash_part - (int) $this->cost),
             $this->paysSelection() => (int) $this->selectionBase() - (int) $this->commission,
