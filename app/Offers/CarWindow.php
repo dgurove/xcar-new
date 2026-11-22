@@ -20,6 +20,22 @@ final class CarWindow
     }
 
     /**
+     * Окно «Оплата сделки» — строка «Оплат» (22.11.2026, начальник: «не могу понять, где редактор оплаты, нажимаешь на тачку —
+     * попадаешь в сделку»): только «Продажа» (`x-deal.money`) — цена, покупатель, счета, наличные, поступления, вознаграждение —
+     * и «Открыть сделку» страницей (`admin/car/money-window`, кусок `admin/car/money-body`). Сделки нет — прежнее окно машины.
+     */
+    public static function money(Request $request, ?Offer $offer): ?View
+    {
+        $user = $request->user();
+        if (! $offer || ! $user || ! $offer->isEditableBy($user)) {
+            return null;
+        }
+        $vars = CarView::for($offer, $user)->vars();
+
+        return ($vars['deal'] ?? $vars['garageCar']?->deal) ? view('admin.car.money-window', $vars) : view('admin.car.window', $vars);
+    }
+
+    /**
      * Строка «Сделок» — окно её машины о ней: идущая и последняя — как у всех, отменённая или прошлая — о той сделке
      * (`CarView::$pastDeal`). Параллельная своего окна не имеет: она в блоке «Параллельно» сделки машины.
      */

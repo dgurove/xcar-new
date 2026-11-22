@@ -108,6 +108,8 @@ Route::domain(config('xcar.crm_host'))->middleware(['auth', 'ability:isStaff'])-
         Route::get('/offers/{offer}/letters', [MailController::class, 'offerLetters'])->middleware('ability:canCrmMail');
         // Шторки действий окна машины — по первому требованию (`data-lazy-sheets`, `emit_controller`).
         Route::get('/offers/{offer}/window-sheets', [OfferController::class, 'windowSheets']);
+        // «Оплата сделки» страницей (22.11.2026): строка «Оплат» XCAR Pay открывает её шторкой — только «Продажа», вся сделка кнопкой.
+        Route::get('/offers/{offer}/money', [OfferController::class, 'money'])->middleware('ability:canEditDeals');
         // Кадры письма прикрепляются: строка хода и ряд фото, пока ImportThreadFiles идёт (attach_controller).
         Route::get('/offers/{offer}/attach', [AttachController::class, 'offer']);
         Route::put('/offers/{offer}', [OfferController::class, 'update']);

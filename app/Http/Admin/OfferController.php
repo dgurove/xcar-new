@@ -144,6 +144,21 @@ class OfferController
         return view('admin.car.sheets', CarView::for($offer, $request->user(), deal: $deal?->offer_id === $offer->id ? $deal : null)->vars());
     }
 
+    /**
+     * «Оплата сделки» страницей (22.11.2026, начальник: «где редактор оплаты?»): строка «Оплат» XCAR Pay открывает её шторкой
+     * (`DealSheet::money`) — тот же кусок, что окно строки «Оплат» CRM (`admin/car/money-body`), «Открыть сделку» — `/offers/N`
+     * там же. Сделки нет — страница машины.
+     */
+    public function money(Request $request, Offer $offer)
+    {
+        $vars = CarView::for($offer, $request->user())->vars();
+        if (! ($vars['deal'] ?? $vars['garageCar']?->deal)) {
+            return redirect("/offers/{$offer->number}");
+        }
+
+        return view('admin.car.money-page', $vars);
+    }
+
     /** Вкладки, по которым раскладывается сводная («Все» или раздела); не сводная — null. @return list<string>|null */
     public static function summary(?string $preset): ?array
     {

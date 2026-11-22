@@ -75,4 +75,10 @@ final class DealSheet
     {
         return self::here() ? $offer->crmUrl() : $offer->crmPath();
     }
+
+    /** Строка «Оплат» XCAR Pay (22.11.2026): шторкой «Оплата сделки» CRM — только «Продажа», вся сделка кнопкой. */
+    public static function money(Offer $offer): string
+    {
+        return Surface::Crm->url('/offers/'.$offer->number.'/money');
+    }
 }

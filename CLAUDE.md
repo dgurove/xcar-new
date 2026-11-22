@@ -40,7 +40,10 @@
 (`x-ui.row-link sheet`, `data-deal-sheet-row` — нажатие по строке ловит `deal_sheet_controller`) грузит CRM `/offers/N`, ссылки
 карточек — `DealSheet::crmLink`; у менеджера — его сделку на сайте `#money`; окна машины в Pay нет (его действия — в CRM), ручная
 ссылка без сделки — карточкой рядом, как в CRM. `?deal=` / `?car=` открывают шторку сразу (`DealSheet::requested`, ссылки
-уведомлений `NoticeLink::pay`). Пуш денег (`Notice::aboutMoney`: `MoneyNotice`, `InvoiceNudgeNotice`) — на подписку XCAR Pay, если
+уведомлений `NoticeLink::pay`). **Строка машины «Оплат» — «Оплата сделки»** (22.11.2026, начальник: «где редактор оплаты? нажимаешь
+на тачку — попадаешь в сделку»; по макету — только «Продажа»): в CRM — окно `CarWindow::money` (`admin/car/money-window`), в Pay —
+шторкой страница `/offers/N/money` (`OfferController::money`, `DealSheet::money`); тело одно — `admin/car/money-body` (держатель с
+чатом и `x-deal.money` целиком), «Открыть сделку» — страница машины; сделки нет — прежнее окно. Пуш денег (`Notice::aboutMoney`: `MoneyNotice`, `InvoiceNudgeNotice`) — на подписку XCAR Pay, если
 она есть; значок — сотруднику то же, что у «Оплат» CRM (`MoneyController::todo`), менеджеру — его счета к оплате. Значок
 приложения — кошелёк (`resources/icons/pay.svg`).
 **С какого ящика пишут — одна дверь `Mail\Senders`** (21.11.2026, владелец: «управляющий парковки — только storage@, модераторы CRM — только

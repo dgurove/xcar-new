@@ -50,7 +50,8 @@
     $assign = $service && $admin && ! $r->service->manager_id && ! $r->service->credit_deal_id;
     // XCAR Pay: машина — шторкой поверх оплат, строку целиком ловит `deal_sheet_controller`.
     // Ручная ссылка (ключ `s{счёт}`) — своей карточкой рядом и с машиной: в ней назначение, копия ссылки, возврат.
-    $sheet = $offer && \App\Billing\PayView::here() && ! str_starts_with($r->key(), 's') ? \App\Support\DealSheet::crm($offer) : null;
+    // С 22.11.2026 — «Оплата сделки» (начальник: «где редактор оплаты?»): только «Продажа», вся сделка — кнопкой в ней.
+    $sheet = $offer && \App\Billing\PayView::here() && ! str_starts_with($r->key(), 's') ? \App\Support\DealSheet::money($offer) : null;
 @endphp
 @php ob_start(); @endphp
 @switch($main)

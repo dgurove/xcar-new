@@ -361,7 +361,8 @@ class MoneyController
         $user = $person === 'none' ? null : User::findOrFail((int) $person);
         $detail = Detail::of($request, fn (string $key) => str_starts_with($key, 's')
             ? (($i = self::dealOnly(Invoice::crmMoney())->find((int) substr($key, 1))) ? $this->card($i) : null)
-            : \App\Offers\CarWindow::of($request, OfferNumber::find($key)), invoices: true);
+            // Машина — окном «Оплата сделки» (22.11.2026, начальник: «отдельно редактировать, что касается оплаты»), полное — кнопкой.
+            : \App\Offers\CarWindow::money($request, OfferNumber::find($key)), invoices: true);
         if ($detail->framed()) {
             return $detail->response();
         }
