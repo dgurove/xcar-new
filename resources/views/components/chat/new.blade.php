@@ -4,6 +4,6 @@
 @php $partners = \App\Chats\Direct::partners(auth()->user()); @endphp
 @if ($partners->isNotEmpty())
     <form method="get" action="{{ \App\Chats\Chat::base() }}/with" class="contents" data-turbo-action="advance">
-        <x-people.pick name="user" kind="chat" variant="pill" placeholder="Написать" title="Написать" :people="$partners" search autosubmit/>
+        <x-people.pick name="user" kind="chat" variant="pill" placeholder="Написать" title="Написать" :people="$partners" search autosubmit :marks="false"/>
     </form>
 @endif

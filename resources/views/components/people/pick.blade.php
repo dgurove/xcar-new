@@ -15,7 +15,7 @@
      заголовками, группа без совпадений прячется; выбранный — первым в своей группе. --}}
 @props(['name', 'label' => null, 'value' => null, 'people' => collect(), 'kind', 'title' => null, 'newLabel' => null, 'link' => false,
     'deal' => null, 'autosubmit' => false, 'none' => null, 'variant' => 'field', 'placeholder' => 'Выбрать', 'required' => false, 'finish' => null,
-    'only' => false, 'append' => null, 'reload' => false, 'trigger' => 'row', 'owner' => null, 'open' => false, 'passport' => false, 'search' => null])
+    'only' => false, 'append' => null, 'reload' => false, 'trigger' => 'row', 'owner' => null, 'open' => false, 'passport' => false, 'search' => null, 'marks' => true])
 @php
     $uid = 'pp'.substr(md5($name.$kind.uniqid('', true)), 0, 8);
     $people = collect($people);
@@ -105,7 +105,7 @@
                             @if ($group !== '')<div class="list-head">{{ $group }}</div>@endif
                             <div class="list">
                                 @foreach ($rows as $p)
-                                    <x-people.option :person="$p" :name="'_pp_'.$uid" :checked="$chosen && (string) $chosen['id'] === (string) $p['id']"/>
+                                    <x-people.option :person="$p" :name="'_pp_'.$uid" :checked="$chosen && (string) $chosen['id'] === (string) $p['id']" :mark="$marks"/>
                                 @endforeach
                             </div>
                         </div>
@@ -129,7 +129,7 @@
                         </label>
                     @endif
                     @foreach ($people as $p)
-                        <x-people.option :person="$p" :name="'_pp_'.$uid" :checked="$chosen && (string) $chosen['id'] === (string) $p['id']"/>
+                        <x-people.option :person="$p" :name="'_pp_'.$uid" :checked="$chosen && (string) $chosen['id'] === (string) $p['id']" :mark="$marks"/>
                     @endforeach
                 </div>
                 @endif
