@@ -386,7 +386,7 @@
                         @foreach ($invoices->filter(fn ($i) => $i->direction === 'issued') as $i)
                             <x-deal.send-task :deal="$deal" :invoice="$i"/>
                         @endforeach
-                        @if ($deal->hasContract() && \App\Offers\DealContract::for($deal)->isReady())
+                        @if ($deal->hasContract() && \App\Offers\DealContract::for($deal)->sendable())
                             <x-deal.send-task :deal="$deal"/>
                         @endif
                     @endif

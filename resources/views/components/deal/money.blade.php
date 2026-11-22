@@ -167,7 +167,7 @@
         $buyerParty = $deal->contract?->buyer?->party_id;
         $payerApart = $payerRow && $payerId && $payerId !== $buyerParty && ($buyerParty || $deal->payer_party_id);
         $signed = \App\Offers\Documents\SignedContractPdf::files($deal)->isNotEmpty();
-        $ready = $withContract && ! \App\Offers\DealContract::for($deal)->missing();
+        $ready = $withContract && \App\Offers\DealContract::for($deal)->sendable();
         $priceEditable = $editMoney && ! $deal->forGarageBuyer() && ! $deal->isGarageManager();
         // Ссылка знает свой счёт без запроса: строка берёт из него плательщика, машину и текст «Поделиться».
         $last = fn ($i, bool $live) => $i->payLinks->when($live, fn ($c) => $c->where('state', '!=', \App\Billing\Acquiring\PayLinkState::Canceled))

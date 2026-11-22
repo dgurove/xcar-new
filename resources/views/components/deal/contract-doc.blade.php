@@ -31,7 +31,7 @@
     $sheet = 'contract-edit-'.$deal->id;
 @endphp
 @if ($edited || ! $contract->missing())
-    <div class="contents" @if ($canEdit) data-controller="sheet" @endif>
+    <div class="contents">
         <x-deal.doc-row :href="$base.'/dkp.pdf'" :title="$title" :name="$isPdf ? 'dkp.pdf' : 'dkp.docx'" :bytes="$original?->size" :file="$name.'.pdf'" id="dkp-row-{{ $deal->id }}">
             {{-- Отправлен ли — словом подписи «Договор» над блоком (`x-deal.doc-cap`, 19.11.2026); здесь — только свойство файла. --}}
             @if ($edited)<span class="tag">заполнен</span>@endif
@@ -53,7 +53,7 @@
         @if (! $sent && $staff && $deal->buyer_id)
             <div class="send-under send-pair">
                 @if ($canEdit && ! $edited)
-                    <button type="button" class="btn btn-accent btn-s gap-2" data-action="sheet#open" aria-controls="{{ $sheet }}"><x-ui.icon name="edit" class="size-4"/>Заполнить…</button>
+                    <button type="button" class="btn btn-accent btn-s gap-2" data-controller="emit" data-action="emit#send" data-emit-event-param="{{ $sheet }}:open"><x-ui.icon name="edit" class="size-4"/>Заполнить…</button>
                 @endif
                 <form method="post" action="{{ $base }}/contract/show" class="contents">
                     @csrf
@@ -62,7 +62,8 @@
             </div>
         @endif
         {{-- Подписанный — кнопкой словами, а не скрепкой в строке (19.11.2026, владелец: «тупо иконка скрепки — непонятно»): до отправки —
-             серой во всю ширину под выбором (подписали вне системы), после — лаймовой рядом с «Отозвать». --}}
+             серой во всю ширину под выбором (подписали вне системы), после — лаймовой рядом с «Отозвать». «Отозвать» — по своей
+             ширине, остальное — подписанному: поровну на телефоне «Приложить подписанный» вылезал за кнопку (23.11.2026). --}}
         @if (! $sent && $canAttach && $staff)
             <div class="send-under"><x-deal.attach-signed :deal="$deal" :base="$base" wide/></div>
         @elseif ($sent && ($canAttach || $canRecall))
@@ -71,46 +72,11 @@
                 @if ($canRecall)
                     <form method="post" action="{{ $base }}/contract/recall" class="contents" data-turbo-confirm="Отозвать {{ mb_strtolower(mb_substr($title, 0, 1)).mb_substr($title, 1) }}? Менеджер перестанет его видеть">
                         @csrf
-                        <button type="submit" class="btn btn-quiet btn-s">Отозвать</button>
+                        <button type="submit" class="btn btn-quiet btn-s !flex-none !px-4">Отозвать</button>
                     </form>
                 @endif
             </div>
         @endif
-        @if ($canEdit)
-            <x-ui.sheet :id="$sheet" title="Заполнить договор">
-                <form method="post" action="{{ $base }}/contract/edited" enctype="multipart/form-data" class="flex flex-col gap-4">
-                    @csrf
-                    <input type="hidden" name="_sheet" value="{{ $sheet }}">
-                    <div class="edit-step">
-                        <span class="edit-step-n">1</span>
-                        <div class="min-w-0 flex-1">
-                            <div>Скачайте Word и заполните</div>
-                            {{-- Строкой документа сделки (`x-deal.doc-row`, как «Счёт за ТС» рядом; 20.11.2026, владелец: чип «⤓ ДКП … .docx» — «уродство»). --}}
-                            <div class="list mt-2">
-                                <x-deal.doc-row :href="$base.'/dkp.docx?edit=1'" :title="$name" :name="$name.'.docx'" mime="application/vnd.openxmlformats-officedocument.wordprocessingml.document">
-                                    <x-slot:dl><a href="{{ $base }}/dkp.docx?edit=1" download class="btn btn-ghost btn-s px-1.5 text-ink-muted" aria-label="Скачать" title="Скачать" data-turbo="false" data-turbo-prefetch="false" data-controller="file" data-action="file#share" data-file-name="{{ $name }}.docx"><x-ui.icon name="download" class="size-5"/></a></x-slot:dl>
-                                </x-deal.doc-row>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="edit-step">
-                        <span class="edit-step-n">2</span>
-                        <div class="min-w-0 flex-1">
-                            <div>Приложите заполненный</div>
-                            {{-- Вид поля, как `x-ui.file-field` (системного «Choose File» нет), со своим id: на странице полей файла много. --}}
-                            <div class="field mt-2 @error('file') field-invalid @enderror" data-controller="file-name">
-                                <label for="{{ $sheet }}-file" class="field-input flex cursor-pointer items-center gap-2">
-                                    <x-ui.icon name="clip" class="size-4 shrink-0 text-ink-dim"/>
-                                    <span class="min-w-0 truncate text-ink-muted" data-file-name-target="label">Выбрать файл .docx или .pdf</span>
-                                </label>
-                                <input id="{{ $sheet }}-file" name="file" type="file" accept="{{ ContractEdit::ACCEPT }}" required class="sr-only" data-action="change->file-name#show">
-                                @error('file')<p class="field-error">{{ $message }}</p>@enderror
-                            </div>
-                        </div>
-                    </div>
-                    <x-ui.button type="submit" class="w-full">Сохранить</x-ui.button>
-                </form>
-            </x-ui.sheet>
-        @endif
+        @if ($canEdit)<x-deal.contract-fill-sheet :id="$sheet" :base="$base" :name="$name"/>@endif
     </div>
 @endif

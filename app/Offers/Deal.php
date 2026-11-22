@@ -1165,7 +1165,7 @@ class Deal extends Model implements HasMedia
         if ($contract->buyer && Party::forUser($contract->buyer)->unreadFields()) {
             return $todo('contract:unread', 'Данные не распознались', 1, $fill);
         }
-        if ($contract->shown_at || ! DealContract::for($this)->isReady() || SignedContractPdf::files($this)->isNotEmpty()) {
+        if ($contract->shown_at || ! DealContract::for($this)->sendable() || SignedContractPdf::files($this)->isNotEmpty()) {
             return null;
         }
         $sale = $this->invoices->first(fn (Invoice $i) => $i->direction === 'issued' && $i->kind === ChargeKind::Sale && $i->state !== InvoiceState::Void);

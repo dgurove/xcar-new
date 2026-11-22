@@ -137,7 +137,7 @@ final class ShowToManager
     public function contract(Deal $deal, User $by): DealContract
     {
         $contract = DealContract::for($deal);
-        if (! $contract->isReady()) {
+        if (! $contract->sendable()) {
             throw ValidationException::withMessages(['show' => 'Договор ещё не готов: '.implode(', ', $contract->missing())]);
         }
         $fresh = DB::transaction(function () use ($contract, $deal, $by) {

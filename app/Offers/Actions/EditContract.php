@@ -17,7 +17,7 @@ use Illuminate\Validation\ValidationException;
 
 /**
  * «Исправить договор» (19.11.2026, вариант Б владельца): скачать Word, поправить, приложить — менеджеру уйдёт исправленный
- * (`ContractEdit`). Править можно готовый и ещё не отправленный договор (отправленный — сначала «Отозвать»,
+ * (`ContractEdit`). Править можно ещё не отправленный договор, готовый или нет (23.11.2026: шаблон с прочерками заполняют руками) (отправленный — сначала «Отозвать»,
  * `ShowToManager::recallContract`), пока сделка идёт и подписанный не приложен.
  */
 final class EditContract
@@ -27,7 +27,7 @@ final class EditContract
         $contract = DealContract::for($deal);
 
         return $deal->hasContract() && $deal->state !== DealState::Cancelled && ! $deal->isAuction() && $contract->shown_at === null
-            && $contract->isReady() && ! $deal->contract_signed_at && $deal->getMedia('signed_contract')->isEmpty();
+            && ! $deal->contract_signed_at && $deal->getMedia('signed_contract')->isEmpty();
     }
 
     /**

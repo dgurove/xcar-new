@@ -17,6 +17,13 @@
     $buyer = $contract->buyer;
     $buyerData = $buyer && $deal->isLive() && array_intersect($missing, ['данные покупателя', 'скан паспорта покупателя']);
     $party = $buyerData ? ($buyer->party ?? \App\Billing\Party::forUser($buyer)) : null;
+    // Шаблон с прочерками — скачать и заполнить руками (23.11.2026, владелец: «мало ли что бывает»): Word / PDF у строки, «Заполнить…»
+    // под ней — та же шторка, что у готового (`x-deal.contract-fill-sheet`). «Отправить как есть» здесь нет: с прочерками не шлём.
+    $base = '/work/deals/'.$deal->id;
+    $name = preg_replace('/\.pdf$/', '', (new \App\Offers\DkpDocument($contract))->fileName());
+    $canFill = $attach && $deal->buyer_id && auth()->user()?->canEditDeals() && \App\Offers\Actions\EditContract::allows($deal);
+    $canAttach = $attach && \App\Offers\Actions\AttachSignedContract::allows($deal);
+    $fill = 'contract-edit-'.$deal->id;
     // Строки — в свои шторки: событием (`emit`), ПТС — на страницу машины.
     $rows = array_filter([
         in_array('покупатель', $missing, true) ? ['Покупатель', 'не выбран', 'deal-buyer-pick-'.$deal->id.':open', null] : null,
@@ -35,12 +42,18 @@
                  строками «Владелец», «ПТС», «Покупатель» рядом, словом «нужны данные» над блоком и списком в шторке. --}}
             <span class="min-w-0 flex-1 truncate">Договор купли-продажи</span>
         </button>
+        @if ($attach)<x-deal.dkp-download :deal="$deal" :base="$base" :name="$name"/>@endif
     </div>
     {{-- Подписали вне системы — кнопкой словами под строкой, как у готового договора (`x-deal.contract-doc`; 22.11.2026, владелец:
          «где прикрепление подписанного договора» — тут стояла скрепка справа в строке). --}}
-    @if ($attach && \App\Offers\Actions\AttachSignedContract::allows($deal))
-        <div class="send-under"><x-deal.attach-signed :deal="$deal" :base="'/work/deals/'.$deal->id" wide/></div>
+    {{-- Как у готового: «Заполнить…» строкой, под ней «Приложить подписанный» во всю ширину (парой на телефоне не влезали). --}}
+    @if ($canFill)
+        <div class="send-under"><button type="button" class="btn btn-quiet btn-s w-full gap-2" data-controller="emit" data-action="emit#send" data-emit-event-param="{{ $fill }}:open"><x-ui.icon name="edit" class="size-4"/>Заполнить…</button></div>
     @endif
+    @if ($canAttach)
+        <div class="send-under"><x-deal.attach-signed :deal="$deal" :base="$base" wide/></div>
+    @endif
+    @if ($canFill)<x-deal.contract-fill-sheet :id="$fill" :base="$base" :name="$name"/>@endif
     <x-ui.sheet :id="$id" title="Договор невозможно сформировать" :open="$errors->hasAny(['buyer.*']) && old('_sheet') === $id" tall>
         <p class="mb-3 text-ink-muted">{{ \Illuminate\Support\Str::ucfirst($words) }}</p>
         @if ($rows)
