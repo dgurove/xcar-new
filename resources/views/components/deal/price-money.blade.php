@@ -13,7 +13,7 @@
     $nb = fn (string $s) => str_replace(' ', "\u{00A0}", $s);
     $fid = 'deal-price-'.$deal->id;
 @endphp
-<x-offer.money-form :action="'/work/deals/'.$deal->id.'/money'" method="put" :amount="$deal->amount" priced :cost="$deal->cost" :commission="$deal->commission" :fee="! $deal->isDirect()"
+<x-offer.money-form :action="'/work/deals/'.$deal->id.'/money'" method="put" :amount="$deal->amount" priced :cost="$deal->cost" :commission="$deal->commission ?? ($deal->namesBuyer() ? $deal->suggestedCommission() : null)" :stored="$deal->commission" :fee="! $deal->isDirect()"
     :scheme="\App\Offers\DealScheme::choiceFor($deal->offer->vendor?->deal_format, $deal->schemeOf())" scheme-locked :owner-price="$deal->owner_price" :owner-locked="true"
     :supplier-cost="$deal->supplier_cost" :share="$deal->isGarage() ? null : $deal->buyer?->deal_share" :prefill="$deal->commission === null" :submit="$submit" :id="$fid">
     <div class="flex flex-col gap-3">

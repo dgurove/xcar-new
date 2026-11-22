@@ -6,7 +6,10 @@
      (`SetDealPayer`); по счёту уже платили — строка без выбора. --}}
 {{-- `row` false — без строки (плательщик — тот же покупатель, 18.11.2026: «по несколько раз одно и то же»): одна шторка по событию
      `{id}:open`, в «Продаже» CRM — пунктом «⋯» «Кто платит…». --}}
-@props(['deal', 'action', 'id' => null, 'editable' => true, 'row' => true, 'capped' => false])
+{{-- `pick` — CRM (22.11.2026, владелец: «Покупатель» — одна строка, выбор ставит и договор, и счёт): шторку открывает и строка
+     «Покупатель» (`x-deal.buyer`); при договоре «Другой покупатель» — новый покупатель менеджера (выбор `deal-buyer-pick-{id}`),
+     сторона мимо договора — «Платит другой…». --}}
+@props(['deal', 'action', 'id' => null, 'editable' => true, 'row' => true, 'capped' => false, 'pick' => false])
 @php
     use App\Offers\Actions\SetDealPayer;
     use App\Support\People;
@@ -21,6 +24,10 @@
     $can = $editable && ! $locked && $deal->buyer_id;
     $options = $can ? SetDealPayer::options($deal) : [];
     $current = old('_sheet') === $id ? (string) old('payer') : SetDealPayer::current($deal);
+    // Договор есть — выбор человека ставит и его (`SetDealPayer`), «Другой покупатель» заводит покупателя менеджера (у гаражной с
+    // названным покупателем выбора нет — как в `x-deal.buyer`), прежний «Другой» — сторона только для счёта.
+    $withDeal = $pick && $deal->hasContract();
+    $pickNew = $withDeal && ! ($deal->isGarage() && ! $deal->namesBuyer() && $deal->contract?->buyer_user_id);
 @endphp
 @if (! $can && $row && $capped)
     <div class="list-cap !px-0">Покупатель</div>
@@ -41,7 +48,7 @@
     <x-ui.sheet :id="$id" title="Покупатель">
         <form method="post" action="{{ $action }}" class="flex flex-col gap-4" data-controller="reveal autosubmit">
             @csrf @method('put')
-            <p class="-mt-2 text-sm text-ink-muted">На него счёт и ссылка на оплату</p>
+            <p class="-mt-2 text-sm text-ink-muted">{{ $withDeal ? 'На него договор, счёт и ссылка на оплату' : 'На него счёт и ссылка на оплату' }}</p>
             <div class="list max-h-80 overflow-y-auto">
                 @foreach ($options as $o)
                     @php
@@ -50,11 +57,18 @@
                             : ['name' => $o['party']->name, 'sub' => $o['sub'], 'user' => null];
                     @endphp
                     <x-people.option :picker="false" :person="['id' => $o['value']] + $who" name="payer" :checked="$current === $o['value']"
-                        action="reveal#pick change->autosubmit#submit" :edit="$o['user'] ? People::editUrl($o['user']) : null"/>
+                        action="reveal#pick change->autosubmit#submit" :edit="$o['user'] ? People::editUrl($o['user']) : null"
+                        :edit-event="$withDeal && $o['user'] && $o['user']->id === $deal->contract?->buyer_user_id ? 'deal-buyer-data-'.$deal->id.':open' : null"/>
                 @endforeach
+                @if ($pickNew)
+                    <button type="button" class="row w-full text-left" data-controller="emit" data-action="sheet#close emit#send" data-emit-event-param="deal-buyer-pick-{{ $deal->id }}:open">
+                        <x-ui.row-icon name="plus" size="s" tone="accent"/>
+                        <span class="min-w-0 flex-1 font-medium text-accent-text">Другой покупатель</span>
+                    </button>
+                @endif
                 <label class="row row-check">
-                    <x-ui.row-icon name="plus" size="s" tone="accent"/>
-                    <span class="min-w-0 flex-1 font-medium text-accent-text">Другой покупатель</span>
+                    @if ($withDeal)<x-ui.row-icon name="wallet" size="s"/>@else<x-ui.row-icon name="plus" size="s" tone="accent"/>@endif
+                    <span @class(['min-w-0 flex-1', 'font-medium text-accent-text' => ! $withDeal])>{{ $withDeal ? 'Платит другой…' : 'Другой покупатель' }}</span>
                     <span class="check"><input type="radio" name="payer" value="new" @checked($current === 'new') data-action="reveal#pick"></span>
                 </label>
             </div>

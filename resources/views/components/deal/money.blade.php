@@ -50,6 +50,8 @@
         // Гаражная Совкомбанка без цены — тоже (18.11.2026): цену продажи вписывают тут же, как «Продаю» менеджера.
         $editMoney = $deal->isActive() && $deal->moneyEditable() && auth()->user()?->canEditDeals() && (! $deal->isGarage() || $deal->isGarageManager() || $deal->namesBuyer());
         // Что раньше стояло строками («Кому», «Плательщик», «Кому» у подбора) — пунктами «⋯» (18.11.2026): шапки блоков и так это говорят.
+        // «Кто платит…» — с 22.11.2026 строкой «Покупатель» (владелец: «из доп. меню убрать и вставить нормально»): в «⋯» — только
+        // где строки покупателя нет.
         $schemeEdit = ! $deal->isAuction() && $deal->isActive() && count(\App\Offers\DealScheme::casesFor($offer->vendor, $offer)) > 1 && $deal->moneyEditable() && auth()->user()?->canEditDeals();
         $payerEdit = $payerRow && auth()->user()?->canEditDeals() && ! \App\Offers\Actions\SetDealPayer::locked($deal);
         $feeSellerEdit = $deal->buyer_id && auth()->user()?->canEditDeals() && $deal->isActive() && ! \App\Offers\Actions\SetFeeSeller::locked($deal)
@@ -66,7 +68,7 @@
                     @if ($schemeEdit || $payerEdit || $feeSellerEdit)
                         <div class="menu-group">
                             @if ($schemeEdit)<button type="button" class="menu-item w-full" data-controller="emit" data-action="emit#send" data-emit-event-param="scheme-{{ $deal->id }}:open">Кому платит покупатель…</button>@endif
-                            @if ($payerEdit)<button type="button" class="menu-item w-full" data-controller="emit" data-action="emit#send" data-emit-event-param="deal-payer-{{ $deal->id }}:open">Кто платит…</button>@endif
+                            @if ($payerEdit && ! ($withContract || $withBuyer))<button type="button" class="menu-item w-full" data-controller="emit" data-action="emit#send" data-emit-event-param="deal-payer-{{ $deal->id }}:open">Кто платит…</button>@endif
                             @if ($feeSellerEdit)<button type="button" class="menu-item w-full" data-controller="emit" data-action="emit#send" data-emit-event-param="fee-seller-{{ $deal->id }}:open">Кому платят услуги подбора…</button>@endif
                         </div>
                     @endif
@@ -270,7 +272,7 @@
         @endphp
             {{-- Часть мимо счёта — строкой, когда есть: из-за неё счёт и договор меньше цены продажи. --}}
             @if ($contract?->cash_part)<div class="row sale-row"><span class="sale-row-label">Наличными мимо счёта</span><span class="sale-row-value nums">{{ Money::rub($contract->cash_part) }}</span><x-ui.chevron-space/></div>@endif
-            @if ($payerApart)<x-deal.payer :deal="$deal" :action="'/work/deals/'.$deal->id.'/payer'" :editable="$canEdit"/>@endif
+            @if ($payerApart)<x-deal.payer :deal="$deal" :action="'/work/deals/'.$deal->id.'/payer'" :editable="$canEdit" pick/>@endif
             @if ($sale)
                 {!! $billRows($sale, false) !!}
             @elseif ($deal->isActive())
@@ -303,7 +305,7 @@
     @endif
     {{-- Шторки без своих строк — их открывают сумма в шапке и пункты «⋯» (18.11.2026). --}}
     @unless ($deal->isAuction())<x-deal.scheme :deal="$deal" bare :price="false" :row="false"/>@endunless
-    @if ($payerRow && ! $payerApart)<x-deal.payer :deal="$deal" :action="'/work/deals/'.$deal->id.'/payer'" :editable="$canEdit" :row="false"/>@endif
+    @if ($payerRow && ! $payerApart)<x-deal.payer :deal="$deal" :action="'/work/deals/'.$deal->id.'/payer'" :editable="$canEdit" :row="false" pick/>@endif
     @if ($selection && $deal->buyer_id)<x-deal.fee-seller :deal="$deal" :row="false"/>@endif
     @if ($deal->isAuction() && $invoices->isEmpty())
         <p class="mt-3 text-sm text-ink-muted">Счёт вне системы</p>
@@ -376,10 +378,14 @@
         </dl>
     @endif
     @if ($rewardRow)
-        <div class="mt-3 flex items-baseline gap-3 border-t border-line px-3 pt-3">
+        {{-- Нажимается — та же шторка «Цена и вознаграждение» (22.11.2026, владелец: «непонятно, как назначить вознаграждение» —
+             оно пряталось за «⋯»); не назначено — лаймовым «Назначить». --}}
+        @php $rewardTag = $editMoney ? 'button' : 'div'; @endphp
+        <{{ $rewardTag }} @if ($editMoney) type="button" data-controller="emit" data-action="emit#send" data-emit-event-param="deal-money-{{ $deal->id }}:open" @endif class="mt-3 flex w-full items-baseline gap-3 border-t border-line px-3 pt-3 text-left">
             <span class="min-w-0 flex-1">Вознаграждение менеджера</span>
-            @if ($deal->commission !== null)<span class="profit-sum nums shrink-0 !text-lg">{{ Money::rub((int) $deal->commission) }}</span>@else<span class="shrink-0 text-ink-muted">назначим</span>@endif
-        </div>
+            @if ($deal->commission !== null)<span class="profit-sum nums shrink-0 !text-lg">{{ Money::rub((int) $deal->commission) }}</span>@elseif ($editMoney)<span class="shrink-0 text-accent-text">Назначить</span>@else<span class="shrink-0 text-ink-muted">назначим</span>@endif
+            @if ($editMoney)<x-ui.chevron class="self-center"/>@endif
+        </{{ $rewardTag }}>
     @endif
     @if ($rest)
         <details class="group mt-1.5">

@@ -2,15 +2,16 @@
 
 namespace App\Offers\Actions;
 
+use App\Billing\Acquiring\PayLink;
 use App\Billing\ChargeKind;
 use App\Billing\Invoice;
 use App\Billing\InvoiceState;
 use App\Billing\Party;
 use App\Billing\PartyKind;
-use App\Billing\Acquiring\PayLink;
+use App\Billing\Seller;
 use App\Offers\Deal;
-use App\Offers\DealContract;
 use App\Offers\OfferEventType;
+use App\Support\People;
 use App\Support\Phone;
 use App\Users\User;
 use Illuminate\Support\Facades\DB;
@@ -64,6 +65,16 @@ final class SetDealPayer
             && $i->direction === 'issued' && $i->state !== InvoiceState::Void)->values();
     }
 
+    /**
+     * Выбор «Покупатель» в CRM — строкой «Покупатель» «Денег» (22.11.2026, вместо пункта «⋯ → Кто платит…»): идущая сделка с
+     * менеджером, счёт за ТС (или договор, где он будет), сотрудник со сделками, по счёту не платили.
+     */
+    public static function editable(Deal $deal, ?User $user): bool
+    {
+        return $deal->buyer_id && $deal->isActive() && ! $deal->isAuction() && (bool) $user?->canEditDeals() && ! self::locked($deal)
+            && ($deal->schemeOf()->paysCar() || self::invoices($deal)->contains(fn (Invoice $i) => ! $i->isOwed()));
+    }
+
     /** По счёту уже платили (или менеджер сообщил об оплате) — плательщика не меняем: деньги пришли от него. */
     public static function locked(Deal $deal): bool
     {
@@ -82,7 +93,7 @@ final class SetDealPayer
         }
         $contractBuyer = $deal->contract?->buyer;
         $out = [['value' => 'manager', 'user' => $manager, 'party' => null, 'sub' => 'менеджер']];
-        $buyers = \App\Support\People::buyersOf($manager);
+        $buyers = People::buyersOf($manager);
         if ($contractBuyer && $contractBuyer->id !== $manager->id) {
             $buyers = $buyers->reject(fn ($b) => $b->id === $contractBuyer->id)->prepend($contractBuyer);
         }
@@ -144,14 +155,17 @@ final class SetDealPayer
                 default => [$this->fresh($data), null],
             };
             if ($choice !== 'manager' && $party->isOurs()) {
-                throw ValidationException::withMessages(['payer' => Party::oursMessage(Party::ours($party->inn) ?? $party->seller ?? \App\Billing\Seller::Ros)]);
+                throw ValidationException::withMessages(['payer' => Party::oursMessage(Party::ours($party->inn) ?? $party->seller ?? Seller::Ros)]);
             }
             // Своей стороной всегда, и менеджер тоже (17.11.2026): выбор «менеджер» должен держаться (`Deal::managerPays` узнаёт его по
             // стороне менеджера).
             $deal->forceFill(['payer_party_id' => $party->id])->save();
             // Договор ПРАЙМ смотрит на `payer` (кто платит — менеджер или покупатель): держим в согласии.
+            // Человек из списка (сам менеджер или его покупатель) — и покупатель по договору (22.11.2026, владелец: «одна строка
+            // „Покупатель“ — и договор, и счёт»); сторона «Платит другой…» договор не трогает.
             if ($contract = $deal->contract) {
-                $contract->forceFill(['payer' => $user?->id === $deal->buyer_id ? 'manager' : 'buyer'])->save();
+                $contract->forceFill(['payer' => $user?->id === $deal->buyer_id ? 'manager' : 'buyer']
+                    + ($user && $deal->hasContract() && $contract->buyer_user_id !== $user->id ? ['buyer_user_id' => $user->id] : []))->save();
             }
             $deal->unsetRelation('contract')->unsetRelation('payer');
             $deal->offer?->log(OfferEventType::Note, $by, ['text' => 'Покупатель: '.$party->name]);

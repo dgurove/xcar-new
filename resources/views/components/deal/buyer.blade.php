@@ -63,7 +63,8 @@
 {{-- Покупатель по договору — строкой «Продажи» (16.11.2026, владелец: «там „Платит“, а там „Плательщик“, и выглядят по-разному»):
      в «страховой напрямую» и ДКП он и платит поставщику или собственнику — «Плательщик — имя ›», как у блока ПРАЙМ; в ПРАЙМ —
      «Покупатель». Кто платит по счёту ПРАЙМ — строкой «Плательщик» над счётом (`x-deal.payer`). --}}
-@if ($live && ! ($deal->isGarage() && $buyer))
+{{-- Гаражная Совкомбанка (`namesBuyer`) — покупателя называет менеджер, сменить его можно (22.11.2026); прочая гаражная — нет. --}}
+@if ($live && ! ($deal->isGarage() && ! $deal->namesBuyer() && $buyer))
     @php
         $rows = \App\Support\People::contractBuyers($manager, $manager->name, 'на себя, нужен паспорт', 'на себя, данные есть');
     @endphp
@@ -82,7 +83,10 @@
     <div data-controller="sheet" data-action="{{ $dataSheet }}:open@window->sheet#open" class="contents">
         {{-- Данные для договора — своей строкой того же вида, под «Плательщиком» (16.11.2026). --}}
         @if ($capped)
-            <button type="button" class="row w-full text-left" data-action="sheet#open"><x-ui.icon :name="$buyer->buyerIcon()" class="size-5 shrink-0 text-ink-dim"/><span class="min-w-0 flex-1 truncate">{{ $isManager ? 'На себя' : $who }}</span><x-ui.chevron/></button>
+            {{-- Строка открывает выбор «Покупатель» (22.11.2026, владелец: «Кто платит» — сюда, а не в «⋯»): выбор ставит и договор,
+                 и счёт (`SetDealPayer`), карандаш у покупателя — эти данные; выбора нет (платили, нет прав) — сразу данные. --}}
+            @php $choose = $deal->hasContract() && \App\Offers\Actions\SetDealPayer::editable($deal, auth()->user()); @endphp
+            <button type="button" class="row w-full text-left" @if ($choose) data-controller="emit" data-action="emit#send" data-emit-event-param="deal-payer-{{ $deal->id }}:open" @else data-action="sheet#open" @endif><x-ui.avatar :user="$buyer" :size="36"/><span class="min-w-0 flex-1 truncate">{{ $who }}</span><x-ui.chevron/></button>
         @else
             <x-deal.sale-row :label="'Реквизиты'" :value="$ready ? trim($kindWord.'есть', ', ') : ($gap ?? 'нужны')" :tone="$ready ? null : 'danger'" class="w-full text-left" data-action="sheet#open"/>
         @endif
@@ -112,7 +116,7 @@
                 </x-billing.buyer-fields>
                 <x-ui.sheet-foot>Сохранить</x-ui.sheet-foot>
             </form>
-            @unless ($deal->isGarage())
+            @unless ($deal->isGarage() && ! $deal->namesBuyer())
                 <button type="button" class="btn btn-quiet btn-s mt-3 w-full" data-controller="emit" data-action="sheet#close emit#send" data-emit-event-param="deal-buyer-pick-{{ $deal->id }}:open">Другой покупатель</button>
             @endunless
         </x-ui.sheet>

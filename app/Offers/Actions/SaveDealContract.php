@@ -10,6 +10,8 @@ use App\Offers\DealContract;
 use App\Offers\OfferEventType;
 use App\Support\Money;
 use App\Support\Phone;
+use App\Users\Actions\AddPerson;
+use App\Users\Actions\IssueInvite;
 use App\Users\Role;
 use App\Users\User;
 use Illuminate\Support\Facades\DB;
@@ -37,6 +39,7 @@ final class SaveDealContract
             $contract->payer = 'manager';
         }
         DB::transaction(function () use ($contract, $data, $by, $deal) {
+            $wasBuyer = $contract->buyer_user_id;
             if (isset($data['seller'])) {
                 $seller = $contract->seller ?? new Party(['kind' => PartyKind::Person]);
                 $seller->fill(self::passport($data['seller']))->save();
@@ -72,6 +75,16 @@ final class SaveDealContract
                     throw ValidationException::withMessages(['buyer_id' => Party::oursMessage($ours)]);
                 }
                 $contract->buyer_user_id = $buyer->id;
+            }
+            // Покупатель по договору сменился, а платил прежний — платит новый: договор и счёт на одного (22.11.2026, владелец).
+            // Плательщик «по умолчанию» (пусто) и есть покупатель по договору (`Deal::payerUser`, `SetDealPayer::current`) — его
+            // сторону не пишем: она заводится заново с паспортом. «Платит другой» (сторона не из покупателей) остаётся.
+            if ($contract->buyer_user_id && $contract->buyer_user_id !== $wasBuyer && ! $deal->isDirect() && $deal->payer_party_id) {
+                $wasParty = $wasBuyer ? User::whereKey($wasBuyer)->value('party_id') : null;
+                if ($wasParty && $deal->payer_party_id === $wasParty) {
+                    $deal->forceFill(['payer_party_id' => null])->save();
+                    $contract->payer = $contract->buyer_user_id === $deal->buyer_id ? 'manager' : 'buyer';
+                }
             }
             // ДКП ПРАЙМ (14.11.2026): номер договора комиссии и ставка НДС — выбором сотрудника в карточке ДКП.
             if (array_key_exists('commission_no', $data)) {
@@ -140,7 +153,7 @@ final class SaveDealContract
         $name = trim(preg_replace('/\s+/u', ' ', (string) (($buyer['kind'] ?? null) === 'company' ? ($buyer['org'] ?? '') : ($buyer['name'] ?? ''))));
         [$first, $last] = ($buyer['kind'] ?? null) === 'company' ? [$name, ''] : (SaveBuyerData::nameParts($name) ?? [$name, '']);
         $manager = $contract->deal->buyer;
-        [$user] = app(\App\Users\Actions\AddPerson::class)(fn () => app(\App\Users\Actions\IssueInvite::class)->buyer($manager),
+        [$user] = app(AddPerson::class)(fn () => app(IssueInvite::class)->buyer($manager),
             ['first_name' => mb_substr($first, 0, 60), 'last_name' => mb_substr($last, 0, 60)], contact: true);
         $user->update(['party_id' => $party->id]);
 

@@ -17,7 +17,7 @@
      `prefill` (принятие) — пустое поле сразу долей, и поле идёт за разницей, пока его не правили руками.
      16.11.2026: вознаграждение — ползунком, суммой или процентом от разницы (`x-deal.reward-split`; чипа доли больше нет). --}}
 @props(['action', 'amount', 'cost' => null, 'commission' => null, 'submit' => 'Принять', 'confirm' => null, 'method' => 'post', 'id' => null, 'note' => null,
-    'scheme' => null, 'schemes' => null, 'ownerPrice' => null, 'fee' => true, 'ownerLocked' => false, 'supplierCost' => null, 'priced' => false, 'costEditable' => false, 'schemeLocked' => false, 'offer' => null, 'share' => null, 'prefill' => false, 'letter' => false])
+    'scheme' => null, 'schemes' => null, 'ownerPrice' => null, 'fee' => true, 'ownerLocked' => false, 'supplierCost' => null, 'priced' => false, 'costEditable' => false, 'schemeLocked' => false, 'offer' => null, 'share' => null, 'prefill' => false, 'letter' => false, 'stored' => false])
 @php
     use App\Offers\DealScheme;
     use App\Support\Money;
@@ -39,6 +39,9 @@
     @if ($margin !== null) data-commission-margin-value="{{ $margin }}" @endif @if ($confirm) data-turbo-confirm="{{ $confirm }}" @endif>
     @csrf
     @if ($method !== 'post')@method($method)@endif
+    {{-- Что стояло, когда форму нарисовали (22.11.2026, 2611123939: «Цена» гаражной посчитала долю, а вторая отправка той же формы с
+         пустым полем стёрла её в ноль): пустое поле при пустом «было» не стирает появившееся с тех пор (`DealController::money`). --}}
+    <input type="hidden" name="commission_was" value="{{ ($stored === false ? $commission : $stored) ?? '' }}">
     @if ($priced || $costEditable)<input type="hidden" name="loss" value="" data-commission-target="loss">@endif
     {{ $slot }}
     {{-- Схема сделки меняется своей строкой «Схема» (`x-deal.scheme`, 03.11.2026): в «Деньгах» — только она сама, без выбора. --}}

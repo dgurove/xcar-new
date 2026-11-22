@@ -3,6 +3,8 @@
 namespace App\Http\Admin;
 
 use App\Billing\DealDebt;
+use App\Garage\Actions\MarkGarageSold;
+use App\Garage\CarState;
 use App\Live\Rows;
 use App\Offers\Actions\AttachSignedContract;
 use App\Offers\Actions\ChangeDealScheme;
@@ -19,8 +21,9 @@ use App\Offers\Deal;
 use App\Offers\DealDates;
 use App\Offers\DealScheme;
 use App\Offers\DealTabs;
-use App\Offers\OfferFilters;
+use App\Offers\Documents\SignedContractPdf;
 use App\Offers\Giving;
+use App\Offers\OfferFilters;
 use App\Offers\OfferNumber;
 use App\Offers\OfferState;
 use App\Support\Detail;
@@ -43,15 +46,14 @@ use App\Workflow\Outcome;
 use App\Workflow\Position;
 use App\Workflow\Stage;
 use App\Workflow\Track;
-use App\Garage\Actions\MarkGarageSold;
 use Illuminate\Http\Request;
-use Illuminate\Validation\ValidationException;
 use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Blade;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
+use Illuminate\Validation\ValidationException;
 use Spatie\MediaLibrary\MediaCollections\Models\Media;
 
 class DealController
@@ -288,7 +290,7 @@ class DealController
             // колеса — `OfferController::scopeFor('finished')`). Сделка гаражной — любая не отменённая.
             'finished' => $q->where(fn ($w) => $w->where(fn ($d) => $d->done()->whereHas('offer', fn ($o) => $o->where('offers.state', OfferState::Delivered)))
                 ->orWhere(fn ($g) => $g->whereNull('deals.cancelled_at')->whereHas('offer', fn ($o) => $o->where('offers.state', OfferState::Garage)
-                    ->whereHas('garageCar', fn ($c) => $c->where('state', \App\Garage\CarState::Settled))))),
+                    ->whereHas('garageCar', fn ($c) => $c->where('state', CarState::Settled))))),
             // Этап маршрута — раскладка `DealTabs`.
             default => $q->active()->whereHas('offer', fn ($o) => $o->where('offers.state', OfferState::Sold)->whereIn('offers.id', DealTabs::ids($preset))),
         };
@@ -324,6 +326,11 @@ class DealController
             'share' => ['nullable', 'integer', 'min:0']], ['share.min' => Giving::SHARE_LEFT]);
         // Поле вознаграждения пустое — вознаграждения нет; поля нет вовсе (гаражная доля) — прежнее.
         $commission = $request->has('commission') ? (isset($data['commission']) ? (int) $data['commission'] : null) : $deal->commission;
+        // Пустое поле из формы, нарисованной без вознаграждения, а оно с тех пор появилось (продажа гаража посчитала долю, вписал
+        // другой) — остаётся (22.11.2026, 2611123939: вторая отправка той же формы стёрла 27 429 ₽ в ноль). Было и стёрли — стёрто.
+        if ($commission === null && $request->has('commission_was') && blank($request->input('commission_was')) && $deal->commission !== null) {
+            $commission = $deal->commission;
+        }
         $scheme = DealScheme::tryFrom($data['scheme'] ?? '');
         // Схема не из этого вендора (`DealScheme::casesFor`), как в «Принять», — по умолчанию предложения.
         if ($scheme && ! in_array($scheme, DealScheme::casesFor($deal->offer->vendor, $deal->offer), true)) {
@@ -488,10 +495,10 @@ class DealController
     /** Подписанный договор одним PDF — файлы сделки и ответы шага договора (`SignedContractPdf`, 17.11.2026). */
     public function signedPdf(Deal $deal)
     {
-        $pdf = \App\Offers\Documents\SignedContractPdf::render($deal) ?? abort(404);
+        $pdf = SignedContractPdf::render($deal) ?? abort(404);
 
         return response($pdf, 200, ['Content-Type' => 'application/pdf',
-            'Content-Disposition' => 'inline; filename*=UTF-8\'\''.rawurlencode(\App\Offers\Documents\SignedContractPdf::fileName($deal))]);
+            'Content-Disposition' => 'inline; filename*=UTF-8\'\''.rawurlencode(SignedContractPdf::fileName($deal))]);
     }
 
     public function removeSigned(Request $request, Deal $deal, Media $media)
