@@ -1,7 +1,7 @@
 {{-- Договор, который ещё не готов, — строкой, как будто готов (18.11.2026, владелец: «договор так же», как счёт, только без
      «Сформировать без прописки»): без второй строки (с 22.11.2026), нажатие — шторка «Договор невозможно
      сформировать»: данные покупателя полями тут же (паспорт, скан — `x-billing.buyer-fields`), остальное — строками в свои шторки
-     (покупатель, собственник, сумма) или на страницу (ПТС). Скрепкой справа — приложить подписанный вне системы. --}}
+     (покупатель, собственник, сумма) или на страницу (ПТС). Под строкой — «Приложить подписанный» (подписали вне системы). --}}
 @props(['deal', 'attach' => false])
 @php
     $contract = \App\Offers\DealContract::for($deal)->loadMissing(['buyer.party']);
@@ -35,15 +35,12 @@
                  строками «Владелец», «ПТС», «Покупатель» рядом, словом «нужны данные» над блоком и списком в шторке. --}}
             <span class="min-w-0 flex-1 truncate">Договор купли-продажи</span>
         </button>
-        @if ($attach && \App\Offers\Actions\AttachSignedContract::allows($deal))
-            <form method="post" action="/work/deals/{{ $deal->id }}/signed" enctype="multipart/form-data" class="contents" data-controller="autosubmit">
-                @csrf
-                <label class="btn btn-ghost btn-s shrink-0 px-2 text-ink-muted" title="Приложить подписанный" aria-label="Приложить подписанный">
-                    <input type="file" name="files[]" multiple accept=".pdf,.jpg,.jpeg,.png,.webp,.heic,.heif,.doc,.docx" class="sr-only" data-action="change->autosubmit#submit"><x-ui.icon name="clip" class="size-5"/>
-                </label>
-            </form>
-        @endif
     </div>
+    {{-- Подписали вне системы — кнопкой словами под строкой, как у готового договора (`x-deal.contract-doc`; 22.11.2026, владелец:
+         «где прикрепление подписанного договора» — тут стояла скрепка справа в строке). --}}
+    @if ($attach && \App\Offers\Actions\AttachSignedContract::allows($deal))
+        <div class="send-under"><x-deal.attach-signed :deal="$deal" :base="'/work/deals/'.$deal->id" wide/></div>
+    @endif
     <x-ui.sheet :id="$id" title="Договор невозможно сформировать" :open="$errors->hasAny(['buyer.*']) && old('_sheet') === $id" tall>
         <p class="mb-3 text-ink-muted">{{ \Illuminate\Support\Str::ucfirst($words) }}</p>
         @if ($rows)
