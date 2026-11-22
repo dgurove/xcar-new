@@ -5612,6 +5612,8 @@ dialog.lightbox .lb-pill .pswp__button {
 dialog.lightbox .lb-pill .pswp__button[hidden], dialog.lightbox .lb-pill--top .pswp__button--zoom { display: none; }
 dialog.lightbox .lb-pill .pswp__button svg { width: 22px; height: 22px; pointer-events: none; }
 /* Главное фото в просмотре: у главного звезда залита лаймом (`activeFor`, 23.11.2026). */
+/* Скрытый кадр в просмотре — чёрно-белым, как на плитке (lightbox.js `lb-hidden`). */
+dialog.lightbox .pswp__img.lb-hidden { filter: grayscale(1); }
 dialog.lightbox .lb-pill .pswp__button--main.is-on { color: var(--color-accent); }
 dialog.lightbox .lb-pill .pswp__button--main.is-on svg { fill: currentColor; }
 dialog.lightbox:not(.lb-zoomable) .lb-pill .pswp__button--zoom-tool { opacity: .35; pointer-events: none; }

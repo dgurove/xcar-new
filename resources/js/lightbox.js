@@ -336,6 +336,14 @@ export async function openLightbox({ items, index = 0, actions = [], download = 
             unwind();
             onClose?.(view.index);
         });
+        // Скрытый кадр — чёрно-белым и во весь экран, как на плитке (23.11.2026, владелец). Слайд вставляется — по его кадру;
+        // глаз нажали (redraw шлёт change) — по всем слайдам, что сейчас в ленте просмотра.
+        const hiddenAt = (i) => pswp.options.dataSource[i]?.item?.el?.closest('.photo-cell')?.dataset.hidden === '1';
+        pswp.on('contentAppend', ({ content }) => content.element?.classList?.toggle('lb-hidden', hiddenAt(content.index)));
+        pswp.on('change', () => pswp.mainScroll.itemHolders.forEach((h) => {
+            const s = h.slide;
+            s?.content?.element?.classList?.toggle('lb-hidden', hiddenAt(s.index));
+        }));
         pswp.init();
         pills(pswp);
         strip(pswp, list);
