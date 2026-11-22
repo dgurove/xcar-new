@@ -175,8 +175,8 @@ export default class extends Controller {
         // Окно держит машину, пока открыто письмо (18.11.2026, начальник: «принимаю подтверждение — редактор письма не
         // открывается, всё закрывается и улетает в другую вкладку»): окно письма стоит над окном машины, и переход к
         // следующей строке или своё закрытие (`follow`, `advance`) гасили его (`overlays.shut` закрывает слои выше).
-        // Поток `hold` ответа «Принять и написать письмо» — держим; письмо закрылось сделанным (ушло, «без письма») — к
-        // следующему делу, как раньше; закрыл сам — остаёмся на машине, письмо ждёт на шаге сделки.
+        // Поток `hold` ответа «Принять и написать письмо» — держим; письмо закрылось сделанным (ушло, «без письма») — окно уже
+        // сделки и остаётся на машине (`staying`, 22.11.2026), перечитывая шаг; закрыл сам — тоже на машине, письмо ждёт на шаге.
         this.onKeep = () => { this.hold = true; this.submittedAt = 0; clearTimeout(this.followTimer); };
         this.onLetterClosed = (e) => {
             const go = this.pendingAdvance || (this.hold && e.detail?.handled);
@@ -567,21 +567,24 @@ export default class extends Controller {
     // менялась под рукой, и цену с «Выставить в продажу» Андрей сделал не той машине (Evolute 2611093788). Сменилась —
     // тост с названием новой, чтобы это было видно.
     // Письмо открыто над окном (или вот-вот откроется, `hold`) — окно машины само не закрывается и машину не меняет.
-    // Сделки и гараж (`#list[data-detail-stay]`, 22.11.2026, начальник: «пока ты в сделке и сам из неё не вышел — делаешь все
-    // операции»): шаг уводит сделку в другую вкладку, строка уходит, а окно остаётся на этой машине со следующим шагом.
     get keeping() { return !!this.hold || !!document.getElementById('letters-frame')?.closest('dialog')?.open; }
+
+    // Окно сделки или гаража (`data-detail-stay` у `.detail-card`, `admin/car/window`; 22.11.2026, начальник: «пока ты в сделке
+    // и сам из неё не вышел — делаешь все операции»): шаг уводит машину из списка, а окно остаётся на ней со следующим шагом — ни
+    // `follow`, ни `advance` (и после «Принять» в «Есть подтверждения»: машина уже в сделке). Метка — у окна, а не у списка:
+    // ту же сделку открывают из «Горит», «Всех», поиска и «Оплат».
+    get staying() { return !!this.frameTarget.querySelector('.detail-card[data-detail-stay]'); }
 
     follow(records) {
         const key = this.lastKey;
         if (!key || this.shut || !this.submittedAt || Date.now() - this.submittedAt > 8000) return;
-        if (this.element.querySelector('#list[data-detail-stay]')) return;
-        if (this.keeping) return;
+        if (this.keeping || this.staying) return;
         const sel = `[data-detail-key="${CSS.escape(key)}"]`;
         const gone = records.some((r) => [...r.removedNodes].some((n) => n.nodeType === 1 && (n.matches(sel) || n.querySelector(sel))));
         if (!gone) return;
         clearTimeout(this.followTimer);
         this.followTimer = setTimeout(() => {
-            if (this.shut || this.lastKey !== key || this.dirty || this.keeping) return;
+            if (this.shut || this.lastKey !== key || this.dirty || this.keeping || this.staying) return;
             const rows = this.rows;
             if (rows.some((r) => r.dataset.detailKey === key)) return;
             const next = rows[Math.min(this.lastIndex ?? 0, rows.length - 1)];
@@ -811,7 +814,6 @@ export default class extends Controller {
         if (event.key === 'Escape') { this.close(); return; }
         if (event.key !== 'ArrowDown' && event.key !== 'ArrowUp') return;
         if (event.target.closest?.('input, textarea, select, [contenteditable]')) return;
-        const rows = this.rows, i = rows.indexOf(this.current);
         event.preventDefault();
         this.step(event.key === 'ArrowDown' ? 1 : -1);
     }
@@ -821,8 +823,11 @@ export default class extends Controller {
     next() { this.step(1); }
 
     async step(delta) {
-        const rows = this.rows, i = rows.indexOf(this.current);
-        const row = rows[Math.min(rows.length - 1, Math.max(0, i + delta))];
+        const rows = this.rows, cur = this.current;
+        // Открытой строки в списке уже нет (окно сделки осталось на машине, а строка ушла в другую вкладку): соседи — от её
+        // прежнего места (`lastIndex`), а не с начала списка: ↓ — строка, вставшая на её место, ↑ — та, что была над ней.
+        const at = cur ? rows.indexOf(cur) : (this.lastIndex ?? 0) - (delta > 0 ? 1 : 0);
+        const row = rows[Math.min(rows.length - 1, Math.max(0, at + delta))];
         if (row && row !== this.current && await this.leave()) this.show(row);
     }
 
@@ -832,6 +837,8 @@ export default class extends Controller {
     advance(quiet = false) {
         // Открыто письмо — к следующей после него (`onLetterClosed`). Вернуть: перешли ли к строке.
         if (this.keeping) { this.pendingAdvance = true; return true; }
+        // Окно сделки или гаража — остаётся на машине (`staying`): после письма перечитается сам шаг (`onLetterClosed`).
+        if (this.staying) return false;
         const rows = this.rows, cur = this.current;
         const from = cur ? rows.indexOf(cur) + 1 : (this.lastIndex ?? 0);
         const next = rows.slice(from).find((r) => r.hasAttribute('data-todo')) ?? rows.slice(0, from).find((r) => r.hasAttribute('data-todo') && r !== cur);

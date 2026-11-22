@@ -19,7 +19,9 @@
     $docs = $selling ? [] : \App\Offers\OfferFiles::docs($offer, \App\Offers\OfferFiles::threads($offer));
     $form = 'detail-edit-'.$n;
 @endphp
-<x-ui.detail>
+{{-- Сделка и гараж (22.11.2026, начальник: «пока ты в сделке и сам из неё не вышел — делаешь все операции»): после действия
+     окно остаётся на машине, откуда бы его ни открыли (`detail#staying`). --}}
+<x-ui.detail :data-detail-stay="! $selling">
     <x-ui.row-card stack :href="'/offers/'.$n" :title="$offer->titleWithYear()" :photos="$offer->visiblePhotos()" :facts="$selling ? array_slice($offer->facts(), 1) : []">
         <x-slot:status><span class="state {{ $statusTone }}">{{ $statusWord }}</span></x-slot:status>
         <x-slot:badge>@if ($offer->auctionPlanned())<x-offer.auction/>@endif{{ "" }}@if ($admin && $offer->awaitingPark())<x-offer.awaiting/>@endif<x-car.keys :count="$offer->keys_count"/><x-ui.links :offer="$offer"/><x-offer.margin :m="$offer->marginMark()"/></x-slot:badge>

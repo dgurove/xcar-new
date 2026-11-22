@@ -3,6 +3,7 @@
 namespace App\Http\Admin;
 
 use App\Garage\Actions\GarageToDeal;
+use App\Garage\Actions\HandOverGarage;
 use App\Garage\GaragePayer;
 use App\Mail\LetterPrompt;
 use App\Offers\Actions\Give;
@@ -25,10 +26,10 @@ use Illuminate\Validation\ValidationException;
 
 /**
  * Шторка «Отдать» (`x-offer.give-sheet`, 18.10.2026): одна на «Отдать…» из «Действий» и «···», «В гараж» карточки
- * «Без продажной цены», «Принять» и «Отдать» у подтверждения. Ответ один: тост, строка уходит, карточка — к следующей
- * (`OfferController::gone`). Этап, на который встала сделка, просит письмо вендору — тогда в шторке две кнопки: «и написать
- * письмо» (редактор над той же машиной, окно не уходит, `detail-hold`) или «без письма» (`SkipLetter`); «Отдать» другому —
- * письма нет: вендору о покупке уже писали.
+ * «Без продажной цены», «Принять» и «Отдать» у подтверждения. Ответ один: тост, строка уходит (`OfferController::gone`), окно
+ * остаётся на машине — она уже в сделке или гараже (`detail#staying`, 22.11.2026). Этап, на который встала сделка, просит
+ * письмо вендору — тогда в шторке две кнопки: «и написать письмо» (редактор над той же машиной, окно не уходит,
+ * `detail-hold`) или «без письма» (`SkipLetter`); «Отдать» другому — письма нет: вендору о покупке уже писали.
  */
 class GiveController
 {
@@ -46,7 +47,7 @@ class GiveController
      * «Передать…» гаражную машину другому держателю без отмены сделки (19.11.2026, `HandOverGarage`): кому — менеджер,
      * покупатель с гаражом (с его ценой) или «Себе».
      */
-    public function holder(Request $request, Offer $offer, \App\Garage\Actions\HandOverGarage $hand)
+    public function holder(Request $request, Offer $offer, HandOverGarage $hand)
     {
         $car = $offer->garageCar()->firstOrFail();
         $request->merge(['buyer_price' => blank($request->input('buyer_price')) ? null : Money::rubles($request->input('buyer_price'))]);
@@ -154,7 +155,8 @@ class GiveController
         }
         // Писать ли поставщику, выбирают кнопкой самой шторки (18.11.2026, владелец: «должен явно указывать — отправить письмо
         // или не отправлять, только тогда оно может в следующую вкладку переехать»; `x-offer.give-foot`).
-        // «Без письма» — шаг закрыт как «сообщили сами», дальше обычный ответ: строка ушла, окно — к следующему.
+        // «Без письма» — шаг закрыт как «сообщили сами», дальше обычный ответ: строка ушла, окно — на машине, уже сделкой
+        // (`staying`).
         if ($letter && $request->input('letter') === 'skip') {
             try {
                 app(SkipLetter::class)($offer->fresh(), $request->user());

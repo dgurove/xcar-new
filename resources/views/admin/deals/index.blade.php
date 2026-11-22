@@ -14,7 +14,7 @@
     <x-admin.tab-head :presets="$presets" :preset="$preset" :counts="$counts" :sections="$sections" :sort="$sort" name="deals" :facets="$facets" search="Номер, марка, VIN, менеджер"
         :views="['list', 'table', 'wide']" :view="$view"/>
 
-    <div id="list" data-detail-stay>
+    <div id="list">
     @if ($groups !== null)
         @if ($debts && $debts['owed'] > 0)
             {{-- «Менеджер должен нам» — кто сколько должен нам (27.10.2026, `DealDebt`). --}}
