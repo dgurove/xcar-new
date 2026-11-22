@@ -1765,7 +1765,7 @@ html.kb-open { --home-gap: 0px; }
   .valuation-step[data-state="done"] .valuation-tick { @apply block; animation: valuation-draw .35s ease-out forwards; }
   .valuation-lines { @apply mt-4 max-h-[40dvh] overflow-hidden text-sm; mask-image: linear-gradient(to bottom, #000 80%, transparent); }
   .valuation-line { @apply truncate rounded-md px-2 py-0.5 text-ink-dim transition-colors duration-300; }
-  .valuation-line.is-kept { @apply text-ink; --side: var(--color-accent); --side-w: 3px; --side-inset: .25rem; }
+  .valuation-line.is-kept { @apply text-ink; --side: var(--color-accent); --side-w: 3px; }
   .valuation-ok { @apply size-16 flex-none; fill: none; stroke: var(--color-accent); stroke-width: 4; stroke-linecap: round; stroke-linejoin: round; }
   .valuation-ok circle { stroke-dasharray: 176; stroke-dashoffset: 176; animation: valuation-draw .5s ease-out forwards; }
   .valuation-ok path { stroke-dasharray: 44; stroke-dashoffset: 44; animation: valuation-draw .3s .35s ease-out forwards; }
@@ -1910,16 +1910,17 @@ html.kb-open { --home-gap: 0px; }
   .box-nested.box-urgent h2::before { content: none; }
   /* Строка с полосой слева — вариант Б. */
   .stripe, .box-nested.box-urgent { --side: var(--stripe, var(--color-urgent)); }
-  /* Полоса сбоку — прямая планка, а не тень: у скруглённой строки или карточки inset-тень гнулась «С» по углу (22.11.2026,
-     владелец: «даже если строки скруглённые, сбоку должна быть прямая полоса»). Планка отступает от верха и низа на
-     --side-inset, мимо скругления; цвет — --side, ширина — --side-w. Где ::before уже занят разделителем (чаты) — ::after. */
+  /* Полоса сбоку — прямая планка во всю высоту у края, а скругление блока её обрезает (22.11.2026, владелец: «даже если строки
+     скруглённые, сбоку прямая полоса, а не „С“», «вписана и обрезается блоком, а не поверх»): слой той же формы
+     (`border-radius: inherit`), планка — его фоном; inset-тень гнулась по углу. Цвет — --side, ширина — --side-w. Где ::before
+     уже занят разделителем (чаты) — ::after. */
   :is(.valuation-line.is-kept, .stripe, .box-nested.box-urgent, .bid-row--low, .bid-row--loss, .row.profit, .table tbody tr[aria-selected="true"] > td:first-child,
     .list .row[aria-selected="true"], .route-leg--now .route-leg-body, .parsing-cell.is-now, .chat-row[aria-current], .inbox-row[aria-selected="true"], .inbox-row.is-unread) { position: relative; }
   :is(.valuation-line.is-kept, .stripe, .box-nested.box-urgent, .bid-row--low, .bid-row--loss, .row.profit, .table tbody tr[aria-selected="true"] > td:first-child,
     .list .row[aria-selected="true"], .route-leg--now .route-leg-body, .parsing-cell.is-now, .inbox-row[aria-selected="true"], .inbox-row.is-unread)::before,
   .chat-row[aria-current]::after {
-    content: ''; position: absolute; z-index: 1; left: 0; top: var(--side-inset, .375rem); bottom: var(--side-inset, .375rem); width: var(--side-w, 4px);
-    background: var(--side); pointer-events: none; }
+    content: ''; position: absolute; z-index: 1; inset: 0; border-radius: inherit; pointer-events: none;
+    background: linear-gradient(to right, var(--side) var(--side-w, 4px), transparent 0); }
   .chat-row[aria-current]::after { display: block; }
 
   /* Крошки, строки списков, тексты. */
@@ -3999,7 +4000,8 @@ html.kb-open { --home-gap: 0px; }
     .split[data-open] .split-main .row[aria-selected="true"] { position: relative; --side: var(--color-accent); --side-w: 3px; }
     .split[data-open] .split-main tr[aria-selected="true"] > :first-child::before,
     .split[data-open] .split-main .row[aria-selected="true"]::before {
-      content: ''; position: absolute; z-index: 1; left: 0; top: var(--side-inset, .375rem); bottom: var(--side-inset, .375rem); width: var(--side-w); background: var(--side); pointer-events: none; }
+      content: ''; position: absolute; z-index: 1; inset: 0; border-radius: inherit; pointer-events: none;
+      background: linear-gradient(to right, var(--side) var(--side-w), transparent 0); }
   }
   /* Шапка карточки с лентой: название и цена в одну строку, под ними метки с фактами во всю ширину (колонка рядом с ценой
      ставила теги столбиком); до 640 цена — своей строкой под названием. */
