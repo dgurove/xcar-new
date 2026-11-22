@@ -12,12 +12,65 @@ export default class extends Controller {
 
     connect() {
         this.chosen = new Set(this.boxTargets.filter((b) => b.checked).map((b) => this.key(b)));
-        this.onMorph = () => this.sync();
+        // Режим «Выбрать» (`data-pick-mode`, 22.11.2026, начальник: «обычно сверху кнопка „Выбрать“, и только после неё
+        // галочки»): вне режима галочек не видно (app.css), строка открывает окно. Морф снимает атрибут — возвращаем.
+        this.selecting = this.element.hasAttribute('data-selecting');
+        this.onMorph = () => { this.paint(); this.sync(); };
         document.addEventListener('turbo:morph', this.onMorph);
+        this.paint();
         this.sync();
     }
 
     disconnect() { document.removeEventListener('turbo:morph', this.onMorph); }
+
+    get modal() { return this.element.hasAttribute('data-pick-mode'); }
+
+    // «Выбрать» / «Готово» в шапке (событие `pick:mode`).
+    mode() {
+        if (!this.modal) return;
+        this.selecting ? this.leave() : this.enter();
+    }
+
+    enter() {
+        this.selecting = true;
+        this.paint();
+    }
+
+    // Выход — «Готово», Esc, пачка ушла: выбор снимается, галочки прячутся.
+    leave() {
+        if (!this.modal || !this.selecting) return;
+        this.selecting = false;
+        this.boxTargets.forEach((b) => { b.checked = false; });
+        this.chosen?.clear();
+        this.paint();
+        this.sync();
+    }
+
+    paint() {
+        if (!this.modal) return;
+        this.element.toggleAttribute('data-selecting', !!this.selecting);
+        document.querySelectorAll('[data-pick-toggle]').forEach((btn) => {
+            btn.setAttribute('aria-pressed', this.selecting ? 'true' : 'false');
+            btn.classList.toggle('btn-accent', !!this.selecting);
+            btn.classList.toggle('btn-quiet', !this.selecting);
+            const label = btn.querySelector('[data-pick-toggle-label]');
+            if (label) label.textContent = this.selecting ? 'Готово' : 'Выбрать';
+        });
+    }
+
+    // В режиме нажатие по строке или плитке — её галочка, а не окно (click в фазе захвата: до окна и ссылки строки).
+    tap(event) {
+        if (!this.modal || !this.selecting) return;
+        const row = event.target.closest('[data-detail-key]');
+        if (!row || !this.element.contains(row) || event.target.closest('input, label, .pick-cell, .card-check')) return;
+        const box = row.querySelector('[data-pick-target~="box"]');
+        event.preventDefault();
+        event.stopPropagation();
+        if (!box || box.disabled) return;
+        box.checked = !box.checked;
+        this.remember(box);
+        this.sync();
+    }
 
     boxTargetConnected(box) {
         if (this.chosen?.has(this.key(box))) box.checked = true;
@@ -55,6 +108,8 @@ export default class extends Controller {
         if (!event.detail?.success) return;
         this.boxTargets.forEach((b) => { b.checked = false; });
         this.chosen?.clear();
+        this.selecting = false;
+        this.paint();
         this.sync();
     }
 

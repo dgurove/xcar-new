@@ -2318,6 +2318,14 @@ html.kb-open { --home-gap: 0px; }
   .pick-cell .row-check, .pick-all .row-check, .table-group .row-check { display: inline-flex; vertical-align: middle; }
   .table-group .row-check { margin-right: .75rem; }
   .pick-all { @apply flex items-center gap-3 pb-2 text-sm text-ink-muted; padding-left: .75rem; }
+  /* Режим «Выбрать» (22.11.2026, начальник: «обычно сверху кнопка „Выбрать“, и только после неё галочки»): в списке с
+     `data-pick-mode` без `data-selecting` столбца галочек, «Выбрать все» и галочек групп нет — дорожка сетки нулевая
+     (`Table::tracks`, `--pick-w`), ячейка на ней невидима; на телефоне (обычная таблица) — убрана. Включает `pick_controller`. */
+  [data-pick-mode]:not([data-selecting]) .table { --pick-w: 0px; }
+  [data-pick-mode]:not([data-selecting]) .pick-cell { visibility: hidden; padding: 0 !important; overflow: hidden; }
+  @media (max-width: 639.98px) { [data-pick-mode]:not([data-selecting]) .table:not(.is-grid) .pick-cell { display: none; } }
+  [data-pick-mode]:not([data-selecting]) .pick-all, [data-pick-mode]:not([data-selecting]) .pick-group { display: none; }
+  [data-pick-mode]:not([data-selecting]) .card-check--on { display: none; }
   @media (max-width: 639.98px) { .pick-all { padding-left: 0; } }
   /* Ячейка в два этажа; от 640 второй этаж встаёт в линию за названием. */
   .cell-title, .cell-sub { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }

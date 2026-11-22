@@ -60,7 +60,7 @@
     {{-- Шапка — одна на вкладки колеса (`x-admin.tab-head`, 17.11.2026): название-колесо и действия экрана, ряд кнопок (сортировка,
          лупа, вид, «Фильтр»), быстрые чипы и переключатели. Сброс фильтра — × у «Фильтра» (прежняя «фильтр ×» в строке названия). --}}
     <x-admin.tab-head :presets="$presets" :preset="$preset" :counts="$counts" :sections="\App\Http\Admin\OfferController::sections(auth()->user())" :sort="$sort" name="offers" :facets="$facets" search="Номер, марка, VIN, убыток"
-        :views="$searching || $preset === 'legacy' ? null : ($packable ? \App\Support\ListView::SHELVED : \App\Support\ListView::ALL)" :view="$view">
+        :views="$searching || $preset === 'legacy' ? null : ($packable ? \App\Support\ListView::SHELVED : \App\Support\ListView::ALL)" :view="$view" :select="$pick">
         <x-slot:actions>
             @if ($preset === 'legacy' && ! $searching)<x-offer.legacy-sheet/>@endif
             {{-- «Оценить» — только в «Без закупочной»: круглой «₽» с меню (22.10.2026, владелец: в «Без продажной» кнопка не нужна
@@ -82,7 +82,7 @@
         </x-slot:actions>
     </x-admin.tab-head>
 
-    <div class="mt-4" id="list" @if ($pick) data-controller="pick" @endif>
+    <div class="mt-4" id="list" @if ($pick) data-controller="pick" data-pick-mode data-action="click->pick#tap:capture keydown.esc@window->pick#leave pick:mode@window->pick#mode" @endif>
         {{-- После вставки номеров: что уже в сделке или в продаже — в список не попало, строкой к самой машине. --}}
         @foreach (['deals' => 'Уже в сделке', 'published' => 'В продаже'] as $part => $head)
             @if ($items = session('legacy.'.$part))
@@ -104,7 +104,7 @@
             <x-ui.empty>{{ match ($searching ? '' : $preset) { 'nofloor' => 'Закупочные заполнены', 'unpriced' => 'Всё оценено', 'estimating' => 'На оценке ничего нет', 'priced' => 'Оценённых нет', 'slots' => 'В слотах пусто', 'published' => 'Опубликованных нет', 'done' => 'Всё разобрано', 'bids' => 'Подтверждений нет', 'legacy' => 'Список пуст', default => 'Предложений нет' } }}</x-ui.empty>
         @else
             @if ($pick)
-                <form id="offers-pick" method="post" action="/offers/schedule" data-live-select data-price-guard="publish">@csrf</form>
+                <form id="offers-pick" method="post" action="/offers/schedule" data-live-select data-price-guard="publish" data-action="turbo:submit-end->pick#done">@csrf</form>
                 <div class="pick-all"><label class="row-check gap-3"><span class="check"><input type="checkbox" id="pick-all-{{ $preset }}" data-turbo-permanent data-pick-target="all" data-action="pick#pickAll"></span><span>Выбрать все</span></label></div>
             @endif
             @if ($table)
@@ -113,7 +113,7 @@
                     @foreach ($groups as $key => $list)
                         @if ($title = $groupTitle($key, $list))
                             <x-table.group :table="$columns" :key="$key" :title="$title" :count="$groupCounts[$key] ?? $list->count()" :count-key="'group-'.$key">
-                                <x-slot:before>@if ($pick)<label class="row-check" aria-label="Выбрать группу"><span class="check"><input type="checkbox" id="pick-group-{{ $key }}" data-turbo-permanent data-pick-target="group" data-group="{{ $key }}" data-action="pick#pickGroup"></span></label>@endif</x-slot:before>
+                                <x-slot:before>@if ($pick)<label class="row-check pick-group" aria-label="Выбрать группу"><span class="check"><input type="checkbox" id="pick-group-{{ $key }}" data-turbo-permanent data-pick-target="group" data-group="{{ $key }}" data-action="pick#pickGroup"></span></label>@endif</x-slot:before>
                             </x-table.group>
                         @endif
                         @foreach ($list as $offer)<x-offer.table-row :offer="$offer" :table="$columns" :group="$pick ? $key : null" :arrive="$arrive[$offer->id] ?? null"/>@endforeach
@@ -131,7 +131,7 @@
                         @foreach ($groups as $key => $list)
                             <x-ui.shelf :title="$groupTitle($key, $list) ?? ''" :count="$list->count()">
                                 @if ($pick)
-                                    <x-slot:head><label class="row-check" aria-label="Выбрать всю пачку"><span class="check"><input type="checkbox" id="pick-group-{{ $key }}" data-turbo-permanent data-pick-target="group" data-group="{{ $key }}" data-action="pick#pickGroup"></span></label></x-slot:head>
+                                    <x-slot:head><label class="row-check pick-group" aria-label="Выбрать всю пачку"><span class="check"><input type="checkbox" id="pick-group-{{ $key }}" data-turbo-permanent data-pick-target="group" data-group="{{ $key }}" data-action="pick#pickGroup"></span></label></x-slot:head>
                                 @endif
                                 @foreach ($list as $offer)<x-offer.crm-card :offer="$offer" :checkable="$pick" :group="$pick ? $key : null"/>@endforeach
                             </x-ui.shelf>
@@ -139,7 +139,7 @@
                     </div>
                 @else
                 @foreach ($groups as $key => $list)
-                    @if ($title = $groupTitle($key, $list))<h2 class="box-title flex items-center gap-2 {{ $loop->first ? '' : 'mt-6' }}">@if ($pick)<label class="row-check" aria-label="Выбрать группу"><span class="check"><input type="checkbox" id="pick-group-{{ $key }}" data-turbo-permanent data-pick-target="group" data-group="{{ $key }}" data-action="pick#pickGroup"></span></label>@endif{{ $title }} <span class="nums text-ink-dim">{{ $list->count() }}</span></h2>@endif
+                    @if ($title = $groupTitle($key, $list))<h2 class="box-title flex items-center gap-2 {{ $loop->first ? '' : 'mt-6' }}">@if ($pick)<label class="row-check pick-group" aria-label="Выбрать группу"><span class="check"><input type="checkbox" id="pick-group-{{ $key }}" data-turbo-permanent data-pick-target="group" data-group="{{ $key }}" data-action="pick#pickGroup"></span></label>@endif{{ $title }} <span class="nums text-ink-dim">{{ $list->count() }}</span></h2>@endif
                     <div @if ($loop->first) id="offers" @endif class="{{ \App\Support\ListView::containerClass($view) }}" data-controller="ticker">
                         @foreach ($list as $offer)<x-offer.crm-card :offer="$offer" :checkable="$pick" :group="$pick ? $key : null" :arrive="$arrive[$offer->id] ?? null"/>@endforeach
                     </div>

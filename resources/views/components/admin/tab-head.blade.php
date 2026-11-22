@@ -5,7 +5,7 @@
      2 — только кнопки: слева лупа, сортировка, вид, справа «Фильтр» (`x-ui.toolbar rows`);
      3 — переключатели вкладки (`Facet::quick`: «Горит срок», «Переоценка»); остальное и что выбрано — в окне «Фильтр».
      Пустой ряд не рисуется; на ПК — те же ряды. Ссылки колеса несут только вид (`keep`): чипы каждая вкладка берёт из своей памяти. --}}
-@props(['presets', 'preset', 'counts' => [], 'sections' => [], 'sort' => null, 'name' => 'list', 'facets' => null, 'search' => null, 'views' => null, 'view' => false, 'fallback' => 'Предложения'])
+@props(['presets', 'preset', 'counts' => [], 'sections' => [], 'sort' => null, 'name' => 'list', 'facets' => null, 'search' => null, 'views' => null, 'view' => false, 'fallback' => 'Предложения', 'select' => false])
 {{-- «Не распределено» сделок (наш шаг, что не подошёл ни под одну вкладку «Сделать») — только когда там что-то есть. --}}
 @php($presets = ($counts['todo'] ?? 0) || $preset === 'todo' ? $presets : array_diff_key($presets, ['todo' => true]))
 <div class="title-row">
@@ -15,7 +15,12 @@
     @endisset
 </div>
 <x-ui.toolbar rows :sort="$sort" :name="$name" :facets="$facets" :search="$search">
-    @if ($views)
-        <x-slot:extra><x-ui.view-switch :current="$view" :views="$views"/></x-slot:extra>
+    @if ($views || $select)
+        <x-slot:extra>
+            @if ($views)<x-ui.view-switch :current="$view" :views="$views"/>@endif
+            {{-- «Выбрать» (22.11.2026, начальник: галочки — только после неё, как в iOS): режим выбора списка (`pick_controller#mode`),
+                 в режиме — лаймовое «Готово». --}}
+            @if ($select)<button type="button" class="btn btn-s btn-quiet shrink-0 rounded-full" data-controller="emit" data-action="emit#send" data-emit-event-param="pick:mode" data-pick-toggle aria-pressed="false"><x-ui.icon name="check-circle" class="size-4"/><span data-pick-toggle-label>Выбрать</span></button>@endif
+        </x-slot:extra>
     @endif
 </x-ui.toolbar>
