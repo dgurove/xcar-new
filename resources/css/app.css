@@ -5435,14 +5435,10 @@ html[data-theme-switch] #header, html[data-theme-switch] #tabbar, html[data-them
   /* Подпись, обложка и счёт соседних пачек — общими строками сетки (subgrid): перенеслась подпись у одной — обложки всё равно
      вровень. Обёртка пачки без своей коробки (шторка внутри неё — в верхнем слое). */
   .photo-packs { grid-template-rows: auto auto auto; row-gap: .375rem; }
-  .photo-packs { container-type: inline-size; }
-  .photo-pack-short { display: none; }
-  .photo-pack-title--solo { flex-wrap: nowrap; white-space: nowrap; }
-  @container (max-width: 20rem) { .photo-pack-full { display: none; } .photo-pack-short { display: inline; } }
   .photo-pack { display: contents; }
   .photo-pack-cover { @apply grid w-full min-w-0 text-left; grid-row: span 3; grid-template-rows: subgrid; row-gap: .375rem; align-items: end; }
-  /* Подпись своя — не режется (правило «многоточие только у данных извне»): в узкой колонке страницы дата переносится. */
-  .photo-pack-title { @apply flex min-w-0 flex-wrap items-baseline gap-x-1 text-sm text-ink-muted; }
+  /* Подпись короткая («От страховой 09.10») и одной строкой: дата не переносится. */
+  .photo-pack-title { @apply flex min-w-0 items-baseline gap-x-1 whitespace-nowrap text-sm text-ink-muted; }
   .photo-pack-img { @apply relative flex aspect-[2/1] w-full items-center justify-center overflow-hidden rounded-(--radius-m) bg-surface-3 text-ink-muted; }
   .photo-pack-img img { width: 100%; height: 100%; object-fit: cover; }
   .photo-pack-img.is-hidden img { @apply opacity-40 grayscale; }
@@ -5614,6 +5610,12 @@ dialog.lightbox .lb-pill .pswp__button svg { width: 22px; height: 22px; pointer-
 /* Главное фото в просмотре: у главного звезда залита лаймом (`activeFor`, 23.11.2026). */
 /* Скрытый кадр в просмотре — чёрно-белым, как на плитке (lightbox.js `lb-hidden`). */
 dialog.lightbox .pswp__img.lb-hidden { filter: grayscale(1); }
+dialog.lightbox .lb-hidden-mark {
+  position: fixed; inset: 0; z-index: var(--z-viewer); display: none; align-items: center; justify-content: center;
+  color: #fff; opacity: .55; pointer-events: none;
+}
+dialog.lightbox .lb-hidden-mark.is-on { display: flex; }
+dialog.lightbox .lb-hidden-mark svg { width: 96px; height: 96px; stroke-width: 1.5; filter: drop-shadow(0 2px 8px rgb(0 0 0 / .5)); }
 dialog.lightbox .lb-pill .pswp__button--main.is-on { color: var(--color-accent); }
 dialog.lightbox .lb-pill .pswp__button--main.is-on svg { fill: currentColor; }
 dialog.lightbox:not(.lb-zoomable) .lb-pill .pswp__button--zoom-tool { opacity: .35; pointer-events: none; }

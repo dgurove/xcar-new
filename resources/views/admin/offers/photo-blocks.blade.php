@@ -21,7 +21,7 @@
 <div id="{{ $root }}" class="photo-packs">
     @foreach ($blocks as $i => ['stage' => $stage, 'photos' => $photos, 'when' => $when])
         @php $first = $i === 0; $row = $root.'-'.$stage->value; @endphp
-        <x-ui.photo-pack :id="$row" :photos="$photos" :title="$stage->label()" :when="$when" :main-id="$mainId" :solo="count($blocks) === 1"
+        <x-ui.photo-pack :id="$row" :photos="$photos" :title="$stage->label()" :when="$when" :main-id="$mainId"
             data-photos-url-value="/offers/{{ $n }}/media" data-photos-stage-value="{{ $stage->value }}" data-photos-group-value="offer-{{ $offer->id }}"
             data-photos-order="{{ $i }}" data-photos-mark-value="true" :data-photos-any-value="$first ? 'true' : null">
             @include('admin.offers.photo-upload')

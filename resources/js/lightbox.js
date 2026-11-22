@@ -340,10 +340,17 @@ export async function openLightbox({ items, index = 0, actions = [], download = 
         // глаз нажали (redraw шлёт change) — по всем слайдам, что сейчас в ленте просмотра.
         const hiddenAt = (i) => pswp.options.dataSource[i]?.item?.el?.closest('.photo-cell')?.dataset.hidden === '1';
         pswp.on('contentAppend', ({ content }) => content.element?.classList?.toggle('lb-hidden', hiddenAt(content.index)));
-        pswp.on('change', () => pswp.mainScroll.itemHolders.forEach((h) => {
-            const s = h.slide;
-            s?.content?.element?.classList?.toggle('lb-hidden', hiddenAt(s.index));
-        }));
+        // Поверх скрытого — большой полупрозрачный перечёркнутый глаз по центру (тот же день, владелец: «чтобы было понятно»);
+        // нажатий не ловит, зум и листание идут сквозь него.
+        const eyeMark = Object.assign(document.createElement('div'), { className: 'lb-hidden-mark', innerHTML: path(ICONS['eye-off']) });
+        view.host.append(eyeMark);
+        pswp.on('change', () => {
+            pswp.mainScroll.itemHolders.forEach((h) => {
+                const s = h.slide;
+                s?.content?.element?.classList?.toggle('lb-hidden', hiddenAt(s.index));
+            });
+            eyeMark.classList.toggle('is-on', hiddenAt(pswp.currIndex));
+        });
         pswp.init();
         pills(pswp);
         strip(pswp, list);

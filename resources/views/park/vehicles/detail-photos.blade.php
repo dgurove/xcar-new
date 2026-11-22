@@ -6,7 +6,7 @@
 <div id="detail-photos" class="photo-packs">
     @foreach ($blocks as $i => ['stage' => $stage, 'photos' => $photos, 'when' => $when])
         @php $row = 'detail-photos-'.$stage->value; @endphp
-        <x-ui.photo-pack :id="$row" :photos="$photos" :title="$stage->label()" :when="$when" :hide="$admin" :solo="count($blocks) === 1"
+        <x-ui.photo-pack :id="$row" :photos="$photos" :title="$stage->label()" :when="$when" :hide="$admin"
             data-photos-url-value="/cars/{{ $vehicle->id }}/media" data-photos-stage-value="{{ $stage->value }}" data-photos-group-value="car-{{ $vehicle->id }}" data-photos-order="{{ $i }}">
             <x-ui.photos :photos="$photos" :add="false" :deletable="false" :hide="$admin" :rotatable="auth()->user()->canManagePark()" :main="false" :id="$row" grid/>
         </x-ui.photo-pack>
