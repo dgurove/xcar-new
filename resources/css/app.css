@@ -3931,8 +3931,12 @@ html.kb-open { --home-gap: 0px; }
   .ghost-box { display: inline-block; flex: none; vertical-align: middle; }
   .detail-ghost .ghost-fill { background: var(--color-surface-3) !important; }
   .detail-ghost .ghost-line { border-color: var(--color-line) !important; box-shadow: none !important; outline: none !important; }
-  .blank-strip { display: flex; gap: .5rem; overflow: hidden; }
-  .blank-tile { flex: none; width: 4rem; height: 5rem; border-radius: var(--radius-m); }
+  /* Заготовка кадров — двумя обложками пачек, как в окне (`x-ui.photo-pack`): подпись, плашка 2:1, счёт. */
+  .blank-packs { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: .75rem; }
+  .blank-pack { display: flex; flex-direction: column; gap: .375rem; }
+  .blank-pack-cap { width: 70%; height: .75rem; border-radius: 4px; }
+  .blank-pack-img { width: 100%; aspect-ratio: 2 / 1; border-radius: var(--radius-m); }
+  .blank-pack-sub { width: 55%; height: .75rem; border-radius: 4px; }
   .detail-blank-title { font-size: var(--text-lg); line-height: 1.375; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .blank-marks { display: flex; gap: .375rem; }
   .blank-mark { height: 1.375rem; width: 4.5rem; border-radius: 999px; }
@@ -5421,13 +5425,24 @@ html[data-theme-switch] #header, html[data-theme-switch] #tabbar, html[data-them
   .photos-all[hidden] { display: none; }
   /* Идёт «Скрыть все» — кнопка бледная, а не молчит на повторное нажатие (08.10.2026). */
   .photos-all[aria-busy="true"] { opacity: .45; pointer-events: none; }
+  /* «Скрыть все» над сеткой кадров дела ТС на стоянке (`park/vehicles/photo-body`): справа, без видимой кнопки ряда нет. */
+  .photos-over { @apply mb-1.5 flex justify-end gap-4; }
+  .photos-over:not(:has(> button:not([hidden]))) { display: none; }
   /* Пачки кадров обложками (`x-ui.photo-pack`, 23.11.2026, владелец: ленты — «неудобно и некрасиво»): две в строку, подпись
-     сверху, обложка 4:3, «Открыто N из M» снизу. Одна пачка — на половину ширины; на широкой странице обложка не шире 16rem. */
+     сверху, обложка 2:1 (владелец выбрал из макетов: 4:3 занимала полокна), «Открыто N из M» снизу. Одна пачка — на половину ширины; на широкой странице обложка не шире 16rem. */
   .photo-packs { display: grid; grid-template-columns: repeat(2, minmax(0, 16rem)); gap: .75rem; }
   @media (max-width: 639.98px) { .photo-packs { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
-  .photo-pack-cover { @apply flex w-full min-w-0 flex-col gap-1.5 text-left; }
-  .photo-pack-title { @apply flex min-w-0 items-baseline gap-1 text-sm text-ink-muted; }
-  .photo-pack-img { @apply relative flex aspect-[4/3] w-full items-center justify-center overflow-hidden rounded-(--radius-m) bg-surface-3 text-ink-muted; }
+  /* Подпись, обложка и счёт соседних пачек — общими строками сетки (subgrid): перенеслась подпись у одной — обложки всё равно
+     вровень. Обёртка пачки без своей коробки (шторка внутри неё — в верхнем слое). */
+  .photo-packs { grid-template-rows: auto auto auto; row-gap: .375rem; }
+  .photo-packs { container-type: inline-size; }
+  .photo-pack-short { display: none; }
+  @container (max-width: 20rem) { .photo-pack-full { display: none; } .photo-pack-short { display: inline; } }
+  .photo-pack { display: contents; }
+  .photo-pack-cover { @apply grid w-full min-w-0 text-left; grid-row: span 3; grid-template-rows: subgrid; row-gap: .375rem; align-items: end; }
+  /* Подпись своя — не режется (правило «многоточие только у данных извне»): в узкой колонке страницы дата переносится. */
+  .photo-pack-title { @apply flex min-w-0 flex-wrap items-baseline gap-x-1 text-sm text-ink-muted; }
+  .photo-pack-img { @apply relative flex aspect-[2/1] w-full items-center justify-center overflow-hidden rounded-(--radius-m) bg-surface-3 text-ink-muted; }
   .photo-pack-img img { width: 100%; height: 100%; object-fit: cover; }
   .photo-pack-img.is-hidden img { @apply opacity-40 grayscale; }
   @media (hover: hover) { .photo-pack-cover:hover .photo-pack-img { @apply brightness-95; } }

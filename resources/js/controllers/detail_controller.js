@@ -507,7 +507,7 @@ export default class extends Controller {
     }
 
     // Заготовка листа, пока карточка в пути, — по форме карточки (x-ui.row-card): полоса как у карточки (‹ ›, «4 из 7»,
-    // «Закрыть»), плитки кадров, название из самой строки, метки, кнопки и поля плашкой строк.
+    // «Закрыть»), обложки пачек кадров, название из самой строки, метки, кнопки и поля плашкой строк.
     blank(row) {
         const card = document.createElement('div');
         card.className = 'detail-card detail-blank';
@@ -520,8 +520,8 @@ export default class extends Controller {
             + `<button type="button" class="bar-btn bar-btn-s" data-action="detail#next" aria-label="Следующая">${icon('m6 9 6 6 6-6')}</button>`
             + '<span class="detail-count nums mr-auto" data-detail-target="count"></span>'
             + `<button type="button" class="bar-btn" data-action="detail#close" aria-label="Закрыть">${icon('M18 6 6 18M6 6l12 12')}</button></div>`
-            // Список без кадров у строк («Оплаты») — заготовка без ленты плиток.
-            + `<div class="detail-body">${row.closest('[data-detail-shape="plain"]') ? '' : `<div class="blank-strip">${bars(4, 'blank-tile')}</div>`}`
+            // Список без кадров у строк («Оплаты») — заготовка без кадров; у остальных — две обложки пачек, как в окне.
+            + `<div class="detail-body">${row.closest('[data-detail-shape="plain"]') ? '' : `<div class="blank-packs">${'<div class="blank-pack"><i class="blank blank-pack-cap"></i><i class="blank blank-pack-img"></i><i class="blank blank-pack-sub"></i></div>'.repeat(2)}</div>`}`
             + `<div class="detail-head mt-3"><p class="detail-blank-title"></p><div class="detail-marks blank-marks">${bars(3, 'blank-mark')}</div></div>`
             + `<div class="blank-acts">${bars(2, 'blank-act')}</div><div class="blank-list">${rows}</div></div>`;
         const text = (el) => el?.textContent.trim().split('\n')[0].trim() ?? '';

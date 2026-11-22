@@ -106,7 +106,7 @@
 
     {{-- Раскладка (06.10.2026, владелец): слева «Транспортное средство», под ним дорожки в ряд (`admin.offers.lanes`:
          «Продажа», «Вывоз», «Гараж» / «Сделка» / «Подтверждения») — в основной колонке, правую не занимают (07.10.2026);
-         справа чат, «Цены», «Показ», заметка сделки, «Чаты» и «История» (12.10.2026); фото, документы и письма — во всю ширину. На телефоне одной колонкой по order-*: дорожки первыми — в них ход. Колонки — по ширине
+         справа чат, фото (с 23.11.2026), «Цены», «Показ», заметка сделки, «Чаты» и «История» (12.10.2026); документы и письма — во всю ширину. На телефоне одной колонкой по order-*: дорожки первыми — в них ход. Колонки — по ширине
          содержимого (@container): с открытой справа шторкой документов редактор в одну колонку. --}}
     <div class="@container">
     <div class="grid grid-cols-1 items-start gap-4 @4xl:grid-cols-[minmax(0,1fr)_22rem]">
@@ -163,6 +163,13 @@
                     @if ($nowKind)@include('admin.offers.now-block', ['transitions' => $transitions->except(OfferState::Open->value)])@endif
                 </div>
             @endif
+            {{-- Фото — пачками в правой колонке над «Ценами» (23.11.2026, владелец: «фотки в боковом меню, а не в основном»); на
+                 телефоне — на прежнем месте (order-4). Без заголовка «Фотографии»: подписи пачек и так «Фото …» (владелец). Кадры письма прикрепляются после «Завести» (ImportThreadFiles): строка хода и
+                 заглушки в пачке, attach_controller переспрашивает их, пока строка есть. --}}
+            <x-ui.card class="order-4" data-controller="attach" data-attach-url-value="/offers/{{ $n }}/attach" data-attach-car-value="{{ $offer->car_id }}">
+                <x-mail.attach-line :model="$offer"/>
+                @include('admin.offers.gallery')
+            </x-ui.card>
             {{-- Деньги — справа над «Историей», у всех; поля ходят в форму оффера через form=. На телефоне — сразу под ТС. --}}
             {{-- Цены — так же: суммы текстом, «Изменить» — поля, «Готово» — сохранить (поля привязаны к форме через form=). --}}
             <x-ui.card title="Цены" class="order-3" :data-controller="$published ? 'edit-card' : null" data-edit-card-form-value="offer-form" :data-edit-card-editing-value="$published && ! $foldMoney ? 'true' : null">
@@ -204,13 +211,6 @@
             @endphp
             <x-ui.card title="История" class="order-6"><x-car.history :events="$events"/></x-ui.card>
         </div>
-
-        {{-- Кадры письма прикрепляются после «Завести» (ImportThreadFiles): строка хода и заглушки в ряду, attach_controller
-             переспрашивает их, пока строка есть. --}}
-        <x-ui.card title="Фотографии" class="order-4 @4xl:order-none @4xl:col-span-2" data-controller="attach" data-attach-url-value="/offers/{{ $n }}/attach" data-attach-car-value="{{ $offer->car_id }}">
-            <x-mail.attach-line :model="$offer"/>
-            @include('admin.offers.gallery')
-        </x-ui.card>
 
         <x-ui.card title="Документы" class="order-4 @4xl:order-none @4xl:col-span-2">
             @include('admin.offers.papers-block')

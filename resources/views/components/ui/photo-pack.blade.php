@@ -15,11 +15,14 @@
     $cover = ($mainId ? $photos->firstWhere('id', $mainId) : null) ?? $photos->first(fn ($m) => ! $hidden($m)) ?? $photos->first();
     $words = $total === 0 ? 'Нет фото' : ($hide ? 'Открыто '.$open.' из '.$total : $total.' фото');
     $label = $title ?? 'Фото';
+    $short = str_starts_with($label, 'Фото ') ? \Illuminate\Support\Str::ucfirst(mb_substr($label, 5)) : $label;
     $head = new \Illuminate\Support\HtmlString(e($label).($when ? ' <span class="nums text-ink-dim">'.e($when).'</span>' : ''));
 @endphp
 <div {{ $attributes->class('photo-pack') }} data-controller="photos sheet">
     <button type="button" class="photo-pack-cover" data-action="sheet#open">
-        <span class="photo-pack-title"><span class="truncate">{{ $label }}</span>@if ($when)<span class="nums text-ink-dim">{{ $when }}</span>@endif</span>
+        {{-- В узком месте (правая колонка страницы) — без «Фото»: «От страховой 08.10» влезает в строку, и подписи соседних пачек
+             не скачут (владелец, 23.11.2026); полная — где места хватает. --}}
+        <span class="photo-pack-title">@if ($short !== $label)<span class="photo-pack-full">{{ $label }}</span><span class="photo-pack-short">{{ $short }}</span>@else<span>{{ $label }}</span>@endif{{ "" }}@if ($when)<span class="nums text-ink-dim">{{ $when }}</span>@endif</span>
         <span @class(['photo-pack-img', 'is-hidden' => $hide && $total && ! $open]) data-photos-target="cover">
             @if ($cover)
                 <img src="{{ \App\Media\MediaUrl::for($cover, 'w320') }}" alt="" loading="lazy">

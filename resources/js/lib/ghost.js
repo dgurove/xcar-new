@@ -3,8 +3,16 @@
 // полосами по его ширине, кадры и аватары плашками их размера, кнопки и поля на своих местах. Новая кнопка в карточке сама
 // попадает в силуэт со следующего открытия. Лежит в памяти и в localStorage (первое открытие после перезагрузки — тоже
 // по форме); снимка ещё нет — заготовка по общей форме (detail_controller#blank).
+// Приставка ключа — версия раскладки окон: поменял раскладку карточки так, что старые силуэты врут (23.11.2026: ленты кадров
+// стали обложками пачек, а силуэты в localStorage ещё рисовали ленту), — подними номер; прежние снимки стираются при загрузке.
 const ghosts = new Map();
-const PREFIX = 'ghost:';
+const PREFIX = 'ghost2:';
+try {
+    for (let i = localStorage.length - 1; i >= 0; i--) {
+        const k = localStorage.key(i);
+        if (k && /^ghost\d*:/.test(k) && !k.startsWith(PREFIX)) localStorage.removeItem(k);
+    }
+} catch {}
 const LIMIT = 60_000;
 // Атрибуты, с которыми силуэт ожил бы: контроллеры, ссылки, загрузка кадров и фреймов, поля формы.
 const DROP = /^(id|name|value|placeholder|href|src|srcset|sizes|action|formaction|form|for|autofocus|required|data-(controller|action|turbo.*|.*-target|.*-value|src|full|detail.*|peek|id))$/;
