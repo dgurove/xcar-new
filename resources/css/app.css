@@ -5477,6 +5477,13 @@ html[data-theme-switch] #header, html[data-theme-switch] #tabbar, html[data-them
   .photo-pack-sheet .photo-cell.is-hidden .photo-actions [data-act="hide"] .pa-icon { display: none; }
   /* Данные машины сводкой под пачками фото (`x-car.summary`, 23.11.2026, владелец выбрал из макетов «сетку»): «Транспортное средство» с «Изменить», подпись 12 и значение 13 в два столбца; код копируется целиком. */
   .car-summary-head { @apply mt-3 mb-1.5 flex items-center justify-between gap-3; }
+  .car-summary-head--section { @apply mt-0; }
+  /* В окне машины — три размера окна (12.11.2026): подпись 13, как «Транспортное средство», значение 15, как строки окна. */
+  .car-summary.car-summary--section { @apply gap-y-2.5 text-base; }
+  .car-summary.car-summary--section dt { @apply text-sm; }
+  .car-summary.car-summary--section .car-summary-hint { @apply text-sm; }
+  /* Коды в окне (`.detail-body .vincode-text` — 13) здесь размером значений. */
+  .car-summary.car-summary--section .vincode-text { font-size: inherit; }
   .car-summary { @apply grid grid-cols-2 gap-x-3 gap-y-2 text-sm leading-snug; }
   .car-summary > div { @apply min-w-0; }
   /* Последняя ячейка одна в строке — во всю ширину: справа пусто, переносить незачем (владелец). */

@@ -1338,6 +1338,15 @@ class Offer extends Model
             && ($this->worksWith($user) || ($this->chat_enabled && $this->state->isPublic() && $this->isVisibleTo($user)));
     }
 
+    /**
+     * Машина заведена: вендор, марка, модель и номер убытка (или вендор без номера). Тогда на странице и в окне машины она —
+     * сводкой (`x-car.summary`) с правкой шторкой «Данные ТС», а не полями (23.11.2026).
+     */
+    public function carEntered(): bool
+    {
+        return $this->vendor_id && $this->brand_id && $this->model_id && ($this->claim_ref || $this->vendor?->claim_ref_optional);
+    }
+
     /** Номер договора лизинга (ДЛ) — у предложений лизинговых вендоров в claim_ref; его видят и менеджеры. */
     public function leaseRef(): ?string
     {

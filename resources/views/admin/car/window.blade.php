@@ -18,11 +18,14 @@
     $chatUnread = $otherChats->sum('unread_for_staff');
     $docs = $selling ? [] : \App\Offers\OfferFiles::docs($offer, \App\Offers\OfferFiles::threads($offer));
     $form = 'detail-edit-'.$n;
+    // Заведённая машина — сеткой ниже хода сделки (`x-car.summary`), правка — шторкой «Данные ТС» (23.11.2026, владелец выбрал
+    // из макетов; № убытка и VIN — по-прежнему тегами под названием). Пустой черновик — разделами полей, как было.
+    $carAside = $offer->state !== OfferState::Draft || $deal || $garageCar || $offer->carEntered();
 @endphp
 {{-- Сделка и гараж (22.11.2026, начальник: «пока ты в сделке и сам из неё не вышел — делаешь все операции»): после действия
      окно остаётся на машине, откуда бы его ни открыли (`detail#staying`). --}}
 <x-ui.detail :data-detail-stay="! $selling">
-    <x-ui.row-card stack :href="'/offers/'.$n" :title="$offer->titleWithYear()" :photos="$offer->visiblePhotos()" :facts="$selling ? array_slice($offer->facts(), 1) : []">
+    <x-ui.row-card stack :href="'/offers/'.$n" :title="$offer->titleWithYear()" :photos="$offer->visiblePhotos()" :facts="$selling && ! $carAside ? array_slice($offer->facts(), 1) : []">
         <x-slot:status><span class="state {{ $statusTone }}">{{ $statusWord }}</span></x-slot:status>
         <x-slot:badge>@if ($offer->auctionPlanned())<x-offer.auction/>@endif{{ "" }}@if ($admin && $offer->awaitingPark())<x-offer.awaiting/>@endif<x-car.keys :count="$offer->keys_count"/><x-ui.links :offer="$offer"/><x-offer.margin :m="$offer->marginMark()"/></x-slot:badge>
         <x-slot:media>@include('admin.offers.detail-photos')</x-slot:media>
@@ -99,6 +102,7 @@
             {{-- Дорожки — те же, что на странице (`admin.offers.lanes`), но короче (`compact`, 12.11.2026, владелец: «информация по
                  несколько раз дублируется»): путь — текущим шагом, вывоз — без лесенки, деньги — без числа шапки, без ДКП. --}}
             @if ($admin || ($deals && ($deal || $garageCar)))<div class="@container/lanes min-w-0">@include('admin.offers.lanes', ['compact' => true])</div>@endif
+            @if ($carAside)<section><x-car.summary :offer="$offer" :sheet="'car-edit-'.$n" as="section" :codes="false" :place="false"/></section>@endif
             {{-- Доп. запрос поставщику (17.11.2026, `x-offer.extra-request`) — над письмами: последний запрос и «Сделать доп. запрос». --}}
             @if ($extraRequest)<x-offer.extra-request :offer="$offer" :messages="$messages"/>@endif
             {{-- Письма — все строками, как в «Почте»: по ним заполняют поля и оценивают (11.10.2026). --}}
@@ -116,7 +120,9 @@
                 @endif
                 {{-- «Показ» полями — у продающейся; у сделки и гаража публикация для других — строкой сведений и пунктом «⋯». --}}
                 @if ($selling && ! ($steps || $intake || $unsold))<x-offer.showing :offer="$offer" :form="$form" as="section"/>@endif
-                @if ($selling)
+                @if ($carAside)
+                    @include('admin.offers.car-sheet', ['carForm' => $form, 'carRequired' => $offer->state === OfferState::Draft ? ['vendor_id', 'claim_ref', 'brand_id'] : []])
+                @elseif ($selling)
                     <x-car.blocks :lane="$offer" :blocks="['car', 'papers', 'specs']" as="section" :without="($brandTop ?? false) ? ['brand_id'] : []"
                         :required="$offer->state === OfferState::Draft ? ['vendor_id', 'claim_ref', 'brand_id'] : []"/>
                     @include('admin.offers.fields.sale', ['as' => 'section'])
