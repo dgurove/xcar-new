@@ -35,7 +35,11 @@
                     </div>
                 </div>
             </div>
-            <x-ui.button type="submit" class="w-full">Сохранить</x-ui.button>
+            {{-- «Сохранить и отправить» — сразу менеджеру, «Сохранить» — только приложить (23.11.2026, владелец). --}}
+            <div class="flex flex-col gap-2">
+                <x-ui.button type="submit" name="send" value="1" class="w-full">Сохранить и отправить</x-ui.button>
+                <x-ui.button type="submit" variant="secondary" class="w-full">Сохранить</x-ui.button>
+            </div>
         </form>
     </x-ui.sheet>
 </div>

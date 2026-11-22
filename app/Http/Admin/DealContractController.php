@@ -246,12 +246,18 @@ class DealContractController
     }
 
     /** Приложить исправленный договор (Word или PDF). */
-    public function edited(Request $request, Deal $deal, EditContract $edit)
+    public function edited(Request $request, Deal $deal, EditContract $edit, \App\Offers\Actions\ShowToManager $show)
     {
         abort_unless($request->user()->canEditDeals(), 404);
         $file = $request->validate(['file' => ['required', 'file', 'max:20480']],
             ['file.required' => 'Выберите заполненный договор', 'file.max' => 'Файл больше 20 МБ'])['file'];
         $edit->attach($deal, $file, $request->user());
+        // «Сохранить и отправить» (23.11.2026, владелец): приложенный сразу менеджеру — той же дверью, что «Отправить менеджеру».
+        if ($request->boolean('send') && $deal->buyer_id) {
+            $show->contract($deal->fresh(), $request->user());
+
+            return back()->with('toast', 'Договор заполнен и отправлен менеджеру');
+        }
 
         return back()->with('toast', 'Заполненный договор приложен');
     }
