@@ -1621,11 +1621,11 @@ html.kb-open { --home-gap: 0px; }
      полями, лупа и вид — 36. */
   .toolbar--rows .toolbar-row .pill { height: 2.25rem; padding-block: 0; }
   .toolbar-side .filter-btn { height: 2.25rem; min-height: 2.25rem; }
-  /* «Выбрать» — капсулой того же вида, что «Фильтр» рядом (22.11.2026, владелец: «Выбрать огромная»; была кнопкой 44 px белым
-     текстом): 36 px, серый текст, лаймовое «Готово» в режиме. Не влезают обе — режется название фильтра, не «Выбрать». */
-  .toolbar-side .toolbar-pick { height: 2.25rem; min-height: 2.25rem; padding-block: 0; }
+  /* «Выбрать» — своей строкой под кнопками слева, капсулой того же вида, что «Фильтр» (22.11.2026, владелец: «Выбрать огромная»;
+     была кнопкой 44 px белым текстом рядом с видом): 36 px, серый текст, лаймовое «Готово» в режиме. */
   .pill.toolbar-pick[aria-pressed="true"] { @apply bg-accent font-medium text-white; }
-  .toolbar-side--end { justify-content: flex-end; }
+  .toolbar-under { display: flex; align-items: center; gap: .5rem; }
+  .toolbar-under .toolbar-pick { height: 2.25rem; min-height: 2.25rem; padding-block: 0; }
   .toolbar-toggles { min-width: 0; }
   .toolbar-toggles .toolbar-row > div { flex-wrap: nowrap; }
   /* ПК — те же ряды (17.11.2026, владелец выбрал «ряды, как на телефоне»: одной строкой вид и «Фильтр» падали одни на вторую);

@@ -62,6 +62,7 @@
             <div class="toolbar-side toolbar-side--end">{{ $end ?? '' }}@if ($facets && $facets->all())<x-ui.filter-button :facets="$facets"/>@endif</div>
         @endif
     </div>
+    @isset($under)<div class="toolbar-under">{{ $under }}</div>@endisset
     @if ($facets && ! request()->headers->has('X-List'))
         <div class="md:hidden"><x-ui.facets :facets="$facets" :name="$name" part="toggles"/></div>
     @endif

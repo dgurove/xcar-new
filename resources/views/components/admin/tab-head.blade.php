@@ -2,7 +2,7 @@
      «во всех вкладках шапки привести к единому модулю»). Ряды:
      1 — название-колесо (`x-ui.tab-title`: ˄ ˅ к соседней вкладке, на ПК колесо — тремя столбцами) и действия экрана (слот
          `actions`: «Из писем», «+ Новый», выгрузка);
-     2 — только кнопки: слева лупа, сортировка, вид и «Выбрать», справа «Фильтр» (`x-ui.toolbar rows`), все высотой 36 px;
+     2 — только кнопки: слева лупа, сортировка, вид, справа «Фильтр» (`x-ui.toolbar rows`), все высотой 36 px; под ними слева «Выбрать»;
      3 — переключатели вкладки (`Facet::quick`: «Горит срок», «Переоценка»); остальное и что выбрано — в окне «Фильтр».
      Пустой ряд не рисуется; на ПК — те же ряды. Ссылки колеса несут только вид (`keep`): чипы каждая вкладка берёт из своей памяти. --}}
 @props(['presets', 'preset', 'counts' => [], 'sections' => [], 'sort' => null, 'name' => 'list', 'facets' => null, 'search' => null, 'views' => null, 'view' => false, 'fallback' => 'Предложения', 'select' => false])
@@ -15,13 +15,13 @@
     @endisset
 </div>
 <x-ui.toolbar rows :sort="$sort" :name="$name" :facets="$facets" :search="$search">
-    @if ($views || $select)
-        <x-slot:extra>
-            @if ($views)<x-ui.view-switch :current="$view" :views="$views"/>@endif
-            {{-- «Выбрать» (22.11.2026, начальник: галочки — только после неё, как в iOS; второй строкой слева): режим выбора списка
-                 (`pick_controller#mode`), в режиме — лаймовое «Готово». Капсулой того же вида, что «Фильтр» (22.11.2026, владелец:
-                 «кнопки разного размера, „Выбрать“ огромная»). --}}
-            @if ($select)<button type="button" class="pill toolbar-pick" data-controller="emit" data-action="emit#send" data-emit-event-param="pick:mode" data-pick-toggle aria-pressed="false"><x-ui.icon name="check-circle" class="size-4 shrink-0"/><span data-pick-toggle-label>Выбрать</span></button>@endif
-        </x-slot:extra>
+    @if ($views)
+        <x-slot:extra><x-ui.view-switch :current="$view" :views="$views"/></x-slot:extra>
+    @endif
+    {{-- «Выбрать» (22.11.2026, начальник: галочки — только после неё, как в iOS) — своей строкой под лупой, сортировкой и видом,
+         слева (владелец); капсулой 36 px того же вида, что «Фильтр» (владелец: «Выбрать огромная»). Режим выбора списка
+         (`pick_controller#mode`), в режиме — лаймовое «Готово». --}}
+    @if ($select)
+        <x-slot:under><button type="button" class="pill toolbar-pick" data-controller="emit" data-action="emit#send" data-emit-event-param="pick:mode" data-pick-toggle aria-pressed="false"><x-ui.icon name="check-circle" class="size-4 shrink-0"/><span data-pick-toggle-label>Выбрать</span></button></x-slot:under>
     @endif
 </x-ui.toolbar>
