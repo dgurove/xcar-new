@@ -1690,6 +1690,8 @@ html.kb-open { --home-gap: 0px; }
   .dark .pill-tag { background: var(--tag-bg-d); color: var(--tag-text-d); }
   .pill-open  { @apply bg-open-soft text-open; }
   .pill-urgent { @apply bg-urgent-soft text-urgent; }
+  /* Пилюля как все, оранжевым только число (22.11.2026, владелец про «Требуют внимания» почты парковки: «цвета в глазах плывут»). */
+  .pill-count-urgent [data-pill-count] { color: var(--color-urgent); opacity: 1; }
   /* Во вкладке есть наше дело («Оплаты», 17.11.2026) — красная точка перед названием, пилюля без заливки: рыжая подложка
      читалась как ещё одна выбранная вкладка, а блоки цветом не заливаются. */
   .pill-todo::before { content: ''; width: .375rem; height: .375rem; flex: none; border-radius: 999px; background: var(--color-danger); }

@@ -40,7 +40,7 @@
         <x-slot:actions class="!ml-auto !w-auto">@include('admin.mail.actions')</x-slot:actions>
     @endif
 
-    <x-ui.toolbar :class="$crm && ! $forced ? 'mt-4' : ''" :sort="$letters ? null : $sort" :pills="$pills" :pill="$forced ? '' : $box" pill-param="box" pill-home="chains" :pill-drop="['peek', 'stack']" :counts="$counts" :tones="['attention' => ! empty($counts['attention']) ? 'pill-urgent' : '']" :name="$forced ? 'from-mail' : 'mail'"
+    <x-ui.toolbar :class="$crm && ! $forced ? 'mt-4' : ''" :sort="$letters ? null : $sort" :pills="$pills" :pill="$forced ? '' : $box" pill-param="box" pill-home="chains" :pill-drop="['peek', 'stack']" :counts="$counts" :tones="['attention' => ! empty($counts['attention']) ? 'pill-count-urgent' : '']" :name="$forced ? 'from-mail' : 'mail'"
                   search="Найти письмо" search-target="#threads" :q="$q" :facets="$facets" fit>
         <x-slot:actions>
             {{-- «Пачками» — письма по цепочке, видно последнее (22.11.2026, владелец); включено — лаймовым, помнится у пилюли. --}}
