@@ -29,6 +29,8 @@ export const ICONS = {
     eye: 'M2.5 12s3.5-6.5 9.5-6.5S21.5 12 21.5 12s-3.5 6.5-9.5 6.5S2.5 12 2.5 12Zm9.5 3a3 3 0 1 0 0-6 3 3 0 0 0 0 6Z',
     'eye-off': 'M3 3l18 18M10.6 5.8A10.5 10.5 0 0 1 12 5.5c6 0 9.5 6.5 9.5 6.5a17 17 0 0 1-2.6 3.4M6.6 6.6C4 8.5 2.5 12 2.5 12s3.5 6.5 9.5 6.5c1.6 0 3-.4 4.2-1M9.9 9.9a3 3 0 0 0 4.2 4.2',
     rotate: 'M20 4v6h-6M19.4 10A8 8 0 1 0 20 14',
+    // Звезда главного фото (как метка на плитке, `components/ui/star.blade.php`).
+    star: 'M12 3.2l2.7 5.5 6 .9-4.35 4.25 1.03 6-5.38-2.83-5.38 2.83 1.03-6L3.3 9.6l6-.9z',
     // Водяной знак — капля: шторка «Водяной знак» у фото предложения.
     mark: 'M12 3.5s6 6.4 6 10.8a6 6 0 0 1-12 0C6 9.9 12 3.5 12 3.5Z',
     // Лист с загнутым углом: «Это документ» — кадр в документы машины (`CarFieldController::document`).
@@ -72,7 +74,8 @@ function unwind() {
  * items: [{ src, mid?, thumb?, el?, download? }] — полный кадр, сжатая версия для телефона, миниатюра (для
  *   пропорции), элемент-миниатюра на странице (кадр вырастает из него и уходит в него), адрес «Скачать»
  *   (по умолчанию src).
- * actions: [{ name, icon, title, run(index), iconFor?(index), titleFor?(index), shown?(index) }] — свои кнопки в верхней полосе.
+ * actions: [{ name, icon, title, run(index), iconFor?(index), titleFor?(index), shown?(index), activeFor?(index) }] — свои кнопки
+ * (activeFor — состояние «включено»: класс `is-on`, звезда главного залита лаймом).
  * download: кнопка «Скачать». onChange(index) — кадр сменился. onClose(index) — просмотр закрыт.
  * Возвращает { items, index, refresh(items, index), reload(items), redraw(), spin(id, turns), close(), destroy() }.
  */
@@ -271,6 +274,7 @@ export async function openLightbox({ items, index = 0, actions = [], download = 
                         if (a.iconFor) b.innerHTML = path(ICONS[a.iconFor(p.currIndex)]);
                         if (a.titleFor) { b.title = a.titleFor(p.currIndex); b.setAttribute('aria-label', b.title); }
                         if (a.shown) b.hidden = !a.shown(p.currIndex);
+                        if (a.activeFor) b.classList.toggle('is-on', a.activeFor(p.currIndex));
                     }));
                     add('zoom-tool', 'Увеличить', ICONS.zoom, () => p.toggleZoom());
                     const sync = () => syncs.forEach((f) => f());

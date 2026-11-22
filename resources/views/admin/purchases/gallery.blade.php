@@ -1,1 +1,1 @@
-<x-ui.photos :photos="$car->photos()"/>
+<x-ui.photos :photos="$car->photos()" grid/>

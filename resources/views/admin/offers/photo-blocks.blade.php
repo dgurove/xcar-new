@@ -1,9 +1,11 @@
-{{-- Кадры предложения блоками по стадии (`Media\PhotoBlocks`, владелец 05.10.2026): «Фото от страховой» (письма, загрузка
-     в CRM) и, у машины с парковки, «Фото при приёме» — не одной кучей. Блок — свой photos_controller со своей стадией:
-     «Показать все», порядок и «Развернуть» — у каждого свои, просмотр листает все блоки подряд (группа). Добавляют в
-     любой блок (кадр ложится его стадией); бросают файлы и вставляют из буфера — в первый. Главный кадр один на машину (звезда, `mainId`). Ответ на любое действие
-     подменяет обёртку целиком (`gallery-stream`). detail — карточка строки: без корзины и заглушек.
-     Подписи блоков — только когда их больше одного. --}}
+{{-- Кадры предложения пачками по стадии (`Media\PhotoBlocks`, владелец 05.10.2026): «Фото от страховой» (письма, загрузка
+     в CRM) и, у машины с парковки, «Фото при приёме» — не одной кучей. С 23.11.2026 — не лентами, а обложками рядом
+     (`x-ui.photo-pack`), кадры пачки — плиткой в шторке. Пачка — свой photos_controller со своей стадией: «Скрыть все»,
+     порядок и загрузка — у каждой свои, просмотр листает все пачки подряд (группа). Добавляют в любую пачку (кадр ложится
+     её стадией); бросают файлы и вставляют из буфера — в первую. Главный кадр один на машину (звезда, `mainId`). Ответ на
+     любое действие подменяет обёртку целиком (`gallery-stream`) морфом: открытая шторка остаётся открытой (`app.js`
+     бережёт `open` у диалогов). detail — карточка строки: без корзины и заглушек. Подписи пачек — только когда их больше
+     одной. --}}
 @props(['offer', 'detail' => false])
 @php
     $n = $offer->number;
@@ -17,15 +19,15 @@
     $mainId = $offer->mainPhoto()?->id;
     $pending = $detail ? 0 : \App\Offers\Jobs\ImportMigtorgLot::pending($offer) + \App\Mail\Jobs\ImportThreadFiles::pending($offer);
 @endphp
-<div id="{{ $root }}" class="photo-blocks">
+<div id="{{ $root }}" class="photo-packs">
     @foreach ($blocks as $i => ['stage' => $stage, 'photos' => $photos, 'when' => $when])
-        @php $first = $i === 0; @endphp
-        <div class="photo-block" data-controller="photos" data-photos-url-value="/offers/{{ $n }}/media" data-photos-stage-value="{{ $stage->value }}" data-photos-group-value="offer-{{ $offer->id }}" data-photos-order="{{ $i }}" data-photos-mark-value="true" @if ($first) data-photos-any-value="true" @endif>
-            {{-- Над лентой, а не под ней: развёрнутая плиткой лента уносила бы кнопки вниз. --}}
-            <div class="photos-over"><x-ui.photos-expand :title="$titled ? $stage->label() : null" :when="$when"/><x-ui.photos-all/></div>
+        @php $first = $i === 0; $row = $root.'-'.$stage->value; @endphp
+        <x-ui.photo-pack :id="$row" :photos="$photos" :title="$titled ? $stage->label() : null" :when="$when" :main-id="$mainId"
+            data-photos-url-value="/offers/{{ $n }}/media" data-photos-stage-value="{{ $stage->value }}" data-photos-group-value="offer-{{ $offer->id }}"
+            data-photos-order="{{ $i }}" data-photos-mark-value="true" :data-photos-any-value="$first ? 'true' : null">
             @include('admin.offers.photo-upload')
-            <x-ui.photos :id="$root.'-'.$stage->value" :photos="$photos" :main-id="$mainId" :pending="$first ? $pending : 0"
+            <x-ui.photos :id="$row" :photos="$photos" :main-id="$mainId" :pending="$first ? $pending : 0" grid
                 :deletable="$detail ? false : fn ($m) => ! \App\Park\Sale::parkOwned($m)"/>
-        </div>
+        </x-ui.photo-pack>
     @endforeach
 </div>

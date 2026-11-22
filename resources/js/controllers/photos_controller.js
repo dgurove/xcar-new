@@ -8,6 +8,7 @@ import { refreshCsrf } from '../net';
 import { loadSortable } from '../lib/sortable';
 import { openLightbox } from '../lightbox';
 import { openSheet, closeSheet, outside } from '../sheet';
+import { photoMenu } from '../lib/photo-menu';
 
 // Фотографии: загрузка по одному файлу с прогрессом (выбор или drop на карточку), перестановка перетаскиванием,
 // действия глаз, поворот, корзина на плитке и в просмотрщике.
@@ -21,17 +22,17 @@ import { openSheet, closeSheet, outside } from '../sheet';
 let shown = null;
 
 export default class extends Controller {
-    static targets = ['input', 'progress', 'grid', 'all', 'expand', 'failed', 'camera'];
+    static targets = ['input', 'progress', 'grid', 'all', 'count', 'cover', 'failed', 'camera'];
     static values = { url: String, collection: { type: String, default: 'photos' }, stage: String, readonly: Boolean, reload: Boolean, group: String, any: Boolean, other: String, mark: Boolean };
 
     connect() {
-        // Морф (живое обновление страницы, фрейма карточки, строки) возвращает кнопкам «Показать все» и «Развернуть»
+        // Морф (живое обновление страницы, фрейма карточки, строки) возвращает кнопке «Скрыть все» и счёту пачки
         // серверные hidden и подпись, а ставит их только контроллер (01.11.2026: в окошке пропадали после первого же
         // обновления). Событие идёт с каждого узла — пересчёт один на морф.
         this.element.addEventListener('turbo:morph-element', this.onMorph = () => {
             if (this.morphing) return;
             this.morphing = true;
-            queueMicrotask(() => { this.morphing = false; this.syncAll(); this.syncExpand(); });
+            queueMicrotask(() => { this.morphing = false; this.syncAll(); });
         });
         if (this.readonlyValue) return;
         // Редактор письма (форма с вложениями): пока файлы грузятся или один не загрузился, письмо не уходит (29.10.2026:
@@ -56,6 +57,7 @@ export default class extends Controller {
             this.element.classList.remove('is-dropping');
             this.uploadFiles([...e.dataTransfer.files]);
         });
+        this.pressMenu();
         // Скриншот или кадр, скопированный с портала страховой или из мессенджера: ⌘V — и он в фото. В поле ввода
         // вставка своя: кусок страницы портала несёт и текст, и картинку — человеку нужен текст. Скрытое карточка
         // (закрытая карточка строки) кадры не ловит.
@@ -72,20 +74,20 @@ export default class extends Controller {
 
     async gridTargetConnected(grid) {
         this.syncAll();
-        this.syncExpand();
         if (this.readonlyValue) return;
         const Sortable = await loadSortable();
         if (!grid.isConnected) return;
         this.sortable?.destroy();
-        if (this.onExpand) window.removeEventListener('photos:expand', this.onExpand);
         this.sortable = Sortable.create(grid, {
             animation: 150,
             delay: 150,
             delayOnTouchOnly: true,
-            direction: 'horizontal',
-            filter: '.photo-actions, .photo-star',
+            // Лента — вбок; сетка (пачка в шторке, дело на стоянке) — по клеткам, направление Sortable находит сам.
+            ...(grid.classList.contains('photo-strip') ? { direction: 'horizontal' } : {}),
+            filter: '.photo-actions',
             preventOnFilter: false,
-            onEnd: () => this.reorder(),
+            // Подержал и отпустил на месте (меню кадра) — порядок не трогался, запроса нет.
+            onEnd: (e) => { if (e.oldIndex !== e.newIndex) this.reorder(); },
         });
     }
 
@@ -94,6 +96,7 @@ export default class extends Controller {
         this.element.removeEventListener('dragover', this.over);
         this.element.removeEventListener('dragleave', this.leave);
         this.element.removeEventListener('drop', this.drop);
+        this.unpress?.();
         if (this.guard) this.element.removeEventListener('submit', this.guard, true);
         if (this.paste) document.removeEventListener('paste', this.paste);
         this.sortable?.destroy();
@@ -117,45 +120,24 @@ export default class extends Controller {
 
     allTargetConnected() { this.syncAll(); }
 
-    // «Развернуть» / «Свернуть»: лента кадров плиткой. Выбор один на устройство — у всех лент сразу.
-    expandTargetConnected() {
-        this.syncExpand();
-        // Выбор один на устройство: нажали у одной ленты — перестраиваются все ленты страницы (блоки по стадиям).
-        if (!this.onExpand) {
-            this.onExpand = () => this.syncExpand();
-            window.addEventListener('photos:expand', this.onExpand);
-        }
-    }
-
-    get expanded() { try { return localStorage.getItem('photos:open') === '1'; } catch { return false; } }
-
-    syncExpand() {
-        const row = this.element.querySelector('.photo-row');
-        if (!row) return;
-        const open = this.expanded;
-        row.classList.toggle('is-open', open);
-        const n = row.querySelectorAll('.photo-cell').length;
-        // Подзаголовок со стрелкой: меньше двух кадров — без стрелки и не нажимается (без подзаголовка — не виден).
-        this.expandTargets.forEach((b) => {
-            const still = n < 2;
-            b.hidden = still && !('titled' in b.dataset);
-            b.disabled = still;
-            b.classList.toggle('is-static', still);
-            b.setAttribute('aria-expanded', String(open && !still));
-        });
-    }
-
-    expand() {
-        try { localStorage.setItem('photos:open', this.expanded ? '0' : '1'); } catch {}
-        this.syncExpand();
-        window.dispatchEvent(new CustomEvent('photos:expand'));
-    }
-
     syncAll() {
+        this.syncCount();
         if (!this.hasAllTarget) return;
         const cells = this.eyeCells();
         const any = cells.some((c) => c.dataset.hidden === '1');
         this.allTargets.forEach((b) => { b.hidden = cells.length < 2; b.textContent = any ? 'Отображать все' : 'Скрыть все'; });
+    }
+
+    // Пачка обложкой (`x-ui.photo-pack`): «Открыто N из M» под обложкой и в шторке, обложка тусклая, когда открытых нет. Глаз
+    // ставится на экране сразу — счёт за ним, не дожидаясь сервера. Без глаза — просто «N фото».
+    syncCount() {
+        if (!this.hasCountTarget && !this.hasCoverTarget) return;
+        const cells = [...this.element.querySelectorAll('.photo-cell[data-id]')];
+        const open = cells.filter((c) => c.dataset.hidden !== '1').length;
+        const eye = this.eyeCells().length > 0;
+        const words = !cells.length ? 'Нет фото' : eye ? `Открыто ${open} из ${cells.length}` : `${cells.length} фото`;
+        this.countTargets.forEach((el) => { if (el.textContent !== words) el.textContent = words; });
+        this.coverTargets.forEach((el) => el.classList.toggle('is-hidden', eye && cells.length > 0 && !open));
     }
 
     async all() {
@@ -211,6 +193,9 @@ export default class extends Controller {
     // Кадры, выбранные, пока идёт прошлая пачка, встают в очередь (раньше молча пропадали).
     async uploadFiles(files) {
         if (!files.length) return;
+        // Брошены на обложку пачки или вставлены из буфера — шторка пачки открывается: кадры с кольцом загрузки видны.
+        const pack = this.element.querySelector(':scope > dialog.photo-pack-sheet');
+        if (pack && !pack.open) this.application.getControllerForElementAndIdentifier(this.element, 'sheet')?.open();
         if (this.uploading) { (this.later ??= []).push(...files); return; }
         try { await this.runUpload(files); } finally { this.uploading = false; }
         const later = this.later;
@@ -375,28 +360,112 @@ export default class extends Controller {
         if (r) this.apply(await r.text());
     }
 
-    // Звезда главного: у главного — открыть выбор (контурные звёзды на остальных, во всех блоках машины), у контурной —
-    // сделать этот кадр главным: он встаёт первым, дальше тот же порядок, что после перетаскивания. Нажали мимо — выбор
-    // закрывается.
-    star(event) {
-        event.preventDefault();
-        event.stopPropagation();
-        const button = event.currentTarget, grid = this.gridTarget;
-        const scope = this.element.closest('.photo-blocks') ?? grid;
-        if (button.classList.contains('photo-star--main')) {
-            const on = scope.classList.toggle('is-choosing');
-            // pointerdown, а не click: iOS не шлёт click от касания по пустому месту страницы — выбор не снимался.
-            if (on) setTimeout(() => document.addEventListener('pointerdown', this.stopChoosing ??= (e) => {
-                if (!e.target.closest?.('.photo-star')) scope.classList.remove('is-choosing');
-                document.removeEventListener('pointerdown', this.stopChoosing);
-            }), 0);
-            return;
-        }
-        scope.classList.remove('is-choosing');
-        scope.querySelectorAll('.photo-star--main').forEach((s) => s.classList.replace('photo-star--main', 'photo-star--pick'));
-        button.classList.replace('photo-star--pick', 'photo-star--main');
-        grid.prepend(button.closest('.photo-cell'));
+    // Главное фото (23.11.2026, владелец выбрал из макетов: «Главное» в просмотре и меню долгим нажатием; прежде — лаймовая звезда
+    // на плитке открывала выбор контурными звёздами, его не находили). Звезда на плитке — метка: переезжает на этот кадр во
+    // всех пачках машины, кадр встаёт первым в своей сетке, порядок уходит с main — тот же запрос, что после перетаскивания.
+    // Главного нет (стоянка) или кадр скрыт — нельзя.
+    canMain(id) {
+        const cell = this.hasGridTarget ? this.cell(id) : null;
+        return !!cell && !this.readonlyValue && !!this.gridTarget.closest('[data-main]') && cell.dataset.hidden !== '1';
+    }
+
+    isMain(id) { return !!(this.hasGridTarget && this.cell(id)?.querySelector('.photo-star--main')); }
+
+    makeMain(id) {
+        if (!this.canMain(id) || this.isMain(id)) return false;
+        const cell = this.cell(id), scope = this.element.closest('.photo-packs') ?? this.element;
+        const star = scope.querySelector('.photo-star--main') ?? Object.assign(document.createElement('span'), {
+            className: 'photo-star photo-star--main',
+            innerHTML: `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="${ICON_STAR}" stroke-linejoin="round"/></svg>`,
+        });
+        star.setAttribute('aria-label', 'Главное');
+        cell.querySelector('img')?.after(star);
+        this.gridTarget.prepend(cell);
+        this.syncCover();
         this.reorder(true);
+        return true;
+    }
+
+    // Обложка пачки — главный кадр, если он здесь (как рисует сервер): сменили главное — обложка сразу его.
+    syncCover() {
+        document.querySelectorAll('[data-controller~="photos"]').forEach((el) => {
+            const c = this.application.getControllerForElementAndIdentifier(el, 'photos');
+            if (!c?.hasCoverTarget || !c.hasGridTarget) return;
+            const main = c.gridTarget.querySelector('.photo-star--main')?.closest('.photo-cell')?.querySelector('img');
+            const img = c.coverTarget.querySelector('img');
+            if (main && img && img.src !== main.src) img.src = main.src;
+        });
+    }
+
+    // Долгое нажатие по кадру (касание 480 мс без сдвига, как карточки витрины — `longpress.js`) и правая кнопка мыши — меню
+    // кадра (`lib/photo-menu`). Перетаскивание (Sortable, задержка 150 мс) не мешает: сдвинул палец — меню нет; всплыло —
+    // Sortable выключен, пока меню открыто. Отпускание после меню — не просмотр.
+    pressMenu() {
+        let timer = null, start = null;
+        const cancel = () => { clearTimeout(timer); timer = null; };
+        const cellOf = (t) => t instanceof Element ? t.closest('.photo-cell[data-id]') : null;
+        const fire = (cell, at) => {
+            this.pressed = Date.now();
+            this.sortable?.option('disabled', true);
+            this.menu(cell.dataset.id, at);
+        };
+        const onStart = (e) => {
+            const cell = cellOf(e.target);
+            if (!cell || e.touches.length !== 1 || e.target.closest('.photo-actions')) return;
+            const t = e.touches[0];
+            start = { x: t.clientX, y: t.clientY };
+            timer = setTimeout(() => { timer = null; fire(cell, start); }, 480);
+        };
+        const onMove = (e) => {
+            if (!timer) return;
+            const t = e.touches[0];
+            if (Math.hypot(t.clientX - start.x, t.clientY - start.y) > 8) cancel();
+        };
+        // Клик сразу после меню (палец отпустили) — не открывать просмотр.
+        const onClick = (e) => {
+            if (this.pressed && Date.now() - this.pressed < 900 && cellOf(e.target)) { e.preventDefault(); e.stopImmediatePropagation(); }
+        };
+        const onContext = (e) => {
+            const cell = cellOf(e.target);
+            if (!cell) return;
+            e.preventDefault();
+            cancel();
+            if (this.pressed && Date.now() - this.pressed < 900) return;
+            fire(cell, { x: e.clientX, y: e.clientY });
+        };
+        const el = this.element;
+        el.addEventListener('touchstart', onStart, { passive: true });
+        el.addEventListener('touchmove', onMove, { passive: true });
+        el.addEventListener('touchend', cancel, { passive: true });
+        el.addEventListener('touchcancel', cancel, { passive: true });
+        el.addEventListener('click', onClick, true);
+        el.addEventListener('contextmenu', onContext);
+        this.unpress = () => {
+            cancel();
+            el.removeEventListener('touchstart', onStart);
+            el.removeEventListener('touchmove', onMove);
+            el.removeEventListener('touchend', cancel);
+            el.removeEventListener('touchcancel', cancel);
+            el.removeEventListener('click', onClick, true);
+            el.removeEventListener('contextmenu', onContext);
+        };
+    }
+
+    // Пункты — по тем же правам, что кнопки кадра (есть ли на плитке глаз, поворот, корзина) и просмотр.
+    menu(id, at) {
+        const cell = this.cell(id);
+        if (!cell) return;
+        const has = (act) => !!cell.querySelector(`[data-act="${act}"]`);
+        const hidden = cell.dataset.hidden === '1';
+        const items = [
+            this.canMain(id) && !this.isMain(id) && { label: 'Сделать главным', icon: 'star', run: () => this.makeMain(id) },
+            has('hide') && { label: hidden ? 'Показать' : 'Скрыть', icon: hidden ? 'eye' : 'eye-off', run: () => this.perform(id, 'hide') },
+            has('rotate') && { label: 'Повернуть', icon: 'rotate', run: () => this.perform(id, 'rotate') },
+            has('delete') && { label: 'Удалить', icon: 'trash', danger: true, run: () => this.perform(id, 'delete', 'Удалить фото?') },
+        ].filter(Boolean);
+        const back = () => this.sortable?.option('disabled', false);
+        if (!items.length) { back(); return; }
+        photoMenu(items, at, back);
     }
 
     // Кнопка на плитке: hide / rotate / delete.
@@ -551,13 +620,10 @@ export default class extends Controller {
             }
         });
         if (this.pendingCells?.size) this.restorePending();
-        // Морф берёт ряд с сервера как есть: «развёрнуто плиткой» и подпись «Показать все» ставит только контроллер,
-        // без них глаз или поворот сворачивали плитку обратно в ленту. Ответ подменяет и соседние блоки той же машины
-        // (PhotoBlocks) — синхронизируются все контроллеры кадров на странице.
+        // Морф берёт ряд с сервера как есть: подпись «Скрыть все» и счёт пачки ставит только контроллер. Ответ подменяет и
+        // соседние пачки той же машины (PhotoBlocks) — синхронизируются все контроллеры кадров на странице.
         document.querySelectorAll('[data-controller~="photos"]').forEach((el) => {
-            const c = this.application.getControllerForElementAndIdentifier(el, 'photos');
-            c?.syncExpand();
-            c?.syncAll();
+            this.application.getControllerForElementAndIdentifier(el, 'photos')?.syncAll();
         });
         if (quiet) shown?.lb.redraw();
     }
@@ -627,6 +693,21 @@ export default class extends Controller {
         const lightbox = await openLightbox({
             items, index, download: true,
             actions: [
+                // Главное — первым в нижней полосе: у главного звезда залита лаймом, у открытого кадра — контуром (нажать — сделать
+                // главным); у скрытого и где главного нет — кнопки нет.
+                {
+                    name: 'main', icon: 'star', title: 'Сделать главным', bottom: true,
+                    shown: (i) => { const it = (this.viewer?.items ?? items)[i]; return !!it?.id && it.owner.canMain(it.id); },
+                    activeFor: (i) => { const it = (this.viewer?.items ?? items)[i]; return !!it?.id && it.owner.isMain(it.id); },
+                    titleFor: (i) => { const it = (this.viewer?.items ?? items)[i]; return it?.id && it.owner.isMain(it.id) ? 'Главное' : 'Сделать главным'; },
+                    run: (i) => {
+                        const it = this.viewer.items[i];
+                        if (!it.owner.makeMain(it.id)) return;
+                        // Кадр встал первым — просмотр пересобирается на нём же.
+                        const next = this.items();
+                        this.viewer.refresh(next, Math.max(0, next.findIndex((n) => n.id === it.id)));
+                    },
+                },
                 // Глаз показывает состояние: открыт — фото видно, перечёркнут — скрыто.
                 { name: 'eye', icon: 'eye', title: 'Скрыть', bottom: true, iconFor: (i) => (hidden(i) ? 'eye-off' : 'eye'), titleFor: (i) => (hidden(i) ? 'Показать' : 'Скрыть'), shown: (i) => can(i, 'hide'), run: act('hide') },
                 { name: 'rotate', icon: 'rotate', title: 'Повернуть', bottom: true, shown: (i) => can(i, 'rotate'), run: act('rotate') },
@@ -841,3 +922,6 @@ function controllers(root) {
 function withTimeout(promise, ms) {
     return Promise.race([promise, new Promise((r) => setTimeout(r, ms))]);
 }
+
+// Звезда главного (`components/ui/star.blade.php`) — для метки, что переезжает на кадр, у которого её не было.
+const ICON_STAR = 'M12 3.2l2.7 5.5 6 .9-4.35 4.25 1.03 6-5.38-2.83-5.38 2.83 1.03-6L3.3 9.6l6-.9z';

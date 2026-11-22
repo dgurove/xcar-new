@@ -1,12 +1,14 @@
-{{-- Кадры в карточке строки «Наличия» — блоками по стадии, как в деле ТС (`Media\PhotoBlocks`, владелец 05.10.2026):
-     от страховой, при приёме, при выдаче — не одной кучей. Глаз (показ в продаже) и «Показать все» у каждого блока;
-     добавляют и удаляют — в деле ТС. Просмотр листает все блоки подряд (группа). Подписи — когда блоков больше одного. --}}
+{{-- Кадры в карточке строки «Наличия» — пачками по стадии, как в деле ТС (`Media\PhotoBlocks`, владелец 05.10.2026): от
+     страховой, при приёме, при выдаче — не одной кучей. С 23.11.2026 — обложками (`x-ui.photo-pack`), кадры — плиткой в
+     шторке. Глаз (показ в продаже) и «Скрыть все» у каждой пачки — админу; добавляют и удаляют — в деле ТС. Просмотр
+     листает все пачки подряд (группа). Подписи — когда пачек больше одной. --}}
 @php $blocks = \App\Media\PhotoBlocks::of($vehicle->photos()); $admin = auth()->user()->isAdmin(); @endphp
-<div id="detail-photos" class="photo-blocks">
+<div id="detail-photos" class="photo-packs">
     @foreach ($blocks as $i => ['stage' => $stage, 'photos' => $photos, 'when' => $when])
-        <div class="photo-block" data-controller="photos" data-photos-url-value="/cars/{{ $vehicle->id }}/media" data-photos-stage-value="{{ $stage->value }}" data-photos-group-value="car-{{ $vehicle->id }}" data-photos-order="{{ $i }}">
-            <div class="photos-over"><x-ui.photos-expand :title="count($blocks) > 1 ? $stage->label() : null" :when="$when"/>@if ($admin)<x-ui.photos-all/>@endif</div>
-            <x-ui.photos :photos="$photos" :add="false" :deletable="false" :hide="$admin" :rotatable="auth()->user()->canManagePark()" :main="false" :id="'detail-photos-'.$stage->value"/>
-        </div>
+        @php $row = 'detail-photos-'.$stage->value; @endphp
+        <x-ui.photo-pack :id="$row" :photos="$photos" :title="count($blocks) > 1 ? $stage->label() : null" :when="$when" :hide="$admin"
+            data-photos-url-value="/cars/{{ $vehicle->id }}/media" data-photos-stage-value="{{ $stage->value }}" data-photos-group-value="car-{{ $vehicle->id }}" data-photos-order="{{ $i }}">
+            <x-ui.photos :photos="$photos" :add="false" :deletable="false" :hide="$admin" :rotatable="auth()->user()->canManagePark()" :main="false" :id="$row" grid/>
+        </x-ui.photo-pack>
     @endforeach
 </div>
