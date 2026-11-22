@@ -52,8 +52,9 @@
             @if ($search)<button type="button" class="btn btn-s btn-quiet btn-round shrink-0 toolbar-lens" data-action="live-search#open" aria-label="Поиск"><x-ui.icon name="search" class="size-5"/></button>@endif
             @if ($sort)<x-ui.sort :sort="$sort" :url="$sortUrl" :name="$name" :toggles="$sortToggles"/>@endif
             {{ $extra ?? '' }}
-            {{-- Быстрые чипы («Горит срок») на ПК — сразу после «Вида» (18.11.2026, владелец: «на компе для них есть место»); на
-                 телефоне — своей строкой ниже. --}}
+            {{-- Быстрые чипы («Горит срок») на ПК — сразу после «Вида» (18.11.2026, владелец: «на компе для них есть место»), перед
+                 ними «Выбрать» (слот `under`); на телефоне — строкой ниже, «Выбрать» первой в той же строке (22.11.2026, владелец). --}}
+            @isset($under)<span class="contents max-md:hidden">{{ $under }}</span>@endisset
             @if ($facets && ! request()->headers->has('X-List'))
                 <div class="toolbar-toggles max-md:hidden"><x-ui.facets :facets="$facets" :name="$name" part="toggles"/></div>
             @endif
@@ -62,9 +63,8 @@
             <div class="toolbar-side toolbar-side--end">{{ $end ?? '' }}@if ($facets && $facets->all())<x-ui.filter-button :facets="$facets"/>@endif</div>
         @endif
     </div>
-    @isset($under)<div class="toolbar-under">{{ $under }}</div>@endisset
-    @if ($facets && ! request()->headers->has('X-List'))
-        <div class="md:hidden"><x-ui.facets :facets="$facets" :name="$name" part="toggles"/></div>
+    @if (isset($under) || ($facets && ! request()->headers->has('X-List')))
+        <div class="toolbar-under md:hidden">{{ $under ?? '' }}@if ($facets && ! request()->headers->has('X-List'))<x-ui.facets :facets="$facets" :name="$name" part="toggles"/>@endif</div>
     @endif
 </div>
 @else

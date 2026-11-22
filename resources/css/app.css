@@ -1624,8 +1624,12 @@ html.kb-open { --home-gap: 0px; }
   /* «Выбрать» — своей строкой под кнопками слева, капсулой того же вида, что «Фильтр» (22.11.2026, владелец: «Выбрать огромная»;
      была кнопкой 44 px белым текстом рядом с видом): 36 px, серый текст, лаймовое «Готово» в режиме. */
   .pill.toolbar-pick[aria-pressed="true"] { @apply bg-accent font-medium text-white; }
-  .toolbar-under { display: flex; align-items: center; gap: .5rem; }
-  .toolbar-under .toolbar-pick { height: 2.25rem; min-height: 2.25rem; padding-block: 0; }
+  .toolbar-pick { height: 2.25rem; min-height: 2.25rem; padding-block: 0; }
+  /* Телефон: «Выбрать» и быстрые чипы одной строкой (22.11.2026, владелец: «сделал бы их в одной строке»), чипы листаются вбок
+     до правого края, «Выбрать» стоит. Пустая строка не занимает места. */
+  .toolbar-under { display: flex; align-items: center; gap: .5rem; min-width: 0; }
+  .toolbar-under:empty { display: none; }
+  .toolbar-under > .toolbar-row { flex: 1 1 0; margin-left: 0; padding-left: 0; scroll-padding-left: 0; }
   .toolbar-toggles { min-width: 0; }
   .toolbar-toggles .toolbar-row > div { flex-wrap: nowrap; }
   /* ПК — те же ряды (17.11.2026, владелец выбрал «ряды, как на телефоне»: одной строкой вид и «Фильтр» падали одни на вторую);
