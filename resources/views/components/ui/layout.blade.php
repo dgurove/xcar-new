@@ -81,7 +81,9 @@
     @endif
     {{-- Во фрейме шторки сделки XCAR Chat — без шапки и таб-бара (`html.is-embedded`), до первой отрисовки. Метка — имя окна
          фрейма (`x-ui.deal-sheet`), а не «я в каком-то фрейме»: чужой фрейм страницу без шапки не получит. --}}
-    <script>if (window.name === 'xcar-deal' && window.top !== window.self) document.documentElement.classList.add('is-embedded');</script>
+    {{-- Отрисовалась — сказать шторке (`deal_sheet_controller`): до этого фрейм прозрачен поверх силуэта, иначе Safari показывал белый
+         пустой фрейм (22.11.2026). Следующий кадр после разбора — первая отрисовка уже есть. --}}
+    <script>if (window.name === 'xcar-deal' && window.top !== window.self) { document.documentElement.classList.add('is-embedded'); addEventListener('DOMContentLoaded', () => requestAnimationFrame(() => setTimeout(() => parent.postMessage({ xcar: 'deal-ready' }, '*')))); }</script>
     @vite(['resources/css/app.css', 'resources/js/app.js'])
 </head>
 <body data-controller="{{ trim('pwa '.$attributes->get('data-controller')) }}" data-nav-tab="{{ \App\Support\Nav::currentTab(auth()->user()) }}" {{ $attributes->except('data-controller')->merge(['class' => 'antialiased surface-'.$surface->value.$skin.(request()->attributes->get('chat-page') ? ' chat-open' : '')]) }}>

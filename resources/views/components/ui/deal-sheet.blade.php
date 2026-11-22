@@ -11,7 +11,21 @@
         <x-ui.sheet id="deal-sheet" tall class="sheet-deal" data-deal-sheet-target="dialog">
             {{-- Имя окна `xcar-deal` — метка «я во фрейме шторки» для страницы (`x-ui.layout`): держится при переходах внутри фрейма.
                  Face ID и ключи доступа — на случай замка устройства во фрейме. --}}
-            <iframe class="deal-frame" name="xcar-deal" data-deal-sheet-target="frame" title="Сделка" allow="clipboard-write; publickey-credentials-get *"></iframe>
+            {{-- Пока страница во фрейме не отрисовалась, Safari рисует пустой фрейм белым в любой теме (22.11.2026, владелец: «тупо белый
+                 экран даже в тёмной теме»): фрейм прозрачен до сигнала страницы `deal-ready` (`x-ui.layout`), под ним — силуэт
+                 страницы сделки с переливом. --}}
+            <div class="deal-frame-wrap">
+                <div class="deal-ghost" aria-hidden="true">
+                    <span class="skeleton deal-ghost-title"></span>
+                    <span class="deal-ghost-chips"><span class="skeleton deal-ghost-chip"></span><span class="skeleton deal-ghost-chip deal-ghost-chip--wide"></span></span>
+                    <span class="deal-ghost-plate"><span class="skeleton deal-ghost-avatar"></span><span class="deal-ghost-lines"><span class="skeleton deal-ghost-line"></span><span class="skeleton deal-ghost-line deal-ghost-line--short"></span></span></span>
+                    <span class="deal-ghost-block">
+                        <span class="skeleton deal-ghost-cap"></span>
+                        @foreach ([0, 1, 2] as $i)<span class="deal-ghost-row"><span class="skeleton deal-ghost-line"></span><span class="skeleton deal-ghost-sum"></span></span>@endforeach
+                    </span>
+                </div>
+                <iframe class="deal-frame" name="xcar-deal" data-deal-sheet-target="frame" title="Сделка" allow="clipboard-write; publickey-credentials-get *"></iframe>
+            </div>
         </x-ui.sheet>
     </div>
 </div>

@@ -261,21 +261,26 @@
                     @if ($editMoney)<x-ui.chevron/>@else<x-ui.chevron-space/>@endif
                 </{{ $rewardTag }}>
             @endif
-            {{-- Услуги подбора — последней: что остаётся нам после вознаграждения. --}}
-            @foreach ($shown as $r)
-                @continue($r[0] !== 'Услуги подбора')
-                @if ($r[1] === null)
-                    @php $selTag = $editMoney ? 'button' : 'div'; @endphp
-                    <{{ $selTag }} @if ($editMoney) type="button" data-controller="emit" data-action="emit#send" data-emit-event-param="deal-money-{{ $deal->id }}:open" @endif class="row sale-row">
-                        <span class="sale-row-label">Услуги подбора</span>
-                        @if ($editMoney)<span class="sale-row-value text-accent-text">Назначить</span><x-ui.chevron/>@else<span class="sale-row-value text-ink-muted">назначим</span><x-ui.chevron-space/>@endif
-                    </{{ $selTag }}>
-                    @continue
-                @endif
-                <div class="row sale-row"><span class="sale-row-label">{{ $r[0] }}@foreach ($r[4] ?? [] as [$subText, $subTone])<span class="block text-sm {{ $subTone }}">{{ $subText }}</span>@endforeach</span><span class="sale-row-value {{ $r[2] }}">{{ $r[1] }}</span><x-ui.chevron-space/></div>
-            @endforeach
-            @if ($feeBilled && $selection)
-                <div class="row sale-row"><span class="sale-row-label">Услуги подбора</span><span class="sale-row-value nums">{{ Money::rub((float) $selection->total) }}@if ($selRows === '' && $selWord)<span class="block text-sm {{ $selWord[1] }}">{{ $selWord[0] }}</span>@endif</span><x-ui.chevron-space/></div>
+            {{-- Услуги подбора — последней: что остаётся нам после вознаграждения. Нажимается, как вознаграждение (22.11.2026, владелец:
+                 «по сути должна быть такой же, как строка вознаграждения»): обе — от доли, шторка одна «Цена и вознаграждение». Доля
+                 гаражной «платит менеджер» правится в гараже — у неё строка без стрелки. --}}
+            @php
+                $selEdit = $editMoney && ! $deal->isGarageManager();
+                $selTag = $selEdit ? 'button' : 'div';
+                $selRow = collect($shown)->first(fn ($r) => $r[0] === 'Услуги подбора');
+            @endphp
+            @if ($selRow || ($feeBilled && $selection))
+                <{{ $selTag }} @if ($selEdit) type="button" data-controller="emit" data-action="emit#send" data-emit-event-param="deal-money-{{ $deal->id }}:open" @endif class="row sale-row">
+                    <span class="sale-row-label">Услуги подбора</span>
+                    @if ($selRow && $selRow[1] === null)
+                        @if ($selEdit)<span class="sale-row-value text-accent-text">Назначить</span>@else<span class="sale-row-value text-ink-muted">назначим</span>@endif
+                    @elseif ($selRow)
+                        <span class="sale-row-value {{ $selRow[2] }}">{{ $selRow[1] }}</span>
+                    @else
+                        <span class="sale-row-value nums">{{ Money::rub((float) $selection->total) }}@if ($selRows === '' && $selWord)<span class="block text-sm {{ $selWord[1] }}">{{ $selWord[0] }}</span>@endif</span>
+                    @endif
+                    @if ($selEdit)<x-ui.chevron/>@else<x-ui.chevron-space/>@endif
+                </{{ $selTag }}>
             @endif
         </div>
     @endif

@@ -14,6 +14,14 @@ export default class extends Controller {
         // списку (21.11.2026, «чаты поломались»).
         this.onClose = () => this.fresh();
         this.dialogTarget.addEventListener('close', this.onClose);
+        // Страница во фрейме говорит «отрисовалась» (`x-ui.layout`, `deal-ready`) — фрейм проявляется поверх силуэта. Пустой фрейм
+        // Safari рисует белым в любой теме (22.11.2026, владелец: «тупо белый экран даже в тёмной теме»), поэтому до сигнала он прозрачен.
+        this.onMessage = (event) => {
+            if (event.data?.xcar !== 'deal-ready' || event.source !== this.frameTarget.contentWindow) return;
+            if (!/^https?:\/\/([a-z0-9-]+\.)*xcar\.(ru|localhost)(:\d+)?$/.test(event.origin)) return;
+            this.ready();
+        };
+        window.addEventListener('message', this.onMessage);
     }
 
     // Сервер просит открыть сразу (`deal-sheet` во flash): и при загрузке, и при морфе той же страницы (Turbo после редиректа
@@ -34,6 +42,13 @@ export default class extends Controller {
 
     disconnect() {
         this.dialogTarget.removeEventListener('close', this.onClose);
+        window.removeEventListener('message', this.onMessage);
+        clearTimeout(this.readyTimer);
+    }
+
+    ready() {
+        clearTimeout(this.readyTimer);
+        this.frameTarget.classList.add('is-ready');
     }
 
     click(event) {
@@ -56,9 +71,16 @@ export default class extends Controller {
     }
 
     fresh(href = null) {
+        clearTimeout(this.readyTimer);
         const frame = this.frameTarget.cloneNode(false);
         frame.removeAttribute('src');
-        if (href) frame.src = href;
+        frame.classList.remove('is-ready');
+        if (href) {
+            // Запасные пути, если сигнала нет (старая страница, чужая ошибка): `load` фрейма и 8 с — силуэт не висит вечно.
+            frame.addEventListener('load', () => this.ready(), { once: true });
+            this.readyTimer = setTimeout(() => this.ready(), 8000);
+            frame.src = href;
+        }
         this.frameTarget.replaceWith(frame);
     }
 }
