@@ -2,6 +2,8 @@
 
 namespace App\Http\Admin;
 
+use App\Notifications\EstimateAskedNotice;
+use App\Notifications\EstimatesPackNotice;
 use App\Offers\Actions\AskEstimates;
 use App\Offers\Actions\CloseEstimates;
 use App\Offers\Actions\FirstLook;
@@ -49,13 +51,19 @@ final class OfferEstimateController
         $managers = User::withRole(Role::Manager)->whereIn('id', $ids)->get();
         $offers = OfferController::scopeFor('unpriced', Offer::inCrm($request->user())->whereIn('offers.number', $numbers), true)
             ->orderBy('offers.number')->get();
-        [$done, $failed] = [0, []];
+        [$done, $failed, $created] = [0, [], collect()];
         foreach ($offers as $offer) {
             try {
-                $ask($offer, $managers, $request->user(), self::declared($offer, $ids, $answers), $days, $exclusive)->isNotEmpty() && $done++;
+                $new = $ask($offer, $managers, $request->user(), self::declared($offer, $ids, $answers), $days, $exclusive, pack: true);
+                $new->isNotEmpty() && $done++;
+                $created = $created->concat($new);
             } catch (ValidationException $e) {
                 $failed[] = $offer->number.': '.mb_strtolower((string) (collect($e->errors())->flatten()->first() ?? 'не вышло'));
             }
+        }
+        // Менеджеру — одно уведомление на пачку (22.11.2026, владелец), одна машина — как по одной.
+        foreach ($created->groupBy('user_id') as $mine) {
+            $mine->first()->loadMissing('user')->user?->notify($mine->count() === 1 ? new EstimateAskedNotice($mine->first()) : new EstimatesPackNotice($mine->values()));
         }
         $toast = $done ? 'На оценку '.$done.' ТС: '.$managers->map->shortName()->implode(', ').', '.Estimate::daysWord($days) : null;
         $back = back(fallback: '/offers?preset=unpriced');

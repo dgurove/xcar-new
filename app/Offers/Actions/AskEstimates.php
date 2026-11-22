@@ -26,8 +26,9 @@ final class AskEstimates
      * @param  array<int, bool>  $declared  кому показать заявленную (id => да/нет); нет в карте — показать
      * @param  int  $days  сколько дней на оценку (`Estimate::DAYS`)
      * @param  int|null  $exclusive  эксклюзив после оценки, дней (`FirstLook`): только одному и только оценка, не корректировка
+     * @param  bool  $pack  часть пачки: уведомит менеджера тот, кто собрал пачку, одним на всю (`EstimatesPackNotice`)
      */
-    public function __invoke(Offer $offer, iterable $managers, ?User $by, array $declared = [], int $days = 2, ?int $exclusive = null): Collection
+    public function __invoke(Offer $offer, iterable $managers, ?User $by, array $declared = [], int $days = 2, ?int $exclusive = null, bool $pack = false): Collection
     {
         // Без цены продажи — оценка; с ценой (вкладка «Оцененные», 11.10.2026) — корректировка: её цена в `base_price`.
         if ($offer->state !== OfferState::Draft || $offer->isScheduled()) {
@@ -66,7 +67,7 @@ final class AskEstimates
         });
 
         if ($created->isNotEmpty()) {
-            EstimatesAsked::dispatch($offer, $created->each->setRelation('offer', $offer), $by);
+            EstimatesAsked::dispatch($offer, $created->each->setRelation('offer', $offer), $by, $pack);
         }
 
         return $created;

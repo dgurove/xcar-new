@@ -219,6 +219,10 @@ final class Notify
     /** Оценка менеджером (11.10.2026): просьба — менеджеру, оценка — админам, решение — снова менеджеру. */
     public function estimatesAsked(EstimatesAsked $e): void
     {
+        // Пачка (22.11.2026): менеджеру одно уведомление на всю — его шлёт `OfferEstimateController::storeMany`.
+        if ($e->pack) {
+            return;
+        }
         foreach ($e->estimates as $estimate) {
             $estimate->loadMissing('user')->user?->notify(new EstimateAskedNotice($estimate));
         }
