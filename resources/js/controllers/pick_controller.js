@@ -51,8 +51,11 @@ export default class extends Controller {
         this.element.toggleAttribute('data-selecting', !!this.selecting);
         document.querySelectorAll('[data-pick-toggle]').forEach((btn) => {
             btn.setAttribute('aria-pressed', this.selecting ? 'true' : 'false');
-            btn.classList.toggle('btn-accent', !!this.selecting);
-            btn.classList.toggle('btn-quiet', !this.selecting);
+            if (btn.classList.contains('pill')) btn.classList.toggle('pill-accent', !!this.selecting);
+            else {
+                btn.classList.toggle('btn-accent', !!this.selecting);
+                btn.classList.toggle('btn-quiet', !this.selecting);
+            }
             const label = btn.querySelector('[data-pick-toggle-label]');
             if (label) label.textContent = this.selecting ? 'Готово' : 'Выбрать';
         });
