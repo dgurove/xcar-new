@@ -114,7 +114,7 @@
             @foreach ($i->payments as $p)
                 @php $a = $p->source === PaymentSource::Acquiring ? $attempts->firstWhere('payment_id', $p->id) : null; @endphp
                 <x-money.payment :payment="$p" :attempt="$a" :slip="$href.'/payments/'.$p->id.'/slip'" staff>
-                    @if ($a && $a->refundable() > 0)
+                    @if ($a && $a->refundable() > 0 && auth()->user()?->canManageCrm())
                         <x-slot:acts>
                             <form method="post" action="/work/money/acquiring/{{ $a->id }}/refund" class="contents" data-turbo-confirm="Вернуть {{ Money::exact($a->refundable()) }} плательщику? Оплата по счёту отменится">@csrf<button class="chip text-ink-muted">Вернуть</button></form>
                         </x-slot:acts>
@@ -123,9 +123,9 @@
             @endforeach
             @foreach ($overpaid as $a)
                 <x-money.line icon="offset" title="Переплата по ссылке" :amount="$a->overpaid()" tone="urgent">
-                    <x-slot:acts>
+                    @if (auth()->user()?->canManageCrm())<x-slot:acts>
                         <form method="post" action="/work/money/acquiring/{{ $a->id }}/refund" class="contents" data-turbo-confirm="Вернуть {{ Money::exact($a->overpaid()) }} плательщику?">@csrf<input type="hidden" name="surplus" value="1"><button class="btn btn-s btn-quiet">Вернуть</button></form>
-                    </x-slot:acts>
+                    </x-slot:acts>@endif
                 </x-money.line>
             @endforeach
         </div>

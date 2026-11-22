@@ -106,8 +106,10 @@ export default class extends Controller {
         const parts = theirs ? [...theirs.querySelectorAll('tbody.table-part')] : [];
         if (!parts.length) throw new Error('no rows');
         // Строка, что уже есть (список сдвинулся, пока листали: новая сверху вытолкнула строку за хвост), второй раз не встаёт.
-        for (const part of parts) part.querySelectorAll('[data-detail-key]').forEach((row) => {
-            if (this.element.querySelector(`[data-detail-key="${CSS.escape(row.dataset.detailKey)}"]`)) row.remove();
+        // Ключ — карточки рядом или, у строк со шторкой сделки (XCAR Pay), свой `data-row-key`.
+        for (const part of parts) part.querySelectorAll('[data-detail-key], [data-row-key]').forEach((row) => {
+            const [attr, key] = row.dataset.detailKey !== undefined ? ['data-detail-key', row.dataset.detailKey] : ['data-row-key', row.dataset.rowKey];
+            if (this.element.querySelector(`[${attr}="${CSS.escape(key)}"]`)) row.remove();
         });
         // Группа продолжается — второй её заголовок посреди группы не нужен (сервер рисует заголовок в начале каждой порции).
         const head = parts[0].querySelector('tr');

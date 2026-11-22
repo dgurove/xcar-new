@@ -48,7 +48,7 @@
     $sinceTone = ! $paid && $r->isOverdue() ? 'text-danger' : 'text-ink-muted';
     $commission = (int) $deal->commission;
 @endphp
-<tr @if ($pay) data-deal-sheet-row @else data-detail-key="{{ $deal->id }}" @endif data-search-row>
+<tr @if ($pay) data-deal-sheet-row data-row-key="{{ $deal->id }}" @else data-detail-key="{{ $deal->id }}" @endif data-search-row>
     @foreach ($table->columns as $key => $col)
         @switch($key)
         @case('title')

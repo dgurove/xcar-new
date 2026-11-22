@@ -10,7 +10,7 @@ use Illuminate\Support\Facades\DB;
 /**
  * «Заработал» менеджера по месяцам (22.11.2026, начальник: «чтобы менеджеры видели, сколько заработали»; владелец: по месяцу
  * полной оплаты). Заработок сделки — её вознаграждение (`deals.commission`: его получает он сам, не от нас); месяц — когда
- * оплачен последний из наших счетов сделки (все неаннулированные выставленные — оплачены). Сделки без наших счетов
+ * оплачен последний из наших счетов сделки (все неаннулированные выставленные оплачены и положенные выставлены). Сделки без наших счетов
  * («Напрямую») и отменённые сюда не идут. Накопленной суммы нет — только месяц (сумма за год расслабляет).
  */
 final class Earnings
@@ -38,6 +38,12 @@ final class Earnings
         return DB::table('deals')->joinSub($invoices, 'pi', 'pi.deal_id', '=', 'deals.id')
             ->where('deals.buyer_id', $manager->id)->where('deals.parallel', false)->where('deals.state', '!=', 'cancelled')
             ->where('deals.commission', '>', 0)->whereNotNull('pi.paid_at')
+            // Оплачены все, что уже есть, — мало: сделке ПРАЙМ / Р.О.С. и гаражной «платит менеджер» положен счёт за ТС, гаражной
+            // «платит менеджер» — ещё и доля (`MoneyBook::expects`). Пока его нет, сделка не оплачена целиком: иначе вознаграждение
+            // попало бы в месяц подбора, а с выставленным ДКП ушло бы из него задним числом.
+            ->where(fn ($q) => $q->whereRaw("deals.scheme is distinct from 'prime' and deals.scheme is distinct from 'ros' and deals.garage_payer is distinct from 'manager'")
+                ->orWhereRaw(MoneyBook::hasTabInvoice('dkp')))
+            ->where(fn ($q) => $q->whereRaw("deals.garage_payer is distinct from 'manager'")->orWhereRaw(MoneyBook::hasTabInvoice('fees')))
             ->select('deals.id', 'deals.commission', 'pi.paid_at');
     }
 }

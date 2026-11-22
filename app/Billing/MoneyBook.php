@@ -85,7 +85,10 @@ final class MoneyBook
     /** Счета раздела строки; менеджеру — только отправленные ему (`Invoice::shownToManager`): неотправленный ещё проверяют. */
     private static function with(string $tab, bool $own = false): array
     {
-        return ['offer', 'offer.vendor', 'buyer', 'contract', 'garageCar',
+        // Экрану менеджера — и то, чем строка говорит, что по сделке (`managerTask`, `Turn`): шаг машины и открытая просьба.
+        $status = $own ? ['openRequirement', 'offer.positions.stage.block', 'offer.positions.stage.exits.to'] : [];
+
+        return [...$status, 'offer', 'offer.vendor', 'buyer', 'contract', 'garageCar',
             'invoices' => fn ($q) => $q->where('direction', 'issued')->whereRaw(self::tabSql($tab))->when($own, fn ($x) => $x->shownToManager())
                 ->with(['payments', 'claims', 'payLinks.attempts', 'party'])];
     }
@@ -140,6 +143,17 @@ final class MoneyBook
         $facets?->applyTo($q);
 
         return $q;
+    }
+
+    /**
+     * Сколько сделок менеджер должен оплатить — число его «Комиссий» и «ДКП» (сделки с отправленным ему неоплаченным счётом,
+     * с «Беру в работу»): значок XCAR Pay и «Оплаты» кабинета сайта (`Nav`) — одно число с экраном.
+     */
+    public static function ownToPay(User $manager): int
+    {
+        $facets = self::facets(\Illuminate\Http\Request::create('/'), 'account-money');
+
+        return self::openDeals('fees', $manager, $facets, own: true)->count() + self::openDeals('dkp', $manager, $facets, own: true)->count();
     }
 
     /** Чья ручная ссылка в SQL: покупатель засчитанной сделки, иначе назначенный менеджер (`Invoice::manager`). */

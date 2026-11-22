@@ -84,7 +84,10 @@ class MoneyController
     /** Счета без сделки (разовые ссылки, парковка) — только админу; модератору — счета сделок и засчитанные в сделку (`guardDeal`). */
     public static function dealOnly($q)
     {
-        return $q->when(! auth()->user()?->canManageCrm(), fn ($x) => $x->where(fn ($w) => $w->whereNotNull('billing_invoices.deal_id')->orWhereNotNull('billing_invoices.credit_deal_id')));
+        // Без вошедшего (очередь, консоль) — не сужаем: сужение — про то, что видит человек на экране.
+        $user = auth()->user();
+
+        return $q->when($user && ! $user->canManageCrm(), fn ($x) => $x->where(fn ($w) => $w->whereNotNull('billing_invoices.deal_id')->orWhereNotNull('billing_invoices.credit_deal_id')));
     }
 
     /** Разделы «нам должны»: группы «Проверить», «Ждём», чип «Откуда», номер счёта. */
@@ -139,6 +142,8 @@ class MoneyController
         if (! array_key_exists($tab, self::tabs())) {
             $peek = $tab === 'owed' && ctype_digit((string) $request->query('peek')) ? Invoice::find((int) $request->query('peek')) : null;
             $tab = $peek ? self::tabOf($peek) : 'fees';
+            // Модератору «Выплат» нет и по старой ссылке.
+            $tab = array_key_exists($tab, self::tabs()) ? $tab : 'fees';
         }
         // Чип «Статус» не помнится (22.11.2026, владелец: «перезахожу — и он не устанавливается»): каждый вход — умолчание
         // «Кроме „Не взял в работу“», другой выбор — на этот раз.
@@ -426,6 +431,12 @@ class MoneyController
     public function show(Invoice $invoice)
     {
         $this->guardInvoice($invoice);
+        // XCAR Pay: машины CRM на этом хосте нет — карточка счёта в «Оплатах» (у счёта с машиной — шторка её сделки).
+        if (\App\Billing\PayView::here()) {
+            $offer = $invoice->carOffer();
+
+            return redirect($offer && ! $invoice->isService() ? '/work/money?car='.$offer->number : self::url($invoice));
+        }
 
         return redirect($invoice->crmHref());
     }
@@ -456,11 +467,15 @@ class MoneyController
     }
 
     /** Число у «Оплат»: менеджер пишет, что оплатил; не прошла по ссылке; выплатить. Выписки в счёте нет (07.10.2026). */
-    public static function todo(): int
+    public static function todo(bool $dealsOnly = false): int
     {
-        return Payment::where('state', PaymentState::Claimed)->whereHas('invoice', fn ($i) => $i->crmMoney())->count()
-            + self::tried(Invoice::crmMoney())->count()
-            + Invoice::crmMoney()->where('direction', 'owed')->whereIn('kind', self::PAYOUTS)->where('state', InvoiceState::Issued)->count();
+        // `$dealsOnly` — модератору (22.11.2026): только счета сделок и засчитанные в сделку, без выплат — остального он не видит.
+        // Число общее для всех сотрудников (`Nav::staffCounts` в кэше), поэтому — флагом, а не по вошедшему.
+        $deals = fn ($q) => $dealsOnly ? $q->where(fn ($w) => $w->whereNotNull('billing_invoices.deal_id')->orWhereNotNull('billing_invoices.credit_deal_id')) : $q;
+
+        return Payment::where('state', PaymentState::Claimed)->whereHas('invoice', fn ($i) => $deals($i->crmMoney()))->count()
+            + self::tried($deals(Invoice::crmMoney()))->count()
+            + ($dealsOnly ? 0 : Invoice::crmMoney()->where('direction', 'owed')->whereIn('kind', self::PAYOUTS)->where('state', InvoiceState::Issued)->count());
     }
 
     /**
@@ -616,7 +631,8 @@ class MoneyController
         // На телефоне — два этажа: название и сумма, под ними этап (или тревога оплаты) и сколько прошло; кнопка — одна, в строке.
         return Table::of(new Column('title', $payout ? 'За что' : 'Марка, модель', grow: true, rem: 14),
             // № убытка с логотипом вендора — как в «Сделках» (22.11.2026, владелец).
-            new Column('vendor', '№ убытка', from: 'sm', role: ColRole::Code, rem: 10),
+            // С окном справа его нет (`aside`): иначе таблица шире места и «Выставлено» с суммой срезались у края (22.11.2026).
+            new Column('vendor', '№ убытка', from: 'sm', aside: true, role: ColRole::Code, rem: 10),
             $payout ? null : new Column('stage', 'Статус', from: 'sm', role: ColRole::State, rem: 13, fixed: true),
             new Column('pay', $payout ? 'Статус' : 'Оплата', from: 'sm', role: ColRole::State, rem: 10, fixed: true),
             // Сумма — у правого края, под суммой заголовка группы (22.11.2026, владелец: «суммы логичнее справа»): кнопки, дата, сумма.

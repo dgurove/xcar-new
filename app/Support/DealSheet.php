@@ -43,14 +43,17 @@ final class DealSheet
     public static function requested(): ?string
     {
         $user = auth()->user();
-        if (! $user || ! self::here()) {
+        // Только XCAR Pay: в почте `?car=` — номер ТС парковки, а не машины CRM.
+        if (! $user || Surface::current() !== Surface::Pay) {
             return null;
         }
         $staff = $user->canEditDeals();
-        if (ctype_digit($id = (string) request()->query('deal')) && ($deal = Deal::find((int) $id))) {
+        $id = request()->query('deal');
+        $car = request()->query('car');
+        if (is_string($id) && ctype_digit($id) && ($deal = Deal::find((int) $id))) {
             return $staff ? Surface::Crm->url('/work/deals/'.$deal->id) : ($deal->buyer_id === $user->id ? self::site($deal->href()) : null);
         }
-        if (($offer = OfferNumber::find((string) request()->query('car'))) !== null) {
+        if (is_string($car) && ($offer = OfferNumber::find($car)) !== null) {
             if ($staff) {
                 return $offer->crmUrl();
             }

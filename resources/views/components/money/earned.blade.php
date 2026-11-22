@@ -5,7 +5,8 @@
 @php
     use App\Billing\Earnings; use App\Support\Money; use Illuminate\Support\Carbon;
     $months = Earnings::months($user);
-    $key = preg_match('~^\d{4}-\d{2}$~', (string) request('month')) ? (string) request('month') : now()->format('Y-m');
+    $asked = request()->query('month');
+    $key = is_string($asked) && preg_match('~^\d{4}-(?:0[1-9]|1[0-2])$~', $asked) ? $asked : now()->format('Y-m');
     $month = Carbon::createFromFormat('Y-m-d', $key.'-01')->startOfDay();
     $sum = $months[$key] ?? Earnings::of($user, $month);
     $list = collect($months)->put(now()->format('Y-m'), $months[now()->format('Y-m')] ?? 0.0)->put($key, $sum)->sortKeysDesc();

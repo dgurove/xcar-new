@@ -34,10 +34,11 @@ class ResolveSurface
     private const MAIL_SHARED = ['login', 'logout', 'lock', 'password', 'passkey', 'up', 'media', 'live', 'account', 'manifest.webmanifest', 'offline', 'push', 'sw.js', 'icons.svg', 'files', 'jpg', 'client'];
 
     /**
-     * XCAR Pay (22.11.2026) из общих путей — вход, `account` (профиль, уведомления и «Оплаты» менеджера `/account/money*`), файлы
+     * XCAR Pay (22.11.2026) из общих путей — вход, `account` (профиль, уведомления и «Оплаты» менеджера `/account/money*`), скан
+     * паспорта в его реквизитах (`parties`), файлы
      * и медиа, служебное; ни чатов, ни сделок сайта — сделка открывается шторкой со страницей CRM или сайта. Свои пути — `routes/pay.php`.
      */
-    private const PAY_SHARED = ['login', 'logout', 'lock', 'password', 'passkey', 'up', 'media', 'live', 'account', 'manifest.webmanifest', 'offline', 'push', 'sw.js', 'icons.svg', 'files', 'jpg', 'client'];
+    private const PAY_SHARED = ['login', 'logout', 'lock', 'password', 'passkey', 'up', 'media', 'live', 'account', 'parties', 'manifest.webmanifest', 'offline', 'push', 'sw.js', 'icons.svg', 'files', 'jpg', 'client'];
 
     /** Что открыто на чужом хосте тому, кому туда нельзя: выйти и служебное. */
     private const ANYONE = ['login', 'logout', 'password', 'passkey', 'up', 'manifest.webmanifest', 'offline', 'sw.js', 'icons.svg', 'admin', 'client'];

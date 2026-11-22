@@ -6,7 +6,6 @@ use App\Billing\ChargeKind;
 use App\Billing\Closing;
 use App\Billing\Invoice;
 use App\Billing\InvoiceState;
-use App\Billing\ManagerLedger;
 use App\Chats\Chat;
 use App\Garage\Car as GarageCar;
 use App\Garage\CarState;
@@ -728,7 +727,10 @@ final class Nav
             // Модератору из общих бейджей — почта по галке, чаты площадки и «Оплаты».
             $keys = [...($user->canCrmMail() ? ['/offers/from-mail', '/work/mail'] : []), ...($user->canEditDeals() ? ['/work/chats', '/work/money'] : [])];
 
-            return array_filter($badges + array_intersect_key(self::staffCounts($surface), array_flip($keys)));
+            $staff = self::staffCounts($surface);
+            $staff['/work/money'] = $staff['money:deals'] ?? 0;
+
+            return array_filter($badges + array_intersect_key($staff, array_flip($keys)));
         }
         if ($surface === Surface::Park || $surface === Surface::Crm) {
             return array_filter($badges + self::staffCounts($surface));
@@ -762,8 +764,9 @@ final class Nav
             // Число — строки самих «Оплат», где нужен он (`DealMoney::needsAction`), иначе бейдж и список расходятся; расчёт
             // тяжёлый — полминуты в кэше, как итоги таб-бара.
             // тяжёлый (все сделки человека со счетами) — до события о нём (`touch`), срок — запасной.
+            // С 22.11.2026 «Оплаты» — экран «Комиссии · ДКП»: число — его «К оплате» (`MoneyBook::ownToPay`), как у значка XCAR Pay.
             $badges['/account/money'] = StaffCache::remember("nav.money:{$user->id}", 600,
-                fn () => (new ManagerLedger($user))->rows()->filter(fn ($r) => $r->money->needsAction())->count(), null);
+                fn () => \App\Billing\MoneyBook::ownToPay($user), null);
         }
         if ($user->holdsAsBuyer()) {
             // Что ждут от него по сделкам — на табе «Сделки», как у менеджера; по гаражной — на табе «Гараж» (20.10.2026).
@@ -835,6 +838,8 @@ final class Nav
                 '/work/chats' => Chat::whereNull('manager_id')->where('unread_for_staff', '>', 0)->count(),
                 // Деньги горят делом в «Оплатах»: менеджер пишет, что оплатил; не прошла по ссылке; выплатить. Выписки нет.
                 '/work/money' => MoneyController::todo(),
+                // Модератору — только его часть «Оплат» (без выплат и ссылок без сделки), `count` подменяет ею '/work/money'.
+                'money:deals' => MoneyController::todo(dealsOnly: true),
             ];
             return $badges;
         }, StaffCache::COUNTS);

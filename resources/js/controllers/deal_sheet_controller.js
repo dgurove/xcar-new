@@ -24,7 +24,7 @@ export default class extends Controller {
         this.element.removeAttribute('data-deal-sheet-open-value');
         // `?deal=` / `?car=` из ссылки уведомления (XCAR Pay) — разовые: обновление страницы шторку второй раз не откроет.
         const url = new URL(location.href);
-        if (url.searchParams.has('deal') || url.searchParams.has('car')) {
+        if (location.hostname.startsWith('pay.') && (url.searchParams.has('deal') || url.searchParams.has('car'))) {
             url.searchParams.delete('deal');
             url.searchParams.delete('car');
             history.replaceState(history.state, '', url);

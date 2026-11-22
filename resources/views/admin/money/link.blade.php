@@ -18,11 +18,19 @@
     [$state, $tone] = L::state($link);
     $paidAttempt = $link->state === PayLinkState::Paid ? $link->attempts->firstWhere('payment_id', $link->payment_id) : null;
     if ($paidAttempt?->method) { $state = 'оплачено '.mb_strtolower(PayMethod::label($paidAttempt->method)).' '.\App\Support\Ago::day($link->paid_at); }
+    // Ссылку отменили, а счёт оплачен мимо неё (переводом, наличными): в шапке — что с деньгами, а не «отменена» (22.11.2026: оплаченную
+    // переводом ссылку читали как несостоявшуюся).
+    if ($link->state === PayLinkState::Canceled && $link->invoice->state === InvoiceState::Paid) {
+        $way = \App\Http\Admin\MoneyRows::paidWays(collect([$link->invoice->loadMissing('payments')]), collect());
+        [$state, $tone] = [implode(' ', array_filter(['оплачено', $way, $link->invoice->paid_at ? \App\Support\Ago::day($link->invoice->paid_at) : null])), ''];
+    }
     $deal = $i->deal ?? $i->creditDeal;
     $dealUrl = $deal?->offer ? '/offers/'.$deal->offer->number.($deal->isGarage() ? '#garage' : '') : null;
     $by = L::creator($link);
-    $refund = $link->attempts->first(fn ($a) => $a->succeeded() && $a->refundable() > 0);
-    $editCar = $manual && $i->state !== InvoiceState::Void;
+    // Возврат эквайринга и машина ручной ссылки — админу (`canManageCrm`, `isAdmin`); модератору «Оплаты» открыты с 22.11.2026.
+    $admin = (bool) auth()->user()?->canManageCrm();
+    $refund = $admin ? $link->attempts->first(fn ($a) => $a->succeeded() && $a->refundable() > 0) : null;
+    $editCar = $manual && $i->state !== InvoiceState::Void && $admin;
     $other = $live && $i->state === InvoiceState::Issued;
     // Засчитано в сделку и сверх неё (09.10.2026, владелец: сверх — «просто доплата», не красным).
     $applied = $i->creditDeal ? app(\App\Offers\Actions\ApplyDealCredits::class)->applied($i) : 0;

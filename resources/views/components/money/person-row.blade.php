@@ -49,7 +49,8 @@
     $cash = ! $paid && ! $payout && ! $claim && $first && ! ($service && ! $r->personId());
     $assign = $service && $admin && ! $r->service->manager_id && ! $r->service->credit_deal_id;
     // XCAR Pay: машина — шторкой поверх оплат, строку целиком ловит `deal_sheet_controller`.
-    $sheet = $offer && \App\Billing\PayView::here() ? \App\Support\DealSheet::crm($offer) : null;
+    // Ручная ссылка (ключ `s{счёт}`) — своей карточкой рядом и с машиной: в ней назначение, копия ссылки, возврат.
+    $sheet = $offer && \App\Billing\PayView::here() && ! str_starts_with($r->key(), 's') ? \App\Support\DealSheet::crm($offer) : null;
 @endphp
 @php ob_start(); @endphp
 @switch($main)
@@ -58,7 +59,7 @@
     @case('payout')<button type="button" class="btn btn-accent btn-xs" data-controller="emit" data-action="emit#send" data-emit-event-param="pay-{{ $r->service->id }}:open">Выплатить</button>@break
 @endswitch
 @php $button = trim(ob_get_clean()); @endphp
-<tr @if ($sheet) data-deal-sheet-row @else data-detail-key="{{ $r->key() }}" @endif data-search-row>
+<tr @if ($sheet) data-deal-sheet-row data-row-key="{{ $r->key() }}" @else data-detail-key="{{ $r->key() }}" @endif data-search-row>
     @foreach ($table->columns as $key => $col)
         @switch($key)
         @case('title')

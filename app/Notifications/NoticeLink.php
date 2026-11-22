@@ -116,12 +116,13 @@ final class NoticeLink
      */
     private static function pay(string $href, string $path): string
     {
+        // Сделка и машина — через корень: он уводит к «Оплатам» того, кто открыл, с тем же `?deal=` / `?car=` (в очереди пуша
+        // не знаем, кто откроет, а «Оплаты» сотрудника и менеджера — разные адреса с разными правами).
         return match (true) {
-            (bool) preg_match('~^/account/money/deals/(\d+)~', $path, $m) => '/account/money?deal='.$m[1],
+            (bool) preg_match('~^/(?:account/money/deals|deals|work/deals)/(\d+)~', $path, $m) => '/?deal='.$m[1],
+            // Страница счёта CRM — переадресация на машину CRM: в Pay — его карточка в «Оплатах».
+            (bool) preg_match('~^/work/money/invoices/(\d+)$~', $path, $m) => ($i = \App\Billing\Invoice::find((int) $m[1])) ? \App\Http\Admin\MoneyController::url($i) : '/',
             (bool) preg_match('~^/(?:work/money|account/money)(?:/|$)~', $path) => $href,
-            (bool) preg_match('~^/deals/(\d+)~', $path, $m) => '/account/money?deal='.$m[1],
-            (bool) preg_match('~^/work/deals/(\d+)~', $path, $m) => '/work/money?deal='.$m[1],
-            // Машина: корень уводит к «Оплатам» человека с тем же `?car=` (в очереди пуша не знаем, кто откроет).
             (bool) preg_match('~^/(?:offers|garage/cars)/(\d+)~', $path, $m) => '/?car='.$m[1],
             default => '/',
         };

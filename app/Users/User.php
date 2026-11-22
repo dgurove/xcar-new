@@ -1069,8 +1069,11 @@ class User extends Authenticatable implements HasMedia, WebAuthnAuthenticatable
         // XCAR Pay — сотруднику то же число, что у «Оплат» в таб-баре CRM (проверить «Пришли?», не прошла по ссылке, выплаты),
         // менеджеру — сколько его счетов ждут оплаты.
         if ($here === Surface::Pay) {
-            return \App\Billing\PayView::staff($this) ? \App\Http\Admin\MoneyController::todo()
-                : ($this->hasDeals() ? \App\Billing\Invoice::visibleToManager($this)->where('direction', 'issued')->where('state', \App\Billing\InvoiceState::Issued)->count() : 0);
+            if (\App\Billing\PayView::staff($this)) {
+                return \App\Http\Admin\MoneyController::todo(dealsOnly: ! $this->canManageCrm());
+            }
+            // Менеджеру — то же, что у его разделов «Комиссии» и «ДКП».
+            return $this->hasDeals() ? \App\Billing\MoneyBook::ownToPay($this) : 0;
         }
 
         // Чаты площадки — работа CRM: на значке сайта их нет (08.10.2026).
