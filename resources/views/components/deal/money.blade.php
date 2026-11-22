@@ -119,10 +119,10 @@
         $skips = fn (string $k) => in_array($k, $skip, true);
         if ($deal->isGarage()) {
             // Гаражная: цены нет, вознаграждение посчитаем при продаже из гаража; важно, кто платит поставщику.
-            if (! $skips('payer') && ! ($deal->namesBuyer() && $deal->amount !== null)) $rows[] = ['В гараж', $deal->garagePayerLine(), 'text-right font-medium', true];
+            if (! $skips('payer') && ! ($deal->namesBuyer() && $deal->amount !== null)) $rows[] = ['В гараж', $deal->garagePayerLine(), 'text-right', true];
             // Цена продажи гаражной Совкомбанка — в шапке «ПРАЙМ» (18.11.2026), строкой не повторяется.
         } elseif ($deal->isAuction() && ! $skips('amount')) {
-            $rows[] = ['Цена на аукционе', $deal->amount === null ? 'не указана' : Money::rub($deal->amount), $dd.' font-medium', true];
+            $rows[] = ['Цена на аукционе', $deal->amount === null ? 'не указана' : Money::rub($deal->amount), $dd.' font-semibold', true];
         }
         // Закупочная, разница, «страховой» — в «Оплате поставщику» (15.11.2026: раскладка из пяти строк повторяла соседние блоки).
         // Нас интересуют закупочная и услуги подбора (18.11.2026, владелец): вознаграждение менеджера — просто числом, без слов
@@ -133,9 +133,9 @@
         // Услуги подбора — счётом ниже (ДКП, «страховой», доля гаража): там же заголовком с суммой, второй раз строкой не пишем.
         $feeBilled = ($deal->paysSelection() || $deal->isGarageManager()) && $invoices->contains(fn ($i) => $i->kind === \App\Billing\ChargeKind::Selection && $i->state !== InvoiceState::Void);
         if ($deal->isGarageManager() && ! $feeBilled) {
-            $rows[] = ['Услуги подбора', $deal->share !== null ? Money::rub($deal->share) : 'не вписано', $dd.' text-lg font-semibold', true];
+            $rows[] = ['Услуги подбора', $deal->share !== null ? Money::rub($deal->share) : 'не вписано', $dd, true];
         } elseif (! $feeBilled && ! $deal->isGarageManager() && $ours !== null) {
-            $rows[] = ['Услуги подбора', Money::rub($ours), $dd.' text-lg font-semibold'.($ours < 0 ? ' text-danger' : ''), true];
+            $rows[] = ['Услуги подбора', Money::rub($ours), $dd.($ours < 0 ? ' text-danger' : ''), true];
         }
         $rest = $compact ? array_filter($rows, fn ($r) => ! $r[3]) : [];
         $shown = $compact ? array_filter($rows, fn ($r) => $r[3]) : $rows;
@@ -156,7 +156,6 @@
         // Справа в шапке блока — сколько платят нашему юрлицу: счёт или сумма договора (`DealContract::priceFor`); цена продажи —
         // своей строкой над блоками (18.11.2026, «квитанцией»).
         $carSum = $sale ? (float) $sale->total : ($contract?->price ?? ($deal->forGarageBuyer() ? null : \App\Offers\DealContract::priceFor($deal)));
-        $carWord = $carBlock ? \App\Billing\PayWord::of($sale, $deal) : null;
         // Плательщик строкой — только когда это не покупатель по договору (иначе одно имя дважды); покупателя ещё нет — только
         // выбранный руками (по умолчанию платит сам менеджер, это не новость).
         $buyerParty = $deal->contract?->buyer?->party_id;
@@ -226,16 +225,17 @@
         };
     @endphp
     @if ($topPrice || $supplierSum || $shown || $rewardRow || ($feeBilled && $selection))
-        <div class="list-cap !px-0 flex justify-between gap-3">
-            <span>Итог</span>
-            @if ($schemeWord && $schemeEdit)<button type="button" class="text-right text-accent-text" data-controller="emit" data-action="emit#send" data-emit-event-param="scheme-{{ $deal->id }}:open">{{ $schemeWord }} ›</button>@elseif ($schemeWord)<span class="text-right text-ink-muted">{{ $schemeWord }}</span>@endif
-        </div>
+        {{-- Без своей подписи (22.11.2026, владелец: «шрифты скачут» — «Продажа» и «Итог» стояли двумя подписями подряд): список
+             сразу под заголовком; числа одного вида — 15 обычным, полужирным только цена продажи. --}}
         <div class="list mb-3">
+            @if ($schemeWord)
+                @if ($schemeEdit)<x-deal.sale-row label="Покупатель платит" :value="$schemeWord" data-controller="emit" data-action="emit#send" data-emit-event-param="scheme-{{ $deal->id }}:open"/>@else<div class="row sale-row"><span class="sale-row-label">Покупатель платит</span><span class="sale-row-value">{{ $schemeWord }}</span><x-ui.chevron-space/></div>@endif
+            @endif
             @if ($topPrice)
                 @php $priceTag = $editMoney ? 'button' : 'div'; @endphp
                 <{{ $priceTag }} @if ($editMoney) type="button" data-controller="emit" data-action="emit#send" data-emit-event-param="deal-money-{{ $deal->id }}:open" @endif class="row sale-row">
-                    <span class="sale-row-label !text-ink">Цена продажи</span>
-                    @if ($deal->amount !== null)<span class="sale-row-value nums text-lg font-semibold">{{ Money::rub($deal->amount) }}</span>@else<span class="sale-row-value text-danger">не указана</span>@endif
+                    <span class="sale-row-label">Цена продажи</span>
+                    @if ($deal->amount !== null)<span class="sale-row-value nums font-semibold">{{ Money::rub($deal->amount) }}</span>@else<span class="sale-row-value text-danger">не указана</span>@endif
                     @if ($editMoney)<x-ui.chevron/>@else<x-ui.chevron-space/>@endif
                 </{{ $priceTag }}>
             @endif
@@ -251,7 +251,7 @@
                 @php $rewardTag = $editMoney ? 'button' : 'div'; @endphp
                 <{{ $rewardTag }} @if ($editMoney) type="button" data-controller="emit" data-action="emit#send" data-emit-event-param="deal-money-{{ $deal->id }}:open" @endif class="row sale-row">
                     <span class="sale-row-label">Вознаграждение менеджера</span>
-                    @if ($deal->commission !== null)<span class="sale-row-value nums font-semibold text-accent-text">{{ Money::rub((int) $deal->commission) }}</span>@elseif ($editMoney)<span class="sale-row-value text-accent-text">Назначить</span>@else<span class="sale-row-value text-ink-muted">назначим</span>@endif
+                    @if ($deal->commission !== null)<span class="sale-row-value nums text-accent-text">{{ Money::rub((int) $deal->commission) }}</span>@elseif ($editMoney)<span class="sale-row-value text-accent-text">Назначить</span>@else<span class="sale-row-value text-ink-muted">назначим</span>@endif
                     @if ($editMoney)<x-ui.chevron/>@else<x-ui.chevron-space/>@endif
                 </{{ $rewardTag }}>
             @endif
@@ -261,7 +261,7 @@
                 <div class="row sale-row"><span class="sale-row-label">{{ $r[0] }}@foreach ($r[4] ?? [] as [$subText, $subTone])<span class="block text-sm {{ $subTone }}">{{ $subText }}</span>@endforeach</span><span class="sale-row-value {{ $r[2] }}">{{ $r[1] }}</span><x-ui.chevron-space/></div>
             @endforeach
             @if ($feeBilled && $selection)
-                <div class="row sale-row"><span class="sale-row-label">Услуги подбора</span><span class="sale-row-value nums text-lg font-semibold">{{ Money::rub((float) $selection->total) }}</span><x-ui.chevron-space/></div>
+                <div class="row sale-row"><span class="sale-row-label">Услуги подбора</span><span class="sale-row-value nums">{{ Money::rub((float) $selection->total) }}</span><x-ui.chevron-space/></div>
             @endif
         </div>
     @endif
@@ -287,9 +287,9 @@
             <div class="list mb-3 last:mb-0">{!! $dealGroup !!}</div>
         @endif
     @elseif ($carBlock)
-        {{-- Кому платят за ТС — подписью группы со словом о деньгах; сколько по счёту и договору (цена минус вознаграждение) и НДС —
-             первой строкой группы счёта, нажатием — «Цена и вознаграждение» (22.11.2026). --}}
-        <x-deal.doc-cap :label="($sale?->seller ?? $deal->seller())->config()['name']" :state="$carWord[0] ?? null" :tone="str_contains($carWord[1] ?? '', 'open') ? 'ok' : (str_contains($carWord[1] ?? '', 'danger') ? 'bad' : (str_contains($carWord[1] ?? '', 'urgent') ? 'due' : 'muted'))"/>
+        {{-- Кому платят за ТС — в «Итоге» («Покупатель платит — через ПРАЙМ»), что с деньгами — в подписи «Счёт»: своей подписи у блока
+             нет (22.11.2026: две подписи подряд над «Покупателем», сумма повторяла «Счёт»). Сколько по счёту и договору — первой строкой
+             группы «Счёт». --}}
         {{-- Счёт есть — поступления покупателя сказаны словом шапки, строками — чужие плательщики; счёта нет — строкой «Пришло по
              выписке» ниже. --}}
         @if ($sale)<x-deal.arrivals :deal="$deal" :except="$buyerNames"/>@endif
