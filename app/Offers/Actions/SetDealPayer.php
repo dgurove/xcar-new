@@ -71,7 +71,7 @@ final class SetDealPayer
      */
     public static function editable(Deal $deal, ?User $user): bool
     {
-        return $deal->buyer_id && $deal->isActive() && ! $deal->isAuction() && (bool) $user?->canEditDeals() && ! self::locked($deal)
+        return $deal->buyer_id && $deal->moneyOpen() && ! $deal->isAuction() && (bool) $user?->canEditDeals() && ! self::locked($deal)
             && ($deal->schemeOf()->paysCar() || self::invoices($deal)->contains(fn (Invoice $i) => ! $i->isOwed()));
     }
 

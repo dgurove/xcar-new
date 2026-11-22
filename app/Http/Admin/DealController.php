@@ -316,6 +316,8 @@ class DealController
     /** Деньги сделки — пока по ней нет счёта или есть только неоплаченный подбор по ДКП (`Deal::moneyEditable`). */
     public function money(Request $request, Deal $deal, UpdateDealMoney $update)
     {
+        // Отменённая и параллельная — нет (22.11.2026, `Deal::moneyOpen`); закрытая — да, пока не платили (`UpdateDealMoney`).
+        abort_unless($deal->moneyOpen(), 404);
         // Услуги подбора из ползунка вознаграждения (16.11.2026): минус — вознаграждение больше разницы, это ошибка; ноль — подбора нет
         // (19.11.2026, владелец: «за услуги подбора берём 0 ₽ в этот раз»), пусто — не вписаны.
         $request->merge(['share' => blank($request->input('share')) ? null : Money::signed($request->input('share')),
@@ -366,7 +368,8 @@ class DealController
     /** «Схема» строкой в окошке и в сделке (03.11.2026): сменить — деньги, счета и шаг реквизитов встают по новой. */
     public function scheme(Request $request, Deal $deal, ChangeDealScheme $change)
     {
-        abort_unless($deal->isActive(), 404);
+        // И у закрытой (22.11.2026, `Deal::moneyOpen`): деньги правятся, пока по счетам не платили (`ChangeDealScheme` проверит сам).
+        abort_unless($deal->moneyOpen() && ($deal->isActive() || $deal->moneyEditable()), 404);
         $scheme = DealScheme::from($request->validate(['scheme' => ['required', Rule::enum(DealScheme::class)]])['scheme']);
         $change($deal, $scheme, $request->user(), $request->boolean('scheme_ok'));
 

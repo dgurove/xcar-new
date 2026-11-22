@@ -25,7 +25,7 @@ class DealContractController
     /** Плательщик сделки — один на счёт и ссылку (`SetDealPayer`, строка «Плательщик» в «Продаже», 16.11.2026). */
     public function payer(Request $request, Deal $deal, \App\Offers\Actions\SetDealPayer $set)
     {
-        abort_unless($request->user()->canEditDeals() && $deal->buyer_id && $deal->isActive(), 404);
+        abort_unless($request->user()->canEditDeals() && $deal->buyer_id && $deal->moneyOpen(), 404);
         $party = $set($deal, $request->user(), $request->validate(\App\Offers\Actions\SetDealPayer::rules(), \App\Offers\Actions\SetDealPayer::messages()));
 
         return back()->with('toast', 'Платит '.$party->name);
@@ -34,7 +34,7 @@ class DealContractController
     /** Кому платят услуги подбора — ПРАЙМ или Р.О.С. (`SetFeeSeller`, строка «Плательщик платит» в «Продаже», 16.11.2026). */
     public function feeSeller(Request $request, Deal $deal, \App\Offers\Actions\SetFeeSeller $set)
     {
-        abort_unless($request->user()->canEditDeals() && $deal->isActive(), 404);
+        abort_unless($request->user()->canEditDeals() && $deal->moneyOpen(), 404);
         $value = $request->validate(['fee_seller' => ['required', 'in:prime,ros']])['fee_seller'];
         $seller = \App\Billing\Seller::from($value);
         $set($deal, $request->user(), $seller);
