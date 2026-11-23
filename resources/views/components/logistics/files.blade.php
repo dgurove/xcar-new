@@ -99,7 +99,7 @@
                         </span>
                     @endif
                     <x-slot:under>
-                        @if ($who)<span @class(['paper-access', 'is-open' => $open])>@if ($open){{ mb_strtolower($eye) }}@else<x-ui.icon name="eye-off" class="inline size-3.5 align-[-2px]"/> скрыто @endif</span>@endif
+                        @if ($who)<span @class(['paper-access', 'is-open' => $open])>@if ($open){{ mb_strtolower($eye) }}@else<span class="inline-flex items-center gap-1"><x-ui.icon name="eye-off" class="size-3.5 shrink-0"/>скрыто</span> @endif</span>@endif
                     </x-slot:under>
                 </x-ui.file>
             @endforeach
