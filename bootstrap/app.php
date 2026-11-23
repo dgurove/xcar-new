@@ -46,6 +46,7 @@ use App\Mail\Console\BackfillMail;
 use App\Mail\Console\PriceMisses;
 use App\Mail\Console\PurgeSentCommand;
 use App\Mail\Console\ReadMail;
+use App\Mail\Console\ReadSettledCommand;
 use App\Mail\Console\RebuildChains;
 use App\Mail\Console\ReconcileMail;
 use App\Mail\Console\SyncMail;
@@ -170,6 +171,7 @@ return Application::configure(basePath: dirname(__DIR__))
         WatchMail::class,
         ReconcileMail::class,
         ReadMail::class,
+        ReadSettledCommand::class,
         PriceMisses::class,
         PurgeSentCommand::class,
         RebuildChains::class,

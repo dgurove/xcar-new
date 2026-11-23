@@ -61,6 +61,8 @@ use App\Offers\OfferState;
 use App\Offers\Share\Jobs\PrepareSharePdf;
 use App\Park\Actions\SendPickupLink;
 use App\Park\Events\VehicleAccepted;
+use App\Park\Events\VehicleCancelled;
+use App\Park\Events\VehicleReleased;
 use App\Park\Events\VehicleSold;
 use App\Park\Listeners\ReleaseSold;
 use App\Park\Listeners\ReportDelivery;
@@ -171,6 +173,9 @@ class AppServiceProvider extends ServiceProvider
         Event::listen(TransportMoved::class, StartPrepOnArrival::class);
         Event::listen(VehicleSold::class, SendPickupLink::class);
         Event::listen(VehicleAccepted::class, ReleaseSold::class);
+        // ТС приняли — заявки на приём прочитаны; выдали или отменили — все письма до этого (`ReadSettled`).
+        Event::listen(VehicleAccepted::class, fn (VehicleAccepted $e) => app(\App\Mail\Actions\ReadSettled::class)->vehicle($e->vehicle, intake: true));
+        Event::listen([VehicleReleased::class, VehicleCancelled::class], fn (VehicleReleased|VehicleCancelled $e) => app(\App\Mail\Actions\ReadSettled::class)->vehicle($e->vehicle));
         Event::listen(PaymentRecorded::class, AdvanceOnPayment::class);
         Event::listen(PaymentRecorded::class, CloseWhenPaid::class);
         Event::listen([PaymentRecorded::class, PaymentVoided::class], StampPaidIn::class);

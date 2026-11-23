@@ -6,6 +6,7 @@ use App\Garage\Actions\CloseGarageDeal;
 use App\Garage\Car as GarageCar;
 use App\Logistics\Actions\Cancel;
 use App\Logistics\Transport;
+use App\Mail\Actions\ReadSettled;
 use App\Offers\AudienceRules;
 use App\Offers\BidState;
 use App\Offers\Binding;
@@ -192,6 +193,8 @@ final class ChangeOfferState
             }
 
             OfferStateChanged::dispatch($offer, $by);
+            // Ушла дальше продажи — письма её веток до этого момента прочитаны (`ReadSettled`).
+            app(ReadSettled::class)->afterState($offer, $from, $next);
             if ($next === OfferState::Open && $publish) {
                 OfferPublished::dispatch($offer, $by, $at !== null || $batch);
             }

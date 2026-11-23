@@ -16,7 +16,7 @@ use Illuminate\Support\Str;
  * daemon — придумать, что с ними делать»): рассылки и вход в аккаунт почты (`Intent::Auto`), отказ сервера на письмо,
  * которого в ящике нет — уведомление системы человеку (13.10.2026 Яндекс отбил «XCAR: ответ на …» как спам). Отказ на
  * наше письмо поставщику — как раньше: шаг сделки краснеет (`MarkSupplierLetter`), ветка ждёт ответа. Что нужно знать
- * владельцу — недоставка и «Подтвердите пересылку» с кодом — ему в Telegram.
+ * владельцу — недоставка и «Подтвердите пересылку» с кодом — ему в Telegram. Ящик парковки — только рассылки в архив.
  */
 final class SettleServiceLetter
 {
@@ -25,8 +25,17 @@ final class SettleServiceLetter
     public function __invoke(Message $message): void
     {
         $thread = $message->thread;
-        if (! $thread || $message->direction !== Direction::In || $message->account?->scope !== Scope::Offers
+        if (! $thread || $message->direction !== Direction::In || ! $message->account
             || $thread->offer_id || $thread->vehicle_id || $thread->candidate_id || ! Intent::silent($message->intent)) {
+            return;
+        }
+        // Парковка (storage@, 23.11.2026: дайджесты VK WorkSpace, реклама висели непрочитанными) — рассылка сразу в архив,
+        // отказ сервера остаётся в почте: владельцу о нём пишут только письма предложений.
+        if ($message->account->scope !== Scope::Offers) {
+            if ($message->intent === Intent::Auto->value) {
+                ($this->archive)($thread);
+            }
+
             return;
         }
         $text = $message->text_body ?: strip_tags((string) $message->html_body);
