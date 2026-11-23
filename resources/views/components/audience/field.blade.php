@@ -6,8 +6,9 @@
      с form у строки-сводки «Сохранить» отправляет её сразу, без — «Готово». deal — публикация машины в сделке. Слот end — поле
      конца приёма (публикации) концом ленты волн; base — когда был выход (открытое, идущая публикация): у волн тогда даты.
      Своих правил нет и действуют «всем сразу» — лента начинается вопросом «Кому?» без выбранного (blank, 16.11.2026); fresh=false —
-     показ уже идёт (открытое, идущая публикация): там видно, что действует. --}}
-@props(['name' => 'audience_rules', 'value' => '', 'rules' => null, 'form' => null, 'inline' => false, 'deal' => false, 'sheet' => null, 'label' => 'Кому показывать', 'base' => null, 'fresh' => true])
+     показ уже идёт (открытое, идущая публикация): там видно, что действует. exclusive — эксклюзив за оценку первой волной ленты
+     (`Exclusive::wave`, 23.11.2026): «Сразу», кто, «за оценку, 5 дней», × снимает его («Вы уверены?») — скрытое `exclusive_off`. --}}
+@props(['name' => 'audience_rules', 'value' => '', 'rules' => null, 'form' => null, 'inline' => false, 'deal' => false, 'sheet' => null, 'label' => 'Кому показывать', 'base' => null, 'fresh' => true, 'exclusive' => null])
 @php
     use App\Offers\AudienceRules;
     $rules = AudienceRules::normalize($rules ?: AudienceRules::everyone());
@@ -17,9 +18,11 @@
 <div {{ $attributes->class([$inline ? 'audience-field' : 'field']) }} data-controller="audience{{ $inline ? '' : ' sheet' }}" data-audience-options-value="{{ json_encode($options) }}"
     data-audience-effective-value="{{ json_encode($rules) }}" data-audience-deal-value="{{ $deal ? 'true' : 'false' }}"
     @if ($base) data-audience-base-value="{{ $base->toIso8601String() }}" @endif
-    @if ($fresh && $value === '' && AudienceRules::isEveryone($rules)) data-audience-blank-value="true" @endif>
+    @if ($fresh && $value === '' && AudienceRules::isEveryone($rules)) data-audience-blank-value="true" @endif
+    @if ($exclusive) data-audience-exclusive-value="{{ json_encode($exclusive, JSON_UNESCAPED_UNICODE) }}" @endif>
     <span class="field-label">{{ $label }}</span>
     <input type="hidden" name="{{ $name }}" value="{{ $value }}" @if ($form) form="{{ $form }}" @endif data-audience-target="rules">
+    @if ($exclusive)<input type="hidden" name="exclusive_off" value="0" @if ($form) form="{{ $form }}" @endif data-audience-target="exclusiveOff">@endif
     @if ($inline)
         <x-audience.editor :deal="$deal" :end="$end ?? null"/>
     @else

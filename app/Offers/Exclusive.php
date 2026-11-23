@@ -97,10 +97,8 @@ final class Exclusive
      */
     public static function rules(array $rules, Collection $estimates, Offer $offer): array
     {
-        $from = $offer->published_at ?? now();
         $users = $estimates->pluck('user_id')->unique()->all();
-        // Ещё не дан (черновик, выход сейчас) — N дней от выхода; идёт — до его конца.
-        $wait = (int) ceil($estimates->map(fn (Estimate $e) => $e->exclusive_until ? $from->diffInMinutes($e->exclusive_until) : $e->exclusive_days * AudienceRules::DAY)->max());
+        $wait = self::wait($estimates, $offer);
         $out = array_map(fn ($id) => ['type' => 'user', 'id' => (int) $id, 'delay' => 0], $users);
         foreach (AudienceRules::normalize($rules) as $r) {
             if ($r['type'] === 'user' && in_array($r['id'], $users, true)) {
@@ -110,6 +108,45 @@ final class Exclusive
         }
 
         return AudienceRules::normalize($out);
+    }
+
+    /** Сколько минут от выхода идёт эксклюзив: ещё не дан (черновик, выход сейчас) — N дней; идёт — до его конца. */
+    public static function wait(Collection $estimates, Offer $offer): int
+    {
+        $from = $offer->published_at ?? now();
+
+        return (int) ceil($estimates->map(fn (Estimate $e) => $e->exclusive_until ? $from->diffInMinutes($e->exclusive_until) : $e->exclusive_days * AudienceRules::DAY)->max());
+    }
+
+    /**
+     * Эксклюзив первой волной ленты «Кому показывать» (`x-audience.field exclusive`, 23.11.2026, владелец: «изначально частью
+     * волн, чтобы эту волну можно было исключить»): кто, сколько минут, подпись волны, текст «Вы уверены?»; у идущего — до когда.
+     *
+     * @param  Collection<int, Estimate>  $estimates
+     */
+    public static function wave(Collection $estimates, Offer $offer): array
+    {
+        // Хоть один уже идёт (сняли с продажи посреди эксклюзива и вернули) — подпись его концом, как и считается `wait`.
+        $running = $estimates->contains(fn (Estimate $e) => $e->exclusive_until && $e->exclusive_until->isFuture());
+        $users = $estimates->pluck('user')->filter()->unique('id');
+
+        return [
+            'keys' => $users->map(fn ($u) => 'user:'.$u->id)->values()->all(),
+            'names' => $users->mapWithKeys(fn ($u) => ['user:'.$u->id => $u->name])->all(),
+            'wait' => self::wait($estimates, $offer),
+            'label' => 'за оценку, '.($running ? 'до '.\App\Support\Ago::day($estimates->filter(fn (Estimate $e) => $e->exclusive_until)->max('exclusive_until'), true) : Estimate::daysWord((int) $estimates->max('exclusive_days'))),
+            'warning' => self::warning($estimates),
+            // Идущий у открытого вмешан в его правила (`rules`): снят, а волны не трогали — встают как у вендора (`UpdateOffer`).
+            'fallback' => $running ? AudienceRules::normalize($offer->vendor?->audience_rules ?: AudienceRules::everyone()) : null,
+        ];
+    }
+
+    /** Правила без строк оценщиков (у открытого они вмешаны `rules`) — для ленты, где эксклюзив своей волной. */
+    public static function strip(array $rules, Collection $estimates): array
+    {
+        $users = $estimates->pluck('user_id')->unique()->map(fn ($id) => (int) $id)->all();
+
+        return array_values(array_filter($rules, fn ($r) => ! (($r['type'] ?? null) === 'user' && in_array((int) ($r['id'] ?? 0), $users, true))));
     }
 
     /** «Роман Корабельников — 5 дней только ему за оценку». */

@@ -27,18 +27,24 @@
         @endphp
         {{-- Эксклюзив за оценку идёт (`Exclusive`, 20.11.2026: Андрей ставил «Всем», а оставался только Роман) — виден здесь и
              снимается переключателем со «Вы уверены?»; тогда волны ниже встают как выбрали (`UpdateOffer`, `exclusive_off`). --}}
-        @php $running = $offer->state === OfferState::Open ? \App\Offers\Exclusive::running($offer) : collect(); @endphp
-        @if ($running->isNotEmpty())
-            <div class="col-span-2" data-controller="exclusive" data-exclusive-text-value="{{ \App\Offers\Exclusive::warning($running) }}">
-                <input type="hidden" name="exclusive_off" value="0" form="{{ $form }}" data-exclusive-target="off">
-                <label class="check">
-                    <input type="checkbox" switch checked data-exclusive-target="toggle" data-action="exclusive#change">
-                    <span>Только {{ \App\Offers\Exclusive::who($running) }} до {{ \App\Support\Ago::day($running->min('exclusive_until'), true) }}, за оценку</span>
-                </label>
-            </div>
-        @endif
+        {{-- Эксклюзив за оценку — первой волной ленты (23.11.2026, владелец: «изначально частью волн, чтобы эту волну можно было
+             исключить»): у открытого — идущий (`Exclusive::running`, в правилах он уже вмешан — лента получает их без оценщиков), у
+             черновика и слота — положенный (`Exclusive::due`, встанет при выходе). × у волны — «Вы уверены?», `exclusive_off`. --}}
+        @php
+            $running = $offer->state === OfferState::Open ? \App\Offers\Exclusive::running($offer) : collect();
+            $owed = $running->isEmpty() && in_array($offer->state, [OfferState::Draft, OfferState::Gallery], true) ? \App\Offers\Exclusive::due($offer) : collect();
+            $excl = $running->isNotEmpty() ? $running : $owed;
+            $exclusive = $excl->isNotEmpty() ? \App\Offers\Exclusive::wave($excl, $offer) : null;
+            $own = $offer->audience_rules;
+            $effective = AudienceRules::of($offer);
+            if ($running->isNotEmpty()) {
+                $own = $own ? \App\Offers\Exclusive::strip($own, $running) : $own;
+                $effective = \App\Offers\Exclusive::strip($effective, $running);
+            }
+            $ownValue = $own ? json_encode($own) : '';
+        @endphp
         @if ($as === 'sheet')
-            <x-audience.field :value="$offer->audience_rules ? json_encode($offer->audience_rules) : ''" :rules="AudienceRules::of($offer)" :form="$form"
+            <x-audience.field :value="$ownValue" :rules="$effective" :form="$form" :exclusive="$exclusive"
                 inline :base="$base" :fresh="$offer->state !== OfferState::Open" :sheet="'audience-'.$n.'-'.$as" class="col-span-2">
                 <x-slot:end>
                     <x-offer.close-field :offer="$offer" :id="'f-bids_close_at-'.$n.'-'.$as" :value="$offer->bids_close_at?->format('Y-m-d\TH:i') ?? ''" :required="false" :form="$form" label="Конец приёма"/>
@@ -46,7 +52,7 @@
             </x-audience.field>
         @else
             <x-offer.close-field :offer="$offer" :id="'f-bids_close_at-'.$n.'-'.$as" :value="$offer->bids_close_at?->format('Y-m-d\TH:i') ?? ''" :required="false" :form="$form" span="col-span-2"/>
-            <x-audience.field :value="$offer->audience_rules ? json_encode($offer->audience_rules) : ''" :rules="AudienceRules::of($offer)" :form="$form"
+            <x-audience.field :value="$ownValue" :rules="$effective" :form="$form" :exclusive="$exclusive"
                 :fresh="$offer->state !== OfferState::Open" :sheet="'audience-'.$n.'-'.$as" class="col-span-2"/>
         @endif
         @if (($summary ?? collect())->isNotEmpty())

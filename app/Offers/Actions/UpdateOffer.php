@@ -122,6 +122,11 @@ final class UpdateOffer
         // шторке (20.11.2026, Андрей трижды ставил «Всем» по 2611164131, а оставался только Роман): тогда волны — как выбрали,
         // не трогали — как у вендора (то же, что «Открыть всем сейчас…»).
         $waived = false;
+        // Черновик с положенным за оценку (`Exclusive::due`, 23.11.2026): сняли переключателем шторки — не встанет при выходе.
+        if ($waive && $by && in_array($offer->state, [OfferState::Draft, OfferState::Gallery], true) && Exclusive::due($offer)->isNotEmpty()) {
+            // Зрителей у черновика нет — пересчёт и уведомления не нужны (`$waived` — только у открытого).
+            Exclusive::waive($offer, $by);
+        }
         if ($offer->state === OfferState::Open && ($running = Exclusive::running($offer))->isNotEmpty()) {
             if ($waive && $by) {
                 Exclusive::waive($offer, $by);
@@ -132,7 +137,11 @@ final class UpdateOffer
                     $offer->audience_rules = null;
                 }
             } elseif ($offer->isDirty('audience_rules')) {
-                $offer->audience_rules = Exclusive::rules(AudienceRules::of($offer), $running, $offer);
+                // Лента получает правила без строк оценщика (`Exclusive::strip`, волна эксклюзива своя) и шлёт их обратно и
+                // нетронутыми: те же — правила не трогаем, иначе — вмешиваем эксклюзив заново.
+                $was = (array) ($offer->getOriginal('audience_rules') ?? []);
+                $same = AudienceRules::normalize((array) ($offer->audience_rules ?? [])) === AudienceRules::normalize(Exclusive::strip($was, $running));
+                $offer->audience_rules = $same ? $offer->getOriginal('audience_rules') : Exclusive::rules(AudienceRules::of($offer), $running, $offer);
             }
         }
         // Правка пишет и предложение, и его машину (`Cars\Car`): история и «что поменялось» — по обеим.

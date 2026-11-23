@@ -1,4 +1,5 @@
 import { Controller } from '@hotwired/stimulus';
+import { confirmSheet } from '../confirm';
 
 // «Кому показывать» лентой волн (`x-audience.editor`, 15.11.2026, владелец: «невозможно одному менеджеру 5 дней, потом
 // остальным», «сначала выбранным 5 дней, потом всем, кроме — 3 дня, потом всем до такого-то числа»). Волна — срок от
@@ -10,9 +11,27 @@ import { Controller } from '@hotwired/stimulus';
 // волны — только вид. `decode` — строки в волны при открытии, `encode` — обратно при каждой правке; итог — JSON в
 // скрытом поле и change с него (save_bar показывает «Сохранить изменения»); не трогали — поле как было (пустое — «как у
 // вендора»). Сводка — те же слова, что AudienceRules::summary. deal — публикация машины в сделке: супер-покупателей нет.
+//
+// Эксклюзив за оценку (`exclusive`, 23.11.2026, владелец: «изначально частью волн, чтобы эту волну можно было исключить») — первой
+// волной: «Сразу», кто, «за оценку, 5 дней»; кому в ней не меняется, × убирает её после «Вы уверены?» (скрытое `exclusive_off`).
+// Своих волн он не трогает: хранятся как есть, а показываются не раньше его конца (`max(срок, wait)`), как и встанут при выходе
+// (`Exclusive::rules`); правка срока своей волны при эксклюзиве фиксирует показанные сроки.
 export default class extends Controller {
-    static targets = ['rules', 'summary', 'body', 'pick', 'search', 'option', 'icons', 'pickTitle', 'end'];
-    static values = { options: Object, effective: Array, deal: Boolean, base: String, blank: Boolean };
+    static targets = ['rules', 'summary', 'body', 'pick', 'search', 'option', 'icons', 'pickTitle', 'end', 'exclusiveOff'];
+    static values = { options: Object, effective: Array, deal: Boolean, base: String, blank: Boolean, exclusive: Object };
+
+    // Эксклюзив за оценку ещё стоит (не убран × до сохранения).
+    get excl() {
+        const e = this.exclusiveValue;
+        if (!e || !e.keys?.length) return null;
+        if (this.hasExclusiveOffTarget && this.exclusiveOffTarget.value === '1') return null;
+        return e;
+    }
+
+    // Срок волны, как её увидят: при эксклюзиве — не раньше его конца.
+    shown(w) {
+        return this.excl ? Math.max(w.delay, this.excl.wait) : w.delay;
+    }
 
     connect() {
         this.reset();
@@ -218,6 +237,14 @@ export default class extends Controller {
 
     // Время волны: у первой — от выхода, у остальных — от предыдущей; сдвиг двигает и все следующие.
     setDelay(i, value) {
+        // При эксклюзиве срок — от показанного (не раньше его конца): переписываем только эту волну и следующие, прежние
+        // остаются как хранились — сняли эксклюзив, и они снова «Сразу», а не «Через 5 дней».
+        if (this.excl) {
+            const shift = (i ? this.shown(this.waves[i - 1]) : 0) + value - this.shown(this.waves[i]);
+            for (const w of this.waves.slice(i)) w.delay = this.shown(w) + shift;
+            this.commit();
+            return;
+        }
         const shift = value - (this.waves[i].delay - (i ? this.waves[i - 1].delay : 0));
         for (const w of this.waves.slice(i)) w.delay += shift;
         this.commit();
@@ -334,6 +361,7 @@ export default class extends Controller {
         const pick = this.pickTarget;
         this.bodyTarget.parentElement.append(pick);
         const parts = this.waves.map((w, i) => this.wave(w, i));
+        if (this.excl) parts.unshift(this.exclusiveWave());
         if (this.waves.every((w) => w.kind) && !this.picking) {
             const item = el('div', 'wave wave-add');
             const b = el('button', 'wave-add-btn');
@@ -370,7 +398,7 @@ export default class extends Controller {
             date.textContent = at.text;
             head.append(date);
         }
-        if (this.waves.length > 1) {
+        if (this.waves.length > 1 || (this.excl && w.kind)) {
             const x = el('button', 'wave-x');
             x.type = 'button';
             x.setAttribute('aria-label', 'Убрать волну');
@@ -395,6 +423,51 @@ export default class extends Controller {
         if (w.kind === 'all' && w.except.length) item.append(...this.people(i, 'except', w.except));
         if (this.picking && this.picking.wave === i) item.append(this.pickTarget);
         return item;
+    }
+
+    // Волна эксклюзива за оценку: «Сразу», метка «за оценку, 5 дней», люди без ×; × у волны — снять после «Вы уверены?».
+    exclusiveWave() {
+        const e = this.excl;
+        const item = el('div', 'wave wave-excl');
+        item.append(el('span', 'wave-dot'));
+        const head = el('div', 'wave-head');
+        const now = el('span', 'wave-now');
+        now.textContent = 'Сразу';
+        const tag = el('span', 'wave-date');
+        tag.textContent = e.label;
+        const x = el('button', 'wave-x');
+        x.type = 'button';
+        x.setAttribute('aria-label', 'Убрать волну эксклюзива');
+        x.append(this.icon('x'));
+        x.addEventListener('click', () => this.dropExclusive());
+        head.append(now, tag, x);
+        item.append(head);
+        for (const k of e.keys) {
+            const row = el('div', 'wave-person');
+            const name = el('span', 'wave-person-name');
+            const title = el('span', 'block truncate');
+            title.textContent = this.name(k) ?? e.names?.[k] ?? '—';
+            name.append(title);
+            row.append(this.face(k), name);
+            item.append(row);
+        }
+        return item;
+    }
+
+    async dropExclusive() {
+        const ok = await confirmSheet('Вы уверены?', { text: this.exclusiveValue.warning, label: 'Да, снять', danger: true });
+        if (!ok || !this.hasExclusiveOffTarget) return;
+        this.exclusiveOffTarget.value = '1';
+        this.exclusiveOffTarget.dispatchEvent(new Event('change', { bubbles: true }));
+        this.picking = null;
+        // У открытого эксклюзив вмешан в правила: волны не трогали — как у вендора (поле пустое, `UpdateOffer` так и запишет).
+        const fallback = this.exclusiveValue.fallback;
+        if (fallback && !this.edited) {
+            this.waves = this.decode(this.clean(fallback));
+            this.rulesTarget.value = '';
+            this.rulesTarget.dispatchEvent(new Event('change', { bubbles: true }));
+        }
+        this.render();
     }
 
     // «Кому?» новой волны — три кнопки.
@@ -429,16 +502,17 @@ export default class extends Controller {
     // Пилюля срока — системный выбор: у первой «Сразу» и «Через N» от выхода, у следующих — от предыдущей
     // («Через 5 дней», «Ещё через 3 дня»).
     when(w, i) {
-        const span = w.delay - (i ? this.waves[i - 1].delay : 0);
-        if (i === 0 && span === 0) {
+        const span = this.shown(w) - (i ? this.shown(this.waves[i - 1]) : 0);
+        if (i === 0 && span === 0 && !this.excl) {
             const t = el('span', 'wave-now');
             t.textContent = 'Сразу';
             return t;
         }
-        const prefix = i > 0 && this.waves[i - 1].delay > 0 ? 'Ещё через ' : 'Через ';
+        const prefix = i > 0 && this.shown(this.waves[i - 1]) > 0 ? 'Ещё через ' : 'Через ';
         const sel = el('select', 'wave-when');
         sel.setAttribute('aria-label', 'Когда волна');
-        const steps = [...(i === 0 ? [0] : []), ...STEPS];
+        // Первая своя при эксклюзиве — не раньше его конца.
+        const steps = i === 0 && this.excl ? [this.excl.wait, ...STEPS.filter((m) => m > this.excl.wait)] : [...(i === 0 ? [0] : []), ...STEPS];
         if (!steps.includes(span)) steps.push(span);
         steps.sort((a, b) => a - b);
         for (const m of steps) sel.append(new Option(m === 0 ? 'Сразу' : prefix + span_words(m), m, false, m === span));
@@ -451,7 +525,7 @@ export default class extends Controller {
         const end = this.endAt();
         const base = this.baseValue ? new Date(this.baseValue) : null;
         if (!base && !end) return null;
-        const start = new Date((base ?? new Date()).getTime() + w.delay * 60000);
+        const start = new Date((base ?? new Date()).getTime() + this.shown(w) * 60000);
         return { text: base && w.delay ? dateText(start) : null, late: !!end && start >= end };
     }
 
@@ -530,12 +604,19 @@ export default class extends Controller {
         const [type, id] = k.split(':');
         if (type === 'super') return this.optionsValue.super || 'Супер-покупатели';
         const list = type === 'group' ? this.optionsValue.groups : this.optionsValue.managers;
-        return (list || []).find((x) => x.id === Number(id))?.name ?? this.optionsValue.names?.[k] ?? null;
+        return (list || []).find((x) => x.id === Number(id))?.name ?? this.optionsValue.names?.[k] ?? this.exclusiveValue?.names?.[k] ?? null;
     }
 
     // Те же слова, что AudienceRules::summary: по времени, «остальные» на своём месте, «кроме» — кто не видит никогда.
     summary() {
-        const rows = this.encode();
+        let rows = this.encode();
+        // Эксклюзив стоит — как встанет при выходе (`Exclusive::rules`): оценщики сразу, остальные не раньше его конца.
+        if (this.excl) {
+            const keys = new Set(this.excl.keys);
+            const cap = (d) => (d === null ? null : Math.max(d, this.excl.wait));
+            rows = [...this.excl.keys.map((k) => ({ type: k.split(':')[0], id: Number(k.split(':')[1]), delay: 0 })),
+                ...rows.filter((r) => r.type === 'rest' || !keys.has(key(r))).map((r) => ({ ...r, delay: cap(r.delay) }))];
+        }
         const rest = rows[rows.length - 1];
         const own = rows.slice(0, -1).filter((r) => this.name(key(r)) !== null);
         const shown = own.filter((r) => r.delay !== null);
