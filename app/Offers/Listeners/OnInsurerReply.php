@@ -2,6 +2,7 @@
 
 namespace App\Offers\Listeners;
 
+use App\Mail\Actions\ReadSettled;
 use App\Mail\Composer;
 use App\Mail\Direction;
 use App\Mail\Message;
@@ -102,9 +103,9 @@ final class OnInsurerReply
             return false;
         }
         try {
-            app(TakeExit::class)($offer, $exit, Actor::Staff, Robot::user(),
-                ['label' => $exit->label.' — по письму поставщика '.($message->date_at ?? now())->format('d.m')]);
-            ReplyReview::where('message_id', $message->id)->where('state', ReplyReview::PENDING)->update(['state' => ReplyReview::DONE, 'done_at' => now()]);
+            app(ReadSettled::class)->byLetter($message, fn () => app(TakeExit::class)($offer, $exit, Actor::Staff, Robot::user(),
+                ['label' => $exit->label.' — по письму поставщика '.($message->date_at ?? now())->format('d.m')]));
+            ReplyReview::finish(ReplyReview::where('message_id', $message->id), null);
             Disclose::publish($deal);
 
             return true;
@@ -132,8 +133,8 @@ final class OnInsurerReply
             return;
         }
         try {
-            app(TakeExit::class)($offer, $exit, Actor::Staff, User::withRole(Role::Admin)->orderBy('id')->first(),
-                ['label' => $exit->label.' — по письму поставщика '.($message->date_at ?? now())->format('d.m')]);
+            app(ReadSettled::class)->byLetter($message, fn () => app(TakeExit::class)($offer, $exit, Actor::Staff, User::withRole(Role::Admin)->orderBy('id')->first(),
+                ['label' => $exit->label.' — по письму поставщика '.($message->date_at ?? now())->format('d.m')]));
         } catch (\Throwable $err) {
             \Illuminate\Support\Facades\Log::warning('Оплата по письму поставщика не прошла шаг', ['deal' => $deal->id, 'error' => $err->getMessage()]);
         }

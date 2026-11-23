@@ -15,6 +15,7 @@ final class DismissReprice
             return;
         }
         $reprice->update(['state' => Reprice::DISMISSED, 'decided_by' => $by->id, 'decided_at' => now()]);
+        app(\App\Mail\Actions\ReadSettled::class)->message($reprice->message_id); // решили — письмо прочитано
         $reprice->offer->log(OfferEventType::Reprice, $by, ['reprice' => $reprice->id, 'state' => Reprice::DISMISSED,
             'from' => $reprice->from_price, 'to' => $reprice->to_price]);
     }

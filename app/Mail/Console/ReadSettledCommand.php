@@ -15,7 +15,8 @@ use Illuminate\Support\Facades\DB;
  * Прошлое правила «прочитано по ходу машины» (`ReadSettled`, 23.11.2026): непрочитанные входящие живых веток, с которыми по
  * ходу машины уже работали. Моменты — из базы: переход в нынешнее состояние (`car_events` `state_changed`, иначе начало
  * сделки), заведение черновика человеком из цепочки, приём, выдача и отмена ТС; плюс `ReadEarlier` (позже в ветке есть
- * письмо) и рассылки парковки в архив. Без `--apply` — счёт по причинам и что остаётся непрочитанным.
+ * письмо) и рассылки парковки в архив; по ходу сделки — закрытый «Разобрать ответ», решённая переоценка, шаг сотрудником, машину
+ * забрали, сотрудник написал поставщику после письма. Без `--apply` — счёт по причинам и что остаётся непрочитанным.
  */
 class ReadSettledCommand extends Command
 {
@@ -31,7 +32,19 @@ class ReadSettledCommand extends Command
               o.state ostate, o.number, o.car_id, o.created_at ocreated,
               v.state vstate, (select cc.claim_ref from cars cc where cc.id = v.car_id) vref, v.accepted_at, v.released_at, v.cancelled_at,
               exists(select 1 from mail_messages x where x.thread_id = m.thread_id and x.id <> m.id
-                and (x.date_at > m.date_at or (x.date_at = m.date_at and x.id > m.id))) later
+                and (x.date_at > m.date_at or (x.date_at = m.date_at and x.id > m.id))) later,
+              exists(select 1 from reply_reviews r join mail_messages rm on rm.id = r.message_id where r.state = 'done'
+                and rm.thread_id = m.thread_id and rm.date_at >= m.date_at) reviewed,
+              exists(select 1 from offer_reprices rp where rp.message_id = m.id and rp.state in ('applied', 'dismissed')) repriced,
+              exists(select 1 from car_events e join users u on u.id = e.user_id where e.car_id = o.car_id and e.type = 'stage_entered'
+                and e.created_at > m.date_at and e.payload->>'exit' is not null and e.payload->>'letter' is null
+                and coalesce(e.payload->>'label', '') not like '%по письму поставщика%' and jsonb_exists_any(u.roles, array['admin', 'moderator'])) staff_step,
+              exists(select 1 from car_events e where e.car_id = o.car_id and e.type = 'place_changed' and e.created_at > m.date_at
+                and coalesce(e.payload->>'place', 'owner') <> 'owner'
+                and coalesce((select e0.payload->>'place' from car_events e0 where e0.car_id = e.car_id and e0.type = 'place_changed'
+                  and e0.created_at < e.created_at order by e0.created_at desc limit 1), 'owner') = 'owner') picked,
+              exists(select 1 from mail_messages x join mail_threads tx on tx.id = x.thread_id join users u on u.id = x.created_by
+                where tx.offer_id = o.id and x.direction = 'out' and x.date_at > m.date_at and jsonb_exists_any(u.roles, array['admin', 'moderator'])) ours_after
             from mail_messages m
             join mail_threads t on t.id = m.thread_id
             join mail_accounts a on a.id = m.account_id
@@ -61,6 +74,11 @@ class ReadSettledCommand extends Command
                 $r->candidate_id && $r->oid && isset($byHand[$r->car_id]) && $r->date_at <= $r->ocreated => 'черновик завели из цепочки',
                 $r->vehicle_id && in_array($r->vstate, ['released', 'cancelled'], true) && $r->date_at <= ($r->released_at ?? $r->cancelled_at) => 'ТС '.$r->vstate,
                 $r->vehicle_id && $r->accepted_at && $r->intent === 'intake' && $r->date_at <= $r->accepted_at => 'заявка, ТС принято',
+                (bool) $r->reviewed => '«Разобрать ответ» закрыт',
+                (bool) $r->repriced => 'переоценку решили',
+                (bool) $r->staff_step => 'шаг сдвинул сотрудник',
+                (bool) $r->picked => 'машину забрали',
+                (bool) $r->ours_after => 'сотрудник написал поставщику',
                 default => null,
             };
             if ($reason) {

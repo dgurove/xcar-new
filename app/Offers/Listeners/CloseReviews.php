@@ -53,7 +53,7 @@ final class CloseReviews
 
     private static function close(Offer $offer, $reviews, User $by, string $how): void
     {
-        $done = $reviews->update(['state' => ReplyReview::DONE, 'done_by' => $by->id, 'done_at' => now()]);
+        $done = ReplyReview::finish($reviews, $by);
         $done && $offer->log(OfferEventType::Note, $by, ['text' => ($done > 1 ? 'Письма разобраны ' : 'Письмо разобрано ').$how]);
     }
 }

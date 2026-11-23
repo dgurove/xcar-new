@@ -109,6 +109,7 @@ final class ApplyReprice
 
             $reprice->update(['state' => Reprice::APPLIED, 'to_price' => $price, 'choices' => $choices, 'decided_by' => $by->id, 'decided_at' => now()]);
             $offer->log(OfferEventType::Reprice, $by, ['reprice' => $reprice->id, 'state' => Reprice::APPLIED, 'from' => $from, 'to' => $price, 'people' => $people]);
+            app(\App\Mail\Actions\ReadSettled::class)->message($reprice->message_id); // решили — письмо прочитано
         });
         foreach ($notify as $ask) {
             $ask->user->notify(new RepriceAskNotice($ask->load(['offer', 'deal'])));

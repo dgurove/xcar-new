@@ -2,6 +2,7 @@
 
 namespace App\Offers;
 
+use App\Mail\Actions\ReadSettled;
 use App\Mail\Message;
 use App\Support\FastAttributes;
 use App\Users\User;
@@ -11,6 +12,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\DB;
 
 /**
  * Письмо страховой по идущей сделке ждёт админа (03.11.2026, владелец: «сделка падает в CRM в „Разобрать ответ“»): менеджер о
@@ -54,6 +56,27 @@ class ReplyReview extends Model
     public function scopePending(Builder $q): Builder
     {
         return $q->where('reply_reviews.state', self::PENDING);
+    }
+
+    /**
+     * Закрыть разбор писем — одна дверь (показали менеджеру, «Ничего не показывать», шаг, ответ поставщику, просьба реквизитов
+     * по письму): письма разобраны — значит прочитаны (`ReadSettled::message`, 23.11.2026). @return int сколько закрыто
+     */
+    public static function finish(Builder|Collection $reviews, ?User $by): int
+    {
+        $query = $reviews instanceof Builder ? $reviews->pending() : self::pending()->whereIn('id', $reviews->pluck('id'));
+        $letters = (clone $query)->pluck('message_id')->all();
+        $done = $query->update(['state' => self::DONE, 'done_by' => $by?->id, 'done_at' => now()]);
+        if ($letters) {
+            DB::afterCommit(function () use ($letters) {
+                $read = app(ReadSettled::class);
+                foreach (array_unique($letters) as $id) {
+                    $read->message((int) $id);
+                }
+            });
+        }
+
+        return $done;
     }
 
     /**

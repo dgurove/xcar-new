@@ -167,6 +167,8 @@ class AppServiceProvider extends ServiceProvider
         Event::subscribe(OnInsurerReply::class);
         Event::listen(StageEntered::class, [AdvanceOnBuyerData::class, 'entered']);
         Event::listen(StageEntered::class, [FollowParallels::class, 'handle']);
+        // Шаг сдвинул сотрудник — почта машины до этого прочитана (`ReadSettled`).
+        Event::listen(StageEntered::class, [\App\Mail\Actions\ReadSettled::class, 'onStage']);
         Event::subscribe(CloseReviews::class);
         Event::subscribe(MarkSupplierLetter::class);
         Event::listen(OfferStateChanged::class, RetractWhenGone::class);

@@ -7,9 +7,12 @@ use App\Mail\Direction;
 use App\Mail\Extraction\Intent;
 use App\Mail\Message;
 use App\Mail\Thread;
+use App\Offers\CarPlace;
 use App\Offers\Offer;
 use App\Offers\OfferState;
 use App\Park\Vehicle;
+use App\Workflow\Actor;
+use App\Workflow\Events\StageEntered;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 
@@ -20,6 +23,14 @@ use Illuminate\Support\Facades\DB;
  * - предложение ушло в сделку или гараж, выдано, в архиве, отменено (`ChangeOfferState`, `STATES`);
  * - черновик из цепочки «Из писем» завёл человек (`PromoteCandidate`; завела почта сама — письма никто не видел);
  * - ТС парковки приняли — заявки на приём (`intake`); выдали или отменили — все.
+ * По ходу сделки (23.11.2026, владелец: «пришёл счёт, мы его отправили менеджеру — письмо прочитано», «ГОТС поступили на
+ * реализацию, мы спросили менеджера — тоже»):
+ * - «Разобрать ответ» закрыт как угодно — его письмо (`ReplyReview::finish`);
+ * - шаг сдвинул сотрудник — всё до этого (`onStage`); шаг по письму — это письмо;
+ * - машину забрали — всё до этого (`onPlace`, из `SetCarPlace`);
+ * - сотрудник написал поставщику по машине — всё до этого, во всех ветках машины (`OnMessage::onSent`);
+ * - переоценку решили — её письмо.
+ * Письма после выдачи и архива сами не читаются (владелец: там бывает запрос документов) — только этими правилами.
  * Письмо позже момента не трогается: новое о машине остаётся новым. Флаг — тем же путём, что открытие (`MarkMessageRead::apply`:
  * у нас и в ящике). Прошлое — `mail:read-settled`.
  */
@@ -55,9 +66,67 @@ final class ReadSettled
     public function afterState(Offer $offer, OfferState $from, OfferState $next): void
     {
         if ($from !== $next && in_array($next, self::STATES, true)) {
-            $at = now();
-            DB::afterCommit(fn () => $this->offer($offer, $at));
+            $this->afterCommit($offer);
         }
+    }
+
+    /** Письмо и всё, что раньше него в ветке, с его «ч.2» — как открыли (`MarkMessageRead`). @return list<int> */
+    public function message(Message|int|null $message): array
+    {
+        $message = is_int($message) ? Message::find($message) : $message;
+
+        return $message ? ($this->mark)($message) : [];
+    }
+
+    /**
+     * Шаг сделки сдвинул сотрудник — почту машины до этого он видел. Шаг по конкретному письму (`Disclose`, наше письмо
+     * шага) — только это письмо и раньше в его ветке; ход менеджера, таймер и шаг, что система сделала по письму сама
+     * (`byLetter`), остальную почту не читают.
+     */
+    public function onStage(StageEntered $e): void
+    {
+        if (self::$byLetter) {
+            return;
+        }
+        if ($e->letter) {
+            $letter = $e->letter;
+            DB::afterCommit(fn () => $this->message($letter));
+        } elseif ($e->exit?->actor === Actor::Staff && $e->by?->isStaff()) {
+            $this->afterCommit($e->offer);
+        }
+    }
+
+    /** Машину забрали (место было «у владельца» или не указано): письма о вывозе до этого отработаны. */
+    public function onPlace(Offer $offer, ?CarPlace $was, ?CarPlace $now): void
+    {
+        if (in_array($was, [null, CarPlace::Owner], true) && $now && $now !== CarPlace::Owner) {
+            $this->afterCommit($offer);
+        }
+    }
+
+    /**
+     * Шаг, который система сдвигает по письму поставщика сама (оплата получена, просьба реквизитов): прочитано это письмо,
+     * а не вся почта машины — `onStage` на время хода молчит.
+     */
+    public function byLetter(Message $message, callable $move): mixed
+    {
+        self::$byLetter = true;
+        try {
+            $result = $move();
+        } finally {
+            self::$byLetter = false;
+        }
+        DB::afterCommit(fn () => $this->message($message));
+
+        return $result;
+    }
+
+    private static bool $byLetter = false;
+
+    private function afterCommit(Offer $offer): void
+    {
+        $at = now();
+        DB::afterCommit(fn () => $this->offer($offer, $at));
     }
 
     /** @return list<int> */

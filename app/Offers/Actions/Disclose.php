@@ -238,6 +238,6 @@ final class Disclose
 
     private function done(Collection $reviews, User $by): void
     {
-        $reviews->isNotEmpty() && ReplyReview::whereIn('id', $reviews->pluck('id'))->update(['state' => ReplyReview::DONE, 'done_by' => $by->id, 'done_at' => now()]);
+        $reviews->isNotEmpty() && ReplyReview::finish($reviews, $by);
     }
 }
