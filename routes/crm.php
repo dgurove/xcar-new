@@ -158,8 +158,7 @@ Route::domain(config('xcar.crm_host'))->middleware(['auth', 'ability:isStaff'])-
     Route::get('/reference/vendors', [ReferenceController::class, 'vendors']);
     Route::post('/reference/vendors', [ReferenceController::class, 'createVendor'])->middleware('ability:canManageCrm');
 
-    // Сделки для документов (14.11.2026, владелец: «админам и модераторам вручную менять сумму договора и счёта»): модератору —
-    // список «Сделок» с окном документов, сумма договора, данные ДКП и паспорт покупателя; прочее по сделке — только админу.
+    // Сделки модератору (14.11.2026 — документы и сумма договора, 17.11 — ход сделки, 24.11.2026 — «всё по сделке»).
     Route::middleware('ability:canEditDeals')->group(function () {
         // «Выписка» СберБизнеса — в Настройках, админу и модератору (23.11.2026, владелец: «что привязалось, что нет, привязать
         // руками — модераторы и администраторы», «пусть в настройках остаётся»); подключение банка — только админу.
@@ -208,9 +207,9 @@ Route::domain(config('xcar.crm_host'))->middleware(['auth', 'ability:isStaff'])-
         Route::delete('/work/deals/{deal}/signed/{media}', [DealController::class, 'removeSigned']);
         Route::get('/work/deals/{deal}/signed-contract.pdf', [DealController::class, 'signedPdf']);
         // Работа со сделкой модератору (17.11.2026, владелец с начальником: «модераторам полный доступ ко всем сделкам — данные
-        // покупателей, отправка счёта и договора менеджеру и так далее»; чат с менеджером и гараж): шаги пути без выходов в тупик
-        // (`RouteController::exit`), разбор писем, подписание, документ об оплате за менеджера, чаты, гараж. Деньги («Поступила»,
-        // ссылки, «Оплаты») и решения (отмена, отказ, «Отдать», подтверждения, переоценка) — у админа ниже.
+        // покупателей, отправка счёта и договора менеджеру и так далее»; чат с менеджером и гараж; 24.11.2026 — «всё по сделке»):
+        // шаги пути, решения по сделке, разбор писем, подписание, документ об оплате за менеджера, чаты, гараж. Цены, продажа,
+        // «Отдать», подтверждения, переоценка — у админа ниже.
         Route::get('/garage/cars/{offer}/invoice/pdf', [GarageSettlementController::class, 'pdf']);
         Route::delete('/garage/cars/{offer}/links/{link}', [GarageSettlementController::class, 'cancelLink']);
         Route::post('/garage/cars/{offer}/costs', [GarageCarController::class, 'storeCost']);
@@ -227,6 +226,15 @@ Route::domain(config('xcar.crm_host'))->middleware(['auth', 'ability:isStaff'])-
         Route::post('/garage/cars/{offer}/payments', [GarageSettlementController::class, 'pay']);
         Route::delete('/garage/cars/{offer}/invoice', [GarageSettlementController::class, 'voidInvoice']);
         Route::post('/offers/{offer}/exit/{exit}', [RouteController::class, 'exit']);
+        // Решения по сделке — и модератору (24.11.2026, владелец: «всё по сделке»): отказ поставщика, «Уже продана», снова в работу,
+        // параллельные сделки (07.11.2026, `Offers\Parallels`: «Взять в работу», «Снять»), «Отменить сделку» в черновики
+        // (`OfferController::state` модератору — только это). Цены и продажа — у админа ниже.
+        Route::post('/offers/{offer}/state', [OfferController::class, 'state']);
+        Route::post('/work/deals/{deal}/declined', [DealController::class, 'declined']);
+        Route::post('/work/deals/{deal}/sold', [DealController::class, 'sold']);
+        Route::post('/work/deals/{deal}/reopen', [DealController::class, 'reopen']);
+        Route::post('/work/deals/{deal}/take', [ParallelController::class, 'take']);
+        Route::post('/work/deals/{deal}/drop', [ParallelController::class, 'drop']);
         Route::post('/offers/{offer}/stage', [RouteController::class, 'place']);
         Route::post('/offers/{offer}/back', [RouteController::class, 'back']);
         Route::post('/offers/{offer}/deadline', [RouteController::class, 'deadline']);
@@ -298,7 +306,6 @@ Route::domain(config('xcar.crm_host'))->middleware(['auth', 'ability:isStaff'])-
         Route::post('/offers/{offer}/extend', [OfferController::class, 'extend']);
         Route::post('/offers/{offer}/lower-price', [OfferController::class, 'lowerPrice']);
         Route::post('/offers/{offer}/no-bids', [OfferController::class, 'notifyNoBids'])->middleware('throttle:6,1');
-        Route::post('/offers/{offer}/state', [OfferController::class, 'state']);
         // «Открыть всем сейчас…» — снять эксклюзив за оценку у машины в продаже (09.11.2026, `Exclusive`).
         Route::post('/offers/{offer}/exclusive-off', [OfferController::class, 'exclusiveOff']);
         // «На аукцион» (13.10.2026): отправить сейчас или по истечении срока; DELETE — отменить или убрать с аукциона.
@@ -350,7 +357,6 @@ Route::domain(config('xcar.crm_host'))->middleware(['auth', 'ability:isStaff'])-
         Route::post('/offers/{offer}/deal-publication', [RepriceController::class, 'publish']);
         Route::delete('/offers/{offer}/deal-publication', [RepriceController::class, 'unpublish']);
         Route::post('/offers/{offer}/reprices/{reprice}/answered', [RepriceController::class, 'answered']);
-        // «Видно менеджеру» у документа — решает админ (модератору документ менеджерам не открыть).
 
         Route::post('/confirmations/{bid}/accept', [GiveController::class, 'accept']);
         Route::post('/offers/{offer}/confirmations', [BidController::class, 'storeFor']);
@@ -366,12 +372,6 @@ Route::domain(config('xcar.crm_host'))->middleware(['auth', 'ability:isStaff'])-
 
         // Работа: сделки, почта и чаты под одним заголовком.
         Route::redirect('/work', '/work/mail');
-        Route::post('/work/deals/{deal}/declined', [DealController::class, 'declined']);
-        Route::post('/work/deals/{deal}/sold', [DealController::class, 'sold']);
-        Route::post('/work/deals/{deal}/reopen', [DealController::class, 'reopen']);
-        // Параллельные сделки (07.11.2026, `Offers\Parallels`): переключиться на эту — «Взять в работу», закрыть одну — «Снять».
-        Route::post('/work/deals/{deal}/take', [ParallelController::class, 'take']);
-        Route::post('/work/deals/{deal}/drop', [ParallelController::class, 'drop']);
         // Документ об оплате поставщику за менеджера и одним PDF (10.11.2026, `PaymentProofController`).
         // У кого что в гараже и во что обошлось.
         // Кто что вывозит: мы или менеджер, к нему, к нам или на парковку.

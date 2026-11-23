@@ -91,6 +91,12 @@ final class Categories
         if ($user->holdsAsBuyer() && $user->canGarage()) {
             $add(['on' => [], 'always' => ['Сделки: дела и сроки', 'Счета']]);
         }
+        // Модератору — ход сделок, письма поставщиков и деньги сделки, как админу (24.11.2026, владелец: модераторы ведут сделку
+        // целиком), письма — с галкой почты.
+        if ($user->hasRole(Role::Moderator)) {
+            $deals = [...($user->canCrmMail() ? ['supplier_mail'] : []), 'managers', 'taking', 'our_mail', 'deals', 'money'];
+            $add(['on' => array_intersect_key(self::ADMIN, array_flip($deals)), 'always' => ['Ход за нами после менеджера', 'Счёт от поставщика']]);
+        }
         // Модератору — новые цепочки «Из писем» (с галкой почты) и чаты площадки: с 17.11.2026 он ведёт сделки и пишет менеджерам.
         if ($user->hasRole(Role::Moderator) && $user->canCrmMail()) {
             $add(['on' => ['letters' => 'Новые из писем'], 'always' => []]);

@@ -17,7 +17,7 @@
     $deal = $deal?->isActive() ? $deal : null;
     $replied = $deal && $thread->offer->position(\App\Workflow\Track::Sale)?->letterStatus() === 'replied';
     $noReply = ($thread?->needs_reply_at || $replied || $dismiss) && \App\Mail\Threads::canAnswer(auth()->user());
-    $declined = $deal && ! $deal->prepaid_at && auth()->user()->canManageCrm();
+    $declined = $deal && ! $deal->prepaid_at && auth()->user()->canEditDeals();
     $said = $declined ? trim(\Illuminate\Support\Str::limit(preg_replace('/\s+/u', ' ', (string) $m->shownText()), 60, '…')) : '';
     $disclose = $deal?->buyer_id ? 'disclose-letter-'.$m->id : null;
 @endphp

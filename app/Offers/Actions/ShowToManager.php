@@ -96,7 +96,7 @@ final class ShowToManager
             \App\Billing\Events\InvoiceRecalled::dispatch($done->fresh(), $by);
             $what = 'Счёт'.($done->number ? ' № '.$done->docNo() : '');
             $deal->buyer?->notify(new \App\Notifications\DocRecalledNotice($deal, $what));
-            \App\Notifications\Notify::toStaff(\App\Notifications\DealEventNotice::recalled($deal->loadMissing('offer'), $what, $by), $by);
+            \App\Notifications\Notify::toDeals(\App\Notifications\DealEventNotice::recalled($deal->loadMissing('offer'), $what, $by), $by);
         }
 
         return $done ?? $invoice->fresh();
@@ -127,7 +127,7 @@ final class ShowToManager
         if ($done) {
             $what = 'Договор'.($done->code ? ' № '.$done->code : '');
             $deal->buyer?->notify(new \App\Notifications\DocRecalledNotice($deal, $what));
-            \App\Notifications\Notify::toStaff(\App\Notifications\DealEventNotice::recalled($deal->loadMissing('offer'), $what, $by), $by);
+            \App\Notifications\Notify::toDeals(\App\Notifications\DealEventNotice::recalled($deal->loadMissing('offer'), $what, $by), $by);
             \App\Live\RefreshDeal::of($deal);
         }
 

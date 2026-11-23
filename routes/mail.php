@@ -16,8 +16,8 @@ Route::domain(config('xcar.mail_host'))->middleware(['auth', 'ability:canCrmMail
         Route::get('/offers/{offer}/letters', [MailController::class, 'offerLetters']);
         Route::post('/offers/{offer}/drop', [MailController::class, 'dropDraft']);
     });
-    // «Поставщик отказал» из меню письма и ответа — админу, как в CRM.
-    Route::post('/work/deals/{deal}/declined', [DealController::class, 'declined'])->middleware('ability:canManageCrm');
+    // «Поставщик отказал» из меню письма и ответа — тому, кто ведёт сделку, как в CRM.
+    Route::post('/work/deals/{deal}/declined', [DealController::class, 'declined'])->middleware('ability:canEditDeals');
 });
 
 // На хосте почты ничего, кроме почты и общих путей.

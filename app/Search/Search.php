@@ -79,7 +79,7 @@ final class Search
             'cars' => ['title' => 'ТС', 'rows' => $cars->top(self::CARS)] + self::more($offers->isNotEmpty(), 'Все предложения', '/offers?q='.urlencode($t->raw)),
             'people' => ['title' => 'Люди', 'rows' => $admin ? self::people(User::query(), $t, fn (User $u) => "/settings/users/{$u->id}") : []],
             'money' => ['title' => 'Деньги', 'rows' => $admin ? self::money(Invoice::crmMoney(), $t, crm: true) : []],
-            'mail' => self::mail($user->canCrmMail() ? Scope::Offers : null, $t, '/work/mail', $user),
+            'mail' => self::mail($user->canCrmMail() ? Scope::Offers : null, $t, '/work/mail'),
         ];
     }
 
@@ -97,7 +97,7 @@ final class Search
             // Вендоры — тому, кому их раздел открыт (`park.manage`): помощнику строка вела бы в 403.
             'vendors' => ['title' => 'Вендоры', 'rows' => $user->canManagePark() ? Vendor::onPark()->search($t)->with('party')->orderBy('name')->limit(self::ROWS)->get()
                 ->map(fn (Vendor $v) => new Hit($v->name, "/vendors/{$v->id}", array_filter([$v->party?->inn ? 'ИНН '.$v->party->inn : null])))->all() : []],
-            'mail' => self::mail($manage ? Scope::Park : null, $t, '/mail', $user),
+            'mail' => self::mail($manage ? Scope::Park : null, $t, '/mail'),
         ];
     }
 
@@ -206,14 +206,13 @@ final class Search
     }
 
     /** Письма — числом и тремя последними темами; «Все» — почта с тем же запросом. */
-    private static function mail(?Scope $scope, Term $t, string $base, User $user): array
+    private static function mail(?Scope $scope, Term $t, string $base): array
     {
         if (! $scope) {
             return ['title' => 'Письма', 'rows' => []];
         }
         // Полнотекст по письмам — самый тяжёлый запрос выдачи: один раз, четвёртая строка только говорит, что есть ещё.
-        $threads = Thread::whereIn('account_id', Account::where('scope', $scope)->pluck('id'))->where('messages_count', '>', 0)
-            ->when($scope === Scope::Offers, fn ($q) => $q->crmMailFor($user))->search($t)
+        $threads = Thread::whereIn('account_id', Account::where('scope', $scope)->pluck('id'))->where('messages_count', '>', 0)->search($t)
             ->latest('last_message_at')->limit(4)->get();
         $rows = $threads->take(3)
             ->map(fn (Thread $th) => new Hit($th->subject ?: 'Без темы', $base.'?window='.$th->id, [Ago::day($th->last_message_at)]))->all();

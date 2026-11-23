@@ -392,11 +392,6 @@
             {!! $contractLine !!}
         @php $top = trim(ob_get_clean()); @endphp
         @if ($top !== '')<div class="list mb-3 last:mb-0">{!! $top !!}</div>@endif
-        {{-- Договор — своей группой с подписью (19.11.2026), как у ПРАЙМ. --}}
-        @if ($dealGroup !== '')
-            <x-deal.doc-cap label="Договор" :state="$contractWord[0] ?? null" :tone="$contractWord[1] ?? 'muted'"/>
-            <div class="list mb-3 last:mb-0">{!! $dealGroup !!}</div>
-        @endif
     @endif
     {{-- Шторки без своих строк — их открывают сумма в шапке и пункты «⋯» (18.11.2026). --}}
     @unless ($deal->isAuction())<x-deal.scheme :deal="$deal" bare :price="false" :row="false"/>@endunless

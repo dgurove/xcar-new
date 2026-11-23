@@ -38,11 +38,9 @@
     // Имена блоков как есть: кто вывозит, видно строкой над путём («Стоит у Сергей К.» имя не склоняет).
     $blockName = fn ($block) => $block->name;
     [$breaks, $moves] = $exits->partition(fn ($x) => $x->to?->block && $x->to->block_id !== $stage->block_id && $x->to->block->isDeadEnd())->all();
-    // Модератор ведёт сделку, но решает админ (17.11.2026): ни выходов в тупик («Отказ поставщика»), ни закрытия сделки, ни выставления
-    // в продажу (`RouteController::exit` их не примет).
+    // Модератор ведёт сделку целиком (24.11.2026, владелец: «всё по сделке»), выставить в продажу — нет (`Outcome::publishes`).
     if (! auth()->user()?->canManageCrm()) {
-        $breaks = collect();
-        $moves = $moves->reject(fn ($x) => \App\Offers\Deal::closes($x) || $x->to?->offer_state === \App\Offers\OfferState::Open)->values();
+        $moves = $moves->reject(fn ($x) => $x->publishes())->values();
     }
     // Исход сотрудника «… за менеджера» (Альфа: «Договор подписан за менеджера») — тот же ответ, что «За менеджера: «Договор
     // подписан»» в «⋯» шага: второй раз не даём (19.11.2026, владелец: «не должно быть двух плашек действий»).
@@ -73,9 +71,9 @@
     // «Поступило / Не поступила» по сообщению менеджера — только где оплату проверяем мы. На «Подтверждении оплаты» страховой
     // (ждём поставщика) — нет (16.11.2026, владелец: «мы этого не знаем: сначала платёжку отправляем в Альфу, они отвечают,
     // что оплачено»): там «Отправить страховой», после письма — её ответ кнопками шага.
-    $claims = $moves->contains($paidExit) && $stage->waits_for !== WaitsFor::Supplier && auth()->user()?->canManageCrm() ?$invoices->flatMap(fn ($i) => $i->claims->map(fn ($p) => [$i, $p])) : collect();
-    // «Оплата получена / не поступила» — деньги, решает админ (17.11.2026): модератору этих кнопок нет.
-    if ($claims->isNotEmpty() || ! auth()->user()?->canManageCrm()) {
+    $claims = $moves->contains($paidExit) && $stage->waits_for !== WaitsFor::Supplier && auth()->user()?->canEditDeals() ? $invoices->flatMap(fn ($i) => $i->claims->map(fn ($p) => [$i, $p])) : collect();
+    // Заявка менеджера об оплате — «Поступила / Не поступила» у неё, кнопок шага тогда нет.
+    if ($claims->isNotEmpty()) {
         $moves = $moves->reject($paidExit);
     }
     // «Деньги пришли» в шаге больше нет (16.11.2026, владелец: «непонятно, зачем кнопка, что она делает»; на «Оплате счёта»
@@ -389,7 +387,7 @@
                     @endif
                     {{-- Оплата поставщику по договору комиссии (14.11.2026): назначенная им сумма не та, что мы переведём, — строкой дела,
                          к блоку «… по договору комиссии» в «Деньгах» (там обе суммы, назначение и реквизиты). --}}
-                    @if ($deal && $stage->paysOut() && auth()->user()?->canManageCrm() && ($sp = $deal->contract?->supplier_price) !== null && ($sc = $deal->supplierCost()) !== null && $sp !== $sc)
+                    @if ($deal && $stage->paysOut() && auth()->user()?->canEditDeals() && ($sp = $deal->contract?->supplier_price) !== null && ($sc = $deal->supplierCost()) !== null && $sp !== $sc)
                         <x-route.task-row icon="file" urgent href="#money">По договору комиссии {{ \App\Support\Money::rub($sp) }}, у нас {{ \App\Support\Money::rub($sc) }}</x-route.task-row>
                     @endif
                     {{-- Документ об оплате (10.11.2026): на шаге оплаты админ прикладывает за менеджера (чек прислал в чат), дальше — одним

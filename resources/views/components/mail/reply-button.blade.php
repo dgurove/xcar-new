@@ -25,8 +25,8 @@
         @php
             $noReply = ($message->thread?->needs_reply_at || $replied) && \App\Mail\Threads::canAnswer(auth()->user());
             // Поставщик уже подтвердил оплату (`prepaid_at`) — машина продана нам: «продал другому» не к месту (13.11.2026).
-            // Закрыть сделку отказом — решение админа (17.11.2026): модератору «Показать менеджеру» есть, «Продал другому» — нет.
-            $declined = $deal && ! $deal->prepaid_at && auth()->user()->canManageCrm();
+            // Закрыть сделку отказом — тому, кто ведёт сделку (с 24.11.2026 и модератору).
+            $declined = $deal && ! $deal->prepaid_at && auth()->user()->canEditDeals();
         @endphp
         <div class="reply-acts">
             <a href="{{ $editor }}" class="btn btn-quiet"><x-ui.icon :name="$bounce ? 'mail' : 'reply'" class="size-4"/>{{ $bounce ? 'Переслать' : 'Ответить' }}</a>

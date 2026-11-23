@@ -1576,6 +1576,8 @@ class OfferController
     public function state(Request $request, Offer $offer, ChangeOfferState $change, ScheduleOffer $schedule)
     {
         $next = OfferState::from($request->validate(['state' => ['required', 'string']])['state']);
+        // Модератору — только «Отменить сделку» в черновики (24.11.2026): остальные переходы — цена и показ, решает админ.
+        abort_unless($request->user()->canManageCrm() || ($offer->state === OfferState::Sold && $next === OfferState::Draft), 403);
         // В сделку руками нельзя: сделку заводит «Принять» у подтверждения.
         if ($next === OfferState::Sold) {
             return back()->withErrors(['state' => 'Примите подтверждение менеджера, сделка заведётся сама']);

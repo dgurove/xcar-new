@@ -433,7 +433,6 @@ class DealController
     /** «Уже продана…» (14.11.2026): шаги до закрытия или до неподписанного договора — одним нажатием (`MarkSoldDeal`). */
     public function sold(Request $request, Deal $deal, MarkSoldDeal $mark)
     {
-        abort_unless($request->user()->canManageCrm(), 403);
         // Про деньги — только явным ответом (14.11.2026, 666916: «Да» по умолчанию подтверждали не глядя).
         $asksMoney = MarkSoldDeal::unpaid($deal)->isNotEmpty() || ! $deal->agreed();
         $data = $request->validate(['signed' => ['required', Rule::in(['yes', 'no'])],
@@ -466,7 +465,6 @@ class DealController
     /** «Вернуть сделку в работу…» (14.11.2026, `ReopenDeal`). */
     public function reopen(Request $request, Deal $deal, ReopenDeal $reopen)
     {
-        abort_unless($request->user()->canManageCrm(), 403);
         $data = $request->validate(['stage_id' => ['required', 'integer'], 'undo_sold' => ['nullable', 'boolean']]);
         $stage = Stage::findOrFail($data['stage_id']);
         $reopen($deal, $stage, $request->user(), $request->boolean('undo_sold', true));

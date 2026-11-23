@@ -118,7 +118,7 @@ final class PickupLetters
         }
         $offer->unsetRelation('pickupTask');
         if (($due = self::due($offer)) && $due['kind'] === ($e->step === 'picked' ? 'act' : 'date')) {
-            \App\Notifications\Notify::toStaff(\App\Notifications\DealEventNotice::pickupLetter($offer, $due['title'], $e->by));
+            \App\Notifications\Notify::toDeals(\App\Notifications\DealEventNotice::pickupLetter($offer, $due['title'], $e->by));
         }
     }
 

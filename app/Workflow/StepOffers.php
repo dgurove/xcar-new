@@ -11,8 +11,8 @@ use App\Users\User;
  * Что уже даёт текущий шаг продажи в пути сделки CRM (`x-route.path`, «⋯» шага, шаг «Переоценка» и доп. просьба) — чтобы
  * «⋯» окна и «···» страницы (`Offers\CarView::actions`) это не повторяли (19.11.2026, владелец: «не должно быть такого, что две
  * плашки действий», «перепроверь тщательно все этапы»). Действие живёт там, где идёт дело. Условия — те же, что рисуют шаг:
- * переоценка и доп. просьба держат этап (его кнопок тогда нет), исходы в тупик и закрытие — только тому, кто решает
- * (`canManageCrm`), «за менеджера» — тому, кто ведёт сделку (`canEditDeals`).
+ * переоценка и доп. просьба держат этап (его кнопок тогда нет), исходы в тупик, закрытие и «за менеджера» — тому, кто ведёт
+ * сделку (`canEditDeals`), выход в продажу — админу (`Outcome::publishes`).
  */
 final class StepOffers
 {
@@ -39,10 +39,8 @@ final class StepOffers
             return new self(withdraws: $extra?->phase() === ExtraAsk::MANAGER && $deal->buyer_id !== null);
         }
         $staff = $stage->exitsFor(Actor::Staff, $deal)->reject(fn (Outcome $x) => $x->acceptsBid());
-        $breaks = $user->canManageCrm()
-            ? $staff->filter(fn (Outcome $x) => $x->to?->block && $x->to->block_id !== $stage->block_id && $x->to->block->isDeadEnd())
-            : collect();
-        $moves = $user->canManageCrm() ? $staff->diffKeys($breaks) : $staff->reject(fn (Outcome $x) => \App\Offers\Deal::closes($x));
+        $breaks = $staff->filter(fn (Outcome $x) => $x->to?->block && $x->to->block_id !== $stage->block_id && $x->to->block->isDeadEnd());
+        $moves = $staff->diffKeys($breaks)->when(! $user->canManageCrm(), fn ($m) => $m->reject(fn (Outcome $x) => $x->publishes()));
         $forManager = $deal->buyer_id ? $stage->exitsFor(Actor::Manager, $deal) : collect();
         $signed = fn (Outcome $x) => str_contains(mb_strtolower($x->label), 'подписан');
 

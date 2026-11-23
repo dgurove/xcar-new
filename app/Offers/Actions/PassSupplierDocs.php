@@ -14,7 +14,8 @@ use Illuminate\Support\Facades\Log;
 /**
  * Документы поставщику ушли (23.11.2026, Совкомбанк: после оплаты просит договор, акт и платёжку, ответа не шлёт) — шаг
  * «Документы поставщику» (`Stage::isSupplierDocs`) проходит «Документы отправлены» сам: письмом шага (`MarkSupplierLetter`) или
- * «Без письма — сообщили сами» (`SkipLetter`). Только у админа: сделку закрывает он, кто отправил — тот и в «Истории».
+ * «Без письма — сообщили сами» (`SkipLetter`). Тем, кто ведёт сделку (`canEditDeals`, с 24.11.2026 и модератору): кто отправил,
+ * тот и в «Истории».
  */
 final class PassSupplierDocs
 {
@@ -23,9 +24,7 @@ final class PassSupplierDocs
         $offer->unsetRelation('positions');
         $position = $offer->position(Track::Sale);
         $stage = $position?->stage;
-        // Закрывать сделку — право админа (`RouteController::exit`): письмо модератора шаг не двигает, «Документы отправлены»
-        // нажмёт админ (письмо ему приходит уведомлением, `Notify::letterSent`).
-        if (! $stage?->isSupplierDocs() || ! $by?->canManageCrm()) {
+        if (! $stage?->isSupplierDocs() || ! $by?->canEditDeals()) {
             return;
         }
         $exits = $stage->exitsFor(Actor::Staff, $offer->deal);

@@ -90,7 +90,7 @@ final class CancelDeal
         // же менеджеру (`$same`) — не отмена.
         if (! $same && $offer) {
             $id = $deal->id;
-            DB::afterCommit(fn () => ($d = Deal::with(['offer', 'buyer'])->find($id)) && Notify::toStaff(DealEventNotice::dealCancelled($d, $by), $by));
+            DB::afterCommit(fn () => ($d = Deal::with(['offer', 'buyer'])->find($id)) && Notify::toDeals(DealEventNotice::dealCancelled($d, $by), $by));
         }
 
         return $deal;

@@ -200,7 +200,8 @@ final class OnMessage
         if ($onDeal && $deal->buyer_id && in_array(ReplyKind::of($message), [ReplyKind::Invoice, ReplyKind::ContractReady], true)) {
             return;
         }
-        Notification::send(User::withRole(Role::Admin)->get(), new SupplierMailNotice($message, $vendor, $offer));
+        // Тем, кто ведёт сделки и видит почту CRM (24.11.2026 — и модераторам с галкой «Почта»).
+        Notification::send(Notify::dealStaff()->filter->canCrmMail(), new SupplierMailNotice($message, $vendor, $offer));
     }
 
     /** Не ушло — открытая ветка (и окно писем на любой странице) показывает «Не ушло» с «Отправить снова», а не вечное «Отправляется». */

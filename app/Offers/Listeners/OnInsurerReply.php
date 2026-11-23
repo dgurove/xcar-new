@@ -6,6 +6,7 @@ use App\Mail\Actions\ReadSettled;
 use App\Mail\Composer;
 use App\Mail\Direction;
 use App\Mail\Message;
+use App\Notifications\Notify;
 use App\Notifications\SupplierContractReadyNotice;
 use App\Notifications\SupplierInvoiceArrivedNotice;
 use App\Offers\Actions\Disclose;
@@ -175,14 +176,14 @@ final class OnInsurerReply
         }
         $review = ReplyReview::firstOrCreate(['message_id' => $message->id], ['deal_id' => $deal->id, 'offer_id' => $deal->offer_id, 'state' => ReplyReview::PENDING]);
         $review->wasRecentlyCreated && Disclose::publish($deal);
-        // Счёт страховой — громко админам (10.11.2026, `SupplierInvoiceArrivedNotice`): менеджер его не видит, а срок оплаты идёт.
+        // Счёт страховой — громко тем, кто ведёт сделки (10.11.2026, `SupplierInvoiceArrivedNotice`): менеджер его не видит, а срок оплаты идёт.
         if ($review->wasRecentlyCreated && ReplyKind::of($message) === ReplyKind::Invoice) {
-            Notification::send(User::withRole(Role::Admin)->get(),
+            Notification::send(Notify::dealStaff(),
                 new SupplierInvoiceArrivedNotice($deal->load(['offer.vendor', 'buyer'])));
         }
         // Договор готов — тоже громко (11.11.2026, `SupplierContractReadyNotice`): сразу письмо про время подписания.
         if ($review->wasRecentlyCreated && ReplyKind::of($message) === ReplyKind::ContractReady) {
-            Notification::send(User::withRole(Role::Admin)->get(),
+            Notification::send(Notify::dealStaff(),
                 new SupplierContractReadyNotice($deal->load(['offer.vendor', 'buyer'])));
         }
     }

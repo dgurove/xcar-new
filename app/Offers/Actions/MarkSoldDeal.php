@@ -48,7 +48,7 @@ final class MarkSoldDeal
     public static function allows(?Deal $deal, ?User $by = null): bool
     {
         return $deal?->isActive() && ! $deal->isAuction() && ! $deal->isParallel() && $deal->offer?->state === OfferState::Sold
-            && (! $by || $by->canManageCrm());
+            && (! $by || $by->canEditDeals());
     }
 
     /** Куда встанет сделка при ответах — для шторки и самого действия. */

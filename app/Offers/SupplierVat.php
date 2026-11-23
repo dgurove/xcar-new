@@ -188,7 +188,7 @@ final class SupplierVat
             }
             $what = 'НДС поставщика '.Vat::label($rate).($source === 'letter' ? ' по письму' : ' по документу')
                 .($paid ? ', а счёт за ТС уже оплачен с другим НДС: разберитесь' : ', счёт за ТС по нему');
-            app(Notify::class)->toStaff(DealEventNotice::supplierVat($deal, $what, $paid));
+            Notify::toDeals(DealEventNotice::supplierVat($deal, $what, $paid));
         }
 
         return true;

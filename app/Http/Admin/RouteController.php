@@ -48,13 +48,9 @@ class RouteController
     {
         // «Выставить в продажу» маршрута — с выбором слота, как кнопка редактора: в слот — маршрут догонят часы
         // (`ChangeOfferState` в 16:00 сам найдёт выход в «Приём»), сейчас — шаг как обычно.
-        // Модератор ведёт сделку (17.11.2026), но решения — у админа: выход в тупик («Отказ поставщика»), закрытие сделки и выставление
-        // в продажу и «Оплата получена / не поступила» (деньги) — нет.
-        if (! $request->user()->canManageCrm()) {
-            $exit->loadMissing('to.block');
-            abort_if(($exit->to?->block && $exit->to->block->isDeadEnd()) || \App\Offers\Deal::closes($exit) || $exit->to?->offer_state === OfferState::Open
-                || preg_match('/^оплата (получена|не поступила)/u', mb_strtolower($exit->label)) === 1, 403);
-        }
+        // Модератор ведёт сделку целиком (24.11.2026, владелец: «всё по сделке»): отказ поставщика, закрытие, «Оплата получена / не
+        // поступила», отказ за менеджера. Выставить в продажу — нет: цена и показ у админа (`Outcome::publishes`).
+        abort_if(! $request->user()->canManageCrm() && $exit->loadMissing('to')->publishes(), 403);
         $when = Slots::when($request->input('when'), $request->input('day'), Slots::NOW);
         if ($when !== Slots::NOW && $exit->to?->offer_state === OfferState::Open
             && in_array($offer->state, [OfferState::Draft, OfferState::Gallery], true)) {
@@ -241,7 +237,7 @@ class RouteController
     {
         // Документы поставщику (Совкомбанк) ответа не ждут — шаг проходит сам (`PassSupplierDocs`).
         $toast = $offer->position(Track::Sale)?->stage?->isSupplierDocs()
-            ? ($request->user()->canManageCrm() ? 'Без письма: документы отмечены отправленными' : 'Без письма: закроет сделку администратор')
+            ? 'Без письма: документы отмечены отправленными'
             : 'Без письма: ждём ответа поставщика';
         $skip($offer, $request->user());
         if ($request->header('Turbo-Frame') === 'letters-frame') {

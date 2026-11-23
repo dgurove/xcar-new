@@ -41,7 +41,7 @@ final class ReopenDeal
 
     public static function allows(?Deal $deal, ?User $by = null): bool
     {
-        if (! $deal || $deal->state !== DealState::Done || $deal->isAuction() || ($by && ! $by->canManageCrm())) {
+        if (! $deal || $deal->state !== DealState::Done || $deal->isAuction() || ($by && ! $by->canEditDeals())) {
             return false;
         }
         $offer = $deal->offer;

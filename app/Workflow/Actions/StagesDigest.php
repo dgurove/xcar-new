@@ -3,15 +3,13 @@
 namespace App\Workflow\Actions;
 
 use App\Notifications\HotStagesNotice;
-use App\Users\Role;
-use App\Users\User;
 use App\Workflow\Position;
 use App\Workflow\WaitsFor;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Notification;
 
 /**
- * Утром в 10:00 по Москве — админам одна строка «Горит: N шагов, наш ход M» со ссылкой на «Горит» (19.01.2027, вместо
+ * Утром в 10:00 по Москве — тем, кто ведёт сделки, одна строка «Горит: N шагов, наш ход M» со ссылкой на «Горит» (19.01.2027, вместо
  * россыпи «срок подходит» по каждой сделке). Раз в день, зовёт `offers:tick`.
  */
 final class StagesDigest
@@ -28,6 +26,6 @@ final class StagesDigest
         if ($total === 0) {
             return;
         }
-        Notification::send(User::withRole(Role::Admin)->get(), new HotStagesNotice($total, (clone $hot)->waiting(WaitsFor::Us)->count()));
+        Notification::send(Notify::dealStaff(), new HotStagesNotice($total, (clone $hot)->waiting(WaitsFor::Us)->count()));
     }
 }

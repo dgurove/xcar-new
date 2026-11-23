@@ -32,7 +32,7 @@ final class CarView
 {
     public readonly bool $admin;
 
-    /** Работает со сделками — админ и модератор (`canEditDeals`, 17.11.2026): сделка, гараж, ход сделки, чаты; решения и цены — `$admin`. */
+    /** Работает со сделками — админ и модератор (`canEditDeals`, 17.11.2026; решения по сделке — с 24.11.2026): сделка, гараж, ход, чаты; цены и продажа — `$admin`. */
     public readonly bool $deals;
 
     /** Сделка машины: идущая, иначе последняя состоявшаяся (`lastDeal`) — у админа. */
@@ -196,8 +196,10 @@ final class CarView
         // Кнопка — только где «Цены» по шагам (`$steps`): у черновика на аукционе или «Без подтверждений» без цены «Цены» — разделом
         // без кнопок, и «Отдать…» остаётся в «⋯».
         $giveButton = $giveMenu && $rate && $steps && ! $this->page;
-        // «Вернуть в продажу» с новыми ценами — из сделки и из гаража (`ReturnToSale`, 11.10.2026).
-        $resale = $admin && (in_array($state, [OfferState::Sold, OfferState::Garage], true) || $garageCar);
+        // Решения по сделке и гаражу — тому, кто их ведёт (24.11.2026, владелец: «всё по сделке»); «Вернуть в продажу» с новыми
+        // ценами — из сделки и из гаража (`ReturnToSale`, 11.10.2026) — админу.
+        $dealing = $this->deals && (in_array($state, [OfferState::Sold, OfferState::Garage], true) || $garageCar);
+        $resale = $admin && $dealing;
         // Кнопки состояния — только уместные (`stateActions`). Машину из гаража уводит только «Отдали по ошибке» в карточке
         // гаража; «Выставить в продажу» — слотами; у сделки «в черновики» — внутри шторки «Отменить сделку».
         $transitions = $admin && ! $garageCar ? collect($o->stateActions())->mapWithKeys(fn ($label, $s) => [$s => [OfferState::from($s), $label]]) : collect();
@@ -241,11 +243,13 @@ final class CarView
             'giveMenu' => $giveMenu,
             'handGarage' => $handGarage,
             'resale' => $resale,
+            'dealing' => $dealing,
             'purge' => $admin && in_array($state, [OfferState::Archived, OfferState::Cancelled], true),
             'askMenu' => ($correct || $rate) && $o->openEstimates->isEmpty() && $o->declinedEstimates->isEmpty(),
             'chats' => $this->chats,
-            // «Сделать доп. запрос» над письмами (17.11.2026, `ExtraRequest`): админу с почтой, у машины есть поставщик, не архив.
-            'extraRequest' => $admin && $this->user->canCrmMail() && $o->vendor_id && ! in_array($state, [OfferState::Archived, OfferState::Cancelled], true),
+            // «Сделать доп. запрос» над письмами (17.11.2026, `ExtraRequest`): сотруднику сделок с почтой (с 24.11.2026 и модератору),
+            // у машины есть поставщик, не архив.
+            'extraRequest' => $this->deals && $this->user->canCrmMail() && $o->vendor_id && ! in_array($state, [OfferState::Archived, OfferState::Cancelled], true),
             'tags' => $admin ? Tag::orderBy('sort')->get() : collect(),
             // Кому отдать на оценку — у черновика; «+ Интерес», «За менеджера» берут `People::managers`.
             // Тот же список, что у окна «Кому» (`AudienceRules::people`), — один запрос на окно.
@@ -556,34 +560,9 @@ final class CarView
             if ($calm->isNotEmpty()) {
                 $groups[] = $calm->map(fn ($t) => $post('/offers/'.$n.'/state', $t[1], $icon($t[0]), ['state' => $t[0]->value], guard: true))->values()->all();
             }
-            // Давно проданная висит на шагах (14.11.2026, владелец): «Уже продана…» — шаги одним нажатием, «Договор уже
-            // подписан» — покупатель не нужен (`MarkSoldDeal`, `MarkContractSigned`).
-            $sold = [];
-            if ($v['resale'] && MarkSoldDeal::allows($o->deal)) {
-                $sold[] = $emit('deal-sold', 'Уже продана…', 'check');
-            }
-            if ($v['resale'] && $state === OfferState::Sold && MarkContractSigned::allows($o->deal) && ! $step->signs) {
-                $sold[] = $post('/work/deals/'.$o->deal->id.'/contract-signed', 'Договор уже подписан', 'file', [], confirm: 'Договор с покупателем уже подписан?', text: 'Данные покупателя больше не нужны, шаги договора отметятся', confirmLabel: 'Подписан');
-            }
-            // Закрыли по ошибке («Уже продана» случайно, шаги прокликали руками) — снова в работу (`ReopenDeal`).
-            if ($me = auth()->user()) {
-                $closed = $o->lastDeal;
-                if ($closed && ReopenDeal::allows($closed, $me)) {
-                    $sold[] = $emit('reopen', 'Вернуть сделку в работу…', 'undo');
-                }
-            }
+            [$sold, $red] = $this->decisions($step, $emit, $post);
             if ($sold) {
                 $groups[] = $sold;
-            }
-            $red = [];
-            if ($v['resale'] && $state === OfferState::Sold && $o->deal?->isActive() && ! $step->declines) {
-                // Поставщик отказал продавать (28.10.2026): сделка закрыта по причине, предложение в архиве.
-                $red[] = $emit('declined', 'Поставщик отказал…', 'x', true);
-            }
-            // Шаг сам даёт отмену за менеджера («Я передумал», «Не берёт» доп. просьбы) — «Отменить сделку» не повторяем.
-            if ($v['resale'] && ! ($step->withdraws && $state === OfferState::Sold && ! $this->garageCar)) {
-                // У сделки — одна «Отменить сделку» шторкой: в продажу или в черновики (12.10.2026); гараж — «Вернуть в продажу».
-                $red[] = $emit('resale', $state === OfferState::Sold && ! $this->garageCar ? 'Отменить сделку' : 'Вернуть в продажу', 'undo', true);
             }
             foreach ($danger as [$next, $label]) {
                 $red[] = $state === OfferState::Sold
@@ -600,10 +579,55 @@ final class CarView
             }
         }
         array_push($groups, ...$work);
+        // Модератору решения по сделке — после её работы (у админа они на своих местах выше).
+        if ($this->deals && ! $this->admin) {
+            array_push($groups, ...array_filter($this->decisions(\App\Workflow\StepOffers::of($o, $this->user), $emit, $post)));
+        }
         if ($deletable) {
             $groups[] = [$post('/offers/'.$n, 'Удалить черновик', 'trash', [], true, 'Удалить черновик?', 'Фото и документы удалятся вместе с ним', method: 'delete') + ['top' => true]];
         }
 
         return $groups;
+    }
+
+    /**
+     * Решения по сделке — тому, кто её ведёт (24.11.2026, владелец: «всё по сделке»): «Уже продана…» и «Договор уже подписан»
+     * (14.11.2026, давно проданная висит на шагах — `MarkSoldDeal`, `MarkContractSigned`), «Вернуть сделку в работу…» (закрыли по
+     * ошибке, `ReopenDeal`), «Поставщик отказал…» (сделка закрыта по причине, предложение в архиве) и «Отменить сделку». Отмена
+     * админу — шторкой «в продажу или в черновики» (12.10.2026; гараж — «Вернуть в продажу»): цены его; модератору — в черновики.
+     * Шаг сам даёт отмену за менеджера («Я передумал», «Не берёт» доп. просьбы) — «Отменить сделку» не повторяем.
+     *
+     * @return array{0: list<array<string, mixed>>, 1: list<array<string, mixed>>} пункты «сделка закрыта» и красные
+     */
+    private function decisions(\App\Workflow\StepOffers $step, \Closure $emit, \Closure $post): array
+    {
+        $o = $this->offer;
+        $state = $o->state;
+        $dealing = $this->vars['dealing'];
+        $sold = [];
+        if ($dealing && MarkSoldDeal::allows($o->deal)) {
+            $sold[] = $emit('deal-sold', 'Уже продана…', 'check');
+        }
+        if ($dealing && $state === OfferState::Sold && MarkContractSigned::allows($o->deal) && ! $step->signs) {
+            $sold[] = $post('/work/deals/'.$o->deal->id.'/contract-signed', 'Договор уже подписан', 'file', [], confirm: 'Договор с покупателем уже подписан?', text: 'Данные покупателя больше не нужны, шаги договора отметятся', confirmLabel: 'Подписан');
+        }
+        if (($closed = $o->lastDeal) && ReopenDeal::allows($closed, $this->user)) {
+            $sold[] = $emit('reopen', 'Вернуть сделку в работу…', 'undo');
+        }
+        $red = [];
+        if ($dealing && $state === OfferState::Sold && $o->deal?->isActive() && ! $step->declines) {
+            $red[] = $emit('declined', 'Поставщик отказал…', 'x', true);
+        }
+        $deal = $state === OfferState::Sold && ! $this->garageCar;
+        if ($dealing && ! ($step->withdraws && $deal)) {
+            if ($this->admin) {
+                $red[] = $emit('resale', $deal ? 'Отменить сделку' : 'Вернуть в продажу', 'undo', true);
+            } elseif ($deal) {
+                $red[] = $post('/offers/'.$o->number.'/state', 'Отменить сделку', 'undo', ['state' => OfferState::Draft->value], true, 'Отменить сделку?',
+                    'Подтверждение менеджера отклонится, неоплаченные счета сделки аннулируются, ТС вернётся в черновики', true);
+            }
+        }
+
+        return [$sold, $red];
     }
 }
