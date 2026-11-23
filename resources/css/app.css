@@ -6165,7 +6165,7 @@ dialog.lightbox:not(.lb-one) .lb-pill--bottom { bottom: calc(var(--lb-strip-bott
   .chat-row-body .text-sm { line-height: 1.125rem; }
   /* Логотип вендора за названием ТС у сотрудника (24.11.2026): серединой на середине заглавных, а не ниже строки (замер: -.22em
      опускал его на 5 px). */
-  .chat-row-title .vendor-logo { vertical-align: 0; }
+  .chat-row-title .vendor-logo { vertical-align: 0; width: .9375em; height: .9375em; }
   @media (hover: hover) {
     .chat-row:hover { background: var(--color-surface-2); }
     .chat-row:hover + .chat-row .chat-row-body::before, .chat-row:hover .chat-row-body::before { display: none; }
