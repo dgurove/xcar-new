@@ -16,6 +16,9 @@
     $name = $staff ? ($chat->offer ? $chat->offer->titleWithYear() : $chat->displayName()) : ($byCar ? $chat->offer->titleWithYear() : $chat->counterpartName($me));
     $unread = $staff ? ($chat->manager_id ? 0 : $chat->unread_for_staff) : ($chat->isCounterpart($me) ? $chat->unread_for_staff : $chat->unread_for_user);
     $at = $chat->last_message_at;
+    // Сотруднику (админ, модератор) — логотип вендора через пробел за названием ТС (24.11.2026, просьба из чатов); менеджерам
+    // вендоров не показываем нигде.
+    $vendor = $me?->isStaff() && $chat->offer && $name === $chat->offer->titleWithYear() ? $chat->offer->vendor : null;
 @endphp
 <a href="{{ $href }}" class="chat-row" data-search-row @if ($current) aria-current="true" @endif data-turbo-action="advance">
     @if ($chat->offer)
@@ -30,7 +33,7 @@
     @endif
     <div class="min-w-0 flex-1">
         <div class="flex items-baseline gap-2">
-            <span class="{{ $unread ? 'font-medium' : '' }}" data-fill="title">{{ $name }}</span>
+            <span class="{{ $unread ? 'font-medium' : '' }}" data-fill="title">{{ $name }}@if ($vendor) <x-vendor.logo :vendor="$vendor"/>@endif</span>
             @if ($staff && !$chat->user)<span class="tag">гость</span>@endif
             @if ($at)<span class="ml-auto shrink-0 text-xs text-ink-dim nums">{{ \App\Support\Ago::html($at, short: true) }}</span>@endif
         </div>
