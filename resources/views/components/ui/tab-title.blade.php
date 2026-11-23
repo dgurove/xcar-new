@@ -101,12 +101,12 @@
                 <div class="tab-wheel-col" role="group" style="--col: {{ $loop->index }}" @if ($col['name']) aria-label="{{ $col['name'] }}" @endif>
                     @foreach ($col['keys'] as $key)
                         @php($label = $pills[$key])
-                        {{-- Раздел, чьё имя несёт сама вкладка («Все черновики», `heads`; «Гараж», «Завершённые» — то же слово), — линия без подписи; в начале столбца ПК
-                             и линии нет (`is-top`): вкладка и есть верх столбца. --}}
+                        {{-- Раздел — линия с его именем справа; у сводной («Все черновики», `heads`) тоже, и в начале столбца ПК (24.11.2026, владелец: «подпиши
+                             полоску, как „Галерея“»). Без имени — только когда вкладка зовётся так же («Гараж», «Завершённые»). --}}
                         @isset($sections[$key])
                             {{-- «Только мои»: линия раздела, над которой в столбце (ПК) или во всём колесе (телефон) своих вкладок ещё нет, —
                                  не рисуется: колесо не начинается с черты. --}}
-                            <div @if (! ($own[$key] ?? true)) data-not-mine @endif @unless ($seenCol) data-mine-top @endunless @unless ($seenAll) data-mine-first @endunless @class(['tab-wheel-sec', 'is-solo' => ($size[$key] ?? 0) === 1 || in_array($key, $heads, true), 'is-top' => $loop->first && in_array($key, $heads, true)]) aria-hidden="true"><span class="tab-wheel-sec-line"></span>@unless (in_array($key, $heads, true) || $sections[$key] === $label)<span class="tab-wheel-sec-name">{{ $sections[$key] }}</span>@endunless</div>
+                            <div @if (! ($own[$key] ?? true)) data-not-mine @endif @unless ($seenCol) data-mine-top @endunless @unless ($seenAll) data-mine-first @endunless @class(['tab-wheel-sec', 'is-solo' => ($size[$key] ?? 0) === 1 && ! in_array($key, $heads, true)]) aria-hidden="true"><span class="tab-wheel-sec-line"></span>@unless ($sections[$key] === $label)<span class="tab-wheel-sec-name">{{ $sections[$key] }}</span>@endunless</div>
                         @endisset
                         @unless ($hide($key))
                             @php($seenCol = $seenAll = true)

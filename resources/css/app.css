@@ -1598,7 +1598,6 @@ html.kb-open { --home-gap: 0px; }
     .tab-wheel-nums { transition: color var(--dur-fast); }
     .tab-wheel-item:hover .tab-wheel-label { color: var(--color-ink); }
     .tab-wheel-item:hover .tab-wheel-nums { color: var(--color-ink-muted); }
-    .tab-wheel-sec.is-top { display: none; }
     /* «Все» и сводные разделов («Все черновики»…) — шапки своих вкладок: плотнее и темнее, выбранная всё равно крупнее. */
     .tab-wheel-item.is-head .tab-wheel-label { font-weight: 500; color: var(--color-ink); }
     .tab-wheel-item:focus-visible { outline: 2px solid var(--color-focus); outline-offset: -2px; border-radius: var(--radius-s); }

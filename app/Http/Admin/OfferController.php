@@ -105,7 +105,7 @@ class OfferController
         'all_drafts' => 'Все черновики',
         'nofloor' => 'Без закупочной цены', 'unpriced' => 'Без продажной цены', 'estimating' => 'На оценке у менеджеров', 'priced' => 'Оцененные',
         'all_offers' => 'Все предложения',
-        'slots' => 'Публикация', 'published' => 'Опубликованные', 'refused' => 'Менеджер отказался', 'bids' => 'Есть подтверждения', 'done' => 'Без подтверждений',
+        'slots' => 'Публикация', 'published' => 'Опубликованные', 'refused' => 'Менеджер отказался', 'bids' => 'Есть подтверждения',
         'all_deals' => 'Все сделки',
         // «Оплата за подбор» (18.11.2026, владелец) — поперёк этапов, как «Гараж»: сделка остаётся и в своей вкладке этапа.
         // Счета — «Оплаты → Комиссии» с машиной; красное число — ссылку не выставили, а сделка на шаге оплаты
@@ -120,6 +120,8 @@ class OfferController
         'pickup_assign' => 'Назначить исполнителя', 'pickup_docs' => 'Документы на вывоз', 'pickup_letters' => 'Сообщить поставщику', 'pickup_moving' => 'Везём',
         // «Все архивы», а не «Архивы» (18.11.2026, владелец: «„Архивы“ и „Архив“ рядом — странно»), как прочие сводные.
         'all_archive' => 'Все архивы',
+        // «Без подтверждений» — к архивам (24.11.2026, владелец): решить, снова в продажу или в архив.
+        'done' => 'Без подтверждений',
         'archive' => 'Архив', 'legacy' => 'Из таблицы Кати', 'auction' => 'На аукцион',
     ];
 
@@ -129,9 +131,9 @@ class OfferController
      */
     public const SUMMARIES = [
         'all_drafts' => ['nofloor', 'unpriced', 'estimating', 'priced'],
-        'all_offers' => ['slots', 'published', 'refused', 'bids', 'done'],
+        'all_offers' => ['slots', 'published', 'refused', 'bids'],
         'all_deals' => null,
-        'all_archive' => ['archive', 'legacy', 'auction'],
+        'all_archive' => ['done', 'archive', 'legacy', 'auction'],
     ];
 
     /**
@@ -187,7 +189,7 @@ class OfferController
      * пролистываются»): первая вкладка раздела → подпись (`x-ui.tab-title :sections`). «Все» — над разделами. В «Сделке» —
      * линия над «Завершёнными»; вкладки ожидания — в общем ряду по ходу сделки, без подзаголовка (18.11.2026, `DealTabs::TABS`).
      */
-    public const SECTIONS = ['purchases' => 'Закупка', 'gallery' => 'Галерея', 'all_drafts' => 'Черновик', 'all_offers' => 'Предложение', 'all_deals' => 'Сделка', 'finished' => 'Завершённые', 'garage' => 'Гараж', 'pickup_assign' => 'Вывоз', 'all_archive' => 'Архив'];
+    public const SECTIONS = ['purchases' => 'Закупка', 'gallery' => 'Галерея', 'all_drafts' => 'Черновики', 'all_offers' => 'Предложения', 'all_deals' => 'Сделки', 'finished' => 'Завершённые', 'garage' => 'Гараж', 'pickup_assign' => 'Вывоз', 'all_archive' => 'Архивы'];
 
     /**
      * Столбцы колеса на ПК (17.11.2026, владелец: «не скролл, а просто клик», «три столбца: предложения — черновики, закупка,
