@@ -188,9 +188,10 @@ class TransportController
      * Таблица «Вывоза» — столбцы `columns()` одним описанием (`Support\Table`): шапка, строки `x-logistics.row` и их классы.
      * «Поступила» рядом с «Когда» — только от 1536 у ведущих.
      */
-    public static function table(User $user, string $preset): Table
+    public static function table(User $user, string $preset, bool $pick = true): Table
     {
-        $keys = self::columns($user, $preset);
+        // `pick: false` — без галочек пачки: вкладки «Вывоза» в CRM (`Admin\PickupController`) назначают в окне машины.
+        $keys = array_values(array_diff(self::columns($user, $preset), $pick ? [] : ['pick']));
         $when = in_array('when', $keys, true);
         $make = fn (string $k) => match ($k) {
             'pick' => new Column('pick', pick: true, rem: 2.5),

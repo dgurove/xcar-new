@@ -6,7 +6,7 @@
      кто вывозит. checkable — столбец галочек пачки на «Без исполнителя» (в выдаче лупы галочка — только у задачи без
      исполнителя). preset — вкладка в ссылке строки: карточке не нужно вычислять её заново. table — столбцы
      (`TransportController::table`), ячейки — в его порядке. --}}
-@props(['t', 'table', 'preset' => null])
+@props(['t', 'table', 'preset' => null, 'peek' => null])
 @php
     $me = auth()->user();
     $lead = $me->leadsLogistics();
@@ -27,7 +27,9 @@
     // межрегион — если он у любого отрезка (столбец «Кому везти» на ПК), «дальше без исполнителя» — точкой у названия.
     $legs = $t->relationLoaded('routeLegs') ? $t->routeLegs : collect([$t]);
     $goal = $legs->count() > 1 ? $legs->last() : $t;
-    $key = $t->route_id ?? $t->id;
+    // Ключ строки: маршрут; во вкладках «Вывоза» CRM (`peek`) — номер машины, строка открывает её окно. Не `$key`: им перебирают
+    // столбцы ниже, и ссылка названия вела на `?peek=title` (до 24.11.2026 нажатие по названию в логистике ничего не открывало).
+    $rowKey = $peek ?? ($t->route_id ?? $t->id);
     // Цель другого отрезка — без его продажи (она та же, что у строки): к менеджеру — по продаже строки.
     $goalLabel = $goal === $t ? $t->routeLabel() : match ($goal->destination) {
         \App\Logistics\Point::Keeper => \App\Logistics\Transport::keeperLabel($t->saleOffer()) ?? \App\Logistics\Point::Keeper->label(),
@@ -44,7 +46,7 @@
     // Срок обязывающего предложения (19.10.2026): горит без покупателя — меткой у названия, строка в полный цвет.
     $binding = $has('binding') && $t->forSale() ? $t->offer : null;
 @endphp
-<tr data-detail-key="{{ $key }}" id="transport-{{ $key }}" data-search-row @class(['is-dim' => $sale?->waiting && ! ($binding && \App\Offers\Binding::panics($binding))])>
+<tr data-detail-key="{{ $rowKey }}" id="transport-{{ $rowKey }}" data-search-row @class(['is-dim' => $sale?->waiting && ! ($binding && \App\Offers\Binding::panics($binding))])>
     @foreach ($table->columns as $key => $col)
         @switch($key)
         @case('pick')
@@ -52,7 +54,7 @@
         @break
         @case('title')
     <td class="{{ $col->classes() }}">
-        <x-ui.row-link :key="$key" :with="$preset ? ['preset' => $preset] : []"><span class="cell-title"><x-ui.cat-icon :category="$t->category()"/><span class="cell-name">{{ $t->title() }}</span><x-car.keys :count="$t->car?->keys_count"/><x-ui.links :transport="$t"/>@if ($ahead)<span class="row-signal" title="Дальше без исполнителя" aria-label="Дальше без исполнителя"><span class="size-2 rounded-full bg-urgent"></span></span>@endif @if ($binding)<x-offer.binding :offer="$binding" icon class="sm:hidden"/>@endif{{ "" }}@if ($has('created'))<span class="line-end sm:hidden">{{ \App\Support\Ago::html($t->created_at, time: true) }}</span>@endif</span></x-ui.row-link>
+        <x-ui.row-link :key="$rowKey" :with="$preset ? ['preset' => $preset] : []"><span class="cell-title"><x-ui.cat-icon :category="$t->category()"/><span class="cell-name">{{ $t->title() }}</span><x-car.keys :count="$t->car?->keys_count"/><x-ui.links :transport="$t"/>@if ($ahead)<span class="row-signal" title="Дальше без исполнителя" aria-label="Дальше без исполнителя"><span class="size-2 rounded-full bg-urgent"></span></span>@endif @if ($binding)<x-offer.binding :offer="$binding" icon class="sm:hidden"/>@endif{{ "" }}@if ($has('created'))<span class="line-end sm:hidden">{{ \App\Support\Ago::html($t->created_at, time: true) }}</span>@endif</span></x-ui.row-link>
         {{-- Вторая строка — одна линия (20.10.2026, владелец: «строки — чтобы быстро найти, а не печатать всю информацию»): что
              дальше цветным словом целиком и куда — режется «…». Номер убытка, путь через стоянки, кто вывозит — в карточке и
              столбцах ПК, межрегион — чипом-фильтром и в карточке; «дальше без исполнителя» — оранжевой точкой у названия. --}}

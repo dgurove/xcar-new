@@ -115,6 +115,9 @@ class OfferController
         // Гараж — все гаражные машины до расчёта, параллельно их вкладкам сделки, как галерея (16.11.2026, начальник: «всего 5
         // машин»; владелец: своим разделом). Строки рисует `GarageController::tab`.
         'garage' => 'Гараж',
+        // «Вывоз» (24.11.2026, владелец: «в третьем столбце над архивом подзаголовок „Вывоз“, назначить исполнителя и т. д.») —
+        // поперёк этапов, как «Оплата за подбор»: строки рисует `PickupController::tab`.
+        'pickup_assign' => 'Назначить исполнителя', 'pickup_docs' => 'Документы на вывоз', 'pickup_letters' => 'Сообщить поставщику', 'pickup_moving' => 'Везём',
         // «Все архивы», а не «Архивы» (18.11.2026, владелец: «„Архивы“ и „Архив“ рядом — странно»), как прочие сводные.
         'all_archive' => 'Все архивы',
         'archive' => 'Архив', 'legacy' => 'Из таблицы Кати', 'auction' => 'На аукцион',
@@ -184,14 +187,14 @@ class OfferController
      * пролистываются»): первая вкладка раздела → подпись (`x-ui.tab-title :sections`). «Все» — над разделами. В «Сделке» —
      * линия над «Завершёнными»; вкладки ожидания — в общем ряду по ходу сделки, без подзаголовка (18.11.2026, `DealTabs::TABS`).
      */
-    public const SECTIONS = ['purchases' => 'Закупка', 'gallery' => 'Галерея', 'all_drafts' => 'Черновик', 'all_offers' => 'Предложение', 'all_deals' => 'Сделка', 'finished' => 'Завершённые', 'garage' => 'Гараж', 'all_archive' => 'Архив'];
+    public const SECTIONS = ['purchases' => 'Закупка', 'gallery' => 'Галерея', 'all_drafts' => 'Черновик', 'all_offers' => 'Предложение', 'all_deals' => 'Сделка', 'finished' => 'Завершённые', 'garage' => 'Гараж', 'pickup_assign' => 'Вывоз', 'all_archive' => 'Архив'];
 
     /**
      * Столбцы колеса на ПК (17.11.2026, владелец: «не скролл, а просто клик», «три столбца: предложения — черновики, закупка,
      * галерея, предложение; сделки — сделки и гараж; архивы»; заголовков у столбцов нет — имя только для чтения с экрана):
      * первая вкладка столбца → имя (`x-ui.tab-title :columns`). На телефоне колесо одно.
      */
-    public const WHEEL_COLUMNS = ['all' => 'Предложения', 'all_deals' => 'Сделки', 'all_archive' => 'Архивы'];
+    public const WHEEL_COLUMNS = ['all' => 'Предложения', 'all_deals' => 'Сделки', 'pickup_assign' => 'Вывоз и архивы'];
 
     /** Вкладки, машин которых во «Все» нет (17.11.2026, владелец): работа модератора и законченное. */
     public const ALL_HIDDEN = ['nofloor', 'finished'];
@@ -199,13 +202,14 @@ class OfferController
     /** Вкладки, чьи строки рисует свой контроллер: сделки, гараж, галерея, закупки. */
     public static function ownTab(?string $preset): bool
     {
-        return self::dealTab($preset) || in_array($preset, ['purchases', 'gallery', 'interest', 'garage', 'selection'], true);
+        return self::dealTab($preset) || in_array($preset, ['purchases', 'gallery', 'interest', 'garage', 'selection'], true) || isset(PickupController::TABS[(string) $preset]);
     }
 
     /** Зелёные числа колеса: ключ вкладки → ключ числа в `counts` (оценки менеджеров, наши дела по этапам сделки). */
     public static function badges(): array
     {
-        return ['refused' => 'refused', 'estimating' => 'estimating_given', 'priced' => 'priced_given', 'all_deals' => 'all_deals_our', 'selection' => 'selection_our', ...collect(DealTabs::TABS)->except(DealTabs::WAITING)->mapWithKeys(fn ($t, $k) => [$k => $k.'_our'])->all()];
+        return ['refused' => 'refused', 'estimating' => 'estimating_given', 'priced' => 'priced_given', 'all_deals' => 'all_deals_our', 'selection' => 'selection_our',
+            ...array_combine(PickupController::OURS, array_map(fn ($k) => $k.'_our', PickupController::OURS)), ...collect(DealTabs::TABS)->except(DealTabs::WAITING)->mapWithKeys(fn ($t, $k) => [$k => $k.'_our'])->all()];
     }
 
     /** Вкладка ли сделки: строки — сделки (`DealController::tab`). */
@@ -238,7 +242,7 @@ class OfferController
             'purchases' => true, 'gallery' => true, 'interest' => true];
 
         // Модератору (`canEditDeals`) — сделки по этапам, «Завершённые» и гараж (17.11.2026, владелец: полный доступ к сделкам и гаражу).
-        return array_diff_key(self::PRESETS, $hidden + ($user->canEditDeals() ? [] : ['garage' => true, 'selection' => true] + self::DEAL_TABS));
+        return array_diff_key(self::PRESETS, $hidden + ($user->canEditDeals() ? [] : ['garage' => true, 'selection' => true] + self::DEAL_TABS + PickupController::TABS));
     }
 
     /**
@@ -400,6 +404,7 @@ class OfferController
             return match ($own) {
                 'garage' => app(GarageController::class)->tab($request),
                 'selection' => app(SelectionController::class)->tab($request),
+                'pickup_assign', 'pickup_docs', 'pickup_letters', 'pickup_moving' => app(PickupController::class)->tab($request, $own),
                 'purchases' => app(PurchaseController::class)->tab($request),
                 'gallery', 'interest' => app(GalleryController::class)->tab($request),
                 default => app(DealController::class)->tab($request, $own),
@@ -736,6 +741,7 @@ class OfferController
             // «Гараж» — все гаражные машины до расчёта, в любом этапе сделки (16.11.2026); расчёт закрыт — в «Завершённых».
             'garage' => $q->whereHas('garageCar', fn ($c) => $c->where('state', '!=', CarState::Settled)),
             'selection' => $q->whereIntegerInRaw('offers.id', SelectionController::ids()),
+            'pickup_assign', 'pickup_docs', 'pickup_letters', 'pickup_moving' => $q->whereIntegerInRaw('offers.car_id', PickupController::carIds($preset)),
             // Галерея — окно показа черновика (`GalleryController::scopeFor`); закупки — не предложения: строк-предложений нет.
             'gallery', 'interest' => GalleryController::scopeFor($preset, $q),
             'purchases' => $q->whereRaw('false'),
@@ -1117,6 +1123,12 @@ class OfferController
         // «Оплата за подбор» — красным, сколько ссылок не выставлено на шаге оплаты (с тем же кругом машин, что число вкладки).
         if (isset($counts['selection'])) {
             $counts['selection_our'] = $base()->whereIntegerInRaw('offers.id', SelectionController::unsentIds())->count();
+        }
+        // «Вывоз» — там, где ход наш, красным всё (`PickupController::OURS`).
+        foreach (PickupController::OURS as $tab) {
+            if (isset($counts[$tab])) {
+                $counts[$tab.'_our'] = $counts[$tab];
+            }
         }
         // У «Все сделки» — все наши дела по этапам.
         if (isset($counts['all_deals'])) {

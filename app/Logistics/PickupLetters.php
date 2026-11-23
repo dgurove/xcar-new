@@ -108,6 +108,23 @@ final class PickupLetters
     }
 
     /**
+     * Вывозы, чьё письмо поставщику ждёт, у любой машины, не только в сделке (24.11.2026, вкладка «Сообщить поставщику» раздела
+     * «Вывоз» — `Admin\PickupController`): черновик Совкомбанка вывозят до продажи. @return list<int>
+     */
+    public static function dueTransportIds(): array
+    {
+        $load = fn () => Transport::query()->from('transports as pt')->join('offers as o', 'o.car_id', '=', 'pt.car_id')
+            ->join('vendors as v', 'v.id', '=', 'o.vendor_id')->where('v.pickup_letters', true)
+            ->whereRaw('pt.id = ('.self::LATEST_SQL.')')
+            ->where(fn ($q) => $q->where(fn ($a) => $a->whereNotNull('pt.picked_at')->whereNull('pt.supplier_act_at'))
+                ->orWhere(fn ($d) => $d->whereNull('pt.picked_at')->whereNotNull('pt.pickup_at')
+                    ->whereRaw('pt.supplier_told_for is distinct from pt.pickup_at')))
+            ->pluck('pt.id')->map(fn ($id) => (int) $id)->unique()->values()->all();
+
+        return app()->runningInConsole() ? $load() : once($load);
+    }
+
+    /**
      * Ход вывоза (`TransportMoved`): назначили день («Созвонились», «Перенести») или забрали — дело письма появилось, админам
      * уведомление. Задним числом («Уже вывезли», `batch`) — без него.
      */

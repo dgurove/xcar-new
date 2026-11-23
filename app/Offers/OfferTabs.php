@@ -34,7 +34,7 @@ final class OfferTabs
     public static function keys(): array
     {
         return array_values(array_diff(array_keys(OfferController::PRESETS),
-            ['all', 'purchases', 'gallery', 'interest', ...array_keys(OfferController::SUMMARIES)]));
+            ['all', 'purchases', 'gallery', 'interest', ...array_keys(OfferController::SUMMARIES), ...array_keys(\App\Http\Admin\PickupController::TABS)]));
     }
 
     /** `offer_id` → ключ вкладки. @return array<int, string> */

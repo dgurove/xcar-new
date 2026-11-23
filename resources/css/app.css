@@ -1512,7 +1512,6 @@ html.kb-open { --home-gap: 0px; }
   /* «Только мои» (18.11.2026, владелец выбрал тумблер iOS): в правом нижнем углу колеса подпись и переключатель; включён — вкладки, за
      которые человек не отвечает (`TabOwner`), и разделы без своих прячутся. Ничего не назначено — одна строка. */
   .tab-wheel.is-mine [data-not-mine], .tab-wheel.is-mine [data-mine-first] { display: none; }
-  @media (min-width: 1024px) { .tab-wheel.is-mine [data-mine-top] { display: none; } }
   /* Подложка цвета колеса: пункты, что листаются под тумблером, его не перебивают. */
   .tab-wheel-mine {
     position: absolute; z-index: 2; right: max(.5rem, env(safe-area-inset-right)); bottom: max(.5rem, env(safe-area-inset-bottom));
@@ -1584,6 +1583,9 @@ html.kb-open { --home-gap: 0px; }
       column-gap: clamp(1.5rem, 4vw, 4rem); padding: var(--wheel-top) 2rem 3rem var(--wheel-left);
     }
     .tab-wheel-col { display: flex; flex-direction: column; min-width: 0; }
+    /* «Только мои» — одним столбцом (24.11.2026, владелец: «отфильтрованное не делить на столбцы»): своих вкладок немного. */
+    .tab-wheel.is-mine .tab-wheel-scroll { display: block; }
+    .tab-wheel.is-mine .tab-wheel-col { width: min(30rem, 100%); }
     /* Аватарки ответственных — за краем столбца: промежуток шире на три аватарки, иначе они наезжали на соседний столбец. */
     .tab-wheel:not(.is-mine) .tab-wheel-scroll { column-gap: calc(clamp(1rem, 2.5vw, 2.5rem) + 2.75rem); }
     .tab-wheel-wait { margin-inline-start: .4em; vertical-align: middle; }
