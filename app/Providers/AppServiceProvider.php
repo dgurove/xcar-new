@@ -173,6 +173,9 @@ class AppServiceProvider extends ServiceProvider
         Event::subscribe(MarkSupplierLetter::class);
         Event::listen(OfferStateChanged::class, RetractWhenGone::class);
         Event::listen(TransportMoved::class, StartPrepOnArrival::class);
+        // Письма поставщику о вывозе (23.11.2026, Совкомбанк): назначили день или забрали — админам уведомление о деле письма.
+        Event::listen(TransportMoved::class, [\App\Logistics\PickupLetters::class, 'moved']);
+        Event::listen(\App\Mail\Events\MessageFailed::class, [\App\Logistics\Actions\MarkPickupLetter::class, 'failed']);
         Event::listen(VehicleSold::class, SendPickupLink::class);
         Event::listen(VehicleAccepted::class, ReleaseSold::class);
         // ТС приняли — заявки на приём прочитаны; выдали или отменили — все письма до этого (`ReadSettled`).

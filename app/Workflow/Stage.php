@@ -131,6 +131,15 @@ class Stage extends Model
         return $this->template_id !== null && $this->waits_for === WaitsFor::Supplier;
     }
 
+    /**
+     * Документы поставщику по продаже (Совкомбанк, 23.11.2026): шаблон шага прикладывает договор (`Template::SALE_DOCS`). Письмо
+     * ушло или «без письма» — шаг проходит сам: ответа Совкомбанк не шлёт.
+     */
+    public function isSupplierDocs(): bool
+    {
+        return $this->isLetterStep() && $this->template?->attach === \App\Mail\Template::SALE_DOCS;
+    }
+
     /** Шаг письма с реквизитами для счёта (`{{ buyer }}` в шаблоне, 03.11.2026, Альфа). */
     public function isRequisitesStep(): bool
     {

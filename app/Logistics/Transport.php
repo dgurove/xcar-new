@@ -119,6 +119,12 @@ class Transport extends Model
             'delivered_at' => 'datetime',
             'cancelled_at' => 'datetime',
             'nudged_at' => 'datetime',
+            // Письма поставщику о вывозе (`PickupLetters`): когда сообщили дату, какую, когда ушёл акт.
+            'supplier_told_at' => 'datetime',
+            'supplier_told_for' => 'datetime',
+            'supplier_act_at' => 'datetime',
+            'supplier_told_message_id' => 'int',
+            'supplier_act_message_id' => 'int',
         ];
     }
 

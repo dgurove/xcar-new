@@ -67,6 +67,33 @@ final class InsurerReplies
         return $message->isFromVendor() && ! $message->isAutomatic() && $message->replyText() !== '';
     }
 
+    /**
+     * Только благодарность или «принято» (23.11.2026, Совкомбанк: «Спасибо!», «Принято.», «Хорошо!», «))) понятно» висели разбором
+     * наравне с просьбами — разбирать там нечего, `OnInsurerReply::queue` их не заводит). Слова письма до подписи: подпись — с
+     * «С уважением», линии «———», должности или короткой строки с именем отправителя; приветствие не в счёт.
+     */
+    public static function isThanks(Message $message): bool
+    {
+        $names = array_values(array_filter(preg_split('/[\s,.]+/u', mb_strtolower((string) $message->from_name)) ?: [], fn ($w) => mb_strlen($w) >= 4));
+        $sign = $names ? '/(?<!\p{L})(?:'.implode('|', array_map(fn ($w) => preg_quote($w, '/'), $names)).')(?!\p{L})/u' : null;
+        $own = [];
+        foreach (preg_split('/\R/u', $message->replyText()) ?: [] as $line) {
+            $line = mb_strtolower(trim($line));
+            if ($line === '') {
+                continue;
+            }
+            // Подпись: «С уважением», линия, должность первой строкой или короткая строка с именем отправителя.
+            if (preg_match('/^(?:с\s+уважением|best\s+regards|[—–_-]{3,}|(?:ведущий|главный|старший)?\s*(?:специалист|руководитель|менеджер|начальник|эксперт|автоэксперт)(?!\p{L}))/u', $line)
+                || ($sign && preg_match($sign, $line) && count(preg_split('/\s+/u', $line)) <= 6)) {
+                break;
+            }
+            $own[] = $line;
+        }
+        $text = trim((string) preg_replace('/^(?:[\s)(:!.,]*(?:всем\s+)?(?:привет|добрый\s+(?:день|вечер)|доброе\s+утро|здравствуйте|коллеги)(?!\p{L}))+/u', '', implode(' ', $own)));
+
+        return $text !== '' && preg_match('/^[\s)(:!.,]*(?:(?:спасибо|благодарю|принято|хорошо|ок|ok|понятно|понял[аи]?|отлично|супер)(?!\p{L})(?:\s+большое)?[\s)(:!.,]*)+$/u', $text) === 1;
+    }
+
     /** В ответе есть файлы: вложения или ссылка на облако (`CloudShare`). */
     public static function hasFiles(Message $message): bool
     {

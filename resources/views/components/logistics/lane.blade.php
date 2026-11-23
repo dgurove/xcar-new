@@ -29,13 +29,15 @@
     $undoLabel = \App\Logistics\Actions\StepBack::label($undo);
     $backdate = $open && auth()->user()->leadsLogistics();
     $events = $t ? $t->events()->count() : 0;
+    // Письмо поставщику о вывозе (23.11.2026, Совкомбанк, `Logistics\PickupLetters`): день назначили или забрали — сообщить ему.
+    $pickupLetter = $t ? \App\Logistics\PickupLetters::due($offer) : null;
 @endphp
 @if ($t || $canOpen)
 <x-ui.card title="Вывоз" :class="$class" id="pickup">
     {{-- Рейс в логистике — пунктом «⋯», а не лаймовой «Логистика» под заголовком «Вывоз» (16.11.2026, владелец: «выбери что-то
          одно»). Менеджер забирает сам — это не логистика, пункта нет. --}}
     @php $tripUrl = $t && ! $manager ? Surface::Logistics->url('/transports/'.$t->id) : null; @endphp
-    @if ($changeable || $undo || $backdate || $tripUrl)
+    @if ($changeable || $undo || $backdate || $tripUrl || $pickupLetter)
         <x-slot:actions>
             {{-- «⋯» вывоза — общей пилюлей со шторкой действий (`x-ui.more`, 12.11.2026). --}}
             <x-ui.more :id="'pickup-more-'.$offer->number" class="shrink-0">
@@ -50,6 +52,11 @@
                         @if ($undo)
                             <x-ui.step-back close="" :action="'/offers/'.$offer->number.'/pickup/back'" :label="$undoLabel" kind="transport"/>
                         @endif
+                    </div>
+                @endif
+                @if ($pickupLetter)
+                    <div class="menu-group">
+                        <form method="post" action="/offers/{{ $offer->number }}/pickup-letter-skip" class="contents" data-turbo-confirm="Поставщику сообщили не письмом?" data-turbo-confirm-label="Сообщили сами">@csrf<input type="hidden" name="kind" value="{{ $pickupLetter['kind'] }}"><button class="menu-item w-full" role="menuitem"><x-ui.icon name="check" class="size-5 text-ink-muted"/>Без письма — сообщили сами</button></form>
                     </div>
                 @endif
                 @if ($tripUrl)
@@ -71,6 +78,14 @@
             <div class="mb-3 flex flex-wrap items-center gap-x-2 gap-y-1 text-sm">
                 @if ($t->isLate())<span class="text-danger">{{ $manager ? 'не забрал в срок' : 'не вывезли в срок' }}</span>@endif
                 <x-car.keys :count="$keys"/>
+            </div>
+        @endif
+        @if ($pickupLetter && $pickupLetter['url'])
+            <div class="mb-4">
+                <x-route.task-row icon="send" :emit="$pickupLetter['url']" urgent>
+                    {{ $pickupLetter['title'] }}
+                    <x-slot:sub>{{ $pickupLetter['kind'] === 'act' ? 'Забрали '.\App\Support\Ago::day($t->picked_at) : 'Вывоз '.\App\Support\Ago::day($t->pickup_at) }}</x-slot:sub>
+                </x-route.task-row>
             </div>
         @endif
         @if ($deal?->isActive() && ! $deal->isGarage())

@@ -23,6 +23,8 @@
 @if ($then ?? null)<input type="hidden" name="then" value="{{ $then }}">@endif
 {{-- Заявка поставщику: сделки её файла — отправили письмо, они идут дальше «Заявка отправлена». --}}
 @if ($requestDeals ?? null)<input type="hidden" name="request_deals" value="{{ old('request_deals', $requestDeals) }}">@endif
+{{-- Письмо поставщику о вывозе (`Logistics\PickupLetters`): ушло — дело вывоза закрыто. --}}
+@if ($pickupLetter ?? null)<input type="hidden" name="pickup_letter" value="{{ old('pickup_letter', $pickupLetter) }}">@endif
 {{-- Доп. запрос поставщику: что отмечено — с письмом (`mail_messages.requests`, «История», чат менеджера). --}}
 @if (($extra ?? null) !== null)
     @foreach ($extra as $t)<input type="hidden" name="extra[]" value="{{ $t->id }}">@endforeach

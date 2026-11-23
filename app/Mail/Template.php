@@ -8,6 +8,8 @@ use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Support\Collection;
+use Spatie\MediaLibrary\HasMedia;
+use Spatie\MediaLibrary\InteractsWithMedia;
 
 /**
  * Заготовка письма: тема и тело с подстановками {{ number }}, {{ car }}, {{ claim_ref }}, {{ floor }}, {{ price }}, {{ manager }}, {{ insurer }}.
@@ -15,9 +17,18 @@ use Illuminate\Support\Collection;
  * после «Просьба …», порядок `position`, варианты `{{ city }}` — `choices`, `attach = payment` — PDF оплаты во вложении.
  */
 #[Fillable(['name', 'scope', 'subject', 'body', 'intent', 'attach', 'kind', 'position', 'choices'])]
-class Template extends Model
+class Template extends Model implements HasMedia
 {
-    use FastAttributes;
+    use FastAttributes, InteractsWithMedia;
+
+    /**
+     * Постоянные файлы письма (23.11.2026, Совкомбанк: «пришлите доверенность на представителя») — доверенность к письму о вывозе
+     * (`Logistics\PickupLetters::files`) и любые другие: окно письма кладёт их во вложения. Загружают в редакторе шаблона.
+     */
+    public function registerMediaCollections(): void
+    {
+        $this->addMediaCollection('files')->useDisk('private');
+    }
 
     protected $table = 'mail_templates';
 
@@ -33,6 +44,18 @@ class Template extends Model
 
     /** Доп. запрос прикладывает PDF оплаты (`PaymentProofPdf`), если он есть и ещё не уходил по этой машине. */
     public const PAY_PROOF = 'payment';
+
+    /** Письмо поставщику по продаже (Совкомбанк, 23.11.2026): подписанный договор (`SignedContractPdf`) во вложении. */
+    public const SALE_DOCS = 'saledocs';
+
+    /** Письмо о вывозе с актом (`Logistics\PickupLetters`): акт и соглашение, приложенные к машине с созвона. */
+    public const PICKUP_ACT = 'pickact';
+
+    /** Письмо о дне вывоза (`Logistics\PickupLetters`): только метка — по ней шаблон и находят, название правят свободно. */
+    public const PICKUP_DATE = 'pickdate';
+
+    /** Вложения писем CRM, что ставит маршрут: по ним письмо и находят, правка текста их не снимает, удалить шаблон нельзя. */
+    public const ROUTE_ATTACH = [self::SALE_DOCS, self::PICKUP_ACT, self::PICKUP_DATE];
 
     public function scopeLetters($query)
     {
@@ -50,7 +73,8 @@ class Template extends Model
         return $this->kind === self::REQUEST;
     }
 
-    public const PLACEHOLDERS = ['number', 'car', 'vin', 'claim_ref', 'floor', 'price', 'manager', 'insurer', 'today', 'buyer'];
+    public const PLACEHOLDERS = ['number', 'car', 'vin', 'claim_ref', 'floor', 'price', 'manager', 'insurer', 'today', 'buyer', 'commission_no', 'payment',
+        'pickup_at', 'pickup_place', 'driver', 'picked_at'];
 
     public const PARK_PLACEHOLDERS = ['ref', 'car', 'vin', 'plate', 'yard', 'address', 'date', 'days', 'damages', 'client', 'today', 'pickup_link', 'buyer_name', 'buyer_email', 'pickup_date',
         'month', 'count', 'invoice', 'sum', 'seller'];
@@ -231,6 +255,13 @@ class Template extends Model
             }
             $tag = '\{\{ ?'.preg_quote($key, '/').' ?\}\}';
             $text = (string) preg_replace('/[ \t]*\('.$tag.'\)/u', '', $text);
+            // Платёжки в выписке ещё нет — «оплачено 1 070 000 ₽.»; кто забирает неизвестно — без этой фразы (23.11.2026).
+            if ($key === 'payment') {
+                $text = (string) preg_replace('/[ \t]*'.$tag.'/u', '', $text);
+            }
+            if ($key === 'driver') {
+                $text = (string) preg_replace('/[^.!?\n]*'.$tag.'[^.!?\n]*[.!?]?[ \t]*/u', '', $text);
+            }
             if (isset(self::LABELS[$key])) {
                 $text = (string) preg_replace('/,?[ \t]*'.self::LABELS[$key].':?[ \t]*'.$tag.'/iu', '', $text);
             }

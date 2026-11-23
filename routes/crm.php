@@ -231,6 +231,8 @@ Route::domain(config('xcar.crm_host'))->middleware(['auth', 'ability:isStaff'])-
         Route::post('/offers/{offer}/deadline', [RouteController::class, 'deadline']);
         Route::get('/offers/{offer}/letter-ask', [RouteController::class, 'letterAsk']);
         Route::post('/offers/{offer}/letter-skip', [RouteController::class, 'letterSkip']);
+        // Письмо поставщику о вывозе — «Без письма — сообщили сами» (23.11.2026, `Logistics\PickupLetters`).
+        Route::post('/offers/{offer}/pickup-letter-skip', [RouteController::class, 'pickupLetterSkip']);
         // «Запросить реквизиты» в шаге «Письмо с реквизитами» (18.11.2026): менеджеру снова в чат сделки.
         Route::post('/offers/{offer}/ask-buyer', [RouteController::class, 'askBuyer']);
         // Доп. просьба (18.11.2026, `Offers\ExtraAsk`): «Вопрос не решён», «Ответили не письмом», решение за менеджера.

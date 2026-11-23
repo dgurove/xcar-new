@@ -87,7 +87,11 @@ Artisan::command('deals:close-stale-reviews {--dry}', function () {
         return OfferEvent::where('offer_id', $r->offer_id)->where('type', OfferEventType::StageEntered)
             ->where('created_at', '>', $r->created_at)->where('payload->track', 'sale')->whereIn('user_id', $staff)->exists()
             || ($r->message && Message::where('thread_id', $r->message->thread_id)->where('direction', 'out')
-                ->where('date_at', '>', $r->message->date_at)->whereIn('created_by', $staff)->exists());
+                ->where('date_at', '>', $r->message->date_at)->whereIn('created_by', $staff)->exists())
+            // Ответ сотрудника из своей почты с копией на наш ящик и «Спасибо» / «Принято» (23.11.2026, Совкомбанк).
+            || ($r->message && Message::where('thread_id', $r->message->thread_id)->where('direction', 'in')->where('date_at', '>', $r->message->date_at)
+                ->get()->contains(fn (Message $m) => \App\Offers\Listeners\CloseReviews::staffSender($m) !== null))
+            || ($r->message && \App\Offers\InsurerReplies::isThanks($r->message) && ! \App\Offers\InsurerReplies::hasFiles($r->message));
     });
     foreach ($stale as $r) {
         $this->line($r->id.' сделка '.$r->deal_id.' '.$r->offer?->number.' '.$r->created_at->format('d.m H:i').' '.($r->deal?->state->value ?? '—'));

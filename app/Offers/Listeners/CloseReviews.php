@@ -3,7 +3,9 @@
 namespace App\Offers\Listeners;
 
 use App\Mail\Direction;
+use App\Mail\Events\MessageParsed;
 use App\Mail\Events\MessageSent;
+use App\Mail\Message;
 use App\Offers\Deal;
 use App\Offers\Offer;
 use App\Offers\OfferEventType;
@@ -20,14 +22,16 @@ use Illuminate\Events\Dispatcher;
  * Теперь разобрано, когда сотрудник:
  * - сдвинул шаг сделки после письма (`StageEntered` с ним; шаг из «Показать менеджеру» закрывает `Disclose` сам);
  * - ответил поставщику в той же ветке после письма (`MessageSent`) — любым письмом, не только письмом шага: «ГОТС поступили на
- *   реализацию, подтвердите актуальность» — запрос к нам, наш ответ на него и есть разбор.
+ *   реализацию, подтвердите актуальность» — запрос к нам, наш ответ на него и есть разбор;
+ * - ответил из своей почты с копией на наш ящик (`MessageParsed`, 23.11.2026: Катя ведёт Совкомбанк с личного адреса, deal@ — в
+ *   копии; письмо входящее, но наше — `Message::isOurs`, а разбор висел: из 35 разборов Совкома 7 уже были отвечены так).
  * Шаг менеджера разбор не гасит — менеджер письма не видел. В «Истории» — чем разобрано.
  */
 final class CloseReviews
 {
     public function subscribe(Dispatcher $events): array
     {
-        return [StageEntered::class => 'step', MessageSent::class => 'answered'];
+        return [StageEntered::class => 'step', MessageSent::class => 'answered', MessageParsed::class => 'staffMail'];
     }
 
     public function step(StageEntered $e): void
@@ -49,6 +53,36 @@ final class CloseReviews
         $at = $m->sent_at ?? $m->date_at ?? now();
         $deal && self::close($offer, ReplyReview::pending()->where('deal_id', $deal->id)
             ->whereHas('message', fn ($q) => $q->where('thread_id', $m->thread_id)->where('date_at', '<=', $at)), $by, 'ответом поставщику');
+    }
+
+    public function staffMail(MessageParsed $e): void
+    {
+        $m = $e->message;
+        if ($m->direction !== Direction::In || ! ($by = self::staffSender($m)) || ! ($offer = $m->thread?->offer)) {
+            return;
+        }
+        $deal = Deal::where('offer_id', $offer->id)->active()->first();
+        $deal && self::close($offer, ReplyReview::pending()->where('deal_id', $deal->id)
+            ->whereHas('message', fn ($q) => $q->where('thread_id', $m->thread_id)->where('date_at', '<=', $m->date_at ?? now())->whereKeyNot($m->id)),
+            $by, 'ответом поставщику из почты');
+    }
+
+    /**
+     * Сотрудник, что написал письмо со своего адреса (адрес — его почта в профиле). Пересланное письмо поставщика — не ответ:
+     * ни пересылка по заголовку `Sender` (`isForwardedByStaff`), ни «Fwd:» в теме, ни «Пересылаемое сообщение» первой строкой.
+     */
+    public static function staffSender(Message $m): ?User
+    {
+        $email = mb_strtolower(trim((string) $m->from_email));
+        if ($email === '' || ! in_array($email, Message::ownEmails(), true) || $m->isForwardedByStaff()
+            || preg_match('/^\s*(?:fwd?|пересл)/iu', (string) $m->subject)
+            // Пересылка с mail.ru тему не меняет: «-------- Пересылаемое сообщение --------» в начале тела.
+            || preg_match('/^\s*(?:-{3,}\s*)?(?:Пересылаемое сообщение|Forwarded message|Original Message|Исходное сообщение)/iu', $m->replyText())) {
+            return null;
+        }
+        $user = User::whereRaw('lower(email) = ?', [$email])->first();
+
+        return $user?->isStaff() ? $user : null;
     }
 
     private static function close(Offer $offer, $reviews, User $by, string $how): void

@@ -31,6 +31,8 @@ final class SkipLetter
             'payload' => [...$payload, 'letter_at' => now()->toIso8601String(), 'letter_by_hand' => true],
         ]);
         $offer->log(OfferEventType::Note, $by, ['text' => 'Поставщику сообщили не письмом: «'.$position->stage->name.'»']);
+        // Документы поставщику (Совкомбанк) — ответа не будет: шаг проходит сам.
+        \App\Offers\Actions\PassSupplierDocs::after($offer, $by);
 
         return $position;
     }

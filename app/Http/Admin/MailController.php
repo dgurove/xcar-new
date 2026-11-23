@@ -52,6 +52,7 @@ use App\Offers\Actions\AutoOffer;
 use App\Offers\Actions\MarkSupplierRequestSent;
 use App\Offers\Actions\LogExtraRequest;
 use App\Offers\Documents\PaymentProofPdf;
+use App\Offers\Documents\SignedContractPdf;
 use App\Offers\ExtraRequest;
 use App\Offers\Intake\OpenDraft;
 use App\Offers\Offer;
@@ -877,9 +878,21 @@ class MailController
         // Письмо поставщику об оплате (шаблон этапа, Альфа): документ об оплате, что приложили на шаге оплаты, — во вложении
         // (18.10.2026: «Платёжное поручение во вложении» уходило без него) одним PDF (10.11.2026, владелец: «из двух фоток, как
         // с паспортом, формировался пдф» — `PaymentProofPdf`).
-        if ($offer?->deal && $template?->id && ! $request->old() && $template->id === $offer->stage()?->template_id
+        // Документам поставщику (Совкомбанк) платёжка менеджера ни к чему: это его оплата нам, а не наша поставщику.
+        if ($offer?->deal && $template?->id && ! $request->old() && $template->id === $offer->stage()?->template_id && $template->attach !== Template::SALE_DOCS
             && PaymentProofPdf::files($offer->deal)->isNotEmpty() && ($proof = PaymentProofPdf::render($offer->deal))) {
             $defaults['files'][] = $outbox->put(PaymentProofPdf::fileName($offer->deal), $proof);
+        }
+
+        // Документы поставщику по продаже (Совкомбанк, 23.11.2026): подписанный договор одним PDF.
+        if ($offer?->deal && $template?->attach === Template::SALE_DOCS && ! $request->old() && ($signed = SignedContractPdf::render($offer->deal))) {
+            $defaults['files'][] = $outbox->put(SignedContractPdf::fileName($offer->deal), $signed);
+        }
+        // Письма Совкомбанку о вывозе (23.11.2026, `Logistics\PickupLetters`): постоянные файлы шаблона (доверенность) и акт вывоза.
+        if ($offer && $template?->exists && ! $request->old()) {
+            foreach (\App\Logistics\PickupLetters::files($offer, $template) as $media) {
+                $defaults['files'][] = $outbox->put($media->getCustomProperty('title') ?: $media->file_name, file_get_contents($media->getPath()));
+            }
         }
 
         // Письмо с реквизитами без реквизитов не собираем (03.11.2026): кнопки шага нет, а по старой ссылке — словами почему.
@@ -912,6 +925,7 @@ class MailController
             // Черновик после «Принять» (BidController::accepted): отправили — окно закрывается, человек идёт дальше по списку.
             'then' => $request->query('then') === 'close' ? 'close' : null,
             'requestDeals' => $supplierRequest?->deals->pluck('id')->implode(','),
+            'pickupLetter' => $offer && preg_match('/^\d+:(?:date|act)$/', (string) $request->query('pickup')) ? (string) $request->query('pickup') : null,
             'closing' => $closing && ! $review ? $request->query('closing') : null, 'closingReplaces' => $closing[2]?->id ?? null, 'closingFiles' => $closingFiles, 'closingSend' => $send,
             'closingThread' => $closing ? $request->query('closing') : null,
             'extra' => $extra, 'extraCity' => $extraCity, 'extraAll' => $extra !== null ? Template::requests()->get() : collect(),
@@ -1149,6 +1163,13 @@ class MailController
         // Доп. запрос ушёл — в «Историю» машины и менеджеру сделки в чат.
         if ($this->scope === Scope::Offers && ! empty($data['requests']) && ! empty($data['offer']) && ($asked = Offer::find($data['offer']))) {
             app(LogExtraRequest::class)($asked, $message, $request->user());
+        }
+        // Письмо о вывозе ушло — дело вывоза закрыто (`Logistics\PickupLetters`).
+        if ($this->scope === Scope::Offers && ! empty($data['pickup_letter'])) {
+            [$tid, $kind] = explode(':', $data['pickup_letter']);
+            if ($t = \App\Logistics\Transport::find((int) $tid)) {
+                app(\App\Logistics\Actions\MarkPickupLetter::class)($t, $kind, $request->user(), $message);
+            }
         }
         // Заявка поставщику ушла — сделки из её файла идут дальше «Заявка отправлена».
         $requested = $this->scope === Scope::Offers && ! empty($data['request_deals'])
@@ -1522,7 +1543,20 @@ class MailController
             // Время записи словами для письма поставщику (11.11.2026): «в четверг 12.11 в 15:00».
             // Выбрано одно время — им, иначе дни и время, что назвал менеджер: «в четверг 12.11 или в пятницу 13.11, в 11:00 или 15:00».
             'signing_when' => $offer->deal ? ($offer->deal->signing_at ? Signing::words($offer->deal->signing_at) : Signing::wishWords($offer->deal)) : '',
-        ];
+            // Документы поставщику (Совкомбанк, 23.11.2026): номер договора комиссии и наша платёжка ему — по выписке.
+            // Только читаем: `DealContract::for` завёл бы договор сделке, у которой его быть не должно.
+            'commission_no' => ($offer->deal?->contract?->commission_no ?: $offer->claim_ref) ?? '',
+            ...self::supplierPayment($offer),
+        ] + \App\Logistics\PickupLetters::placeholders($offer);
+    }
+
+    /** Наш последний платёж поставщику по сделке из выписки: «платёжным поручением № 1341 от 16.11.2026». @return array{payment: string} */
+    private static function supplierPayment(Offer $offer): array
+    {
+        $tx = $offer->deal ? \App\Billing\Bank\Transaction::where('deal_id', $offer->deal->id)->where('direction', 'out')
+            ->whereIn('counterparty_inn', \App\Offers\Actions\StampDealMoney::supplierInns($offer->deal))->latest('booked_at')->first() : null;
+
+        return ['payment' => $tx ? trim('платёжным поручением'.($tx->doc_number ? ' № '.$tx->doc_number : '').($tx->booked_at ? ' от '.$tx->booked_at->format('d.m.Y') : '')) : ''];
     }
 
     /** Подстановки шаблона из машины на стоянке. */
@@ -1688,6 +1722,7 @@ class MailController
             'closing_thread' => ['nullable', 'string', 'max:80'],
             'closing_files.*' => ['string'],
             'request_deals' => ['nullable', 'string', 'regex:/^\d+(,\d+)*$/'],
+            'pickup_letter' => ['nullable', 'string', 'regex:/^\d+:(?:date|act)$/'],
             'extra' => ['nullable', 'array', 'max:30'],
             'extra.*' => ['integer'],
             'extra_city' => ['nullable', 'string', 'max:80'],

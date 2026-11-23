@@ -55,10 +55,12 @@ class MailTemplateController
     public function store(Request $request)
     {
         $data = $this->data($request);
+        $this->checkFiles($request);
         if (($data['kind'] ?? null) === Template::REQUEST) {
             $data['position'] = (int) Template::requests()->max('position') + 1;
         }
         $template = Template::create($data);
+        $this->files($request, $template);
 
         return redirect($this->base()."/{$template->id}")->with('toast', 'Шаблон сохранён');
     }
@@ -67,15 +69,40 @@ class MailTemplateController
     {
         abort_if($this->park() && $template->scope !== Scope::Park, 404);
         // Письмо шага — только текст: по названию его находит `Template::park`.
-        $template->update($template->isStep() ? array_diff_key($this->data($request, $template), array_flip(['name', 'scope', 'intent', 'attach'])) : $this->data($request, $template));
+        $data = $template->isStep() ? array_diff_key($this->data($request, $template), array_flip(['name', 'scope', 'intent', 'attach'])) : $this->data($request, $template);
+        $this->checkFiles($request);
+        $template->update($data);
+        $this->files($request, $template);
 
         return redirect($this->base()."/{$template->id}")->with('toast', 'Сохранено');
+    }
+
+    /** Файлы проверяются до записи шаблона: иначе ошибка оставила бы шаблон сохранённым наполовину (новый — дублем). */
+    private function checkFiles(Request $request): void
+    {
+        $request->validate(['files' => ['nullable', 'array', 'max:10'], 'files.*' => ['file', 'max:20480'],
+            'drop_files' => ['nullable', 'array'], 'drop_files.*' => ['integer']], [], ['files.*' => 'Файл']);
+    }
+
+    /** Постоянные файлы письма CRM (доверенность к письму о вывозе, 23.11.2026): добавить новые, снять отмеченные. */
+    private function files(Request $request, Template $template): void
+    {
+        if ($this->park() || $template->isRequest()) {
+            return;
+        }
+        foreach ((array) $request->input('drop_files', []) as $id) {
+            $template->media()->where('collection_name', 'files')->whereKey((int) $id)->first()?->delete();
+        }
+        foreach ((array) $request->file('files', []) as $file) {
+            $template->addMedia($file)->usingName(pathinfo($file->getClientOriginalName(), PATHINFO_FILENAME))
+                ->withCustomProperties(['title' => $file->getClientOriginalName()])->toMediaCollection('files');
+        }
     }
 
     public function destroy(Template $template)
     {
         abort_if($this->park() && $template->scope !== Scope::Park, 404);
-        abort_if($template->isStep(), 403);
+        abort_if($template->isStep() || in_array($template->attach, Template::ROUTE_ATTACH, true), 403);
         $template->delete();
 
         return redirect($this->base())->with('toast', 'Удалён');
@@ -125,9 +152,11 @@ class MailTemplateController
         if ($this->park()) {
             $data['scope'] = Scope::Park;
         }
-        // Смысл письма и вложения — только у ответов парковки.
+        // Смысл письма и вложения — только у ответов парковки. Вложение писем CRM (договор, акт вывоза) ставит маршрут — правка
+        // текста его не снимает.
         if (($data['scope'] instanceof Scope ? $data['scope'] : Scope::from($data['scope'])) !== Scope::Park) {
-            $data['intent'] = $data['attach'] = null;
+            $data['intent'] = null;
+            $data['attach'] = in_array($template?->attach, Template::ROUTE_ATTACH, true) ? $template->attach : null;
         }
 
         return $data;

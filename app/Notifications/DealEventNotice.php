@@ -61,6 +61,16 @@ final class DealEventNotice extends Notice
         return new self($deal->offer, 'manager-step', 'Менеджер нажал шаг', self::step($exit, $to), null, 'managers', $manager, path: self::dealPath($deal));
     }
 
+    /**
+     * Ждёт письмо поставщику о вывозе (23.11.2026, Совкомбанк, `Logistics\PickupLetters`): назначили день вывоза или ТС забрали.
+     * Громко — дело наше; у черновика сделки ещё нет — ссылка на машину.
+     */
+    public static function pickupLetter(Offer $offer, string $title, ?User $by): self
+    {
+        return new self($offer, 'pickup-letter', $title, mb_strtolower(mb_substr($title, 0, 1)).mb_substr($title, 1), null, 'deals', $by, loud: true,
+            path: Notice::dealPathOr($offer, '/offers/'.$offer->number.'#pickup'));
+    }
+
     /** Сделка открыта: подтверждение принято или машину отдали. */
     public static function dealOpened(Deal $deal, ?User $by): self
     {

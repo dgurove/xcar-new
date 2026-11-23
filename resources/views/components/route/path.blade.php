@@ -398,7 +398,7 @@
                     {{-- Документ об оплате (10.11.2026): на шаге оплаты админ прикладывает за менеджера (чек прислал в чат), дальше — одним
                          PDF для страховой (`PaymentProofPdf`), пока письмо об оплате не ушло. --}}
                     @php $payProof = $deal && auth()->user()?->canEditDeals() ? \App\Offers\Documents\PaymentProofPdf::files($deal)->isNotEmpty() : false; @endphp
-                    @if ($payProof && ($stage->isPayStep() || ($stage->waits_for === WaitsFor::Supplier && $stage->template_id && $position->letterStatus() !== 'sent')))
+                    @if ($payProof && ! $stage->isSupplierDocs() && ($stage->isPayStep() || ($stage->waits_for === WaitsFor::Supplier && $stage->template_id && $position->letterStatus() !== 'sent')))
                         <x-route.task-row icon="file" :href="'/work/deals/'.$deal->id.'/payment-proof.pdf'" target="_blank">
                             Документ об оплате
                             <x-slot:sub>PDF для страховой</x-slot:sub>

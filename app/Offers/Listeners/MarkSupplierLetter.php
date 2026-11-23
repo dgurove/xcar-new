@@ -78,6 +78,8 @@ final class MarkSupplierLetter
         if ($position->stage->isRequisitesStep()) {
             Deal::where('offer_id', $offer->id)->active()->whereNotNull('reissue_at')->update(['reissue_at' => null]);
         }
+        // Документы поставщику (Совкомбанк) — ответа не будет: шаг проходит сам.
+        \App\Offers\Actions\PassSupplierDocs::after($offer, $message->author);
     }
 
     /**

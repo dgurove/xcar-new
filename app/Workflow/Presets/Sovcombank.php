@@ -19,11 +19,28 @@ namespace App\Workflow\Presets;
  * сначала просит указать покупателя (без срока; у гаражной — ещё цену продажи,
  * когда продаст, `Deal::namesBuyer`), счёт ПРАЙМ и договор купли-продажи встают
  * вместе (`SyncDealInvoices`), дальше оплата, наша проверка, подписанный договор и
- * оплата поставщику нами. Гаражная ветка «платим мы» — только «взяли под себя»
+ * оплата поставщику нами (проходит сама по выписке), документы поставщику — договор, акт и платёжка одним письмом (23.11.2026).
+ * Гаражная ветка «платим мы» — только «взяли под себя»
  * («Отдать» в гараж без менеджера, `Give`).
  */
 final class Sovcombank extends Route
 {
+    public const DOCS_SENT = 'Документы отправлены';
+
+    public function letters(): array
+    {
+        return parent::letters() + [
+            'docs' => [
+                'name' => self::DOCS_LETTER,
+                'subject' => '{{ claim_ref }}',
+                'body' => "Здравствуйте!\n\nПо договору комиссии № {{ commission_no }} ({{ car }}, VIN {{ vin }}) оплачено {{ price }} {{ payment }}.\n\nДоговор купли-продажи и акт приёма-передачи во вложении.\n\nС уважением,\nАндрей Кузнецов",
+                'attach' => \App\Mail\Template::SALE_DOCS,
+            ],
+        ];
+    }
+
+    public const DOCS_LETTER = 'Поставщику: документы по продаже';
+
     public function blocks(): array
     {
         $sale = $this->saleBlocks();
@@ -73,9 +90,18 @@ final class Sovcombank extends Route
                     'exits' => [['Договор приложен', 'manager', 'supplier_payment'], ['Договор получен', 'staff', 'supplier_payment']],
                 ],
                 'supplier_payment' => [
-                    'name' => 'Оплата поставщику', 'block' => 'supplier', 'waits_for' => 'us', 'limit_minutes' => 2 * self::DAY, 'letter' => 'payment',
+                    // Проходит сам по выписке (`StampDealMoney`); письма у шага нет — документы поставщику следующим шагом.
+                    'name' => 'Оплата поставщику', 'block' => 'supplier', 'waits_for' => 'us', 'limit_minutes' => 2 * self::DAY,
                     'staff_fields' => [['label' => 'Дата оплаты'], ['label' => 'Номер платёжки']],
-                    'exits' => [['Поставщику оплачено', 'staff', 'closed_won']],
+                    'exits' => [['Поставщику оплачено', 'staff', 'supplier_docs']],
+                ],
+                'supplier_docs' => [
+                    // Отчёт комиссионера (23.11.2026, письма Совкомбанка: «пришлите ДК + АПП», «пришлите ПП», «ДКП по реализации»):
+                    // письмо с договором и актом, номер и дата нашей платёжки — в тексте. Ушло письмо или «без письма» — шаг проходит
+                    // сам (`MarkSupplierLetter`, `SkipLetter` → `Stage::isSupplierDocs`).
+                    // Ждёт поставщика — значит шаг письма (`Stage::isLetterStep`): пока письмо не ушло, ход наш, «Отправить документы».
+                    'name' => 'Документы поставщику', 'block' => 'supplier', 'waits_for' => 'supplier', 'limit_minutes' => 2 * self::DAY, 'letter' => 'docs',
+                    'exits' => [[self::DOCS_SENT, 'staff', 'closed_won']],
                 ],
             ]
             + $this->insurerBuyer()

@@ -239,12 +239,27 @@ class RouteController
 
     public function letterSkip(Request $request, Offer $offer, SkipLetter $skip)
     {
+        // Документы поставщику (Совкомбанк) ответа не ждут — шаг проходит сам (`PassSupplierDocs`).
+        $toast = $offer->position(Track::Sale)?->stage?->isSupplierDocs()
+            ? ($request->user()->canManageCrm() ? 'Без письма: документы отмечены отправленными' : 'Без письма: закроет сделку администратор')
+            : 'Без письма: ждём ответа поставщика';
         $skip($offer, $request->user());
         if ($request->header('Turbo-Frame') === 'letters-frame') {
-            return response()->view('admin.offers.letter-ask-done', ['toast' => 'Без письма: ждём ответа поставщика']);
+            return response()->view('admin.offers.letter-ask-done', ['toast' => $toast]);
         }
 
-        return back(fallback: "/offers/{$offer->number}")->with('toast', 'Без письма: ждём ответа поставщика');
+        return back(fallback: "/offers/{$offer->number}")->with('toast', $toast);
+    }
+
+    /** Письмо поставщику о вывозе — сообщили не письмом (`Logistics\PickupLetters`). */
+    public function pickupLetterSkip(Request $request, Offer $offer)
+    {
+        $kind = $request->validate(['kind' => ['required', 'in:date,act']])['kind'];
+        $due = \App\Logistics\PickupLetters::due($offer);
+        abort_unless($due && $due['kind'] === $kind, 409, 'Это письмо уже не ждёт');
+        app(\App\Logistics\Actions\MarkPickupLetter::class)($due['transport'], $kind, $request->user());
+
+        return back(fallback: "/offers/{$offer->number}")->with('toast', 'Без письма: отмечено');
     }
 
     public function deadline(Request $request, Offer $offer, ExtendDeadline $extend)

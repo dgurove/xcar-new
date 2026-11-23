@@ -167,6 +167,8 @@ final class OnInsurerReply
         $deal->loadMissing('offer.vendor');
         if (! $deal->isActive() || ! $deal->buyer_id || $deal->offer->vendor?->deal_format === DealFormat::Wholesale
             || $message->direction !== Direction::In || $message->date_at?->lt($deal->created_at) || ! InsurerReplies::counts($message)
+            // «Спасибо», «Принято» без файлов — разбирать нечего (23.11.2026, Совкомбанк); с файлами — смотреть файлы.
+            || (InsurerReplies::isThanks($message) && ! InsurerReplies::hasFiles($message))
             // Письмо завело переоценку (04.11.2026) — его разбирают ею: «Спросить» менеджера цифрами, без слов письма.
             || Reprice::where('message_id', $message->id)->exists()) {
             return;

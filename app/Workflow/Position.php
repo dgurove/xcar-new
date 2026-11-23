@@ -140,12 +140,21 @@ class Position extends Model
     {
         if ($ask = $this->extraAsk()) {
             return $ask->phase() === ExtraAsk::SHOW || $this->repricePending() || $this->priceAskLate() !== null || $this->priceOffered() !== null
-                || $this->replyPending() !== null || $this->repriceUnanswered() !== null || $this->moneyArrived() !== null;
+                || $this->replyPending() !== null || $this->repriceUnanswered() !== null || $this->moneyArrived() !== null || $this->pickupLetter() !== null;
         }
 
         return ($this->waitsFor() === WaitsFor::Us && ! $this->carried()) || in_array($this->letterStatus(), ['unsent', 'failed', 'bounced', 'replied'], true)
             || $this->consentLate() || $this->repricePending() || $this->priceAskLate() !== null || $this->priceOffered() !== null || $this->replyPending() !== null
-            || $this->repriceUnanswered() !== null || $this->moneyArrived() !== null;
+            || $this->repriceUnanswered() !== null || $this->moneyArrived() !== null || $this->pickupLetter() !== null;
+    }
+
+    /**
+     * Ждёт письмо поставщику о вывозе (23.11.2026, Совкомбанк, `Logistics\PickupLetters`): день вывоза назначили или ТС забрали —
+     * дело наше поверх шага. Одним запросом на все сделки списка. @return array{kind: string, since: Carbon}|null
+     */
+    public function pickupLetter(): ?array
+    {
+        return $this->track === Track::Sale ? \App\Logistics\PickupLetters::waiting()->get($this->offer_id) : null;
     }
 
     /**
@@ -277,6 +286,10 @@ class Position extends Model
     {
         // Название шаблона — раз на запрос: строк сделок сотни, шаблонов единицы.
         $name = $stage->template_id ? \App\Support\ShowMemo::get('template-name:'.$stage->template_id, fn () => \App\Mail\Template::whereKey($stage->template_id)->value('name')) : null;
+        // Документы поставщику — по метке вложения, а не названию: название правят в настройках почты.
+        if ($stage->template_id && \App\Support\ShowMemo::get('template-attach:'.$stage->template_id, fn () => \App\Mail\Template::whereKey($stage->template_id)->value('attach')) === \App\Mail\Template::SALE_DOCS) {
+            return ['docs', 'Отправить документы'];
+        }
 
         return match ($name) {
             'Поставщику: уведомление о покупке', 'Поставщику: запрос контактов' => ['interest', 'Проявить интерес'],
@@ -357,6 +370,14 @@ class Position extends Model
 
         if ($at = $this->replyPending()) {
             return $todo('reply', 'Прочитать ответ поставщика', 0, $at, ['label' => 'Открыть', 'href' => '/offers/'.$offer->number]);
+        }
+
+        // Письмо поставщику о вывозе (Совкомбанк) — группой «Написать поставщику».
+        if ($pickup = $this->pickupLetter()) {
+            $url = \App\Logistics\PickupLetters::due($offer)['url'] ?? null;
+
+            return $todo('letter-pickup:'.$pickup['kind'], $pickup['kind'] === 'act' ? 'Отправить поставщику акт вывоза' : 'Сообщить поставщику дату вывоза', 1,
+                $pickup['since'], $url ? ['label' => 'Написать', 'letters' => $url] : null);
         }
 
         // Ход сделки стоит — дел шага нет.
@@ -564,7 +585,7 @@ class Position extends Model
     // связи перед ним (`Stage::handsStep`).
     // Метки письма — только на этапе письма (`Stage::isLetterStep`), «менеджер не ответил» — только пока ход его
     // (`consentLate`): без этого число пилюли «Ваш ход» расходилось со строками (27.10.2026). Ждущая переоценка — `repricePending`,
-    // письмо на разбор — `replyPending`, ответ поставщику на переоценку — `repriceUnanswered`.
+    // письмо на разбор — `replyPending`, ответ поставщику на переоценку — `repriceUnanswered`, письмо о вывозе — `pickupLetter`.
     public const NEEDS_US_SQL = "coalesce(((not ".ExtraAsk::HOLDS_SQL.") and ((coalesce(offer_positions.waits_for, (select s.waits_for from workflow_stages s where s.id = offer_positions.stage_id)) = 'us'
             and not exists (select 1 from workflow_exits x where x.stage_id = offer_positions.stage_id and lower(x.label) = 'заявка отправлена')
             and not (coalesce(offer_positions.waits_for, '') = 'us' and exists (select 1 from workflow_exits x where x.stage_id = offer_positions.stage_id
@@ -581,6 +602,8 @@ class Position extends Model
         or (offer_positions.track = 'sale' and exists (select 1 from offer_reprices r where r.offer_id = offer_positions.offer_id and r.state = 'pending'))
         or (offer_positions.track = 'sale' and exists (select 1 from reply_reviews rr join deals d on d.id = rr.deal_id
             where rr.offer_id = offer_positions.offer_id and rr.state = 'pending' and ".Deal::ACTIVE_D."))
+        or (offer_positions.track = 'sale' and exists (select 1 from deals d where d.offer_id = offer_positions.offer_id and ".Deal::ACTIVE_D.")
+            and ".\App\Logistics\PickupLetters::DUE_SQL.")
         or (offer_positions.track = 'sale' and exists (select 1 from reprice_asks a join deals d on d.id = a.deal_id
             where a.offer_id = offer_positions.offer_id and a.state in ('pending', 'countered') and a.due_at < now() and ".Deal::ACTIVE_D."))
         or (offer_positions.track = 'sale' and exists (select 1 from reprice_asks a join deals d on d.id = a.deal_id

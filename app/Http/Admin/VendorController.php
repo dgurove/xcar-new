@@ -294,6 +294,7 @@ class VendorController
             'drafts_from_migtorg' => ['boolean'],
             'letters_to_telegram' => ['boolean'],
             'pickup_on_arrival' => ['boolean'],
+            'pickup_letters' => ['boolean'],
             'claim_ref_optional' => ['boolean'],
             'audience_rules' => ['nullable', 'json'],
             // Диапазоны наценки к оценочной по умолчанию (07.11.2026): у поставщика на partner.xcar.ru и у его предложений.
@@ -334,6 +335,7 @@ class VendorController
             'drafts_from_migtorg' => $request->boolean('drafts_from_migtorg'),
             'letters_to_telegram' => $request->boolean('letters_to_telegram'),
             'pickup_on_arrival' => $request->boolean('pickup_on_arrival'),
+            'pickup_letters' => $request->boolean('pickup_letters'),
             'claim_ref_optional' => $request->boolean('claim_ref_optional'),
         ]));
 
