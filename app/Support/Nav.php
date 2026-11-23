@@ -346,7 +346,9 @@ final class Nav
 
         if ($surface === Surface::Crm && ! $user->canManageCrm()) {
             return array_filter([
-                '' => [self::link('Профиль', '/settings', exact: true), self::link('Уведомления', '/account/notifications', icon: 'bell')],
+                // «Выписка» — и модератору (23.11.2026, владелец: «привязать руками — модераторы и администраторы»).
+                '' => [self::link('Профиль', '/settings', exact: true), ...($user->canEditDeals() ? [self::link('Выписка', '/settings/bank/statement', icon: 'bank')] : []),
+                    self::link('Уведомления', '/account/notifications', icon: 'bell')],
                 'Переходы' => self::switchers($user, $surface, fn ($label, $url, $icon) => self::link($label, $url, icon: $icon)),
             ]);
         }

@@ -59,6 +59,8 @@
     @endif
 @endif
 @if (! $i->openLink() && ($i->isDocument() || $i->isShownToManager()))<x-billing.pay-status :invoice="$i" staff/>@endif
+{{-- Что уже пришло — строками (23.11.2026, начальник: «видно поступления и сколько осталось»). --}}
+<x-deal.receipts :invoice="$i"/>
 @foreach ($i->claims as $p)
     <x-money.payment :payment="$p" :slip="'/work/money/invoices/'.$i->id.'/payments/'.$p->id.'/slip'" staff>
         @unless ($inStep)

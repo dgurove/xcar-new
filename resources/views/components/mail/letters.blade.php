@@ -7,7 +7,7 @@
      сделки.
      `tools` (страница машины CRM, 23.11.2026, владелец: «две кнопки поровну, сверху над письмами, под заголовком»): вместо значка
      в строке темы справа (не влезли — строкой ниже) лаймовыми словами «Ответить» / «Написать» и кнопки слота (владелец выбрал из макетов); `above` — между рядом и письмами (доп. просьбы). --}}
-@props(['messages', 'url', 'asks' => [], 'stages' => [], 'reply' => true, 'split' => false])
+@props(['messages', 'url', 'asks' => [], 'stages' => [], 'reply' => true, 'split' => false, 'fold' => null])
 @php
     $all = collect($messages)->sortBy(fn ($m) => $m->date_at?->getTimestamp() ?? 0)->values();
     $park = $split ? $all->filter(fn ($m) => $m->account?->scope === \App\Mail\Scope::Park)->values() : collect();
@@ -30,10 +30,10 @@
             @endisset
         </div>
         @isset($above){{ $above }}@endisset
-        @if ($main->isNotEmpty())<x-mail.rail :messages="$main" :url="$url" :asks="$asks" :stages="$stages"/>@endif
+        @if ($main->isNotEmpty())<x-mail.rail :messages="$main" :url="$url" :asks="$asks" :stages="$stages" :fold="$fold"/>@endif
         @if ($park->isNotEmpty())
             <p class="mt-4 mb-1 text-sm text-ink-dim">Письма парковки <span class="nums">{{ \App\Mail\Chains\NodeTitle::count($park) }}</span></p>
-            <x-mail.rail :messages="$park" :url="$url" :asks="$asks" :stages="$stages"/>
+            <x-mail.rail :messages="$park" :url="$url" :asks="$asks" :stages="$stages" :fold="$fold"/>
         @endif
     </div>
 @endif

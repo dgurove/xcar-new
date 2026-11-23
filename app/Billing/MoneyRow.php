@@ -12,6 +12,8 @@ use Illuminate\Support\Collection;
  * строки, а сумма»): сделка со всеми своими счетами раздела или ручная ссылка без сделки. Деньги строки — сумма счетов:
  * открытая — остаток, оплаченная — итог. Группа — что с ней делать: `unsent` (есть неотправленный счёт или счёта ещё нет),
  * `issued` (ждём денег), `paid`. Ключ окна: номер машины, у ручной ссылки — `s{счёт}` (`MoneyController::person`).
+ * С разделом (`$tab`, только «Оплаты» сотрудника, 23.11.2026) — деньги строки по доле раздела (`InvoiceSplit`): счёт ПРАЙМ / Р.О.С.
+ * машиной в «ДКП» и подбором в «Комиссиях», ручная ссылка — тем, что не легло в счета сделки.
  */
 final class MoneyRow
 {
@@ -22,14 +24,27 @@ final class MoneyRow
         public readonly Collection $invoices,
         public readonly ?string $stage,
         public readonly ?string $gap = null,
+        public readonly ?string $tab = null,
     ) {}
 
-    public static function deal(Deal $deal, Collection $invoices, ?string $gap = null): self
+    /** [сумма, оплачено] счёта в строке: без раздела — целиком (`InvoiceSplit`). @var array<int, array{0: float, 1: float}> */
+    private array $parts = [];
+
+    /** `$tab` — делить по разделу («Оплаты» сотрудника); без него — как было (экран менеджера, «Оплата за подбор»). */
+    public static function deal(Deal $deal, Collection $invoices, ?string $gap = null, ?string $tab = null): self
     {
-        return new self($deal, null, $invoices->values(), MoneyStage::label($deal->getAttribute('money_stage')), $gap);
+        $row = new self($deal, null, $invoices->values(), MoneyStage::label($deal->getAttribute('money_stage')), $gap, $tab);
+        if ($tab) {
+            foreach ($row->invoices as $i) {
+                $row->parts[$i->id] = InvoiceSplit::part($i, $deal, $tab);
+            }
+        }
+
+        return $row;
     }
 
-    public static function service(Invoice $invoice): self
+    /** `$car` — доля машины ссылки (`InvoiceSplit::carShares`), с разделом. */
+    public static function service(Invoice $invoice, ?string $tab = null, float $car = 0.0): self
     {
         // Засчитанная в сделку — что с этим зачётом: ждёт денег, сделку отменили, оплачено сверх неё.
         $deal = $invoice->creditDeal;
@@ -42,7 +57,31 @@ final class MoneyRow
             default => 'Сверх сделки',
         };
 
-        return new self(null, $invoice, collect([$invoice]), $stage);
+        $row = new self(null, $invoice, collect([$invoice]), $stage, null, $tab);
+        if ($tab) {
+            $row->parts[$invoice->id] = InvoiceSplit::servicePart($invoice, $tab, $car);
+        }
+
+        return $row;
+    }
+
+    /** У строки есть деньги в своём разделе (доля ручной ссылки бывает нулевой — тогда строки нет). */
+    public function hasPart(): bool
+    {
+        return $this->invoices->contains(fn (Invoice $i) => $this->part($i)[0] > 0.005);
+    }
+
+    /** @return array{0: float, 1: float} */
+    private function part(Invoice $i): array
+    {
+        return $this->parts[$i->id] ?? [(float) $i->total, (float) $i->paid];
+    }
+
+    /** Подбор внутри счёта за ТС (раздел «Комиссии» у ПРАЙМ / Р.О.С.): строка говорит «в счёте за ТС». */
+    public function inCarInvoice(): bool
+    {
+        return $this->tab === 'fees' && $this->deal !== null && $this->invoices->isNotEmpty()
+            && $this->invoices->every(fn (Invoice $i) => InvoiceSplit::splits($i, $this->deal));
     }
 
     /** Выплата (раздел «Выплаты»): строка — счёт, этапа нет. */
@@ -87,7 +126,9 @@ final class MoneyRow
     /** @return Collection<int, Invoice> */
     public function open(): Collection
     {
-        return $this->invoices->filter(fn (Invoice $i) => $i->state === InvoiceState::Issued)->values();
+        // Доля раздела закрыта раньше счёта: машина ПРАЙМ оплачена, а подбор ещё нет — в «ДКП» строка оплачена.
+        return $this->invoices->filter(fn (Invoice $i) => $i->state === InvoiceState::Issued
+            && (! isset($this->parts[$i->id]) || $this->parts[$i->id][0] - $this->parts[$i->id][1] > 0.005))->values();
     }
 
     /** Неотправленные менеджеру счета сделки — «Выставить». */
@@ -119,7 +160,13 @@ final class MoneyRow
     /** Деньги строки: открытая — сколько осталось по всем её счетам, оплаченная — итог. */
     public function amount(): float
     {
-        return round($this->isPaid() ? (float) $this->invoices->sum('total') : $this->open()->sum(fn (Invoice $i) => $i->remaining()), 2);
+        return round($this->isPaid() ? $this->invoices->sum(fn (Invoice $i) => $this->part($i)[0]) : $this->open()->sum(fn (Invoice $i) => $this->left($i)), 2);
+    }
+
+    /** Сколько осталось по счёту в доле строки. */
+    private function left(Invoice $i): float
+    {
+        return isset($this->parts[$i->id]) ? max(0.0, $this->parts[$i->id][0] - $this->parts[$i->id][1]) : $i->remaining();
     }
 
     /** Сколько пишет, что заплатил (заявки менеджера). */
@@ -135,7 +182,7 @@ final class MoneyRow
 
     public function overdue(): float
     {
-        return round($this->open()->filter(fn (Invoice $i) => $i->isOverdue())->sum(fn (Invoice $i) => $i->remaining()), 2);
+        return round($this->open()->filter(fn (Invoice $i) => $i->isOverdue())->sum(fn (Invoice $i) => $this->left($i)), 2);
     }
 
     public function isOverdue(): bool
@@ -156,6 +203,7 @@ final class MoneyRow
 
     public function paidAt(): ?CarbonInterface
     {
-        return $this->invoices->map(fn (Invoice $i) => $i->paid_at)->filter()->max();
+        // Машина ПРАЙМ оплачена, а счёт ещё нет — день последней оплаты.
+        return $this->invoices->map(fn (Invoice $i) => $i->paid_at ?? ($this->left($i) <= 0.005 ? $i->payments->max('paid_at') : null))->filter()->max();
     }
 }

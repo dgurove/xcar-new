@@ -22,8 +22,6 @@
 <x-ui.shell :title="$name" :detail="$detail">
     {{-- XCAR Pay (22.11.2026): шапки нет — аватар с меню в строке заголовка, как у XCAR Mail. --}}
     @if ($pay)<x-slot:actions class="!w-auto ml-auto"><x-ui.me-menu/></x-slot:actions>@endif
-    {{-- Заработок менеджера за месяц (22.11.2026) — тот же кусок, что у него в «Оплатах»: начальник видит, сколько он заработал. --}}
-    @if ($user && ! $payout)<x-money.earned :user="$user" class="mb-3"/>@endif
     {{-- Разделы человека — пилюлями самого тулбара (22.11.2026, владелец: отдельный ряд пилюль над рядом лупы и чипа — «вёрстка
          ужасно выглядит»): на ПК одной строкой с лупой и «Статусом», на телефоне пилюли — своей строкой сверху. --}}
     <x-ui.toolbar name="money-person" :pills="$tabs" :pill="$tab" pill-param="tab" pill-home="fees" :pill-drop="['peek', 'q']" :counts="array_filter($counts)"

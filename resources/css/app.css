@@ -455,6 +455,9 @@ html.kb-open { --home-gap: 0px; }
     .surface-crm .container-site .chain-swipe:not(dialog *, #detail *) { margin-inline: -1rem; }
     /* Плашка чата без переписки — кнопка: `w-full` с полями −1rem её сдвигала влево, а не растягивала (22.11.2026). */
     .surface-crm .container-site button.deal-chat:not(dialog *, #detail *, .box *, .list *) { width: calc(100% + 2rem) !important; }
+    /* Плашка «что сейчас» страницы машины («Приём закрыт», «На аукционе»…) — тоже (23.11.2026, владелец: «от края до края, как
+       остальные блоки»): `w-full` у неё — ширина растягивается явно; поле и скругление — как у `.box`. */
+    .surface-crm .container-site .now-card:not(dialog *, #detail *, .box *, .list *) { width: calc(100% + 2rem) !important; margin-inline: -1rem; padding-inline: 1rem !important; border-radius: var(--radius-xl) !important; }
     /* Сайт — так же (18.11.2026, владелец: «хочу сделать xcar побольше похожим на CRM — блоки на телефоне тоже от края до края»). */
     .surface-site .container-site .box:not(dialog *, #detail *, .box *, .list *),
     .surface-site .container-site .list:not(dialog *, #detail *, .box *, .list *),
@@ -491,6 +494,10 @@ html.kb-open { --home-gap: 0px; }
   /* Кнопки строки на ПК («Оплаты» → человек, 22.11.2026: «Выставить», «Оплатил наличными», «Напомнить» — без захода в окно): в ряд
      у правого края, не переносятся. */
   .row-acts { display: flex; justify-content: flex-end; align-items: center; gap: .375rem; white-space: nowrap; }
+  /* «Оплата» строки человека в «Оплатах» (23.11.2026): слово слева (не влезло — «…»), кнопки прижаты вправо и не режутся. */
+  .pay-cell { display: flex; align-items: center; gap: .5rem; min-width: 0; }
+  .pay-word { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .pay-cell > .row-acts { flex-shrink: 0; margin-left: auto; }
   .btn-hero { @apply px-12 text-lg; height: 4rem; }
   @media (min-width: 640px) { .btn-hero { @apply text-xl; height: 4.375rem; } }
 
@@ -818,6 +825,14 @@ html.kb-open { --home-gap: 0px; }
   .row-switch .switch { @apply ml-auto shrink-0; }
   .row-switch:has(.switch:disabled) { @apply cursor-default opacity-60; }
   /* «Не снимать с продажи» (`x-offer.keep-selling`): часы — только при включённом тумблере. */
+  /* Выбор словом в строке текста (`select_text_controller`): подпись размером строки, `select` прозрачным поверх (16 px — без
+     приближения iOS). */
+  .select-text { position: relative; display: inline-flex; align-items: baseline; gap: .125rem; min-width: 0; }
+  .select-text:has(.select-text-label.is-unset) { color: var(--color-danger); }
+  .select-text-label { white-space: nowrap; text-decoration: underline dashed; text-decoration-thickness: 1px; text-underline-offset: 4px; }
+  .select-text-label.is-unset { color: var(--color-danger); }
+  .select-text-input { position: absolute; inset: 0; width: 100%; height: 100%; opacity: 0; cursor: pointer; appearance: none; -webkit-appearance: none; }
+  .select-text:has(.select-text-input:focus-visible) .select-text-label { outline: 2px solid var(--color-focus); outline-offset: 2px; border-radius: 4px; }
   .keep-hours { appearance: none; -webkit-appearance: none; background: none; border: 0; padding: 0; margin: 0; font: inherit; color: inherit; cursor: pointer;
     text-decoration: underline dashed; text-decoration-thickness: 1px; text-underline-offset: 4px; }
   /* Строка-выбор: вся строка — цель, отметка справа кругом, как в iOS: пустой — волосяная обводка, отмеченный —
@@ -1397,8 +1412,6 @@ html.kb-open { --home-gap: 0px; }
   /* На ПК при ˄ ˅ «›» у названия нет (владелец): выбор и так виден; в колесе у выбранной «›» остаётся. */
   @media (min-width: 1024px) { .tab-title.has-step .tab-title-chev { display: none; } }
   .title-actions { @apply ml-auto flex shrink-0 items-center gap-1.5; }
-  /* «Заработок» за месяц (`x-money.earned`, 22.11.2026): подпись, месяц пилюлей с меню, сумма — одной строкой. */
-  .earned { @apply flex flex-wrap items-center gap-x-2 gap-y-1; }
   .title-actions .btn-s { height: 2rem; padding-inline: .75rem; }
   .title-actions .btn-round { width: 2rem; height: 2rem; }
   /* Кружки тулбара (сортировка, вид, лупа), действия справа («Скачать»), чипы фильтров и кнопки строки названия (письма,
@@ -2026,6 +2039,8 @@ html.kb-open { --home-gap: 0px; }
   /* Строка «Продажи» (`x-deal.sale-row`): подпись серым слева, значение справа, красное — чего нет. */
   .sale-row { width: 100%; text-align: left; }
   .sale-row-label { min-width: 0; flex: 1 1 auto; color: var(--color-ink-muted); }
+  /* Поступление по счёту (`x-deal.receipts`, 23.11.2026): «Оплата от …», под ней откуда, сумма справа; строка — ссылка на операцию. */
+  .deal-receipt { min-height: 0; padding-block: .5rem; }
   .sale-row-value { flex-shrink: 0; max-width: 65%; text-align: right; }
   .signed-add.sale-row { cursor: pointer; }
   /* Сумма к переводу поставщику — числом окна (17), не 26: была крупнее всего в окне. */
@@ -3303,6 +3318,22 @@ html.kb-open { --home-gap: 0px; }
   /* Отрезок письма — от центра своего кружка до центра следующего: линия начинается и кончается на кружках. */
   .letter::before { top: .9375rem; bottom: -.9375rem; }
   .chain-subject:first-child::before, .letter:not(:has(~ .letter))::before { display: none; }
+  /* Свёрнутые письма ленты (`x-mail.rail fold`, 23.11.2026): высота — сеткой 0fr → 1fr (браузер не меряет строки по кадрам скриптом),
+     строки проявляются; раскрыто — линия от последней видимой идёт дальше к скрытым. */
+  .rail-more { display: grid; grid-template-rows: 0fr; transition: grid-template-rows 240ms var(--ease-out); }
+  .rail-more-in { min-height: 0; overflow: hidden; opacity: 0; transition: opacity 200ms var(--ease-out); }
+  .rail.is-open > .rail-more { grid-template-rows: 1fr; }
+  .rail.is-open > .rail-more > .rail-more-in { opacity: 1; }
+  .rail.is-open > .letter:not(:has(~ .letter))::before { display: block; }
+  .rail-more-btn { display: inline-flex; align-self: flex-start; align-items: center; gap: .25rem; margin: .125rem 0 0 2rem; padding: .25rem 0; color: var(--color-accent-text); font-size: var(--text-sm); cursor: pointer; }
+  .rail-more-open { display: none; }
+  .rail.is-open > .rail-more-btn .rail-more-shut { display: none; }
+  .rail.is-open > .rail-more-btn .rail-more-open { display: inline; }
+  .rail-more-chev { transition: transform 240ms var(--ease-out); }
+  .rail.is-open > .rail-more-btn .rail-more-chev { transform: rotate(180deg); }
+  .rail-more-dot { display: inline-block; width: .4375rem; height: .4375rem; margin-left: .375rem; border-radius: 999px; background: var(--color-danger); vertical-align: .1em; }
+  @media (hover: hover) { .rail-more-btn:hover { color: var(--color-ink); } }
+  @media (prefers-reduced-motion: reduce) { .rail-more, .rail-more-in, .rail-more-chev { transition: none; } }
   .chain-subject > span { grid-column: 2; padding: .25rem 0 .375rem; font-size: var(--text-sm); color: var(--color-ink-dim); }
   .chain-subject:not(:first-child) > span { padding-top: .75rem; }
   .letter-dot { position: relative; z-index: 1; margin-top: .5rem; justify-self: center; width: .75rem; height: .75rem; border-radius: 999px; background: var(--color-line); }
@@ -4096,6 +4127,24 @@ html.kb-open { --home-gap: 0px; }
   /* Один ключ или ни одного (17.10.2026): красный «!» у названия машины везде; с label — и словами рядом. */
   .keys-alert { display: inline-flex; align-items: center; gap: .3em; margin-inline-start: .4em; vertical-align: .1em; color: var(--color-danger); font-size: var(--text-sm); font-weight: 700; line-height: 1; white-space: nowrap; }
   .keys-alert-text { font-weight: 400; }
+  /* За названием машины — `x-car.title-marks` (23.11.2026, владелец: «значок связи гигантский, номер мелкий»): одна строка без
+     переноса внутри, промежутки — gap (отступов у начала перенесённой строки нет); размер — долей заголовка. */
+  .title-marks { display: inline-flex; align-items: center; gap: .4em; white-space: nowrap; vertical-align: .1em; }
+  .title-marks > .plate, .title-marks > .keys-alert, .title-marks > .car-links { margin: 0; vertical-align: baseline; }
+  .title-marks .car-links-btn { width: 1.05em; height: 1.05em; }
+  /* Значок связи, переехавший за название (группа ушла на вторую строку), — размером как в группе. */
+  .head-title > .car-links { font-size: .7em; margin-left: .45em; vertical-align: -.02em; } /* низом на базовой линии — по высоте заглавных */
+  .detail-title .line-clamp-2 > .car-links { font-size: .8em; margin-left: .4em; }
+  .title-marks .keys-alert { font-size: 1em; }
+  .head-title .title-marks { font-size: .7em; }
+  .detail-title .title-marks { font-size: .8em; }
+  /* Значок типа ТС перед названием в шапке (как в списках, `x-ui.cat-icon`). */
+  .head-title > .cat-icon { width: 1em; height: 1em; margin-right: 0; vertical-align: -.12em; } /* промежуток — пробел за ним */
+  .detail-title .cat-icon { width: 1.1em; height: 1.1em; margin-right: 0; vertical-align: -.2em; }
+  /* Шапка машины на телефоне: название переносится рядом с кнопками справа («Поделиться» CRM), а не уходит над ними целой строкой —
+     иначе кнопка висела одна в пустом ряду. Кнопки — вровень с первой строкой, как «⋯» дела ТС. */
+  .has-back > .head-title:has(> .title-marks) { flex: 1 1 0%; min-width: 0; }
+  .has-back:has(> .head-title > .title-marks) > .head-actions { align-self: flex-start; }
   .detail-line > .place { gap: 0; }
   .detail-line > .place > svg { margin-inline-end: .25em; }
   @media (max-width: 639.98px) {

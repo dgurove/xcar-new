@@ -22,15 +22,17 @@
             @endif
         </x-slot:actions>
         @if ($tx->purpose)<div class="mt-4 text-sm">{{ $tx->purpose }}</div>@endif
-        {{-- Машина платежа (14.11.2026, `CarMatch`): по ней «Продано» / «Оплачено» сделки. Не узналась или узналась не та —
-             руками: № предложения, VIN или номер убытка; пусто — отвязать (руками отвязанное само больше не привяжется). --}}
+        {{-- Сделка платежа (14.11.2026, `CarMatch`): по ней «Продано» / «Оплачено» сделки. Не узналась или узналась не та — руками:
+             поиском по марке, модели и номеру убытка (23.11.2026, владелец: «номер не понимаю»), пусто — отвязать (руками
+             отвязанное само больше не привяжется). --}}
         <form method="post" action="{{ $href }}/car" class="mt-4 flex items-end gap-2">
             @csrf
-            <div class="min-w-0 flex-1"><x-ui.field name="car" :id="'tx-car-'.$tx->id" label="Машина" placeholder="№ предложения, VIN или номер убытка" :value="$tx->deal?->offer?->number"/></div>
+            <div class="min-w-0 flex-1"><x-ui.combobox name="deal" :id="'tx-deal-'.$tx->id" label="Сделка" url="/reference/deals" text-name="car" placeholder="Марка, модель или номер убытка"
+                :value="$tx->deal?->id" :text="$tx->deal ? \App\Http\Admin\BankController::dealLabel($tx->deal) : null"/></div>
             <button class="btn btn-s btn-quiet">{{ $tx->deal ? 'Перепривязать' : 'Привязать' }}</button>
         </form>
         @if ($tx->deal?->offer)
-            <p class="mt-2 text-sm text-ink-muted"><a href="/offers/{{ $tx->deal->offer->number }}" class="underline decoration-dotted underline-offset-4" data-turbo-frame="_top">{{ $tx->deal->offer->titleWithYear() }}</a>{{ match ($tx->matched_by) { 'vin' => ', по VIN', 'claim' => ', по номеру убытка', 'plate' => ', по госномеру', 'invoice' => ', по счёту', 'hand' => ', привязано руками', default => '' } }}</p>
+            <p class="mt-2 text-sm text-ink-muted"><a href="/offers/{{ $tx->deal->offer->number }}" class="underline decoration-dotted underline-offset-4" data-turbo-frame="_top">Открыть сделку</a></p>
         @endif
         @if (\App\Billing\Bank\Actions\MatchTransaction::isPayout($tx) && $tx->note)
             <div class="list mt-4">

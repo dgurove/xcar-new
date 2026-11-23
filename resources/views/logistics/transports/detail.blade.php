@@ -91,7 +91,8 @@
         @endif
         {{-- Что дальше — посередине полосы окошка, госномер — сразу за названием (09.11.2026, как на парковке). --}}
         <x-slot:status><span class="state {{ $t->isLate() ? 'text-danger' : $t->state->tone() }}">{{ $t->isLate() ? 'не вывезли в срок' : $t->next() }}</span></x-slot:status>
-        <x-slot:badge>@if ($t->car?->plate)<x-ui.plate :value="$t->car->plate" class="ml-1.5 align-[.15em] text-sm" copy/>@endif<x-car.keys :count="$t->car?->keys_count" label/><x-ui.links :transport="$t"/></x-slot:badge>
+        <x-slot:lead><x-ui.cat-icon :category="$t->category()"/></x-slot:lead>
+        <x-slot:badge><x-car.title-marks :plate="$t->car?->plate" :keys="$t->car?->keys_count" keys-label :transport="$t"/></x-slot:badge>
         <x-slot:line>
             @if ($city)<x-ui.place>{{ $city }}</x-ui.place>@endif
             @if (! $pickup && ! $t->from_depot_id)<span>перевозка</span>@endif

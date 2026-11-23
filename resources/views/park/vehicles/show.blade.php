@@ -33,7 +33,7 @@
     <div class="park-head mb-2">
         <div class="park-head-title has-back flex items-start gap-4">
             @if ($backTo)<x-ui.back :back="$backTo"/>@endif
-            <h1 class="head-title min-w-0 text-xl sm:text-2xl"><x-ui.copy-text>{{ $vehicle->titleWithYear() }}</x-ui.copy-text><span class="whitespace-nowrap">@if ($vehicle->plate)<x-ui.plate :value="$vehicle->plate" class="ml-1.5 align-[.15em] text-sm" copy/>@endif<x-car.keys :count="$vehicle->keys_count" label/><x-ui.links :vehicle="$vehicle"/></span></h1>
+            <h1 class="head-title min-w-0 text-xl sm:text-2xl"><x-ui.cat-icon :category="$vehicle->category"/> <x-ui.copy-text>{{ $vehicle->titleWithYear() }}</x-ui.copy-text><x-car.title-marks :plate="$vehicle->plate" :keys="$vehicle->keys_count" keys-label :vehicle="$vehicle"/></h1>
         </div>
         {{-- «⋯» — отмены, перевод, логистика: всё управляющему; приёмщику пустой шторки не показываем. --}}
         @if ($canManage)

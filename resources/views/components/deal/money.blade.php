@@ -251,6 +251,11 @@
             @if ($supplierSum)
                 <div class="row sale-row"><span class="sale-row-label">{{ $deal->schemeOf() === \App\Offers\DealScheme::OwnerDkp ? 'Собственнику' : 'Поставщику' }}</span><span class="sale-row-value nums">{{ $supplierSum }}</span><x-ui.chevron-space/></div>
             @endif
+            {{-- ПРАЙМ / Р.О.С. — закупочная («вход», 23.11.2026, начальник: «вход, продажа, комиссия XCAR, комиссия менеджера»):
+                 строки «Поставщику» у них нет, а счёт за ТС — закупочная и подбор одной суммой. --}}
+            @if ($topPrice && $carBlock && $deal->cost !== null && ! $skips('cost'))
+                <div class="row sale-row"><span class="sale-row-label">Закупочная</span><span class="sale-row-value nums">{{ Money::rub((int) $deal->cost) }}</span><x-ui.chevron-space/></div>
+            @endif
             @foreach ($shown as $r)
                 @continue($r[0] === 'Услуги подбора')
                 <div class="row sale-row"><span class="sale-row-label">{{ $r[0] }}@foreach ($r[4] ?? [] as [$subText, $subTone])<span class="block text-sm {{ $subTone }}">{{ $subText }}</span>@endforeach</span><span class="sale-row-value {{ $r[2] }}">{{ $r[1] }}</span><x-ui.chevron-space/></div>
@@ -271,10 +276,18 @@
                 $selEdit = $editMoney && ! $deal->isGarageManager();
                 $selTag = $selEdit ? 'button' : 'div';
                 $selRow = collect($shown)->first(fn ($r) => $r[0] === 'Услуги подбора');
+                // Где подбор (23.11.2026, начальник: «включена в счёт или не включена»): отдельным счётом или ссылкой — или внутри
+                // счёта за ТС (ПРАЙМ / Р.О.С. одной суммой).
+                $selWhere = match (true) {
+                    $deal->isGarageManager() || ($selRow && $selRow[1] === null) => null,
+                    (bool) $selection => \App\Billing\Invoice::feeByLink($selection->kind, $selection->seller) ? 'отдельно по ссылке' : 'отдельным счётом',
+                    $deal->isPrime() && ! $deal->splitsSelection() => 'в счёте за ТС',
+                    default => null,
+                };
             @endphp
             @if ($selRow || ($feeBilled && $selection))
                 <{{ $selTag }} @if ($selEdit) type="button" data-controller="emit" data-action="emit#send" data-emit-event-param="deal-money-{{ $deal->id }}:open" @endif class="row sale-row">
-                    <span class="sale-row-label">Услуги подбора</span>
+                    <span class="sale-row-label">Услуги подбора@if ($selWhere)<span class="block text-sm text-ink-muted">{{ $selWhere }}</span>@endif</span>
                     @if ($selRow && $selRow[1] === null)
                         @if ($selEdit)<span class="sale-row-value text-accent-text">Назначить</span>@else<span class="sale-row-value text-ink-muted">назначим</span>@endif
                     @elseif ($selRow)
@@ -286,6 +299,13 @@
                 </{{ $selTag }}>
             @endif
         </div>
+    @endif
+    {{-- Услуги подбора (ДКП, «страховой», доля гаража) — своим блоком сразу под «Итогом», над «Покупателем» (23.11.2026, владелец):
+         шапка — сумма и слово, ниже ссылка, отметки и поступления. --}}
+    @if ($selection && $selRows !== '')
+        {{-- Юрлицо ссылки, как у менеджера («ООО «ПРАЙМ»»): услуги подбора — ссылкой на оплату, не счётом (18.11.2026); сумма — в «Итоге». --}}
+        <div class="mb-3"><x-deal.doc-cap :label="'Подбор — '.($selection->seller ?? \App\Billing\Seller::Prime)->config()['name']" :state="$selWord[0] ?? null" :tone="str_contains($selWord[1] ?? '', 'open') ? 'ok' : (str_contains($selWord[1] ?? '', 'danger') ? 'bad' : (str_contains($selWord[1] ?? '', 'urgent') ? 'due' : 'muted'))" class="mt-4"/>
+        @if ($selRows !== '')<div class="list">{!! $selRows !!}</div>@endif</div>
     @endif
     @if ($supplierBlock)
         {{-- Покупатель платит поставщику или собственнику сам (ДКП, «страховой напрямую») — блок «Поставщику» / «Собственнику». --}}
@@ -401,12 +421,6 @@
                 <div class="row">@if ($links->isEmpty())<span class="min-w-0 flex-1"><span class="block">{{ $bank ? 'Пришло по выписке' : 'Оплачено вручную' }}@if ($bankDays !== '') <span class="text-ink-muted">{{ $bankDays }}</span>@endif</span><span class="row-sub">@if ($short)<span class="whitespace-nowrap">{{ $arrived['against'] === 'cost' ? 'до закупочной не хватает' : 'не хватает' }} <span class="nums text-danger">{{ Money::rub(abs($arrived['diff'])) }}</span></span>@elseif ($over || ($deal->agreed() && $issued->isNotEmpty()))услуги подбора@else{{ 'засчитаем, когда выставим счёт' }}@endif</span></span>@else<span class="min-w-0 flex-1 text-ink-muted">{{ $deal->agreed() && $issued->isNotEmpty() ? 'Услуги подбора' : 'Засчитаем, когда выставим счёт' }}</span>@endif<span class="nums shrink-0">{{ Money::rub($extra) }}</span></div>
             @endif
         </div>
-    @endif
-    {{-- Услуги подбора (ДКП, «страховой», доля гаража) — своим блоком: шапка — сумма и слово, ниже ссылка и отметки. --}}
-    @if ($selection && $selRows !== '')
-        {{-- Юрлицо ссылки, как у менеджера («ООО «ПРАЙМ»»): услуги подбора — ссылкой на оплату, не счётом (18.11.2026); сумма — в «Итоге». --}}
-        <x-deal.doc-cap :label="'Подбор — '.($selection->seller ?? \App\Billing\Seller::Prime)->config()['name']" :state="$selWord[0] ?? null" :tone="str_contains($selWord[1] ?? '', 'open') ? 'ok' : (str_contains($selWord[1] ?? '', 'danger') ? 'bad' : (str_contains($selWord[1] ?? '', 'urgent') ? 'due' : 'muted'))" class="mt-4"/>
-        @if ($selRows !== '')<div class="list">{!! $selRows !!}</div>@endif
     @endif
     {{-- Прочие наши счета («Ещё счёт») — строками с суммой: в шапках их нет. --}}
     @if ($otherBills->isNotEmpty())

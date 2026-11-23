@@ -43,6 +43,11 @@ class Connection extends Model
 
     public function connected(): bool
     {
-        return filled($this->refresh_token) && $this->refresh_expires_at?->isFuture();
+        // Токен не расшифровался (база с другим ключом приложения) — не подключено, а не 500 на «Выписке» (23.11.2026).
+        try {
+            return filled($this->refresh_token) && $this->refresh_expires_at?->isFuture();
+        } catch (\Illuminate\Contracts\Encryption\DecryptException) {
+            return false;
+        }
     }
 }

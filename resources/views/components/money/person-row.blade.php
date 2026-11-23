@@ -2,8 +2,8 @@
      (`Billing\MoneyRow`; 22.11.2026, владелец: «ВСЕ сделки, столбец „Статус“ — этап», «несколько поступлений по тачке — сумма, а
      не две строки»). Слева — значок типа, марка с годом; «Статус» — этап сделки (`MoneyStage`), «Оплата» — что с деньгами словом
      (`MoneyRows::state`, у оплаченной — как заплатили, у сделки без счёта — чего не хватает). Справа — сумма и сколько прошло с
-     выставления («6д 5ч», срок прошёл — красным), у оплаченной — день оплаты. На ПК — кнопки строки (владелец: «без необходимости
-     проваливаться внутрь»): «Выставить» и «Оплатил наличными»; «Оплатил наличными» (без «Напомнить» — владелец 22.11.2026); «Пришли»; «Назначить менеджера»;
+     выставления («6д 5ч», срок прошёл — красным), у оплаченной — день оплаты. Кнопки строки (владелец: «без необходимости
+     проваливаться внутрь»): «Выставить» — на месте даты, остальные — в «Оплате» за словом; «Оплатил наличными» в строке нет — в окне (23.11.2026, владелец: «убери из строк»); «Оплатил наличными» (без «Напомнить» — владелец 22.11.2026); «Пришли»; «Назначить менеджера»;
      «Выплатить». На телефоне — два этажа и одна главная кнопка во втором. Нажатие — окно машины рядом, без машины — карточка счёта;
      в XCAR Pay (22.11.2026) машина — шторкой со страницей CRM (`Support\DealSheet`): окно машины там не живёт, его действия — в CRM. --}}
 @props(['table', 'row' => null, 'invoice' => null, 'tab' => null, 'attempts' => null, 'tried' => null])
@@ -24,6 +24,8 @@
         $paid => [R::paidWays($r->invoices, $attempts ?? collect()), 'text-ink-muted'],
         $r->gap !== null => [$r->gap, $r->gap === R::gap('commission') ? 'text-accent-text' : 'text-ink-muted'],
         $unsent => [null, ''],
+        // Подбор внутри счёта за ТС ПРАЙМ (раздел «Комиссии», 23.11.2026): ссылка и её состояние — у машины в «ДКП».
+        $r->inCarInvoice() => ['в счёте за ТС', 'text-ink-muted'],
         $first !== null => ($tried && $tried->has($first->id) && ($l = R::linkWord($first))) ? $l : R::state($first),
         default => [null, ''],
     };
@@ -45,8 +47,6 @@
         $payout => 'payout',
         default => null,
     };
-    // Наличными у ручной ссылки — только у назначенной (в «Без менеджера» кнопка строки одна: «Назначить менеджера»).
-    $cash = ! $paid && ! $payout && ! $claim && $first && ! ($service && ! $r->personId());
     $assign = $service && $admin && ! $r->service->manager_id && ! $r->service->credit_deal_id;
     // XCAR Pay: машина — шторкой поверх оплат, строку целиком ловит `deal_sheet_controller`.
     // Ручная ссылка (ключ `s{счёт}`) — своей карточкой рядом и с машиной: в ней назначение, копия ссылки, возврат.
@@ -78,6 +78,13 @@
     <td class="{{ $col->classes() }}">{{ $r->stage }}</td>
         @break
         @case('pay')
+    {{-- Слово и кнопки строки (23.11.2026, владелец: кнопки — в «Оплате», не отдельным столбцом без заголовка; «Оплатил наличными» —
+         не в строке, а в окне). --}}
+    <td class="{{ $col->classes() }}"><span class="pay-cell">@if ($word)<span class="pay-word {{ $tone }}">{{ $word }}</span>@endif<span class="row-acts">
+        @if ($main === 'claim' || $main === 'payout'){!! $button !!}@endif
+        @if ($assign)<x-money.assign-sheet :invoice="$r->service"/>@endif
+    </span></span></td>
+        @break
         @case('status')
     <td class="{{ $col->classes() }} {{ $tone }}">{{ $word }}</td>
         @break
@@ -88,25 +95,9 @@
     <td class="{{ $col->classes() }} phone-off {{ $paid ? 'text-open' : '' }}">@if ($amount > 0){{ Money::nums($amount) }}@endif</td>
         @break
         @case('since')
-    {{-- Без столбца кнопок («Оплата за подбор») главная кнопка — здесь, на месте времени. --}}
-    {{-- «Выставить» — здесь, на месте даты; без столбца кнопок («Оплата за подбор») — и прочая главная кнопка. --}}
-    @php $here = $main === 'issue' || ($button && ! $table->has('acts')); @endphp
+    {{-- «Выставить» — здесь, на месте даты; без «Оплаты» с кнопками («Оплата за подбор») — и прочая главная кнопка. --}}
+    @php $here = $main === 'issue' || ($button && ! $table->has('pay')); @endphp
     <td class="{{ $col->classes() }} {{ $here ? '' : $sinceTone }}">@if ($here){!! $button !!}@else{{ $sinceText }}@endif</td>
-        @break
-        @case('acts')
-    {{-- ПК: кнопки строки рядом, без захода в окно (22.11.2026). --}}
-    <td class="{{ $col->classes() }}"><span class="row-acts">
-        @if ($main === 'claim' || $main === 'payout'){!! $button !!}@endif
-        @if ($cash)
-            <span class="contents" data-controller="sheet">
-                <button type="button" class="btn btn-quiet btn-xs" data-action="sheet#open" aria-controls="cash-{{ $first->id }}">Оплатил наличными…</button>
-                <x-ui.sheet :id="'cash-'.$first->id" :title="'Наличными '.($offer ? $offer->title() : $title)">
-                    <x-billing.pay-form :invoice="$first" :action="'/work/money/invoices/'.$first->id.'/payments'" :sources="['cash' => 'Наличные']" source="cash" sheet/>
-                </x-ui.sheet>
-            </span>
-        @endif
-        @if ($assign)<x-money.assign-sheet :invoice="$r->service"/>@endif
-    </span></td>
         @break
         @endswitch
     @endforeach

@@ -13,7 +13,7 @@
     // менеджеров тут же, рядом с продлением.
     $burning = $live && $waiting->isEmpty() && $closeAt->lte(now()->addHours(\App\Offers\Actions\NoBidsAlarm::HOURS));
 @endphp
-<section class="flex w-full flex-col gap-3 rounded-(--radius-l) bg-surface-2 p-3">
+<section class="now-card flex w-full flex-col gap-3 rounded-(--radius-l) bg-surface-2 p-3">
     <div class="flex flex-wrap items-baseline gap-x-2">
         <h2 class="text-base font-medium">{{ $live ? 'Приём до '.\App\Support\Ago::day($closeAt, true) : 'Приём закрыт' }}</h2>
         @if ($live)
@@ -37,8 +37,7 @@
             <form method="post" action="/offers/{{ $n }}/keep-on-sale" class="contents">@csrf<button class="btn btn-s btn-quiet shrink-0">Не снимать</button></form>
         </div>
     @endif
-    {{-- «Показ» строкой — кому и какие отметки, шторка со сроком и волнами (`x-offer.showing-row`). --}}
-    <x-offer.showing-row :offer="$offer" :form="$showForm" :summary="$showSummary ?? null" :when="false"/>
+    {{-- «Показ» — строкой в блоке «Цены» (`x-offer.showing-line`, 23.11.2026), не здесь. --}}
     <div class="flex flex-wrap gap-2">
         @if ($renew)
             <form method="post" action="/offers/{{ $n }}/extend" class="flex min-w-0 flex-1">@csrf<input type="hidden" name="renew" value="1">

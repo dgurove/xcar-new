@@ -34,8 +34,27 @@
     // Деньги и ДКП на странице — не хвостом третьей дорожки, а рядом под дорожками (15.11.2026, владелец: «ты реально считаешь,
     // что это хороший дизайн?» — справа столбик на три экрана, под «Продажей» и «Вывозом» пусто). В окне — как было.
     $cardsDeal = $compact ? null : match ($third) { 'deal' => $deal, 'garage' => $garageCar?->deal, default => null };
+    // Сделка на странице (23.11.2026, владелец: «„Сделку“ — в „Подтверждения“ справа сверху над чатом, вывоз — под ходом сделки,
+    // продажу — справа»): «Подтверждения» рисует правая колонка страницы (`admin/offers/edit`), здесь две колонки — слева ход
+    // сделки и под ним вывоз, справа «Продажа» и «Оплата поставщику». Окно — как было.
+    $dealPage = ! $compact && $third === 'deal';
 @endphp
-@if ($count)
+@if ($dealPage)
+    <div class="grid grid-cols-1 items-start gap-4 @[34rem]/lanes:grid-cols-2">
+        <div class="flex min-w-0 flex-col gap-4">
+            @if ($saleLane)
+                @if ($salePos)
+                    @include('admin.offers.route', ['only' => Track::Sale, 'cardClass' => '', 'tail' => $tail, 'compact' => false])
+                @else
+                    <x-ui.card title="Ход сделки" id="sale"><div class="steps">{!! $tail !!}</div></x-ui.card>
+                @endif
+            @endif
+            @if ($pickupLane)<x-logistics.lane :offer="$offer" :deal="$deal?->isActive() ? $deal : null"/>@endif
+            @if ($handover)<x-deal.handover :deal="$deal"/>@endif
+        </div>
+        <div class="flex min-w-0 flex-col gap-4">@include('admin.offers.deal-cards', ['deal' => $deal, 'compact' => false])</div>
+    </div>
+@elseif ($count)
     <div @class(['grid grid-cols-1 items-start gap-4', '@[34rem]/lanes:grid-cols-2' => $count > 1, '@[52rem]/lanes:grid-cols-3' => $count > 2])>
         @if ($saleLane)
             <div class="flex min-w-0 flex-col gap-4">
@@ -71,7 +90,10 @@
                 @if ($compact && $garageCar->deal)@include('admin.offers.deal-cards', ['deal' => $garageCar->deal, 'compact' => $compact])@endif
                 {{-- Резерв гаражной сделки: передумал — «Отдать» другому подтвердившему. Интерес из галереи — рядом. --}}
                 @if ($offer->deal && $bids->where('state', \App\Offers\BidState::Active)->isNotEmpty())
-                    <x-ui.card title="Подтверждения">@include('admin.offers.bids', ['inside' => true, 'compact' => $compact])</x-ui.card>
+                    <x-ui.card title="Подтверждения">
+                        <x-slot:actions><x-offer.bid-for :offer="$offer" head/></x-slot:actions>
+                        @include('admin.offers.bids', ['inside' => true, 'compact' => $compact, 'addHead' => true])
+                    </x-ui.card>
                 @endif
                 @if ($offer->interests->isNotEmpty())
                     @include('admin.offers.interests')
@@ -87,11 +109,14 @@
             <div class="flex min-w-0 flex-col gap-4">
                 {{-- В окне принятое подтверждение не повторяется — его цена справа в шапке, менеджер в сведениях: только резерв. --}}
                 @php ob_start(); @endphp
-                @include('admin.offers.bids', ['inside' => true, 'compact' => $compact])
+                @include('admin.offers.bids', ['inside' => true, 'compact' => $compact, 'addHead' => true])
                 @php $dealBids = trim(ob_get_clean()); @endphp
                 {{-- В окне — только резерв (15.11.2026): «Ещё N» отклонённых и «+ За менеджера» без резерва — три строки ни о чём, они на странице. --}}
                 @if (! $compact || $offer->bids->where('state', \App\Offers\BidState::Active)->isNotEmpty())
-                    <x-ui.card :title="$compact ? 'Подтверждения' : 'Сделка'" id="deal" class="scroll-mt-24">{!! $dealBids !!}</x-ui.card>
+                    <x-ui.card title="Подтверждения" id="deal" class="scroll-mt-24">
+                        <x-slot:actions><x-offer.bid-for :offer="$offer" head/></x-slot:actions>
+                        {!! $dealBids !!}
+                    </x-ui.card>
                 @endif
                 {{-- Интерес из галереи — рядом с подтверждениями: опубликовали раньше срока, отклики остались. --}}
                 @if ($offer->interests->isNotEmpty())
@@ -102,7 +127,8 @@
         @elseif ($third === 'bids')
             <div class="flex min-w-0 flex-col gap-4">
                 <x-ui.card :title="'Подтверждения'.($waiting->isNotEmpty() ? ' '.$waiting->count() : '')" :class="$waiting->isNotEmpty() ? 'box-urgent' : ''">
-                    @include('admin.offers.bids', ['inside' => true])
+                    <x-slot:actions><x-offer.bid-for :offer="$offer" head/></x-slot:actions>
+                    @include('admin.offers.bids', ['inside' => true, 'addHead' => true])
                 </x-ui.card>
                 @if ($offer->interests->isNotEmpty())
                     @include('admin.offers.interests')

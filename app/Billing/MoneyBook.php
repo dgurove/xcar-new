@@ -22,19 +22,43 @@ use Illuminate\Support\Collection;
  */
 final class MoneyBook
 {
-    /** Счёт раздела по алиасу `billing_invoices`: «ДКП» — счёт за ТС от ПРАЙМ и Р.О.С., «Комиссии» — остальное наше. */
-    public static function tabSql(string $tab, string $i = 'billing_invoices'): string
+    /**
+     * Счёт раздела по алиасу `billing_invoices`: «ДКП» — счёт за ТС от ПРАЙМ и Р.О.С., «Комиссии» — остальное наше. `$split` —
+     * «Оплаты» сотрудника (23.11.2026): счёт за ТС с подбором внутри (`splitSql`) — и в «Комиссиях», своей долей (`InvoiceSplit`).
+     */
+    public static function tabSql(string $tab, string $i = 'billing_invoices', bool $split = false): string
     {
         return $tab === 'dkp'
             ? "({$i}.kind = 'sale' and {$i}.seller in ('prime', 'ros'))"
-            : "({$i}.kind <> 'sale' or {$i}.seller not in ('prime', 'ros'))";
+            : "({$i}.kind <> 'sale' or {$i}.seller not in ('prime', 'ros')".($split ? ' or '.self::splitSql($i) : '').')';
     }
 
-    /** Наш неаннулированный счёт сделки этого раздела (`bi`); `$open` — ещё не оплаченный, `$extra` — ещё условие на него. */
-    public static function hasTabInvoice(string $tab, bool $open = false, string $extra = ''): string
+    /** Закупочная сделки счёта — доля машины в счёте ПРАЙМ / Р.О.С. */
+    private static function costSql(string $i): string
     {
+        return "(select dc.cost from deals dc where dc.id = {$i}.deal_id)";
+    }
+
+    /** Счёт за ТС ПРАЙМ / Р.О.С. с подбором внутри — как `InvoiceSplit::splits`: сумма больше закупочной сделки. */
+    public static function splitSql(string $i = 'billing_invoices'): string
+    {
+        return "({$i}.kind = 'sale' and {$i}.seller in ('prime', 'ros') and {$i}.total > ".self::costSql($i).' + 0.005)';
+    }
+
+    /**
+     * Наш неаннулированный счёт сделки этого раздела (`bi`); `$open` — ещё не оплаченный, `$extra` — ещё условие на него. `$split` —
+     * по долям: машина счёта ПРАЙМ в «ДКП» оплачена, когда пришла закупочная (сначала машина), подбор — когда счёт оплачен целиком.
+     */
+    public static function hasTabInvoice(string $tab, bool $open = false, string $extra = '', bool $split = false): string
+    {
+        $state = match (true) {
+            ! $open => "<> 'void'",
+            $split && $tab === 'dkp' => "= 'issued' and bi.paid + 0.005 < least(bi.total, coalesce(".self::costSql('bi').', bi.total))',
+            default => "= 'issued'",
+        };
+
         return "exists (select 1 from billing_invoices bi where bi.deal_id = deals.id and bi.direction = 'issued' and bi.state "
-            .($open ? "= 'issued'" : "<> 'void'").' and '.self::tabSql($tab, 'bi').($extra !== '' ? ' and ('.$extra.')' : '').')';
+            .$state.' and '.self::tabSql($tab, 'bi', $split).($extra !== '' ? ' and ('.$extra.')' : '').')';
     }
 
     /** Счёт `bi` виден менеджеру — как `Invoice::scopeShownToManager`: отправлен или по нему пришли настоящие деньги (не зачёт). */
@@ -70,7 +94,7 @@ final class MoneyBook
             ->when($person !== false, fn ($q) => $person ? $q->where('deals.buyer_id', $person->id) : $q->whereNull('deals.buyer_id'))
             // Лупа — по машине: номер, убыток, VIN, марка (`Offer::searchCrm`).
             ->when($search !== '', fn ($q) => $q->whereHas('offer', fn ($o) => $o->searchCrm($search)))
-            ->where(fn ($w) => $w->whereRaw(self::hasTabInvoice($tab))->orWhereRaw(self::awaits($tab)));
+            ->where(fn ($w) => $w->whereRaw(self::hasTabInvoice($tab, split: ! $own))->orWhereRaw(self::awaits($tab)));
     }
 
     /** Чип «Статус» раздела, умолчание — после «Беру в работу» и не отменённые; лупа и адрес умолчание снимают. */
@@ -93,7 +117,7 @@ final class MoneyBook
         $status = $own ? ['openRequirement', 'offer.positions.stage.block', 'offer.positions.stage.exits.to'] : [];
 
         return [...$status, 'offer', 'offer.vendor', 'buyer', 'contract', 'garageCar',
-            'invoices' => fn ($q) => $q->where('direction', 'issued')->whereRaw(self::tabSql($tab))->when($own, fn ($x) => $x->shownToManager())
+            'invoices' => fn ($q) => $q->where('direction', 'issued')->whereRaw(self::tabSql($tab, split: ! $own))->when($own, fn ($x) => $x->shownToManager())
                 ->with(['payments', 'claims', 'payLinks.attempts', 'party'])];
     }
 
@@ -105,14 +129,17 @@ final class MoneyBook
      */
     public static function open(string $tab, User|null|false $person, ?Facets $facets = null, string $search = '', bool $own = false): Collection
     {
-        $q = self::deals($tab, $person, $search, $own)->where(fn ($w) => $w->whereRaw(self::hasTabInvoice($tab, open: true))->orWhereRaw(self::awaits($tab)));
+        $q = self::deals($tab, $person, $search, $own)->where(fn ($w) => $w->whereRaw(self::hasTabInvoice($tab, open: true, split: ! $own))->orWhereRaw(self::awaits($tab)));
         $facets?->applyTo($q);
         $rows = $q->select('deals.*')->selectRaw(MoneyStage::sql().' as money_stage')
             ->when($own, fn ($x) => $x->selectRaw(self::hasTabInvoice($tab, open: true).' as tab_open'))
             ->with(self::with($tab, $own))->get()
-            ->map(fn (Deal $d) => $own ? self::ownRow($d, $tab) : self::row($d, $tab))->filter();
-        // Ручные ссылки менеджеру не видны (`Invoice::visibleToManager`): их сторона — служебная.
-        $services = $tab === 'fees' && ! $own ? self::services($person, open: true)->search($search)->get()->map(fn (Invoice $i) => MoneyRow::service($i)) : [];
+            ->map(fn (Deal $d) => $own ? self::ownRow($d, $tab) : self::row($d, $tab))->filter()
+            // Доля раздела закрыта (машина ПРАЙМ оплачена, подбор нет) — строке тут не место: она в «Оплаченных».
+            ->reject(fn (MoneyRow $r) => ! $own && $r->invoices->isNotEmpty() && $r->isPaid());
+        // Ручные ссылки менеджеру не видны (`Invoice::visibleToManager`): их сторона — служебная. Засчитанная в сделку ПРАЙМ — и в
+        // «ДКП» долей машины (`InvoiceSplit::servicePart`).
+        $services = $own ? [] : self::serviceRows($tab, $person, open: true, search: $search);
 
         return $rows->concat($services)->values();
     }
@@ -123,18 +150,34 @@ final class MoneyBook
     public static function paid(string $tab, User|null|false $person, ?Facets $facets = null, string $search = '', bool $own = false): Builder
     {
         // Менеджеру — где есть видимый ему счёт: оплаченное старым зачётом вознаграждения (`Offset`) ему не показывается.
-        $q = self::deals($tab, $person, $search, $own)->whereRaw(self::hasTabInvoice($tab, extra: $own ? self::SHOWN : ''))->whereRaw('not '.self::hasTabInvoice($tab, open: true));
+        $q = self::deals($tab, $person, $search, $own)->whereRaw(self::hasTabInvoice($tab, extra: $own ? self::SHOWN : '', split: ! $own))
+            ->whereRaw('not '.self::hasTabInvoice($tab, open: true, split: ! $own));
         $facets?->applyTo($q);
 
         return $q->select('deals.*')->selectRaw(MoneyStage::sql().' as money_stage')->with(self::with($tab, $own))
-            ->orderByRaw("(select max(bi.paid_at) from billing_invoices bi where bi.deal_id = deals.id and bi.direction = 'issued' and bi.state = 'paid' and ".self::tabSql($tab, 'bi').') desc nulls last')
+            // По долям (`split`): машина ПРАЙМ оплачена, а счёт ещё нет — день последней оплаты, а не «в конец ленты».
+            ->orderByRaw("(select max(coalesce(bi.paid_at, (select max(bp.paid_at) from billing_payments bp where bp.invoice_id = bi.id and bp.state = 'confirmed' and bp.voided_at is null)))
+                from billing_invoices bi where bi.deal_id = deals.id and bi.direction = 'issued' and bi.state <> 'void' and bi.paid > 0 and ".self::tabSql($tab, 'bi', ! $own).') desc nulls last')
             ->orderByDesc('deals.id');
     }
 
-    /** Строки оплаченных сделок порции. @return Collection<int, MoneyRow> */
-    public static function paidRows(iterable $deals): Collection
+    /** Строки оплаченных сделок порции; `$tab` — по долям раздела («Оплаты» сотрудника). @return Collection<int, MoneyRow> */
+    public static function paidRows(iterable $deals, ?string $tab = null): Collection
     {
-        return collect($deals)->map(fn (Deal $d) => MoneyRow::deal($d, $d->invoices))->values();
+        return collect($deals)->map(fn (Deal $d) => MoneyRow::deal($d, $d->invoices, tab: $tab))->values();
+    }
+
+    /**
+     * Ручные ссылки человека строками раздела (`services`): «Комиссии» — без сделки и подбор сверх засчитанного, «ДКП» — машина
+     * засчитанной в сделку ПРАЙМ, пока закупочная не набрана (23.11.2026). Доли нет — строки нет. @return Collection<int, MoneyRow>
+     */
+    public static function serviceRows(string $tab, User|null|false $person, ?bool $open = null, string $search = '', bool $light = false): Collection
+    {
+        // `light` — только числа (пилюли): без ссылок, попыток и заявок, нужна лишь сделка зачёта.
+        $links = self::services($person, $open)->search($search)->when($light, fn ($q) => $q->setEagerLoads(['creditDeal' => fn () => null]))->get();
+        $cars = InvoiceSplit::carShares($links);
+
+        return $links->map(fn (Invoice $i) => MoneyRow::service($i, $tab, $cars[$i->id] ?? 0.0))->filter(fn (MoneyRow $r) => $r->hasPart())->values();
     }
 
     /**
@@ -143,7 +186,7 @@ final class MoneyBook
      */
     public static function openDeals(string $tab, User|null|false $person, ?Facets $facets = null, bool $own = false): Builder
     {
-        $q = self::deals($tab, $person, '', $own)->whereRaw(self::hasTabInvoice($tab, open: true, extra: $own ? self::SHOWN : ''));
+        $q = self::deals($tab, $person, '', $own)->whereRaw(self::hasTabInvoice($tab, open: true, extra: $own ? self::SHOWN : '', split: ! $own));
         $facets?->applyTo($q);
 
         return $q;
@@ -199,7 +242,7 @@ final class MoneyBook
     private static function row(Deal $deal, string $tab): ?MoneyRow
     {
         if ($deal->invoices->isNotEmpty()) {
-            return MoneyRow::deal($deal, $deal->invoices);
+            return MoneyRow::deal($deal, $deal->invoices, tab: $tab);
         }
         if (! self::expects($deal, $tab)) {
             return null;
@@ -227,6 +270,17 @@ final class MoneyBook
         }
 
         return MoneyRow::deal($deal, collect());
+    }
+
+    /**
+     * Кто есть в истории ручных ссылок раздела — SQL, без загрузки самих ссылок (их за всё время сотни): «Комиссии» — все
+     * оплаченные, «ДКП» — засчитанные в сделку ПРАЙМ / Р.О.С. с закупочной (у них бывает доля машины, `InvoiceSplit`).
+     */
+    public static function servicePeople(string $tab): Collection
+    {
+        return self::services(false, open: false)->reorder()->setEagerLoads([])
+            ->when($tab === 'dkp', fn ($q) => $q->whereHas('creditDeal', fn ($d) => $d->whereIn('scheme', ['prime', 'ros'])->whereNotNull('cost')))
+            ->select([])->selectRaw('coalesce('.self::SERVICE_PERSON.', billing_invoices.manager_id) as pid')->distinct()->pluck('pid');
     }
 
     /**

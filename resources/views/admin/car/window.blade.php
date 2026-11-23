@@ -26,7 +26,8 @@
 <x-ui.detail :data-detail-stay="! $selling">
     <x-ui.row-card stack :href="'/offers/'.$n" :title="$offer->titleWithYear()" :photos="$offer->visiblePhotos()" :facts="$selling && ! $carAside ? array_slice($offer->facts(), 1) : []">
         <x-slot:status><span class="state {{ $statusTone }}">{{ $statusWord }}</span></x-slot:status>
-        <x-slot:badge>@if ($offer->auctionPlanned())<x-offer.auction/>@endif{{ "" }}@if ($admin && $offer->awaitingPark())<x-offer.awaiting/>@endif<x-car.keys :count="$offer->keys_count"/><x-ui.links :offer="$offer"/><x-offer.margin :m="$offer->marginMark()"/></x-slot:badge>
+        <x-slot:lead><x-ui.cat-icon :category="$offer->category()"/></x-slot:lead>
+        <x-slot:badge><x-car.title-marks :keys="$offer->keys_count" :offer="$offer">@if ($offer->auctionPlanned())<x-offer.auction/>@endif{{ "" }}@if ($admin && $offer->awaitingPark())<x-offer.awaiting/>@endif<x-offer.margin :m="$offer->marginMark()"/></x-car.title-marks></x-slot:badge>
         <x-slot:media>@include('admin.offers.detail-photos')</x-slot:media>
         {{-- Где машина — мелким текстом рядом с кодами, не плашкой (12.11.2026, владелец: «возле тегов так же мелко, даже не в
              теге, а просто текстом»). На нашей парковке — какой: знак «P» и название (13.11.2026, начальник: «Санкт-Петербург,
@@ -110,10 +111,11 @@
                 @csrf @method('put') @if ($errors->has('price_check'))<input type="hidden" name="price_ok" value="1">@endif
                 @if ($selling && ! $steps)
                     @include('admin.offers.price-steps', ['plain' => true])
+                {{-- «Показ» — строкой под «Ценами», как на странице (`x-offer.showing-line`, 23.11.2026): у черновика по шагам — своя строка в
+                     `price-steps`, у «Без подтверждений» — «Кому» в плашке. --}}
+                    @unless ($unsold)<x-offer.showing-line :offer="$offer" :form="$form" :when="! $intake"/>@endunless
                     @if ($admin)<section>@include('admin.offers.fields.tags')</section>@endif
                 @endif
-                {{-- «Показ» полями — у продающейся; у сделки и гаража публикация для других — строкой сведений и пунктом «⋯». --}}
-                @if ($selling && ! ($steps || $intake || $unsold))<x-offer.showing :offer="$offer" :form="$form" as="section"/>@endif
                 @if ($carAside)
                     @include('admin.offers.car-sheet', ['carForm' => $form, 'carRequired' => $offer->state === OfferState::Draft ? ['vendor_id', 'claim_ref', 'brand_id'] : []])
                 @elseif ($selling)

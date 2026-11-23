@@ -279,12 +279,12 @@ class MoneyController
                 continue;
             }
             $open = MoneyBook::openDeals($t, $person, $facets);
-            $services = $t === 'fees' ? MoneyBook::services($person, open: true) : null;
-            $counts[$t] = (clone $open)->count() + ($services ? (clone $services)->count() : 0);
-            $todo = (clone $open)->whereRaw(MoneyBook::hasTabInvoice($t, open: true, extra: "(bi.shown_at is null and bi.paid <= 0 or exists (select 1 from billing_payments bp where bp.invoice_id = bi.id and bp.state = 'claimed'))"))->exists()
+            $counts[$t] = (clone $open)->count() + MoneyBook::serviceRows($t, $person, open: true, light: true)->count();
+            $todo = (clone $open)->whereRaw(MoneyBook::hasTabInvoice($t, open: true, split: true, extra: "(bi.shown_at is null and bi.paid <= 0 or exists (select 1 from billing_payments bp where bp.invoice_id = bi.id and bp.state = 'claimed'))"))->exists()
                 || ($t === 'fees' && MoneyLinks::tried());
             $tones[$t] = $todo ? 'pill-todo' : '';
         }
+
 
         return ['counts' => $counts, 'tones' => array_filter($tones)];
     }
@@ -315,7 +315,7 @@ class MoneyController
         } else {
             $rows = MoneyBook::open($tab, false, $facets);
             $history = MoneyBook::paid($tab, false, $facets)->reorder()->select('deals.buyer_id')->distinct()->pluck('buyer_id')
-                ->concat($tab === 'fees' ? MoneyBook::services(false, open: false)->reorder()->select([])->selectRaw('coalesce('.MoneyBook::SERVICE_PERSON.', billing_invoices.manager_id) as pid')->distinct()->pluck('pid') : []);
+                ->concat(MoneyBook::servicePeople($tab));
         }
         $key = fn ($id) => $id ? (string) $id : 'none';
         $users = User::whereIn('id', $rows->map(fn (MoneyRow $r) => $r->personId())->concat($history)->filter()->unique())->get()->keyBy('id');
@@ -381,10 +381,11 @@ class MoneyController
             $open = MoneyBook::open($tab, $user, $facets, $qs);
             $paidQ = MoneyBook::paid($tab, $user, $facets, $qs);
             $portion = Portion::of($request, $paidQ, (clone $paidQ)->reorder()->count());
-            $paid = MoneyBook::paidRows($portion->items());
-            // Оплаченные ручные ссылки без сделки — их единицы: в первую порцию, по дню оплаты среди сделок.
-            if ($tab === 'fees' && $portion->currentPage() === 1) {
-                $paid = $paid->concat(MoneyBook::services($user, open: false)->search($qs)->get()->map(fn (Invoice $i) => MoneyRow::service($i)))
+            // По долям раздела (23.11.2026): счёт ПРАЙМ — машиной в «ДКП», подбором в «Комиссиях» (`InvoiceSplit`).
+            $paid = MoneyBook::paidRows($portion->items(), $tab);
+            // Оплаченные ручные ссылки — их единицы: в первую порцию, по дню оплаты среди сделок (в «ДКП» — доля машины засчитанной).
+            if ($portion->currentPage() === 1) {
+                $paid = $paid->concat(MoneyBook::serviceRows($tab, $user, open: false, search: $qs))
                     ->sortByDesc(fn (MoneyRow $r) => $r->paidAt()?->timestamp ?? 0)->values();
             }
         }
@@ -624,8 +625,9 @@ class MoneyController
     /**
      * Таблица страницы человека (18.11.2026, владелец выбрал «два этажа, как „Предложения“»; 22.11.2026 — строка-сделка):
      * название, «Статус» — этап сделки (`MoneyStage`), «Оплата» — что с деньгами словом, сумма, сколько прошло с выставления
-     * и на ПК — кнопки (владелец: «„Выставить“, „Оплатил наличными“ / „Напомнить“, „Назначить менеджера“ — без необходимости
-     * проваливаться внутрь»). Ширины ровно заданные (`fixed`): открытые и лента оплаченных догружаются кусками, столбцы стоят одинаково.
+     * и кнопки строки (владелец: «„Выставить“, „Оплатил наличными“ / „Напомнить“, „Назначить менеджера“ — без необходимости
+     * проваливаться внутрь»): с 23.11.2026 — в «Оплате» за словом (владелец: «вёрстка сломанная» — столбец кнопок без заголовка
+     * резал «Оплатил наличными…»; её в строке больше нет), «Выставить» — на месте даты. Ширины ровно заданные (`fixed`): открытые и лента оплаченных догружаются кусками, столбцы стоят одинаково.
      */
     public static function personTable(bool $payout = false): Table
     {
@@ -635,10 +637,10 @@ class MoneyController
             // С окном справа его нет (`aside`): иначе таблица шире места и «Выставлено» с суммой срезались у края (22.11.2026).
             new Column('vendor', '№ убытка', from: 'sm', aside: true, role: ColRole::Code, rem: 10),
             $payout ? null : new Column('stage', 'Статус', from: 'sm', role: ColRole::State, rem: 13, fixed: true),
-            new Column('pay', $payout ? 'Статус' : 'Оплата', from: 'sm', role: ColRole::State, rem: 10, fixed: true),
-            // Сумма — у правого края, под суммой заголовка группы (22.11.2026, владелец: «суммы логичнее справа»): кнопки, дата, сумма.
-            // С окном справа кнопок нет (`aside`): действие — в самом окне.
-            new Column('acts', '', from: 'lg', num: true, aside: true, role: ColRole::When, rem: 10, fixed: true),
+            // Слово и кнопки строки («Поступила», «Выплатить», «Назначить менеджера»; «Оплатил наличными» — только в окне, владелец
+            // 23.11.2026: «убери из строк») — кнопки прижаты вправо, слово при нехватке места режется «…», кнопка — никогда.
+            // Сумма — у правого края (владелец: «суммы логичнее справа»).
+            new Column('pay', $payout ? 'Статус' : 'Оплата', from: 'sm', role: ColRole::State, rem: 13, fixed: true),
             // «Выставлено» — дата или, пока не выставлена, сама кнопка «Выставить» (владелец: «либо не выставлена, либо есть дата»).
             new Column('since', 'Выставлено', from: 'sm', num: true, role: ColRole::When, cell: 'nums', rem: 7.5, fixed: true),
             new Column('amount', 'Сумма', num: true, role: ColRole::When, cell: 'nums', rem: 7, fixed: true));

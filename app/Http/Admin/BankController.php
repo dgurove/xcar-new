@@ -27,8 +27,9 @@ use Illuminate\Validation\ValidationException;
 use Throwable;
 
 /**
- * Банк в CRM: «Поступления» из выписки (что не легло в счёт само — привязать руками или «не наше»)
- * и подключение СберБизнеса в настройках (директор входит в СберБизнес ID, счёт, «Загрузить сейчас»).
+ * Банк в CRM: «Выписка» в Настройках (`/settings/bank/statement`, админу и модератору с 23.11.2026; что не легло в счёт само —
+ * привязать руками, к сделке или «не наше») и подключение СберБизнеса (директор входит в СберБизнес ID, счёт, «Загрузить
+ * сейчас») — только админу.
  */
 class BankController
 {
@@ -72,20 +73,48 @@ class BankController
         return view('admin.bank.detail', [
             'tx' => $transaction->load(['invoice.party', 'decider']),
             // Перечисление ЮMoney счёт не закрывает — вместо счетов на выбор оплаты по ссылкам, что в него вошли.
-            'suggestions' => $transaction->state === Transaction::UNMATCHED && ! MatchTransaction::isPayout($transaction) ? MatchTransaction::suggestions($transaction)->take(12) : collect(),
+            // Модератору — только счета сделок (`MoneyController::dealOnly`, как во всех «Оплатах»).
+            'suggestions' => $transaction->state === Transaction::UNMATCHED && ! MatchTransaction::isPayout($transaction)
+                ? MatchTransaction::suggestions($transaction)->filter(fn (Invoice $i) => auth()->user()->canManageCrm() || $i->deal_id || $i->credit_deal_id)->take(12)->values() : collect(),
             'payouts' => MatchTransaction::isPayout($transaction) ? ReconcilePayout::payments($transaction) : collect(),
         ]);
     }
 
     /**
-     * Машина платежа руками (14.11.2026): № предложения, VIN или номер убытка (`CarMatch`) → её последняя сделка; пусто —
-     * отвязать. Руками решённое (`matched_by = hand`) `bank:link` больше не трогает; даты обеих сделок пересчитываются.
+     * Сделки для поля «Сделка» окна операции (23.11.2026, владелец: «не по номеру — мне понятнее марка, модель, номер убытка»):
+     * лупой по машине (`Offer::searchCrm`: марка, модель, убыток, VIN), без отменённых; подпись — марка, модель, год и номер
+     * убытка, ниже менеджер.
+     */
+    public function deals(Request $request)
+    {
+        $q = trim((string) $request->query('q', ''));
+        $deals = $q === '' ? collect() : Deal::query()->held()->whereHas('offer', fn ($o) => $o->searchCrm($q))
+            ->with(['offer', 'buyer'])->latest('id')->limit(20)->get();
+
+        return response()->json($deals->map(fn (Deal $d) => ['id' => $d->id, 'label' => self::dealLabel($d),
+            'hint' => $d->buyer?->shortName()])->values());
+    }
+
+    /** Сделка словами: марка, модель, год и номер убытка. */
+    public static function dealLabel(Deal $deal): string
+    {
+        return implode(', ', array_filter([$deal->offer?->titleWithYear(), $deal->offer?->claim_ref]));
+    }
+
+    /**
+     * Сделка платежа руками (14.11.2026; с 23.11.2026 — выбором сделки по марке и номеру убытка, `deal`): прежнее текстовое
+     * поле (№ предложения, VIN, номер убытка, `CarMatch`) тоже понимается; пусто — отвязать. Руками решённое (`matched_by =
+     * hand`) `bank:link` больше не трогает; даты обеих сделок пересчитываются.
      */
     public function car(Request $request, Transaction $transaction, StampDealMoney $stamp)
     {
-        $text = trim((string) $request->validate(['car' => ['nullable', 'string', 'max:100']])['car']);
-        $deal = null;
-        if ($text !== '') {
+        $data = $request->validate(['car' => ['nullable', 'string', 'max:100'], 'deal' => ['nullable', 'integer']]);
+        $text = trim((string) ($data['car'] ?? ''));
+        $deal = ! empty($data['deal']) ? Deal::query()->held()->find((int) $data['deal']) : null;
+        if (! empty($data['deal']) && ! $deal) {
+            throw ValidationException::withMessages(['deal' => 'Сделка не найдена']);
+        }
+        if (! $deal && $text !== '') {
             $offer = ctype_digit($text) ? Offer::where('number', (int) $text)->first() : null;
             $deal = $offer
                 ? Deal::where('offer_id', $offer->id)->held()->latest('id')->first()
@@ -100,12 +129,14 @@ class BankController
             $stamp($d);
         }
 
-        return back()->with('toast', $deal ? 'Привязано к '.$deal->offer->titleWithYear() : 'Отвязано');
+        return back()->with('toast', $deal ? 'Привязано к '.self::dealLabel($deal) : 'Отвязано');
     }
 
     public function match(Request $request, Transaction $transaction, MatchTransaction $match)
     {
         $invoice = Invoice::findOrFail($request->validate(['invoice' => ['required', 'integer']])['invoice']);
+        // Счёт без сделки модератору закрыт (как `MoneyController::guardInvoice`).
+        abort_unless($request->user()->canManageCrm() || $invoice->deal_id || $invoice->credit_deal_id, 403);
         $match($transaction, $invoice, $request->user());
 
         return back()->with('toast', 'Привязано к счёту '.$invoice->label());

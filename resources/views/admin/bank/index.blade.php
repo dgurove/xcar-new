@@ -1,11 +1,11 @@
-{{-- Поступления из выписки Сбера: что легло в счёт само, что ждёт руки, что «не наше». Только таблица с карточкам,
+{{-- Поступления из выписки Сбера — в Настройках, админу и модератору (23.11.2026): что легло в счёт само, что ждёт руки, что «не наше». Только таблица с карточкам,
      действия (привязать к счёту, «не наше») — в карточке. --}}
 @php use App\Support\ListView; $view = ListView::fromRequest(request()) === ListView::WIDE ? ListView::WIDE : ListView::TABLE; @endphp
-<x-ui.shell title="Выписка" :back="['Банк', '/settings/bank']" :detail="$detail">
+<x-ui.shell title="Выписка" :back="auth()->user()->canManageCrm() ? ['Банк', '/settings/bank'] : ['Настройки', '/settings']" :detail="$detail">
     <x-ui.toolbar :sort="$sort" :pills="\App\Http\Admin\BankController::PRESETS" :pill="$preset" pill-param="preset" :counts="$counts" :tones="['unmatched' => !empty($counts['unmatched']) ? 'pill-urgent' : '']" name="bank" search="Плательщик, ИНН, назначение">
         <x-slot:extra><x-ui.view-switch :views="[ListView::TABLE, ListView::WIDE]" :current="$view"/></x-slot:extra>
     </x-ui.toolbar>
-    @if (! $connection->connected())
+    @if (auth()->user()->canManageCrm() && ! $connection->connected())
         <div class="list mt-4"><a href="/settings/bank" class="row"><span class="min-w-0 flex-1">СберБизнес не подключён</span><x-ui.icon name="chevron-right" class="size-5 text-ink-dim"/></a></div>
     @endif
     <div id="list">

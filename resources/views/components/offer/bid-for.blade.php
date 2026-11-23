@@ -3,7 +3,10 @@
      (`PlaceBidFor`, в обход приёма и порога). В подсказке поля цены — минимальная, от которой отталкиваться.
      07.10.2026: «для покупателя / в гараж» сверху, поля строками (.fields), кнопка .sheet-foot. 15.10.2026: менеджер первой
      строкой — «за кого» первый вопрос, и подсказки на телефоне встают вверху листа, а не у клавиатуры. --}}
-@props(['offer', 'cap' => false])
+@props(['offer', 'cap' => false, 'head' => false])
+{{-- head — лаймовым словом в правом верхнем углу карточки «Подтверждения» (слот `actions`, 23.11.2026, владелец: «как „+ Добавить“
+     у документов»); тогда кнопку решает сам: админ CRM и предложение в продаже или продано (то же, что `$add` в `admin.offers.bids`). --}}
+@if (! $head || (auth()->user()?->canManageCrm() && in_array($offer->state, [\App\Offers\OfferState::Open, \App\Offers\OfferState::Sold], true)))
 @php
     $id = 'bid-for-'.$offer->number;
     $min = $offer->minBid();
@@ -11,7 +14,7 @@
 @endphp
 <div class="contents" data-controller="sheet">
     {{-- Справа в подписи группы «Резерв» (cap) или кнопкой справа под списком (19.11.2026, владелец: «кнопки слева — бред»). --}}
-    <button type="button" {{ $attributes->class($cap ? 'list-cap-act' : 'btn btn-s btn-quiet gap-1.5') }} data-action="sheet#open"><x-ui.icon name="plus" class="size-4"/>За менеджера</button>
+    <button type="button" {{ $attributes->class($head ? 'letters-act' : ($cap ? 'list-cap-act' : 'btn btn-s btn-quiet gap-1.5')) }} data-action="sheet#open"><x-ui.icon name="plus" class="size-4"/>За менеджера</button>
     <x-ui.sheet :id="$id" title="Подтверждение за менеджера" :open="$errors->hasAny(['manager_id', 'amount']) && old('bid_for') == $offer->id">
         <form method="post" action="/offers/{{ $offer->number }}/confirmations" class="flex flex-col gap-3" data-controller="reveal">
             @csrf<input type="hidden" name="bid_for" value="{{ $offer->id }}">
@@ -30,3 +33,4 @@
         </form>
     </x-ui.sheet>
 </div>
+@endif

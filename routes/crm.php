@@ -161,6 +161,15 @@ Route::domain(config('xcar.crm_host'))->middleware(['auth', 'ability:isStaff'])-
     // Сделки для документов (14.11.2026, владелец: «админам и модераторам вручную менять сумму договора и счёта»): модератору —
     // список «Сделок» с окном документов, сумма договора, данные ДКП и паспорт покупателя; прочее по сделке — только админу.
     Route::middleware('ability:canEditDeals')->group(function () {
+        // «Выписка» СберБизнеса — в Настройках, админу и модератору (23.11.2026, владелец: «что привязалось, что нет, привязать
+        // руками — модераторы и администраторы», «пусть в настройках остаётся»); подключение банка — только админу.
+        Route::get('/settings/bank/statement', [BankController::class, 'index']);
+        Route::post('/settings/bank/statement/{transaction}/match', [BankController::class, 'match']);
+        Route::post('/settings/bank/statement/{transaction}/ignore', [BankController::class, 'ignore']);
+        Route::post('/settings/bank/statement/{transaction}/car', [BankController::class, 'car']);
+        // Сделка платежа — поиском по марке, модели и номеру убытка (поле «Сделка» окна операции).
+        Route::get('/reference/deals', [BankController::class, 'deals']);
+        Route::permanentRedirect('/work/money/bank', '/settings/bank/statement');
         Route::get('/work/deals', [DealController::class, 'index']);
         // «+ Новый покупатель» сделки (и модератору, 20.11.2026) и «+ Новый логист / сотрудник» вывоза (только админ —
         // `PeopleController::allows`), данные входа и ссылка нового — письмом.
@@ -363,8 +372,6 @@ Route::domain(config('xcar.crm_host'))->middleware(['auth', 'ability:isStaff'])-
         // «Работа → Вывоз» заменила логистика (10.10.2026): перевозки — на logistics.xcar.ru.
         Route::get('/work/pickups', fn () => redirect()->away(Surface::Logistics->url('/transports'), 301));
         // Скан паспорта покупателя, которого админ указывает за менеджера (20.10.2026) — та же загрузка, что в кабинете.
-        // Выписка СберБизнеса переехала в Настройки → Банк (07.10.2026): связь толком не настроена, в «Оплатах» она была мусором.
-        Route::permanentRedirect('/work/money/bank', '/settings/bank/statement');
 
         Route::get('/gallery', [GalleryController::class, 'index']);
         // Старые адреса разделов — закладки и ссылки из уведомлений.
@@ -500,10 +507,6 @@ Route::domain(config('xcar.crm_host'))->middleware(['auth', 'ability:isStaff'])-
             Route::get('/bank/callback', [BankController::class, 'callback']);
             Route::put('/bank', [BankController::class, 'save']);
             Route::post('/bank/sync', [BankController::class, 'sync']);
-            Route::get('/bank/statement', [BankController::class, 'index']);
-            Route::post('/bank/statement/{transaction}/match', [BankController::class, 'match']);
-            Route::post('/bank/statement/{transaction}/ignore', [BankController::class, 'ignore']);
-            Route::post('/bank/statement/{transaction}/car', [BankController::class, 'car']);
 
             // Переписка бота (Настройки → «Бот Telegram»).
             Route::prefix('telegram')->group(function () {

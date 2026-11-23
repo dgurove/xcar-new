@@ -23,7 +23,8 @@
         {{-- У названия — госномер сразу за ним и значок связи (12.10.2026). --}}
         {{-- Состояние — на шкале полоски срока (`x-park.stay`: «выдана (98 д)», «ждём приёма», «отменена: …»), не посередине полосы
              окошка (12.11.2026, владелец: повторяло бы шкалу). --}}
-        <x-slot:badge>@if ($vehicle->plate)<x-ui.plate :value="$vehicle->plate" class="ml-1.5 align-[.15em] text-sm" copy/>@endif<x-car.keys :count="$vehicle->keys_count"/><x-ui.links :vehicle="$vehicle"/></x-slot:badge>
+        <x-slot:lead><x-ui.cat-icon :category="$vehicle->category"/></x-slot:lead>
+        <x-slot:badge><x-car.title-marks :plate="$vehicle->plate" :keys="$vehicle->keys_count" :vehicle="$vehicle"/></x-slot:badge>
         {{-- Кадры пачками по стадии с глазом (показ в продаже); добавляют и удаляют — в деле ТС. И из «Заявок» — пачками, а не лентой
              (23.11.2026, владелец: «в окнах на парковке всё ещё горизонтальная лента»). --}}
         @if ($vehicle->photos()->isNotEmpty())

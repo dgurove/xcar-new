@@ -21,8 +21,7 @@
         <div class="flex items-center gap-3">
             {{-- Подписью раздела 13 серым, как «Фото» и «Документы» (16.11.2026, владелец: «размеры шрифтов неадекватно скачут» —
                  заголовок 15 был мельче цифр в полях). --}}
-            <h2 class="detail-section !mb-0">Цены</h2>
-            <span class="ml-auto">@include('admin.offers.fields.vat-check', ['form' => $form])</span>
+            <h2 class="detail-section !mb-0 flex flex-wrap items-baseline gap-x-1">Цены @include('admin.offers.fields.vat-check', ['form' => $form])</h2>
         </div>
         @include('admin.offers.revived')
         {{-- Без марки не выставить (12.11.2026, начальник): марка и модель — тут, полями формы окна; у прицепа или кузова без

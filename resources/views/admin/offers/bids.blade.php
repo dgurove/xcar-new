@@ -23,7 +23,8 @@
     // Чат с менеджером у каждой строки (19.11.2026) — чаты машины одним запросом.
     $chats = \App\Chats\Chat::byManager($offer);
     $showAccepted = $accepted && ! ($compact ?? false);
-    $add = auth()->user()?->canManageCrm() && in_array($offer->state, [\App\Offers\OfferState::Open, \App\Offers\OfferState::Sold], true);
+    // «+ За менеджера» в шапке карточки (`addHead`, `x-offer.bid-for head`) — тогда здесь его нет.
+    $add = ! ($addHead ?? false) && auth()->user()?->canManageCrm() && in_array($offer->state, [\App\Offers\OfferState::Open, \App\Offers\OfferState::Sold], true);
     // Подпись группы ждущих: при сделке — «Резерв N»; «+ За менеджера» справа в ней, без подписи — внизу справа.
     $capActive = $showAccepted || $offer->deal || $parallelBids->isNotEmpty();
 @endphp

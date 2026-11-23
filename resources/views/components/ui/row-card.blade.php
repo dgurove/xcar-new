@@ -12,6 +12,7 @@
      blank=false — нет фото, нет и ленты (без серой заглушки с машинкой: парковка, 10.10.2026).
      status — состояние словом посередине полосы (парковка, логистика).
      head=false — без шапки с названием и метками: тело рисует свою (карточки «Оплат»: сумма крупно по центру).
+     lead — перед названием (значок типа ТС `x-ui.cat-icon`), badge — за ним (`x-car.title-marks`).
      menu — кнопка «⋯» справа в строке названия (окно машины CRM, 12.11.2026, владелец: в полосе было тесно, этап в три
      строки); stack — шапка всегда в две строки: название с меню, под ним aside во всю ширину (цена слева, срок справа). --}}
 @props(['offer' => null, 'status' => null, 'badge' => null, 'head' => true, 'href' => null, 'title', 'photos' => null, 'photo' => null, 'marks' => null, 'facts' => [], 'line' => null, 'aside' => null, 'actions' => null, 'action' => 'Открыть', 'tools' => null, 'media' => null, 'foot' => null, 'blank' => true, 'menu' => null, 'stack' => false])
@@ -39,7 +40,7 @@
          метки — во всю ширину рядом (узкая колонка рядом с ценой ставила их столбиком). --}}
     <div @class(['detail-head mt-3', 'detail-head--stack' => $stack])>
         {{-- Название — копируется нажатием (09.11.2026, владелец); страницу открывает значок в полосе. --}}
-        <div class="detail-title block text-lg leading-snug"><span class="line-clamp-2"><x-ui.copy-text>{{ $title }}</x-ui.copy-text>{{ $badge ?? '' }}</span></div>
+        <div class="detail-title block text-lg leading-snug"><span class="line-clamp-2">@isset($lead){{ $lead }} @endisset<x-ui.copy-text>{{ $title }}</x-ui.copy-text>{{ $badge ?? '' }}</span></div>
         @if ($menu && trim($menu) !== '')<div class="detail-menu">{{ $menu }}</div>@endif
         @if ($aside && trim($aside) !== '')<div class="detail-aside">{{ $aside }}</div>@endif
         {{-- Метки — чипами (коды, состояние); характеристики (пробег, коробка, привод) — строкой текста под ними: разное
@@ -53,7 +54,7 @@
 <div class="flex items-start gap-3">
     @if ($photo !== false)<a href="{{ $href }}" class="detail-photo">@if ($photo)<x-offer.photo :media="$photo" sizes="96px" eager/>@else<x-ui.car-blank/>@endif</a>@endif
     <div class="min-w-0 flex-1">
-        <div class="block text-lg leading-snug"><span class="line-clamp-2"><x-ui.copy-text>{{ $title }}</x-ui.copy-text>{{ $badge ?? '' }}</span></div>
+        <div class="block text-lg leading-snug"><span class="line-clamp-2">@isset($lead){{ $lead }} @endisset<x-ui.copy-text>{{ $title }}</x-ui.copy-text>{{ $badge ?? '' }}</span></div>
         @if ($marks && trim($marks) !== '')<div class="mt-1.5 flex flex-wrap items-center gap-1.5">{{ $marks }}</div>@endif
         @if ($line && trim($line) !== '')<div class="detail-line">{{ $line }}</div>@endif
     </div>

@@ -9,7 +9,8 @@
     // Имя — набором слов без регистра: в выписке «МИНАКОВА МАРИНА ВАЛЕРЬЕВНА», у нас «Марина Валерьевна Минакова».
     $words = fn (?string $n) => collect(preg_split('/[\s"«»]+/u', mb_strtolower((string) $n)))->filter(fn ($w) => mb_strlen($w) > 1)->sort()->values()->all();
     $known = collect($except)->map($words)->filter()->all();
-    $txs = \App\Billing\Bank\Transaction::where('deal_id', $deal->id)->where('direction', 'in')->carMoney()
+    // Легшие в наш счёт (`payment_id`) — строками поступлений под счётом (`x-deal.receipts`, 23.11.2026), здесь не повторяются.
+    $txs = \App\Billing\Bank\Transaction::where('deal_id', $deal->id)->where('direction', 'in')->whereNull('payment_id')->carMoney()
         ->orderByDesc('booked_at')->orderByDesc('id')->get()
         ->reject(fn ($tx) => in_array($words($tx->payerName()), $known, true));
     $vin = $deal->offer?->car?->vin;
@@ -25,7 +26,7 @@
             </div>
         @endforeach
         @if ($txs->count() > 3)
-            <a href="/settings/bank/statement?q={{ urlencode($vin ?? '') }}" class="self-start text-accent-text" data-turbo-frame="_top">ещё {{ $txs->count() - 3 }}</a>
+            <a href="/settings/bank/statement?preset=all&q={{ urlencode($vin ?? '') }}" class="self-start text-accent-text" data-turbo-frame="_top">ещё {{ $txs->count() - 3 }}</a>
         @endif
     </div>
 @endif

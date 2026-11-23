@@ -26,7 +26,8 @@
     $draftShow = $admin && ! $garageCar && ! $deal && $offer->state === OfferState::Draft && ! $offer->isScheduled() && ! $offer->onAuction();
 @endphp
 <x-ui.shell :title="$offer->titleWithYear()" copy-title :back="['Предложения', '/offers']" cache="no-cache">
-    <x-slot:badge><x-car.keys :count="$offer->keys_count" label/><x-ui.links :offer="$offer"/></x-slot:badge>
+    <x-slot:lead><x-ui.cat-icon :category="$offer->category()"/></x-slot:lead>
+    <x-slot:badge><x-car.title-marks :keys="$offer->keys_count" keys-label :offer="$offer"/></x-slot:badge>
     {{-- Под заголовком — только состояние и метки, пилюлями одного роста (номер, убыток и документы — в полях и блоках
          ниже). Метки: выбранные пилюлями, «+» и нажатие на метку — шторка со списком и своей меткой; галки ходят в форму
          оффера через form=, пилюли перерисовывает tag-chips сразу. Срок приёма, чаты и импорт — только когда они есть. --}}
@@ -108,7 +109,8 @@
     @if ($alerts !== '')<div class="mb-4 flex flex-col gap-4">{!! $alerts !!}</div>@endif
 
     {{-- Раскладка (23.11.2026, владелец выбрал из макетов): слева письма с доп. просьбами одной карточкой, под ними дорожки
-         (`admin.offers.lanes`: «Продажа», «Вывоз», «Гараж» / «Сделка» / «Подтверждения»), у пустого черновика — поля ТС; справа
+         (`admin.offers.lanes`: «Продажа», «Вывоз», «Гараж» / «Подтверждения»; у сделки — ход с вывозом под ним и «Продажа» справа, её
+         «Подтверждения» — верхом правой колонки), у пустого черновика — поля ТС; справа
          чаты и «что сейчас», «Цены», «Показ», заметка сделки, фото со сводкой ТС, «Документы» строками, «История». На телефоне
          одной колонкой по order-* тем же порядком. Колонки — по ширине
          содержимого (@container): с открытой справа шторкой документов редактор в одну колонку. --}}
@@ -161,6 +163,17 @@
             {{-- Ссылка менеджеру на его сделку или гараж — в «Поделиться» шапки, только скопировать (23.11.2026, владелец: карточка лишняя). --}}
             {{-- Остальные чаты машины — той же карточкой под чатом сделки (16.11.2026, владелец: «„Чатов: 2“ убрать, лучше бы все чаты
                  отображал, как чат с менеджером, под него»); карточки «Чаты» ниже больше нет. --}}
+            {{-- «Подтверждения» сделки — самым верхом справа, над чатом (23.11.2026, владелец: «блок „Сделка“ переименовать в
+                 „Подтверждения“ и справа сверху над чатом»); дорожки слева — ход сделки с вывозом и «Продажа» (`admin.offers.lanes`). --}}
+            @if (($admin || $deals) && $car->lanes()['third'] === 'deal')
+                <div class="order-first flex flex-col gap-4">
+                    <x-ui.card title="Подтверждения" id="deal" class="scroll-mt-24">
+                        <x-slot:actions><x-offer.bid-for :offer="$offer" head/></x-slot:actions>
+                        @include('admin.offers.bids', ['inside' => true, 'compact' => false, 'addHead' => true])
+                    </x-ui.card>
+                    @if ($offer->interests->isNotEmpty())@include('admin.offers.interests')@endif
+                </div>
+            @endif
             @if ($dealChat || $otherChats->isNotEmpty())
                 <div class="order-first flex flex-col gap-4">
                     @if ($dealChat)<x-deal.chat-card :deal="$deal" :chat="$car->dealChat()"/>@endif
@@ -188,34 +201,36 @@
             </x-ui.card>
             {{-- Деньги — справа над «Историей», у всех; поля ходят в форму оффера через form=. На телефоне — сразу под ТС. --}}
             {{-- Цены — так же: суммы текстом, «Изменить» — поля, «Готово» — сохранить (поля привязаны к форме через form=). --}}
-            <x-ui.card title="Цены" class="order-3 @4xl:order-1" :data-controller="$published ? 'edit-card' : null" data-edit-card-form-value="offer-form" :data-edit-card-editing-value="$published && ! $foldMoney ? 'true' : null">
-                <x-slot:actions><span class="flex min-w-0 items-center gap-3">@include('admin.offers.fields.vat-check', ['form' => 'offer-form'])@if ($published)<button type="button" class="edit-card-toggle" data-edit-card-target="button" data-action="edit-card#toggle">{{ $foldMoney ? 'Изменить' : 'Готово' }}</button>@endif</span></x-slot:actions>
+            <x-ui.card class="order-3 @4xl:order-1" :data-controller="$published ? 'edit-card' : null" data-edit-card-form-value="offer-form" :data-edit-card-editing-value="$published && ! $foldMoney ? 'true' : null">
+                {{-- НДС — словами в заголовке: «Цены с НДС 5 %», «Цены указать НДС» (`fields/vat-check`). --}}
+                <x-slot:title><span class="inline-flex flex-wrap items-baseline gap-x-1">Цены @include('admin.offers.fields.vat-check', ['form' => 'offer-form'])</span></x-slot:title>
+                @if ($published)
+                <x-slot:actions><button type="button" class="edit-card-toggle" data-edit-card-target="button" data-action="edit-card#toggle">{{ $foldMoney ? 'Изменить' : 'Готово' }}</button></x-slot:actions>
+                @endif
                 @if ($published)
                     <div data-edit-card-target="view" @unless ($foldMoney) hidden @endunless>@include('admin.offers.fields.money-view', ['garageOnly' => (bool) $garageView])</div>
                 @endif
                 @include('admin.offers.revived')
                 <div @if ($published) data-edit-card-target="edit" @if ($foldMoney) hidden @endif @endif>@include('admin.offers.fields.money', ['form' => 'offer-form', 'garageOnly' => (bool) $garageView])</div>
-                {{-- Черновик: «Показ» строкой со шторкой и, у оценённого, «Выставить в продажу» и «Отдать» — в этой же карточке. --}}
-                @if ($draftShow)
-                    <div class="mt-3 flex flex-col gap-2.5">
-                        <x-offer.showing-row :offer="$offer" form="offer-form"/>
-                        @if ($publishButton)
-                            <div class="flex gap-2">
-                                <button type="button" class="btn btn-s btn-accent min-w-0 flex-1" data-controller="emit" data-action="emit#send" data-emit-event-param="publish-{{ $n }}:open">Выставить в продажу</button>
-                                @if ($giveMenu)<button type="button" class="btn btn-s btn-quiet shrink-0" data-controller="emit" data-action="emit#send" data-emit-event-param="give-{{ $n }}:open">Отдать</button>@endif
-                            </div>
-                        @endif
-                    </div>
+                {{-- «Показ» — последней строкой «Цен» в любом состоянии (23.11.2026, владелец: «иногда показ объединён с блоком цен, иногда
+                     нет — показ в любом случае объединять»): `x-offer.showing-line` — показ предложения или публикация сделки для других; у
+                     идущего приёма без срока (он в заголовке плашки «Приём»). У черновика ниже — «Выставить в продажу» и «Отдать». --}}
+                @if (auth()->user()->canManageCrm())
+                <div class="mt-3 flex flex-col gap-2">
+                    <x-offer.showing-line :offer="$offer" form="offer-form" :summary="$showingSummary" :when="! $intake"/>
+                    @if ($draftShow && $publishButton)
+                        <div class="flex gap-2">
+                            <button type="button" class="btn btn-s btn-accent min-w-0 flex-1" data-controller="emit" data-action="emit#send" data-emit-event-param="publish-{{ $n }}:open">Выставить в продажу</button>
+                            @if ($giveMenu)<button type="button" class="btn btn-s btn-quiet shrink-0" data-controller="emit" data-action="emit#send" data-emit-event-param="give-{{ $n }}:open">Отдать</button>@endif
+                        </div>
+                    @endif
+                </div>
                 @endif
             </x-ui.card>
-
-            {{-- «Показ» — сразу под «Ценами», на ПК и на телефоне (12.10.2026, владелец): у предложения срок приёма и волны, у
-                 сделки — сколько и кому показывать, один модуль `x-offer.showing`; гараж и прочее — без него. Заметка сделки
-                 (и гаража — «как сделка») — под ним же, а не в дорожке. --}}
-            {{-- «Показ» карточкой — только у сделки; у черновика — строкой в «Ценах», у открытого — в плашке «Приём». --}}
-            @unless ($draftShow || $intake)<x-offer.showing :offer="$offer" form="offer-form" :summary="$showingSummary" class="order-3 @4xl:order-1"/>@endunless
+            {{-- Заметка сделки — своим блоком под «Ценами» (23.11.2026, владелец: «заметка отдельным блоком»). --}}
             @php $noteDeal = $garageCar?->deal ?? $deal; @endphp
             @if ($deals && $noteDeal)<x-deal.note :deal="$noteDeal" id="deal-note" class="order-3 @4xl:order-1"/>@endif
+
 
 
             {{-- История — последние четыре записи, остальное по «Ещё N»: лента в тридцать строк занимала экран. История машины,

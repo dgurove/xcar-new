@@ -13,7 +13,7 @@
         default => 'archive',
     };
 @endphp
-<section class="flex w-full flex-col gap-3 rounded-(--radius-l) bg-surface-2 p-3">
+<section class="now-card flex w-full flex-col gap-3 rounded-(--radius-l) bg-surface-2 p-3">
     @if ($kind === 'refused')
         {{-- Менеджер отказался, есть другие подтверждения (19.11.2026, начальник): отдать другому — «Принять» у подтверждения
              в «Подтверждениях»; или «Вернуть в продажу…» на часы — никто не подтвердит, снимется и поставщику «не актуально». --}}
