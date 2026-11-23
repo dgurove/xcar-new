@@ -41,6 +41,9 @@ final class AttachSignedContract
         Offer::find($deal->offer_id)?->log(OfferEventType::Note, $by, ['text' => 'Подписанный договор приложил '.$by->shortName()]);
         if (MarkContractSigned::allows($deal)) {
             ($this->mark)($deal, $by);
+            // Отметку ставит свежая строка под замком — эта копия о ней не знает, и второй файл той же отправки снова звал отметку
+            // и падал «Отметить договор подписанным сейчас нельзя» (24.11.2026, сделка 351: четыре страницы договора разом).
+            $deal->refresh();
         }
         RefreshDeal::of($deal);
 
