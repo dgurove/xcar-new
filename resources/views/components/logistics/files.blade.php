@@ -75,7 +75,7 @@
         </div>
         <div class="flex flex-col">
             {{-- Как документы в CRM и на парковке (23.11.2026, владелец: «сделать как в CRM — «⋯» с тумблером»): строка открывает,
-                 под именем — «только мы» или «видит исполнитель» (лаймом), справа «⋯» без плашки: тумблер «Показывать
+                 под именем — «скрыто» (перечёркнутый глаз) или «видит исполнитель» (лаймом), справа «⋯» без плашки: тумблер «Показывать
                  исполнителю» (логисту — за кого решает этот человек, `FileAccess::toggleFor`) и «Переименовать» — ведущим и логисту. --}}
             @foreach ($papers as $m)
                 @php
@@ -99,7 +99,7 @@
                         </span>
                     @endif
                     <x-slot:under>
-                        @if ($who)<span @class(['paper-access', 'is-open' => $open])>{{ $open ? mb_strtolower($eye) : 'только мы' }}</span>@endif
+                        @if ($who)<span @class(['paper-access', 'is-open' => $open])>@if ($open){{ mb_strtolower($eye) }}@else<x-ui.icon name="eye-off" class="inline size-3.5 align-[-2px]"/> скрыто @endif</span>@endif
                     </x-slot:under>
                 </x-ui.file>
             @endforeach

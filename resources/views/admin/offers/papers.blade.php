@@ -1,5 +1,5 @@
 {{-- Документы предложения (23.11.2026, владелец выбрал из макетов «⋯ справа с меню поверх»): строка целиком — открыть документ;
-     под именем — кто видит: «только мы» серым или «видит Иван Петров» лаймом (`Media\ForManagers`; открытый видят менеджеры
+     под именем — кто видит: «скрыто» серым с перечёркнутым глазом (23.11.2026, владелец: «логичнее, как у скрытых фоток») или «видит Иван Петров» лаймом (`Media\ForManagers`; открытый видят менеджеры
      машины — `Offer::managedBy`, `fileViewers`: сделки, в том числе параллельной, и держатель гаража; исполнителю вывоза
      файлы открывает своё правило `Logistics\FileAccess`). Справа «⋯» (`x-ui.more`: на телефоне шторка снизу, на ПК поповер):
      тумблер «Показывать менеджеру» (тем, кто ведёт сделки, `canEditDeals`), «Распознать» (прочитать заново,
@@ -49,7 +49,7 @@
                 <button type="button" class="btn btn-ghost btn-s px-2 text-accent-text" data-file-rename-target="save" data-action="file-rename#save" aria-label="Сохранить имя" hidden><x-ui.icon name="check" class="size-5"/></button>
             </span>
             <x-slot:under>
-                @if ($shows)<span @class(['paper-access', 'is-open' => $open])>{{ $open ? $seen : 'только мы' }}</span>@endif
+                @if ($shows)<span @class(['paper-access', 'is-open' => $open])>@if ($open){{ $seen }}@else<x-ui.icon name="eye-off" class="inline size-3.5 align-[-2px]"/> скрыто @endif</span>@endif
             </x-slot:under>
         </x-ui.file>
     @endforeach
