@@ -69,7 +69,8 @@
     </div>
 
     <div class="card-extra">
-        <x-offer.tags :offer="$offer" :extra="$seen && !$canShow ? ['видят '.$seen] : []"/>
+        {{-- КПП и привод — внутри, на странице и в окне (23.11.2026, владелец: «на карточке только марка, модель, год, метки и город»). --}}
+        <x-offer.tags :offer="$offer" :facts="false" :extra="$seen && !$canShow ? ['видят '.$seen] : []"/>
     </div>
     <span class="card-aside">
         @if ($estimate)
