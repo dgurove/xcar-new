@@ -72,8 +72,8 @@ class ReadSettledCommand extends Command
         $left = [];
         foreach ($rows as $r) {
             $reason = match (true) {
-                (bool) $r->later => 'позже в ветке есть письмо',
                 (bool) $r->chain_later => 'позже в цепочке прочитанное или наше',
+                (bool) $r->later => 'позже в ветке есть письмо',
                 $r->ostate && in_array($r->ostate, $settled, true) && $r->date_at <= ($moved[$r->car_id.':'.$r->ostate]->at ?? $dealStart[$r->oid] ?? '') => 'до перехода: '.$r->ostate,
                 $r->candidate_id && $r->oid && isset($byHand[$r->car_id]) && $r->date_at <= $r->ocreated => 'черновик завели из цепочки',
                 $r->vehicle_id && in_array($r->vstate, ['released', 'cancelled'], true) && $r->date_at <= ($r->released_at ?? $r->cancelled_at) => 'ТС '.$r->vstate,
