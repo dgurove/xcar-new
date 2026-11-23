@@ -109,7 +109,8 @@ final class OfferEstimateController
         return $offer->declaredPrice() ? $answers : array_fill_keys($ids, false);
     }
 
-    /** «Взять» — как «Оценить»: строка уходит в «Оцененные», карточка — к следующей без цены. */
+    /** «Взять» — как «Оценить»: строка уходит в «Оцененные», а окно остаётся на машине с новой ценой (23.11.2026, владелец: окно
+     *  сразу уезжало к следующей, и казалось, что цена не встала; `detail-stay` → `data-detail-stay` у окна). */
     public function take(Request $request, Offer $offer, Estimate $estimate, TakeEstimate $take, FirstLook $firstLook)
     {
         abort_unless($estimate->offer_id === $offer->id, 404);
@@ -119,7 +120,7 @@ final class OfferEstimateController
             $published = $firstLook->open($estimate, $request->user());
             $offer->refresh();
 
-            return back()->with('detail-advance', true)->with('detail-gone', true)->with('detail-counts', OfferController::counts($request->user()))
+            return back()->with('detail-stay', true)->with('detail-counts', OfferController::counts($request->user()))
                 ->with('toast', $published ? 'Выставлено, видит только '.$estimate->user->shortName().' до '.Ago::at($offer->first_look_until, true, words: false)
                     : 'Оценено: '.Money::rub($estimate->amount).', в продажу не готово');
         }
@@ -129,8 +130,8 @@ final class OfferEstimateController
             return back()->with('toast', 'Цена продажи: '.Money::rub($estimate->amount))->with('detail-counts', OfferController::counts($request->user()));
         }
 
-        return back()->with('detail-advance', true)->with('detail-gone', true)->with('detail-counts', OfferController::counts($request->user()))
-            ->with('toast', 'Оценено: '.Money::rub($estimate->amount));
+        return back()->with('detail-stay', true)->with('detail-counts', OfferController::counts($request->user()))
+            ->with('toast', 'Цена продажи: '.Money::rub($estimate->amount));
     }
 
     public function reject(Request $request, Offer $offer, Estimate $estimate, RejectEstimate $reject)

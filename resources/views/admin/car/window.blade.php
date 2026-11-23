@@ -23,7 +23,7 @@
 @endphp
 {{-- Сделка и гараж (22.11.2026, начальник: «пока ты в сделке и сам из неё не вышел — делаешь все операции»): после действия
      окно остаётся на машине, откуда бы его ни открыли (`detail#staying`). --}}
-<x-ui.detail :data-detail-stay="! $selling">
+<x-ui.detail :data-detail-stay="! $selling || session('detail-stay')">
     <x-ui.row-card stack :href="'/offers/'.$n" :title="$offer->titleWithYear()" :photos="$offer->visiblePhotos()" :facts="$selling && ! $carAside ? array_slice($offer->facts(), 1) : []">
         <x-slot:status><span class="state {{ $statusTone }}">{{ $statusWord }}</span></x-slot:status>
         <x-slot:lead><x-ui.cat-icon :category="$offer->category()"/></x-slot:lead>
