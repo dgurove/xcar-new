@@ -107,14 +107,37 @@
     @php $alerts = trim(ob_get_clean()); @endphp
     @if ($alerts !== '')<div class="mb-4 flex flex-col gap-4">{!! $alerts !!}</div>@endif
 
-    {{-- Раскладка (06.10.2026, владелец): слева «Транспортное средство», под ним дорожки в ряд (`admin.offers.lanes`:
-         «Продажа», «Вывоз», «Гараж» / «Сделка» / «Подтверждения») — в основной колонке, правую не занимают (07.10.2026);
-         справа чат, фото (с 23.11.2026), «Цены», «Показ», заметка сделки, «Чаты» и «История» (12.10.2026); документы и письма — во всю ширину. На телефоне одной колонкой по order-*: дорожки первыми — в них ход. Колонки — по ширине
+    {{-- Раскладка (23.11.2026, владелец выбрал из макетов): слева письма с доп. просьбами одной карточкой, под ними дорожки
+         (`admin.offers.lanes`: «Продажа», «Вывоз», «Гараж» / «Сделка» / «Подтверждения»), у пустого черновика — поля ТС; справа
+         чаты и «что сейчас», «Цены», «Показ», заметка сделки, фото со сводкой ТС, «Документы» строками, «История». На телефоне
+         одной колонкой по order-* тем же порядком. Колонки — по ширине
          содержимого (@container): с открытой справа шторкой документов редактор в одну колонку. --}}
     <div class="@container">
     <div class="grid grid-cols-1 items-start gap-4 @4xl:grid-cols-[minmax(0,1fr)_22rem]">
         <div class="contents @4xl:col-start-1 @4xl:row-start-1 @4xl:flex @4xl:min-w-0 @4xl:flex-col @4xl:gap-4">
-        <form method="post" action="/offers/{{ $n }}" id="offer-form" @if (auth()->user()->canManageCrm()) data-price-guard="edit" data-price-guard-offer="{{ $n }}" @endif data-controller="vin draft save-bar next glow empty-blocks{{ $empty ? ' drop-empty' : '' }}" data-glow-fields-value="{{ json_encode($glow) }}" data-save-bar-dirty-value="{{ $errors->any() ? 'true' : 'false' }}" @if ($empty) data-drop-empty-url-value="/offers/{{ $n }}/drop-empty" @endif @class(['contents' => $carAside, 'order-2 flex flex-col gap-4 @4xl:order-none' => ! $carAside])>
+        {{-- Письма и доп. просьбы поставщику — одной карточкой над ходом сделки (23.11.2026, владелец: «письма с доп. просьбой я бы
+             объединил и поместил над блоками с ходами сделки»; были двумя карточками во всю ширину внизу). Письма — строками, как в
+             «Почте», письмо и ответ — окном поверх страницы; под ними просьбы (`x-offer.extra-request`) и «Сделать доп. просьбу». --}}
+        @php $mailCard = $letters && auth()->user()->canCrmMail() && collect($messages)->isNotEmpty(); @endphp
+        @if ($mailCard || $extraRequest)
+            <x-ui.card class="order-1 flex flex-col gap-4 @4xl:order-none">
+                @if ($mailCard)
+                    {{-- «Ответить» и «Доп. просьба» — лаймовыми словами справа под темой писем (23.11.2026, владелец выбрал из макетов). --}}
+                    @php $hasAsks = $extraRequest && \App\Offers\ExtraAsk::where('offer_id', $offer->id)->exists(); @endphp
+                    <x-mail.letters :messages="$messages" :url="'/offers/'.$n.'/letters'" :asks="$asks" :stages="$stages" split>
+                        <x-slot:tools>
+                            @if ($extraRequest)<button type="button" class="letters-act" data-controller="emit" data-action="emit#send" data-emit-event-param="letters:open" data-emit-url-param="/work/mail/new?offer={{ $n }}&extra=1"><x-ui.icon name="plus" class="size-4"/>Доп. просьба</button>@endif
+                        </x-slot:tools>
+                        @if ($hasAsks)
+                            <x-slot:above><x-offer.extra-request :offer="$offer" :messages="$messages" :compose="false" class="mb-4"/></x-slot:above>
+                        @endif
+                    </x-mail.letters>
+                @elseif ($extraRequest)
+                    <x-offer.extra-request :offer="$offer" :messages="$messages"/>
+                @endif
+            </x-ui.card>
+        @endif
+        <form method="post" action="/offers/{{ $n }}" id="offer-form" @if (auth()->user()->canManageCrm()) data-price-guard="edit" data-price-guard-offer="{{ $n }}" @endif data-controller="vin draft save-bar next glow empty-blocks{{ $empty ? ' drop-empty' : '' }}" data-glow-fields-value="{{ json_encode($glow) }}" data-save-bar-dirty-value="{{ $errors->any() ? 'true' : 'false' }}" @if ($empty) data-drop-empty-url-value="/offers/{{ $n }}/drop-empty" @endif @class(['contents' => $carAside, 'order-3 flex flex-col gap-4 @4xl:order-none' => ! $carAside])>
             @csrf @method('put') @if ($errors->has('price_check'))<input type="hidden" name="price_ok" value="1">@endif
 
             {{-- Машина — те же блоки, что на парковке (`x-car.blocks`, 19.10.2026: «ТС одна сущность»): «Транспортное
@@ -141,7 +164,7 @@
         {{-- Дорожки — от ширины своей колонки (`@container/lanes`): от 52rem три в линию, уже — две, ещё уже — столбиком. --}}
         {{-- Модератору — у машины в сделке или гараже (17.11.2026: вся работа со сделкой); у черновика дорожек у него нет, как было. --}}
         @if ($admin || ($deals && ($deal || $garageCar)))
-            <div class="@container/lanes order-1 min-w-0 @4xl:order-none">@include('admin.offers.lanes')</div>
+            <div class="@container/lanes order-2 min-w-0 @4xl:order-none">@include('admin.offers.lanes')</div>
         @endif
         </div>
 
@@ -168,19 +191,17 @@
                     @if ($nowKind)@include('admin.offers.now-block', ['transitions' => $transitions->except(OfferState::Open->value)])@endif
                 </div>
             @endif
-            {{-- Фото — пачками в правой колонке, под чатами и «что сейчас» (23.11.2026, вечером владелец: «чаты всё-таки над этим блоком»; до того — владелец: «фотки в боковом меню, а не в основном»,
-                 «логичнее над блоком с чатами»; чат и «что сейчас» — order-first, фото — ещё выше); на телефоне — на прежнем месте (order-4). Без заголовка «Фотографии»: подписи пачек и так «Фото …» (владелец). Кадры письма прикрепляются после «Завести» (ImportThreadFiles): строка хода и
-                 заглушки в пачке, attach_controller переспрашивает их, пока строка есть. --}}
-            {{-- Под фото — данные машины сводкой (`x-car.summary`, 23.11.2026): на телефоне карточка тогда на месте прежних блоков
-                 ТС — после дорожек, перед «Ценами» (владелец). --}}
-            <x-ui.card @class(['!pb-3 @4xl:order-2', 'order-2' => $carAside, 'order-4' => ! $carAside]) data-controller="attach" data-attach-url-value="/offers/{{ $n }}/attach" data-attach-car-value="{{ $offer->car_id }}">
+            {{-- Фото пачками и сводка ТС (`x-car.summary`) — справа под «Ценами» (23.11.2026, владелец: «цены над блоком с фотками»).
+                 Без заголовка «Фотографии»: подписи пачек и так «От страховой …». Кадры письма прикрепляются после «Завести»
+                 (ImportThreadFiles): строка хода и заглушки в пачке, attach_controller переспрашивает их, пока строка есть. --}}
+            <x-ui.card class="order-4 !pb-3 @4xl:order-2" data-controller="attach" data-attach-url-value="/offers/{{ $n }}/attach" data-attach-car-value="{{ $offer->car_id }}">
                 <x-mail.attach-line :model="$offer"/>
                 @include('admin.offers.gallery')
                 @if ($carAside)<x-car.summary :offer="$offer" :sheet="'car-edit-'.$n"/>@endif
             </x-ui.card>
             {{-- Деньги — справа над «Историей», у всех; поля ходят в форму оффера через form=. На телефоне — сразу под ТС. --}}
             {{-- Цены — так же: суммы текстом, «Изменить» — поля, «Готово» — сохранить (поля привязаны к форме через form=). --}}
-            <x-ui.card title="Цены" class="order-3" :data-controller="$published ? 'edit-card' : null" data-edit-card-form-value="offer-form" :data-edit-card-editing-value="$published && ! $foldMoney ? 'true' : null">
+            <x-ui.card title="Цены" class="order-3 @4xl:order-1" :data-controller="$published ? 'edit-card' : null" data-edit-card-form-value="offer-form" :data-edit-card-editing-value="$published && ! $foldMoney ? 'true' : null">
                 <x-slot:actions><span class="flex min-w-0 items-center gap-3">@include('admin.offers.fields.vat-check', ['form' => 'offer-form'])@if ($published)<button type="button" class="edit-card-toggle" data-edit-card-target="button" data-action="edit-card#toggle">{{ $foldMoney ? 'Изменить' : 'Готово' }}</button>@endif</span></x-slot:actions>
                 @if ($published)
                     <div data-edit-card-target="view" @unless ($foldMoney) hidden @endunless>@include('admin.offers.fields.money-view', ['garageOnly' => (bool) $garageView])</div>
@@ -205,9 +226,9 @@
                  сделки — сколько и кому показывать, один модуль `x-offer.showing`; гараж и прочее — без него. Заметка сделки
                  (и гаража — «как сделка») — под ним же, а не в дорожке. --}}
             {{-- «Показ» карточкой — только у сделки; у черновика — строкой в «Ценах», у открытого — в плашке «Приём». --}}
-            @unless ($draftShow || $intake)<x-offer.showing :offer="$offer" form="offer-form" :summary="$showingSummary" class="order-3"/>@endunless
+            @unless ($draftShow || $intake)<x-offer.showing :offer="$offer" form="offer-form" :summary="$showingSummary" class="order-3 @4xl:order-1"/>@endunless
             @php $noteDeal = $garageCar?->deal ?? $deal; @endphp
-            @if ($deals && $noteDeal)<x-deal.note :deal="$noteDeal" id="deal-note" class="order-3"/>@endif
+            @if ($deals && $noteDeal)<x-deal.note :deal="$noteDeal" id="deal-note" class="order-3 @4xl:order-1"/>@endif
 
 
             {{-- История — последние четыре записи, остальное по «Ещё N»: лента в тридцать строк занимала экран. История машины,
@@ -217,25 +238,11 @@
                 $own = auth()->user()->canManageCrm() ? $offer->car->events : $offer->car->events->reject(fn ($e) => $e->adminOnly());
                 $events = \App\Cars\LaneHistory::merge($own->take(30), \App\Cars\LaneHistory::forOffer($offer)->take(30))->take(30);
             @endphp
+            {{-- Документы — строками справа над «Историей» (23.11.2026, владелец: «компактнее, в боковое меню»; были во всю ширину внизу). --}}
+            @include('admin.offers.papers-block', ['inHead' => true, 'cardClass' => 'order-5'])
             <x-ui.card title="История" class="order-6"><x-car.history :events="$events"/></x-ui.card>
         </div>
 
-        <x-ui.card title="Документы" class="order-4 @4xl:order-none @4xl:col-span-2">
-            @include('admin.offers.papers-block')
-        </x-ui.card>
-
-        {{-- Доп. запрос поставщику (17.11.2026, `x-offer.extra-request`) — над письмами. --}}
-        @if ($extraRequest)
-            <x-ui.card class="order-4 @4xl:order-none @4xl:col-span-2">
-                <x-offer.extra-request :offer="$offer" :messages="$messages"/>
-            </x-ui.card>
-        @endif
-        {{-- Письма — под документами, как в деле ТС: все строками, как в «Почте»; письмо и ответ — окном поверх редактора. --}}
-        @if ($letters && auth()->user()->canCrmMail())
-            <x-ui.card class="order-4 @4xl:order-none @4xl:col-span-2">
-                <x-mail.letters :messages="$messages" :url="'/offers/'.$n.'/letters'" :asks="$asks" :stages="$stages" split/>
-            </x-ui.card>
-        @endif
     </div>
     </div>
 

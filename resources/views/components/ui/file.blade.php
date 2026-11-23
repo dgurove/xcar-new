@@ -11,14 +11,25 @@
     $shown = \App\Support\Surface::current() === \App\Support\Surface::Site ? \App\Support\InternalRefs::fileName($name, $refs) : $name;
 @endphp
 <div {{ $attributes->merge(['class' => 'file-row']) }}>
-    @if ($href)
+    @if ($href && isset($under))
+        {{-- Подпись-действие под именем (`under`, «видит Иван Петров» у документа CRM): кнопка в ссылке нельзя — значок и имя
+             ссылками порознь (у обеих те же `data-doc*`: шторка документов склеивает их по адресу), подпись — в колонке под
+             именем; значок и кнопки встают по центру всего блока. --}}
+        @php $docAttrs = new \Illuminate\View\ComponentAttributeBag(array_filter([
+            'href' => $href, 'target' => '_blank', 'data-doc' => \App\Support\Docs::type($mime, $name), 'data-doc-name' => \App\Support\Docs::label($shown), 'title' => $shown,
+            'data-doc-auto' => $auto ?: null,
+            'data-doc-src' => str_starts_with($href, '/files/') && preg_match('/\.hei[cf]$/i', $name) ? $href.'?jpeg=1' : null,
+        ], fn ($v) => $v !== null)); @endphp
+        <a {{ $docAttrs->merge(['class' => 'contents', 'tabindex' => '-1', 'aria-hidden' => 'true'])->except('data-doc-auto') }}><x-ui.file-icon :name="$name" :mime="$mime" :bytes="$bytes"/></a>
+        <span class="file-name"><a {{ $docAttrs->merge(['class' => 'min-w-0']) }}><span data-file-name class="block truncate"><x-ui.file-name :name="$shown"/></span></a>@if ($size)<span class="file-sub">{{ $size }}</span>@endif{{ $under }}</span>
+    @elseif ($href)
         <a href="{{ $href }}" target="_blank" class="contents" data-doc="{{ \App\Support\Docs::type($mime, $name) }}" data-doc-name="{{ \App\Support\Docs::label($shown) }}" title="{{ $shown }}" @if ($auto) data-doc-auto @endif @if (str_starts_with($href, '/files/') && preg_match('/\.hei[cf]$/i', $name)) data-doc-src="{{ $href }}?jpeg=1" @endif>
             <x-ui.file-icon :name="$name" :mime="$mime" :bytes="$bytes"/>
-            <span class="file-name"><span data-file-name>{{ $shown }}</span>@if ($size)<span class="file-sub">{{ $size }}</span>@endif</span>
+            <span class="file-name"><span data-file-name><x-ui.file-name :name="$shown"/></span>@if ($size)<span class="file-sub">{{ $size }}</span>@endif</span>
         </a>
     @else
         <x-ui.file-icon :name="$name" :mime="$mime" :bytes="$bytes"/>
-        <span class="file-name"><span data-file-name>{{ $shown }}</span>@if ($size)<span class="file-sub">{{ $size }}</span>@endif</span>
+        <span class="file-name"><span data-file-name><x-ui.file-name :name="$shown"/></span>@if ($size)<span class="file-sub">{{ $size }}</span>@endif</span>
     @endif
     @if (($download && $href) || $slot->isNotEmpty())
         <span class="file-acts">

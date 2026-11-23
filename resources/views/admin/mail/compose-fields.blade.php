@@ -126,7 +126,7 @@
         <div id="compose-files" class="compose-files" data-controller="files">
             @if ($parent && !empty($defaults['forward']))
                 @foreach ($parent->files() as $file)
-                    <label class="compose-file check"><input type="checkbox" name="forward[]" value="{{ $file->id }}" checked><span class="truncate">{{ $file->filename }}</span><span class="text-ink-muted">{{ $file->humanSize() }}</span></label>
+                    <label class="compose-file check"><input type="checkbox" name="forward[]" value="{{ $file->id }}" checked><span class="truncate"><x-ui.file-name :name="$file->filename"/></span><span class="text-ink-muted">{{ $file->humanSize() }}</span></label>
                 @endforeach
             @endif
             @foreach (old('files', $defaults['files'] ?? []) as $path)

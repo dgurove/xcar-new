@@ -801,8 +801,27 @@ class Offer extends Model
      */
     public function managedBy(User $user): bool
     {
+        // И менеджер параллельной сделки (23.11.2026, владелец: «у сделки может быть два менеджера параллельно — надо, чтобы оба
+        // видели, если включено, что менеджер видит»): страница сделки у него своя, а файлы её машины открывались только главному.
         return Car::where('offer_id', $this->id)->where('manager_id', $user->id)->exists()
-            || Deal::where('offer_id', $this->id)->where('buyer_id', $user->id)->held()->exists();
+            || Deal::where('offer_id', $this->id)->where('buyer_id', $user->id)->held()->exists()
+            || Deal::where('offer_id', $this->id)->where('buyer_id', $user->id)->parallel()->whereNull('deals.cancelled_at')->exists();
+    }
+
+    /**
+     * Кто из менеджеров видит открытые документы машины (`managedBy`): покупатели сделок — идущей, закрытой и параллельной —
+     * и держатель гаража. Именами в подписи документа CRM (23.11.2026, владелец: «пиши не „менеджер сделки“, а конкретно имя»).
+     *
+     * @return \Illuminate\Support\Collection<int, User>
+     */
+    public function fileViewers(): \Illuminate\Support\Collection
+    {
+        // Несорвавшиеся сделки — это и есть `held` вместе с идущими параллельными.
+        $ids = Deal::where('offer_id', $this->id)->whereNotNull('buyer_id')->whereNull('deals.cancelled_at')->pluck('buyer_id')
+            ->merge(Car::where('offer_id', $this->id)->whereNotNull('manager_id')->pluck('manager_id'))
+            ->unique()->values();
+
+        return $ids->isEmpty() ? collect() : User::whereIn('id', $ids)->get();
     }
 
     public function worksWith(User $user): bool

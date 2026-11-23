@@ -131,10 +131,8 @@
             @php $noteDeal = $garageCar?->deal ?? $deal; @endphp
             @if ($deals && $noteDeal)<x-deal.note :deal="$noteDeal" folded/>@endif
             @if ($selling)
-                <section>
-                    <h2 class="detail-section">Документы</h2>
-                    @include('admin.offers.papers-block')
-                </section>
+                {{-- Как на странице: «+ Добавить» лаймом в строке заголовка, под именем — кто видит (23.11.2026). --}}
+                @include('admin.offers.papers-block', ['inHead' => true, 'asSection' => true])
             @endif
         </div>
         {{-- Шторки действий — по первому требованию (`OfferController::windowSheets`, `emit_controller`): в окне их до десяти,

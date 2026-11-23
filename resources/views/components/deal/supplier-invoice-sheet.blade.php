@@ -22,7 +22,7 @@
                         <span class="check"><input type="radio" name="media" value="{{ $f->id }}" @checked($pick === $f->id)></span>
                         <x-ui.file-icon :name="$f->file_name" class="file-icon-s"/>
                         <span class="min-w-0 flex-1">
-                            <span class="block truncate">{{ $f->name ?: $f->file_name }}</span>
+                            <span class="block truncate"><x-ui.file-name :name="$f->name ?: $f->file_name"/></span>
                             <span class="block text-sm text-ink-muted">{{ SupplierInvoice::origin($f) }}</span>
                         </span>
                         <a href="/files/{{ $f->id }}" target="_blank" class="btn btn-ghost btn-s -my-1 px-1.5 text-ink-muted" aria-label="Открыть документ"><x-ui.icon name="eye" class="size-5"/></a>

@@ -4,6 +4,9 @@ import { request } from '../lib/http';
 // Переименовать документ в строке (`x-ui.file-rename`, 13.11.2026): имя становится полем на месте, Enter или «✓» —
 // PATCH с `name` (JSON-ответ — новое имя, `Media\DocName`), Esc или уход из поля без правки — как было. Своей формы нет:
 // строка бывает внутри формы отчёта о приёме.
+// Расширение — как `x-ui.file-name`: хвост до пяти знаков хоть с одной буквой («.pdf», а не «.11» в «Счёт от 12.11»).
+const EXT = /(?<=.)\.(?=[a-z0-9]{0,4}[a-z])[a-z0-9]{1,5}$/i;
+
 export default class extends Controller {
     static targets = ['edit', 'save'];
     static values = { url: String, name: String };
@@ -20,8 +23,7 @@ export default class extends Controller {
         e.preventDefault();
         const label = this.label;
         if (!label || this.input) return;
-        const dot = this.nameValue.lastIndexOf('.');
-        const ext = dot > 0 && this.nameValue.length - dot <= 6 ? this.nameValue.slice(dot) : '';
+        const ext = this.nameValue.match(EXT)?.[0] ?? '';
         this.ext = ext;
         this.input = Object.assign(document.createElement('input'), {
             type: 'text', className: 'field-input field-s file-rename-input', value: ext ? this.nameValue.slice(0, -ext.length) : this.nameValue,
@@ -62,10 +64,15 @@ export default class extends Controller {
             const answer = r ? await r.json().catch(() => ({})) : null;
             if (!r?.ok || !answer?.name) throw new Error(answer?.message || 'Не переименовалось');
             this.nameValue = answer.name;
-            if (this.label) this.label.textContent = answer.name;
+            // Расширение — приглушённо, как в разметке (`x-ui.file-name`).
+            if (this.label) {
+                const ext = answer.name.match(EXT)?.[0] ?? '';
+                const tail = Object.assign(document.createElement('span'), { className: 'file-ext', textContent: ext });
+                this.label.replaceChildren(ext ? answer.name.slice(0, -ext.length) : answer.name, ...(ext ? [tail] : []));
+            }
             // Шторка документов берёт имя из ссылки строки.
-            const link = this.row?.querySelector('a[data-doc-name]');
-            if (link) { link.dataset.docName = answer.name; link.title = answer.name; }
+            // Ссылок с документом у строки бывает две (значок и имя, `x-ui.file` с подписью под именем) — обе.
+            this.row?.querySelectorAll('a[data-doc-name]').forEach((link) => { link.dataset.docName = answer.name; link.title = answer.name; });
             this.cancel();
         } catch (err) {
             this.input.setCustomValidity(err.message);

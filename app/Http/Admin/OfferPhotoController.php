@@ -259,11 +259,14 @@ class OfferPhotoController
         return $this->gallery($offer->refresh());
     }
 
-    /** Переименовать документ предложения (`x-ui.file-rename`, `Media\DocName`); документ парковки — на парковке. */
+    /**
+     * Переименовать документ предложения (`x-ui.file-rename`, `Media\DocName`). И документ парковки (23.11.2026, владелец:
+     * «почему не везде карандашик»): имя одно на CRM и парковку, переименовать не значит удалить; удаляют его на парковке.
+     */
     public function rename(Request $request, Offer $offer, Media $media)
     {
         $this->own($offer, $media);
-        abort_if($media->collection_name !== 'papers' || Sale::parkOwned($media), 403);
+        abort_if($media->collection_name !== 'papers', 403);
         $data = $request->validate(['name' => ['nullable', 'string', 'max:200']]);
         [$was, $now] = DocName::rename($media, (string) ($data['name'] ?? ''));
         if ($was !== $now) {

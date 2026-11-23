@@ -4,7 +4,7 @@
      менеджера», «ответили 18.11 ›» (окно на ответе), «менеджер берёт». Кнопки — своим рядом под группой (строки без кнопок справа):
      «Сделать доп. просьбу» (окно писем с галками, `MailController::compose` с `extra`) и у последней отвеченной «Вопрос не решён»
      (владелец: ответ «отсутствую на рабочем месте» — снова ждём первого ответа). --}}
-@props(['offer', 'messages' => []])
+@props(['offer', 'messages' => [], 'compose' => true])
 @php
     use App\Offers\ExtraAsk;
     use App\Support\Ago;
@@ -53,10 +53,13 @@
             </div>
         </section>
     @endif
+    {{-- compose=false — «Доп. просьба» стоит кнопкой в ряду карточки писем (страница машины, 23.11.2026). --}}
+    @if ($compose || $reopen)
     <div class="flex flex-wrap gap-2">
-        <x-mail.window-button :url="'/work/mail/new?offer='.$offer->number.'&extra=1'" label="Сделать доп. просьбу" icon="mail" class="btn-s"/>
+        @if ($compose)<x-mail.window-button :url="'/work/mail/new?offer='.$offer->number.'&extra=1'" label="Сделать доп. просьбу" icon="mail" class="btn-s"/>@endif
         @if ($reopen)
             <form method="post" action="/offers/{{ $n }}/extra-asks/{{ $last->id }}/reopen" class="contents">@csrf<x-ui.button size="sm" variant="secondary">Вопрос не решён</x-ui.button></form>
         @endif
     </div>
+    @endif
 </div>

@@ -3066,8 +3066,15 @@ html.kb-open { --home-gap: 0px; }
   /* Строка файла (13.11.2026, владелец: «не надо кучу места другими элементами отнимать»): вес — в значке, значок 36 px,
      до имени 8 px, кнопки действий узкие и вплотную — имя занимает всё остальное и режется «…» только правда длинное. */
   .file-row { @apply flex items-center gap-2 py-0.5; }
+  /* Кто видит документ — подписью под именем внутри строки файла (`x-ui.file` слот `under`, 23.11.2026): «только мы» серым,
+     открытый — именами лаймом («видит Иван Петров»); нажатие переключает. */
+  .paper-access { @apply block max-w-full truncate text-left text-xs text-ink-dim hover:text-ink-muted; }
+  .paper-access.is-open:hover { @apply text-accent-hover; }
+  .paper-access.is-open { @apply text-accent-text; }
   .file-name { @apply flex min-w-0 flex-1 flex-col; }
   .file-name > [data-file-name] { @apply truncate; }
+  /* Расширение файла — приглушённо везде (`x-ui.file-name`, 23.11.2026, владелец). */
+  .file-ext { color: var(--color-ink-dim); }
   .file-sub { @apply truncate text-sm text-ink-muted; }
   .file-acts { @apply -mr-1 flex shrink-0 items-center gap-1.5; }
   /* Иконки действий: кнопка шириной с иконку и 4 px полей, между ними 6 px, высота 36 px — строки плотнее (13.11.2026). */
@@ -6660,6 +6667,13 @@ dialog.lightbox:not(.lb-one) .lb-pill--bottom { bottom: calc(var(--lb-strip-bott
   .extra-request-title { flex: 1 1 auto; min-width: 0; font-size: var(--text-sm); line-height: 1.125rem; font-weight: 500; color: var(--color-ink-muted); }
   .extra-request-state { flex: none; font-size: var(--text-sm); color: var(--color-ink-dim); white-space: nowrap; }
   .extra-request-text { margin-top: .25rem; }
+  /* Действия карточки писем страницы машины (`x-mail.letters` слот `tools`, 23.11.2026, владелец выбрал из макетов): в строке темы справа
+     лаймовыми словами без подложки, как «Изменить» у карточек. */
+  .letters-acts { @apply ml-auto flex flex-wrap justify-end gap-x-4 gap-y-1; }
+  /* С действиями — в строке темы, пока влезают; нет — строкой ниже справа (владелец). */
+  .letters-head--acts { flex-wrap: wrap; row-gap: .25rem; }
+  .letters-head--acts > h2 { flex: 0 1 auto; }
+  .letters-act { @apply -mx-2 inline-flex items-center gap-1.5 rounded-full px-2 py-1 text-sm text-accent-text transition-colors hover:bg-surface-2 active:scale-[.97]; }
   .letters-head { display: flex; align-items: center; gap: .75rem; margin-bottom: .5rem; }
   .letters-head > h2 { flex: 1 1 auto; min-width: 0; overflow-wrap: anywhere; font-size: var(--text-sm); line-height: 1.125rem; font-weight: 500; color: var(--color-ink-muted); }
   .letter-acts { display: none; position: absolute; top: -.375rem; right: 0; align-items: center; gap: .125rem; }

@@ -11,7 +11,7 @@
 <div class="mt-3">
     <div class="flex flex-wrap items-center gap-x-2 text-sm text-ink-muted">
         <x-ui.icon name="clip" class="size-3.5"/>
-        <span class="min-w-0 truncate" title="{{ $file->filename }}">{{ $file->filename }}</span>
+        <span class="min-w-0 truncate" title="{{ $file->filename }}"><x-ui.file-name :name="$file->filename"/></span>
         @if ($shots->isNotEmpty())<span class="nums">{{ $shots->count() }} фото</span>@endif
         <a href="{{ $base }}/attachments/{{ $file->id }}" download class="letter-link">Скачать</a>
     </div>

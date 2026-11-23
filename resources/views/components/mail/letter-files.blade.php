@@ -18,7 +18,7 @@
         <div class="letter-docs">
             @foreach ($frozen ? $files : $documents as $file)
                 <a href="{{ $base }}/attachments/{{ $file->id }}" target="_blank" class="letter-doc" data-doc="{{ \App\Support\Docs::type($file->mime, $file->filename) }}" data-doc-name="{{ \App\Support\Docs::label($file->filename) }}" title="{{ $file->filename }}">
-                    <x-ui.file-icon :name="$file->filename" :mime="$file->mime" :bytes="$frozen ? null : $file->size"/><span class="min-w-0 truncate">{{ $file->filename }}</span>
+                    <x-ui.file-icon :name="$file->filename" :mime="$file->mime" :bytes="$frozen ? null : $file->size"/><span class="min-w-0 truncate"><x-ui.file-name :name="$file->filename"/></span>
                 </a>
             @endforeach
             @if (! $frozen && $pictures->isNotEmpty())
