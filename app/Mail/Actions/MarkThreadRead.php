@@ -19,8 +19,12 @@ final class MarkThreadRead
 {
     public function __construct(private Threads $threads) {}
 
-    public function __invoke(Thread $thread, bool $read = true): void
+    /** @param bool $chain прочитано открытием — и цепочка до последнего письма ветки (`ReadEarlier::chain`); архив — нет */
+    public function __invoke(Thread $thread, bool $read = true, bool $chain = true): void
     {
+        if ($read && $chain && ($last = $thread->messages()->whereNotNull('date_at')->orderByDesc('date_at')->orderByDesc('id')->first())) {
+            app(ReadEarlier::class)->chain($last);
+        }
         $messages = $thread->messages()->where('direction', Direction::In)->where('is_seen', ! $read)->get();
         if ($messages->isEmpty()) {
             return;

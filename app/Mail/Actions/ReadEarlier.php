@@ -2,9 +2,13 @@
 
 namespace App\Mail\Actions;
 
+use App\Mail\Account;
 use App\Mail\Chains\NodeTitle;
 use App\Mail\Direction;
 use App\Mail\Message;
+use App\Mail\Scope;
+use App\Mail\Thread;
+use Illuminate\Database\Eloquent\Builder;
 
 /**
  * Непрочитанным в ветке остаётся только последнее письмо (18.11.2026, владелец: «помечать прочитанными все предыдущие
@@ -41,6 +45,58 @@ final class ReadEarlier
             ($m->id === $message->id && $later) || ($m->id !== $message->id && $before($m) && ($later || ! in_array($m->id, $group, true)))
         ))->pluck('id')->all();
 
-        return $this->mark->apply(array_values($ids), true);
+        $read = $this->mark->apply(array_values($ids), true);
+        // Наше письмо (из почтовой программы — легло синхронизацией) — вся цепочка до него прочитана.
+        if ($message->direction === Direction::Out) {
+            $read = [...$read, ...$this->chain($message)];
+        }
+
+        return $read;
+    }
+
+    /**
+     * Цепочка до прочитанного письма — прочитана (23.11.2026, владелец: «если последнее в цепочке прочитано — прочитаны и
+     * все предыдущие», «мы написали поставщику — значит все предыдущие прочитаны»). Цепочка — дело «Почты» (`Boxes::group`:
+     * предложение или ТС, цепочка «Из писем», иначе ветка) в ящиках той же стороны: письмо пришло на offer@, ответ ушёл с
+     * deal@ — одна цепочка. Зовут, когда письмо открыли (`MarkMessageRead`, `MarkThreadRead`), прочитали в ящике (`Sync`) и
+     * когда письмо наше (`OnMessage::onSent`, синхронизация). Новое входящее цепочку не читает — только свою ветку (18.11).
+     *
+     * @return list<int>
+     */
+    public function chain(Message $message): array
+    {
+        if (! $message->date_at || ! ($threads = self::chainThreads($message))) {
+            return [];
+        }
+        $ids = Message::whereIn('thread_id', $threads)->where('direction', Direction::In)->where('is_seen', false)
+            ->where('date_at', '<', $message->date_at)->pluck('id')->all();
+
+        return $this->mark->apply($ids, true);
+    }
+
+    /** В цепочке позже письма есть прочитанное или наше — оно прочитано по `chain` (страж синхронизации флагов). */
+    public static function settledInChain(Message $message): bool
+    {
+        return $message->date_at && ($threads = self::chainThreads($message)) && Message::whereIn('thread_id', $threads)
+            ->where('id', '!=', $message->id)->where('date_at', '>', $message->date_at)
+            ->where(fn ($q) => $q->where('is_seen', true)->orWhere('direction', Direction::Out))->exists();
+    }
+
+    /** Ветки цепочки письма — подзапросом; ветки нет — null. */
+    private static function chainThreads(Message $message): ?Builder
+    {
+        $thread = $message->thread;
+        $scope = $message->account?->scope;
+        if (! $thread || ! $scope) {
+            return null;
+        }
+        $own = $scope === Scope::Park ? 'vehicle_id' : 'offer_id';
+        $query = Thread::whereIn('account_id', Account::where('scope', $scope)->select('id'))->select('id');
+
+        return match (true) {
+            (bool) $thread->{$own} => $query->where($own, $thread->{$own}),
+            (bool) $thread->candidate_id => $query->whereNull($own)->where('candidate_id', $thread->candidate_id),
+            default => $query->whereKey($thread->id),
+        };
     }
 }

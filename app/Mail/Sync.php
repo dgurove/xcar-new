@@ -2,6 +2,7 @@
 
 namespace App\Mail;
 
+use App\Mail\Actions\ReadEarlier;
 use App\Mail\Jobs\PushSeen;
 use Illuminate\Contracts\Cache\LockTimeoutException;
 use Illuminate\Support\Facades\Cache;
@@ -156,7 +157,7 @@ final class Sync
         $dirty = array_filter($changes, fn ($v, $k) => $message->{$k} !== $v, ARRAY_FILTER_USE_BOTH);
         // Ящик ещё не получил «прочитано» (`PushSeen` в очереди), а письмо в ветке уже не последнее (`ReadEarlier`) —
         // флаг не возвращаем, а шлём снова: иначе правило «непрочитано только последнее» откатывалось бы гонкой.
-        if (($dirty['is_seen'] ?? null) === false && $message->direction === Direction::In && $this->hasLater($message)) {
+        if (($dirty['is_seen'] ?? null) === false && $message->direction === Direction::In && ($this->hasLater($message) || ReadEarlier::settledInChain($message))) {
             unset($dirty['is_seen']);
             PushSeen::dispatch([$message->id], true);
         }
@@ -166,6 +167,10 @@ final class Sync
         $message->forceFill($dirty)->save();
         if (isset($dirty['is_seen']) && $message->thread) {
             $this->threads->refresh($message->thread);
+        }
+        // Прочитали в самом ящике — и цепочка до этого письма прочитана (`ReadEarlier::chain`).
+        if (($dirty['is_seen'] ?? null) === true && $message->direction === Direction::In) {
+            app(ReadEarlier::class)->chain($message);
         }
     }
 

@@ -6,7 +6,7 @@ use App\Live\Publisher;
 use App\Live\Topics;
 use App\Mail\Actions\LinkThread;
 use App\Mail\Actions\MarkThreadRead;
-use App\Mail\Actions\ReadSettled;
+use App\Mail\Actions\ReadEarlier;
 use App\Mail\Actions\SettleServiceLetter;
 use App\Mail\Chains\ChainBuilder;
 use App\Mail\Events\MessageFailed;
@@ -225,11 +225,9 @@ final class OnMessage
         if ($message->thread) {
             app(MarkThreadRead::class)($message->thread);
         }
-        // Сотрудник написал по машине — почту машины до этого он видел, во всех её ветках (ответ с deal@ на письмо в offer@ —
-        // другая ветка), `ReadSettled`.
-        if ($message->thread?->offer && $message->author?->isStaff()) {
-            app(ReadSettled::class)->offer($message->thread->offer, $message->date_at ?? now());
-        }
+        // Наше письмо — вся цепочка до него прочитана, во всех её ветках и ящиках (ответ с deal@ на письмо в offer@ — другая
+        // ветка), `ReadEarlier::chain`.
+        app(ReadEarlier::class)->chain($message);
         if ($park && ! $message->thread?->vehicle_id && ! $message->thread?->offer_id && ($candidate = $this->chains->attach($message, quiet: true))) {
             // Это письмо и есть «приняли, отчёт отправлен» — дальше ТС заводится сама.
             ($this->store)($candidate);

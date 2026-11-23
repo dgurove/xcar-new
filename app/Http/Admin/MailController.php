@@ -309,7 +309,8 @@ class MailController
         }
         $facets = Facets::for($request, $list,
             Common::vendor('mail_threads.vendor_id'),
-            Facet::toggle('unread', 'Непрочитанные', fn ($m) => $m->where('mail_messages.is_seen', false)),
+            // Непрочитанные — входящие, как число «Почты» (`Boxes::unreadCount`): наше письмо читать не нужно (23.11.2026).
+            Facet::toggle('unread', 'Непрочитанные', fn ($m) => $m->where('mail_messages.is_seen', false)->where('mail_messages.outside', true)),
         )->countBy('count(*)');
         ListPrefs::sync($request, "{$list}-{$box}", keep: ['stack'], view: false, sort: false);
         $stack = match ((string) $request->query('stack')) {

@@ -27,7 +27,13 @@ final class MarkMessageRead
         $ids = $letters->filter(fn (Message $m) => $m->is_seen !== $read && (in_array($m->id, [$message->id, ...$parts], true)
             || ($read && $m->date_at && $message->date_at && $m->date_at->lt($message->date_at))))->pluck('id')->all();
 
-        return $this->apply($ids, $read);
+        $changed = $this->apply($ids, $read);
+        // Открыли — и всё раньше него во всей цепочке (другие ветки и ящики машины) прочитано (`ReadEarlier::chain`).
+        if ($read) {
+            $changed = [...$changed, ...app(ReadEarlier::class)->chain($message)];
+        }
+
+        return $changed;
     }
 
     /** Флаг письмам — у нас, в ящике (`PushSeen`), счётчики веток и «Почты»; и `ReadEarlier`. @param list<int> $ids @return list<int> */

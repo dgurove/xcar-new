@@ -18,7 +18,7 @@ final class ArchiveThread
     {
         $thread->forceFill(['archived_at' => $archive ? now() : null])->saveQuietly();
         if ($archive) {
-            app(MarkThreadRead::class)($thread); // в архив — значит обработана
+            app(MarkThreadRead::class)($thread, chain: false); // в архив — значит обработана (только эта ветка)
         }
         Nav::forgetStaffCounts();
         $thread->refreshLists();
