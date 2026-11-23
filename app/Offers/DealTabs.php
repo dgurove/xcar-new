@@ -50,6 +50,9 @@ final class DealTabs
         'contract' => 'Отправить договор',
         // «Менеджер должен нам» — только то, что ожидает платежа; пришли оплаты — «Проверить оплату» (17.11.2026, владелец).
         'paying' => 'Менеджер должен нам',
+        // «Ждём покупателя» (24.11.2026, владелец: «счёт отправлен, ждём, когда оплатят — полупрозрачная вкладка без ответственного»):
+        // покупатель платит поставщику сам по его счёту (`Deal::paysSupplierOn`), счёт показан — нам он ничего не должен.
+        'buyer' => 'Ждём покупателя',
         'check' => 'Проверить оплату',
         'arrived' => 'Деньги пришли',
         'payout' => 'Оплатить поставщику',
@@ -60,7 +63,7 @@ final class DealTabs
     ];
 
     /** Вкладки «Ждём»: нашего дела в них нет. */
-    public const WAITING = ['agree', 'invoice', 'paying', 'pickup', 'docs'];
+    public const WAITING = ['agree', 'invoice', 'paying', 'buyer', 'pickup', 'docs'];
 
     /** Группы «Ждём поставщика» по шагу: чего ждём. */
     public const WAIT_STAGES = ['Письмо с реквизитами' => 'Ждём счёт', 'Подтверждение оплаты' => 'Ждём подтверждение оплаты'];
@@ -107,6 +110,7 @@ final class DealTabs
                 // Менеджер думает (берёт ли, что ответить) — пока не ответил, сделка в «Спросить менеджера» (18.11.2026); оплату,
                 // получение и договор он ведёт сам — там свои вкладки ожидания.
                 self::asksManager($position, $block) => 'ask',
+                $block === 'paying' && ! $supplier && $position?->deal?->paysSupplierOn($position->stage) => 'buyer',
                 in_array($block, self::WAITING, true) && ! ($supplier && $block === 'paying') => $block,
                 $supplier => 'invoice',
                 $block === 'payout' => 'paying',
@@ -169,6 +173,11 @@ final class DealTabs
             // Доп. просьба держит сделку — она во вкладке «Доп. просьба», что бы ни было на шаге (кроме переоценки — она первой).
             if (! $repricing && ExtraAsk::holding($deal)) {
                 return [$deal->id => ['deal' => $deal, 'tab' => 'extra', 'todo' => $todo]];
+            }
+            // Счёт поставщика показан, просьба «Оплатите» висит, а ход остался нашим (2610152115: шаг «Оплата счёта» с нашим ходом без
+            // дела) — ждём покупателя, а не «Не распределено».
+            if (str_starts_with($todo['key'] ?? '', 'stage:') && $position?->stage && $deal->paysSupplierOn($position->stage) && $deal->openRequirement) {
+                $todo = null;
             }
             // У шага своего дела нет — наше дело по документам покупателя: не распознались данные, договор не отправлен (18.11.2026).
             if ($todo === null && ! $repricing) {
