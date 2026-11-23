@@ -77,6 +77,12 @@ final class PhotoIngest
     /** Кадр (или все снимки с листа) в коллекцию; возвращает первый. */
     public function add(Model $model, string $collection, string $path, string $name, array $properties = [], int $max = self::MAX_DIMENSION): Media
     {
+        // Каждому кадру — свои 30 с (24.11.2026, Иван Орлов, сделка 351: несколько фото договора с айфона разом — «Не получилось»):
+        // HEIC → JPEG и сжатие — 4–5 с на кадр, а Octane даёт запросу 30 с на всё (`octane.max_execution_time`); на 6–7 кадрах
+        // поток убивался посреди загрузки, 500 без отчёта. Счётчик заново с каждым кадром; без предела (очередь, консоль) — не трогаем.
+        if ((int) ini_get('max_execution_time') > 0) {
+            set_time_limit(max(30, (int) config('octane.max_execution_time', 30)));
+        }
         $bands = [];
         try {
             // Кадр, скачанный с сайта Мигторга со знаком (`{файл}_watermark.webp`), лот которого в индексе, — их
