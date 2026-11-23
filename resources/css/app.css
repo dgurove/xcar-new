@@ -3094,6 +3094,10 @@ html.kb-open { --home-gap: 0px; }
   .menu-switch.is-on { background: var(--color-accent); }
   .menu-switch.is-on::before { translate: .875rem 0; }
   .paper-access.is-open { @apply text-accent-text; }
+  /* Имя и подпись «скрыто» / «видит …» — плотной парой по центру значка (23.11.2026, владелец: «ближе к центру и не смещёнными»):
+     имя строкой 20 px, подпись 16 px — вместе 36, ровно высота значка. */
+  .file-name--under { line-height: 1.25rem; }
+  .file-name--under .paper-access { line-height: 1rem; }
   .file-name { @apply flex min-w-0 flex-1 flex-col; }
   .file-name > [data-file-name] { @apply truncate; }
   /* Расширение файла — приглушённо везде (`x-ui.file-name`, 23.11.2026, владелец). */

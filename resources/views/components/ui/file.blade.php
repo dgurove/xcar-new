@@ -21,7 +21,7 @@
         ], fn ($v) => $v !== null)); @endphp
         <a {{ $docAttrs->merge(['class' => 'contents', 'tabindex' => '-1', 'aria-hidden' => 'true'])->except('data-doc-auto') }}><x-ui.file-icon :name="$name" :mime="$mime" :bytes="$bytes"/></a>
         {{-- Подпись — внутри ссылки имени: нажатие в любом месте строки открывает документ (23.11.2026, владелец). --}}
-        <a {{ $docAttrs->merge(['class' => 'file-name']) }}><span data-file-name class="block truncate"><x-ui.file-name :name="$shown"/></span>@if ($size)<span class="file-sub">{{ $size }}</span>@endif{{ $under }}</a>
+        <a {{ $docAttrs->merge(['class' => 'file-name file-name--under']) }}><span data-file-name class="block truncate"><x-ui.file-name :name="$shown"/></span>@if ($size)<span class="file-sub">{{ $size }}</span>@endif{{ $under }}</a>
     @elseif ($href)
         <a href="{{ $href }}" target="_blank" class="contents" data-doc="{{ \App\Support\Docs::type($mime, $name) }}" data-doc-name="{{ \App\Support\Docs::label($shown) }}" title="{{ $shown }}" @if ($auto) data-doc-auto @endif @if (str_starts_with($href, '/files/') && preg_match('/\.hei[cf]$/i', $name)) data-doc-src="{{ $href }}?jpeg=1" @endif>
             <x-ui.file-icon :name="$name" :mime="$mime" :bytes="$bytes"/>

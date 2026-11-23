@@ -49,7 +49,7 @@
                 <button type="button" class="btn btn-ghost btn-s px-2 text-accent-text" data-file-rename-target="save" data-action="file-rename#save" aria-label="Сохранить имя" hidden><x-ui.icon name="check" class="size-5"/></button>
             </span>
             <x-slot:under>
-                @if ($shows)<span @class(['paper-access', 'is-open' => $open])>@if ($open){{ $seen }}@else<span class="inline-flex items-center gap-1"><x-ui.icon name="eye-off" class="size-3.5 shrink-0"/>скрыто</span> @endif</span>@endif
+                @if ($shows)<span @class(['paper-access', 'is-open' => $open])>@if ($open){{ $seen }}@else<span class="flex items-center gap-1"><x-ui.icon name="eye-off" class="size-3.5 shrink-0"/>скрыто</span> @endif</span>@endif
             </x-slot:under>
         </x-ui.file>
     @endforeach
