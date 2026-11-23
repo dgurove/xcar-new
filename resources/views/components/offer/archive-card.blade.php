@@ -23,8 +23,9 @@
     <div class="card-place">@if ($offer->saleCity())<x-ui.place class="truncate text-sm text-ink-dim">{{ $offer->saleCity()->title() }}</x-ui.place>@endif</div>
 
     <div class="card-action">
-        {{-- Чат по архивному открыт всем, кому он в архиве (`Offer::chatOpenFor`), — нужен только сам чат у человека. --}}
-        @if (auth()->user()?->canChat())
+        {{-- Чат по архивному открыт менеджеру, у которого оно в архиве (`Offer::chatOpenFor`), — нужен только сам чат у человека.
+             Админу — «Открыть»: страница ТС у него обычная, писать самому себе незачем. --}}
+        @if (auth()->user()?->isManager() && auth()->user()->canChat())
             <a href="{{ \App\Chats\Chat::offerPath($offer->number) }}" class="btn btn-get">Написать</a>
         @else
             <a href="{{ $href }}" class="btn btn-get btn-get-quiet">Открыть</a>

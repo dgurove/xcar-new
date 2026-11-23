@@ -1093,18 +1093,25 @@ class Offer extends Model
      */
     public function scopeArchivedFor(Builder $q, ?User $user): Builder
     {
-        if (! $user || ! $user->isManager()) {
+        if (! $user?->seesOfferArchive()) {
             return $q->whereRaw('false');
         }
         $left = self::LEFT_SQL;
+        // Админ (не менеджер, 23.11.2026, владелец: «как админ не вижу вкладку архив») — всё ушедшее: волн, своих сделок и оценок у
+        // него нет; страница ТС у него обычная (`isArchivedFor` — только менеджеру).
+        $admin = ! $user->isManager();
 
-        return $q->whereNotNull('offers.published_at')
+        $q->whereNotNull('offers.published_at')
             ->whereRaw("{$left} between ? and ?", [now()->subDays(self::ARCHIVE_DAYS), now()])
-            ->whereHas('viewers', fn ($v) => $v->where('user_id', $user->id)->whereRaw("offer_viewers.opens_at <= {$left}"))
             ->whereNotIn('offers.id', self::query()->siteList($user)->select('offers.id'))
             // Не в галерее. Без `whereNot(inGallery)`: у черновика без окна (`gallery_until` пуст) условие — NULL, и `not` выкидывал
             // почти все вернувшиеся в черновики (приём без подтверждений, «Снять с продажи», аукцион).
-            ->where(fn ($g) => $g->where('offers.state', '!=', OfferState::Draft)->orWhereNull('offers.gallery_until')->orWhere('offers.gallery_until', '<=', now()))
+            ->where(fn ($g) => $g->where('offers.state', '!=', OfferState::Draft)->orWhereNull('offers.gallery_until')->orWhere('offers.gallery_until', '<=', now()));
+        if ($admin) {
+            return $q;
+        }
+
+        return $q->whereHas('viewers', fn ($v) => $v->where('user_id', $user->id)->whereRaw("offer_viewers.opens_at <= {$left}"))
             // Его просят оценить (`isAskedOf`) — это задача «Нужно оценить» со своей страницей, а не архив.
             ->where(fn ($e) => $e->where('offers.state', '!=', OfferState::Draft)->orWhereDoesntHave('estimates', fn ($x) => $x->open()->where('user_id', $user->id)))
             ->whereDoesntHave('bids', fn ($b) => $b->where('user_id', $user->id)->whereIn('state', [BidState::Active, BidState::Accepted]))

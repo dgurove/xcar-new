@@ -103,7 +103,7 @@ Route::middleware('wall')->group(function () {
     Route::get('/gallery', [CatalogController::class, 'gallery']);
     Route::get('/offers/cards', [FragmentController::class, 'cards']);
     // Архив менеджера (23.11.2026) — раньше `/offers/{offer}`: иначе «archive» искался бы номером.
-    Route::get('/offers/archive', [ArchiveController::class, 'index'])->middleware('ability:isManager');
+    Route::get('/offers/archive', [ArchiveController::class, 'index'])->middleware('ability:seesOfferArchive');
     Route::get('/offers/{offer}', [OfferController::class, 'show'])->name('offers.show');
     Route::get('/offers/{offer}/card', [FragmentController::class, 'card']);
 });

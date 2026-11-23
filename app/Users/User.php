@@ -335,6 +335,12 @@ class User extends Authenticatable implements HasMedia, WebAuthnAuthenticatable
         return $this->hasRole(Role::Manager);
     }
 
+    /** Архив предложений на сайте (`/offers/archive`, `Offer::scopeArchivedFor`): менеджеру — своё, админу — всё ушедшее (23.11.2026). */
+    public function seesOfferArchive(): bool
+    {
+        return $this->isManager() || $this->isAdmin();
+    }
+
     /**
      * Супер-покупатель (10.10.2026): покупает у нас без менеджера — видит предложения своей волны (все супер-покупатели
      * в волнах как один менеджер, `AudienceRules`), только цену продажи, подтверждает ценой и ведёт свои сделки, как

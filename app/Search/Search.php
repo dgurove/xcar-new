@@ -130,7 +130,7 @@ final class Search
 
         // Архив менеджера (23.11.2026, начальник: «через поиск — второстепенно: сначала опубликованные, потом архивные») — своей
         // группой после «ТС», без причины ухода: город строкой.
-        $archive = $user->isManager()
+        $archive = $user->seesOfferArchive()
             ? Offer::archivedFor($user)->search($t)->whereNotIn('offers.id', $offers->pluck('id'))->with(['saleSettlement', 'settlement'])
                 ->latestLeft()->limit(self::ROWS)->get()
             : collect();

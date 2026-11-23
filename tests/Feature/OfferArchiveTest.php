@@ -88,8 +88,12 @@ class OfferArchiveTest extends TestCase
         // Не открывалась — ни архива, ни страницы.
         $this->assertFalse($this->offer->isArchivedFor($this->olga));
         $this->page($this->olga)->assertNotFound();
-        // Покупателям и сотрудникам архива нет.
-        $this->actingAs($this->admin)->get('http://xcar.localhost/offers/archive')->assertNotFound();
+        // Админу — весь архив, а страница ТС у него обычная.
+        $this->actingAs($this->admin)->get('http://xcar.localhost/offers/archive')->assertOk()->assertSee('/offers/'.$this->offer->number, false);
+        $this->page($this->admin)->assertOk()->assertDontSeeText('в архиве');
+        // Покупателю архива нет.
+        $buyer = User::create(['name' => 'Пётр', 'phone' => '79000000009', 'roles' => [Role::Buyer], 'manager_id' => $this->armen->id, 'approved_at' => now(), 'buyer_access_at' => now()]);
+        $this->actingAs($buyer)->get('http://xcar.localhost/offers/archive')->assertNotFound();
     }
 
     public function test_thirty_days_and_back_on_sale(): void

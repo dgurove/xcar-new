@@ -26,7 +26,7 @@
             @php $none = ! ($gallery ? $counts['gallery'] : $counts['offers']) && blank($filters['q'] ?? null) && ! $allSeen; @endphp
             <x-ui.toolbar class="md:mt-5" :sort="$none ? null : $sorting" :pills="$views" :dots="$gallery ? [] : ['urgent' => 'urgent', 'fresh' => 'fresh', 'ending' => 'hot']" :pill="$filters['view'] ?? ''" :counts="$counts" :name="$gallery ? 'gallery' : 'catalog'" :facets="$facets" :search="filled($filters['q'] ?? null) ? 'Марка, модель, номер, VIN' : null" search-target="#catalog-list">
                 {{-- Архив менеджера (23.11.2026, начальник) — последней пилюлей: ушедшее за 30 дней, `/offers/archive`. --}}
-                @if (! $gallery && $user?->isManager())
+                @if (! $gallery && $user?->seesOfferArchive())
                     <x-slot:pillsExtra><a href="/offers/archive" class="pill">Архив</a></x-slot:pillsExtra>
                 @endif
                 <x-slot:extra>

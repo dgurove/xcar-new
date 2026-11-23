@@ -170,7 +170,7 @@ class CatalogController
         $view = ListView::pick($request, $offers->total(), shelves: true);
         // Поиск менеджера — и по его архиву (23.11.2026, начальник: «сначала из опубликованных, потом архивные»): блоком под
         // найденным в продаже, строками, со ссылкой на весь архив по тому же запросу.
-        $archive = ! $gallery && $user?->isManager() && filled($filters['q'] ?? null)
+        $archive = ! $gallery && $user?->seesOfferArchive() && filled($filters['q'] ?? null)
             ? Offer::archivedFor($user)->search($filters['q'])->with(['settlement', 'saleSettlement', 'media' => fn ($m) => $m->where('collection_name', 'photos')])
             : null;
 
