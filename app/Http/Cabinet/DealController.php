@@ -12,6 +12,7 @@ use App\Chats\AuthorKind;
 use App\Chats\Message;
 use App\Live\RefreshDeal;
 use App\Live\Stream;
+use App\Media\PhotosPdf;
 use App\Logistics\Actions\RequestPickup;
 use App\Logistics\Actions\SelfPickup;
 use App\Offers\Actions\AttachSignedContract;
@@ -50,6 +51,7 @@ use App\Workflow\Requirement;
 use App\Workflow\Track;
 use App\Workflow\WaitsFor;
 use Illuminate\Http\Request;
+use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Collection;
 use Spatie\MediaLibrary\MediaCollections\Models\Media;
 
@@ -491,15 +493,42 @@ class DealController
         } catch (\Throwable $e) {
             return response()->json(['message' => $e->getMessage()], 422);
         }
-        if (! $requirement->done_at && $requirement->asks === Asks::Document && $requirement->stage?->isPayStep()
-            && ($move = $deal->proofMove($requirement->stage))) {
-            $answer($requirement->fresh(), $move, $request->user());
-            session()->flash('toast', 'Платёжка приложена');
+        if ($this->proofPassed($deal, $requirement, $answer, $request->user())) {
+            session()->flash('toast', 'Платёжное поручение приложено');
 
             return Stream::response('');
         }
 
         return $this->filesStream($deal, $requirement);
+    }
+
+    /**
+     * «Приложить» одним документом в просьбу шага (24.11.2026, `x-ui.photo-pdf`): фото и файлы собраны в один
+     * (`PhotosPdf`) под названием человека; на шаге оплаты — он же ответ, как у `upload`. Страница перечитывается.
+     */
+    public function uploadDoc(Request $request, Deal $deal, AnswerRequirement $answer, PhotosPdf $photos)
+    {
+        $requirement = $deal->openRequirement()->first() ?? $deal->sentPaymentProof();
+        abort_unless($requirement && $requirement->asks === Asks::Document, 404);
+        $doc = $photos->fromRequest($request, $deal->offer->title());
+        app(AttachRequirementFiles::class)($requirement, $doc['file'], named: true);
+        $paid = $this->proofPassed($deal, $requirement, $answer, $request->user());
+        session()->flash('toast', $paid ? 'Платёжное поручение приложено' : 'Приложено: '.$doc['name']);
+
+        return response()->json(['reload' => true, 'name' => $doc['name'], 'pages' => $doc['pages']]);
+    }
+
+    /** На шаге оплаты платёжное поручение — и ответ шага (16.11.2026, `Deal::proofMove`). */
+    private function proofPassed(Deal $deal, Requirement $requirement, AnswerRequirement $answer, User $me): bool
+    {
+        if (! $requirement->done_at && $requirement->asks === Asks::Document && $requirement->stage?->isPayStep()
+            && ($move = $deal->proofMove($requirement->stage))) {
+            $answer($requirement->fresh(), $move, $me);
+
+            return true;
+        }
+
+        return false;
     }
 
     /**
@@ -569,24 +598,43 @@ class DealController
     {
         $request->validate(['files' => ['required', 'array', 'max:20'], 'files.*' => ['file', 'max:30720']],
             ['files.required' => 'Выберите файл договора', 'files.*.max' => 'Файл больше 30 МБ']);
-        // Шаг договора у него открыт — файлы в просьбу шага и сразу ответ «Договор приложен» (18.11.2026, владелец: «убирай чек-лист
-        // договора»; кнопка «Приложить подписанный договор» в блоке денег): маршрут идёт своим исходом, как раньше по кнопке.
-        $me = $request->user();
+        $this->attachSigned($deal, $attach, $request->user(), $request->file('files'));
+
+        return back()->with('toast', 'Подписанный договор приложен');
+    }
+
+    /** «Приложить» договор одним документом (24.11.2026, `x-ui.photo-pdf`): фото и файлы — один под названием человека. */
+    public function signedDoc(Request $request, Deal $deal, AttachSignedContract $attach, PhotosPdf $photos)
+    {
+        abort_unless(AttachSignedContract::allows($deal), 404);
+        $doc = $photos->fromRequest($request, $deal->offer->title());
+        $this->attachSigned($deal, $attach, $request->user(), [$doc['file']], named: true);
+        session()->flash('toast', 'Договор приложен');
+
+        return response()->json(['reload' => true, 'name' => $doc['name'], 'pages' => $doc['pages']]);
+    }
+
+    /**
+     * Шаг договора у него открыт — файлы в просьбу шага и сразу ответ «Договор приложен» (18.11.2026, владелец: «убирай чек-лист
+     * договора»; кнопка «Приложить подписанный договор» в блоке денег): маршрут идёт своим исходом, как раньше по кнопке.
+     *
+     * @param  list<UploadedFile>  $files
+     */
+    private function attachSigned(Deal $deal, AttachSignedContract $attach, User $me, array $files, bool $named = false): void
+    {
         $requirement = $deal->buyer_id === $me->id ? $deal->openRequirement()->with('stage.exits')->first() : null;
         if ($requirement && $requirement->asks === Asks::Document && $requirement->stage?->aboutContract() && ! $requirement->stage->isPayStep()
             && ($move = $deal->soleMove($requirement->stage))) {
-            foreach ($request->file('files') as $file) {
-                app(AttachRequirementFiles::class)($requirement, $file);
+            foreach ($files as $file) {
+                app(AttachRequirementFiles::class)($requirement, $file, $named);
             }
             app(AnswerRequirement::class)($requirement->fresh(), $move, $me);
 
-            return back()->with('toast', 'Подписанный договор приложен');
+            return;
         }
-        foreach ($request->file('files') as $file) {
-            $attach($deal, $file, $me);
+        foreach ($files as $file) {
+            $attach($deal, $file, $me, $named);
         }
-
-        return back()->with('toast', 'Подписанный договор приложен');
     }
 
     /** Подписанный договор одним PDF — файлы сделки и ответы шага договора (`SignedContractPdf`, 17.11.2026). */

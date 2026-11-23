@@ -30,8 +30,8 @@
         @isset($sources['bank'])
             <div class="contents" data-reveal-target="pane" data-reveal-key="bank" @if ($source !== 'bank') hidden @endif>
                 <x-ui.field name="paid_at" id="pay-{{ $invoice->id }}-date-bank" label="Дата" type="date" :value="now()->toDateString()"/>
-                <x-ui.field name="ref" id="pay-{{ $invoice->id }}-ref-bank" label="№ платёжки"/>
-                <x-ui.file-field name="slip" label="Платёжка" accept=".pdf,.jpg,.jpeg,.png,.heic"/>
+                <x-ui.field name="ref" id="pay-{{ $invoice->id }}-ref-bank" label="№ платёжного поручения"/>
+                <x-ui.file-field name="slip" label="Платёжное поручение" accept=".pdf,.jpg,.jpeg,.png,.heic"/>
             </div>
         @endisset
         @isset($sources['cash'])

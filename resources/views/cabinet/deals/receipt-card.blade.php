@@ -119,13 +119,11 @@
                             @endforeach
                             @if ($carPay)
                                 <div class="send-under send-pair">
-                                    <form method="post" action="/account/money/deals/{{ $deal->id }}/pay" enctype="multipart/form-data" class="contents" data-controller="autosubmit">
-                                        @csrf
-                                        <input type="hidden" name="way" value="transfer"><input type="hidden" name="invoice" value="{{ $sale->id }}">
-                                        <label @class(['btn btn-s gap-2 cursor-pointer', 'btn-accent' => $left($sale) > 0, 'btn-quiet' => $left($sale) <= 0])><x-ui.icon name="clip" class="size-4"/>{{ $slipMore ? 'Приложить ещё' : 'Приложить платёжку' }}
-                                            <input type="file" name="slip" accept="image/*,.pdf,.heic" class="sr-only" tabindex="-1" data-action="change->autosubmit#submit">
-                                        </label>
-                                    </form>
+                                    {{-- «Приложить» одним документом (24.11.2026, `x-ui.photo-pdf`): фото и файлы — одно платёжное поручение
+                                         чеком «я оплатил» на остаток (`MoneyController::payDoc`). Рядом «Наличными…» — тесно, здесь «Платёжка». --}}
+                                    <x-ui.photo-pdf :id="'slip-'.$sale->id" :url="'/account/money/deals/'.$deal->id.'/pay/doc'" :fields="['invoice' => (string) $sale->id]" title="Платёжное поручение"
+                                        :name="'Платёжное поручение '.$deal->offer->title()" icon="clip" always :label="$slipMore ? 'Приложить ещё' : 'Приложить платёжку'"
+                                        :button="\Illuminate\Support\Arr::toCssClasses(['btn btn-s gap-2', 'btn-accent' => $left($sale) > 0, 'btn-quiet' => $left($sale) <= 0])"/>
                                     <div class="contents" data-controller="sheet">
                                         <button type="button" class="btn btn-quiet btn-s" data-action="sheet#open">Наличными…</button>
                                         <x-billing.pay-sheet :id="'pay-'.$sale->id.'-cash'" pick="cash" only :invoices="collect([$sale])" :action="'/account/money/deals/'.$deal->id.'/pay'" pdf="/account/invoices/{id}/pdf" :buyers="$buyers"
@@ -149,16 +147,14 @@
                             <x-ui.file name="Счёт поставщика" :mime="$f->mime_type" :bytes="$f->size" :size="'от '.$f->created_at->timezone('Europe/Moscow')->format('d.m')" href="/files/{{ $f->id }}" download class="row"/>
                         @endforeach
                         @foreach ($proofs->concat($stepProofs) as $m)
-                            <x-ui.file name="Платёжка" :mime="$m->mime_type" :bytes="$m->size" :size="\App\Support\Ago::at($m->created_at, true, words: false)" href="/files/{{ $m->id }}" class="row"/>
+                            <x-ui.file name="Платёжное поручение" :mime="$m->mime_type" :bytes="$m->size" :size="\App\Support\Ago::at($m->created_at, true, words: false)" href="/files/{{ $m->id }}" class="row"/>
                         @endforeach
                         @if ($supplierStep)
-                            <div class="send-under" data-controller="photos" data-photos-url-value="/deals/{{ $deal->id }}/files" data-photos-reload-value="true">
-                                <input type="file" accept="image/*,.pdf,.heic" multiple class="sr-only" tabindex="-1" data-photos-target="input" data-action="change->photos#upload">
-                                <div hidden data-photos-target="progress" class="mb-2">
-                                    <div class="mb-1 text-sm text-ink-muted" data-label></div>
-                                    <div class="h-1.5 overflow-hidden rounded-full bg-surface-3"><div class="h-full bg-accent transition-[width]" data-bar style="width:0"></div></div>
-                                </div>
-                                <button type="button" @class(['btn btn-s w-full gap-2', 'btn-accent' => $stepProofs->isEmpty(), 'btn-quiet' => $stepProofs->isNotEmpty()]) data-action="photos#pick"><x-ui.icon name="clip" class="size-4"/>{{ $stepProofs->isEmpty() ? 'Приложить платёжку' : 'Приложить ещё' }}</button>
+                            {{-- «Приложить» одним документом (24.11.2026, `x-ui.photo-pdf`): фото и файлы — одно платёжное поручение. --}}
+                            <div class="send-under">
+                                <x-ui.photo-pdf :id="'supplier-proof-'.$deal->id" :url="'/deals/'.$deal->id.'/files/doc'" title="Платёжное поручение" :name="'Платёжное поручение '.$deal->offer->title()" icon="clip" always
+                                    :label="$stepProofs->isEmpty() ? 'Приложить платёжное поручение' : 'Приложить ещё'"
+                                    :button="\Illuminate\Support\Arr::toCssClasses(['btn btn-s w-full gap-2', 'btn-accent' => $stepProofs->isEmpty(), 'btn-quiet' => $stepProofs->isNotEmpty()])"/>
                             </div>
                         @endif
                     </div>

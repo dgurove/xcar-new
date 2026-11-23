@@ -15,9 +15,10 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 
 /**
- * Поправить деньги сделки: схему оплаты, вознаграждение менеджера, гаражной — сколько нам по ссылке, у ДКП — сумму собственнику
- * (`$setOwner`, 23.11.2026, владелец: «как настраивать взаимозачёт со страховой» — шторка `x-deal.offset-sheet`). Закупочная
- * закреплена с принятия и здесь не правится (15.10.2026).
+ * Поправить деньги сделки: схему оплаты, вознаграждение менеджера, гаражной — сколько нам по ссылке, у схем с подбором — сумму
+ * собственнику или поставщику (`$setOwner`, 23.11.2026, владелец: «как настраивать взаимозачёт со страховой» — шторка
+ * `x-deal.offset-sheet`). Закупочная в сделке закреплена с принятия (15.10.2026), с 24.11.2026 правится только здесь (`$setCost`,
+ * шторка `x-deal.cost-sheet`, владелец: «редактировать можно всё»), закупочная предложения — нет.
  * Пока за наши счета не платили (`Deal::moneyEditable`): счета, что ставятся сами, перевыставит `SyncDealInvoices`.
  */
 final class UpdateDealMoney
@@ -32,7 +33,7 @@ final class UpdateDealMoney
      *                       = закупочная − собственнику (`Deal::offset`)
      */
     public function __invoke(Deal $deal, User $by, ?int $commission, ?DealScheme $scheme = null, ?int $share = null, ?string $note = null, ?int $amount = null,
-        ?int $cash = null, bool $setCash = false, ?int $owner = null, bool $setOwner = false): void
+        ?int $cash = null, bool $setCash = false, ?int $owner = null, bool $setOwner = false, ?int $cost = null, bool $setCost = false): void
     {
         if (! $deal->moneyEditable()) {
             throw ValidationException::withMessages(['commission' => 'По счёту сделки уже платили, сначала отмените оплату']);
@@ -40,6 +41,9 @@ final class UpdateDealMoney
         $price = $amount ?? $deal->amount;
         if ($commission !== null && $price !== null && $commission > $price) {
             throw ValidationException::withMessages(['commission' => 'Не больше цены продажи '.Money::rub($price)]);
+        }
+        if ($setCost && ($cost === null || $cost < 1 || ($price !== null && $cost > $price))) {
+            throw ValidationException::withMessages(['cost' => $price !== null ? 'Не больше цены продажи '.Money::rub($price) : 'Впишите закупочную']);
         }
         $was = $deal->amount;
         $repriced = $amount !== null && $amount !== $was;
@@ -55,7 +59,10 @@ final class UpdateDealMoney
         if ($setOwner && $owner !== null && $deal->cost !== null && $owner > $deal->cost) {
             throw ValidationException::withMessages(['owner_price' => 'Не больше закупочной '.Money::rub($deal->cost)]);
         }
-        DB::transaction(function () use ($deal, $by, $commission, $scheme, $selection, $wasSelection, $share, $garage, $note, $amount, $was, $repriced, $cash, $setCash, $owner, $setOwner) {
+        DB::transaction(function () use ($deal, $by, $commission, $scheme, $selection, $wasSelection, $share, $garage, $note, $amount, $was, $repriced, $cash, $setCash, $owner, $setOwner, $cost, $setCost) {
+            if ($setCost && $cost !== $deal->cost) {
+                $deal->update(['cost' => $cost]);
+            }
             // Наличными мимо счёта — договор и счёт за ТС меньше на эту часть (`DealContract::priceFor`).
             if ($setCash && $deal->contract && $deal->contract->cash_part !== $cash) {
                 $deal->contract->update(['cash_part' => $cash]);

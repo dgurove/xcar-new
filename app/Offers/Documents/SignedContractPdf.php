@@ -51,8 +51,8 @@ final class SignedContractPdf
     /** «Договор 0790-046-09068-26.pdf» — по номеру убытка, без него — по номеру предложения. */
     public static function fileName(Deal $deal): string
     {
-        $ref = $deal->offer?->claim_ref ?: (string) $deal->offer?->number;
-
-        return 'Договор '.Str::of($ref)->replaceMatches('/[\\\\\/:*?"<>|]+/u', '-')->squish().'.pdf';
+        // Название и марка с моделью, без номера убытка (24.11.2026, владелец: «номера убытков мы не пишем нигде, марку модель
+        // там просто и всё»).
+        return \App\Media\PhotosPdf::fileName('Договор купли-продажи', $deal->offer?->title());
     }
 }

@@ -161,6 +161,34 @@ class DkpDealFlowTest extends TestCase
         $this->actingAs($this->admin)->put($url, ['owner_price' => '760 000'])->assertSessionHasErrors();
     }
 
+    /**
+     * «Редактировать можно всё» (24.11.2026, владелец): у «страховой напрямую» сумма поставщику правится той же шторкой, что у ДКП
+     * собственнику (`owner_price`, взаимозачёт); закупочная в сделке — только у ПРАЙМ / Р.О.С. (`DealController::cost`), у схем с
+     * подбором её дверь закрыта, после оплаты — ошибка, закупочная предложения прежняя.
+     */
+    public function test_supplier_sum_and_prime_cost_are_editable_in_crm(): void
+    {
+        [$offer, $deal] = $this->deal();
+        $deal->forceFill(['scheme' => DealScheme::Insurer])->save();
+        $crm = fn (string $p) => \App\Support\Surface::Crm->url('/work/deals/'.$deal->id.$p);
+        $this->actingAs($this->admin)->put($crm('/owner-price'), ['owner_price' => '760 000'])->assertSessionHasNoErrors()->assertRedirect();
+        $this->assertSame(760000, $deal->fresh()->supplierPayment());
+        $this->assertSame(19000, $deal->fresh()->offset());
+        $this->actingAs($this->admin)->put($crm('/cost'), ['cost' => '700 000'])->assertNotFound();
+
+        $deal->forceFill(['scheme' => DealScheme::Prime, 'owner_price' => null])->save();
+        $this->actingAs($this->admin)->put($crm('/cost'), ['cost' => '900 000'])->assertSessionHasErrors('cost');
+        $this->actingAs($this->admin)->put($crm('/cost'), ['cost' => '770 000'])->assertSessionHasNoErrors()->assertRedirect();
+        $this->assertSame(770000, $deal->fresh()->cost);
+        $this->assertSame(779000, (int) $offer->fresh()->floor_price);
+        $invoice = $deal->fresh()->issuedInvoices()->where('state', InvoiceState::Issued)->first();
+        if ($invoice) {
+            app(RecordPayment::class)($invoice, $this->admin, 1000, now(), PaymentSource::Bank);
+            $this->actingAs($this->admin)->put($crm('/cost'), ['cost' => '760 000'])->assertSessionHasErrors();
+            $this->assertSame(770000, $deal->fresh()->cost);
+        }
+    }
+
     public function test_cancelled_deal_voids_unpaid_selection_invoice(): void
     {
         [, $deal] = $this->deal();

@@ -151,7 +151,7 @@
                                 @foreach ($r->answer['fields'] ?? [] as $k => $v)<div class="text-sm"><span class="text-ink-muted">{{ collect($r->fields)->firstWhere('key', $k)['label'] ?? $k }}:</span> {{ $r->shown($k, $v) }}</div>@endforeach
                                 {{-- Платёжка шага оплаты и подписанный договор — файлом в «Продаже» (одним PDF), в ходе сделки второй раз не показываем
                              (16.11.2026, договор — 17.11.2026). --}}
-                                @foreach ((in_array($r->answer['exit'] ?? null, \App\Offers\Documents\PaymentProofPdf::EXITS, true) || ($r->asks === \App\Workflow\Asks::Document && $r->stage?->aboutContract())) ? [] : $r->getMedia('files') as $f)<x-ui.file :name="$f->file_name" :mime="$f->mime_type" :bytes="$f->size" href="/files/{{ $f->id }}" class="py-1"/>@endforeach
+                                @foreach ((in_array($r->answer['exit'] ?? null, \App\Offers\Documents\PaymentProofPdf::EXITS, true) || ($r->asks === \App\Workflow\Asks::Document && $r->stage?->aboutContract())) ? [] : $r->getMedia('files') as $f)<x-ui.file :name="\App\Media\DocName::of($f)" :mime="$f->mime_type" :bytes="$f->size" href="/files/{{ $f->id }}" class="py-1"/>@endforeach
                             @endforeach
                             {{-- Назад — на последний этап блока, где предложение было, а не на первый. --}}
                             @php $lastIn = $step['stages']->last(); $target = $lastIn ? ($block->stages->firstWhere('id', $lastIn['stage_id']) ?? $block->stages->firstWhere('name', $lastIn['stage'])) : null; $target ??= $block->stages->first(); @endphp
@@ -294,10 +294,7 @@
                                 <a href="/offers/{{ $offer->number }}?buyer=1#invoice-buyer" class="btn btn-s btn-quiet" data-turbo-frame="_top">Заполнить реквизиты за менеджера</a>
                             @endif
                             @if ($proofFor)
-                                <div data-controller="sheet">
-                                    <x-ui.button type="button" size="sm" variant="secondary" data-action="sheet#open">{{ $reqFiles->isEmpty() ? 'Приложить платёжку за менеджера' : 'Документ об оплате' }}</x-ui.button>
-                                    <x-deal.payment-proof-sheet :id="'payment-proof-'.$position->id" :deal="$deal" :requirement="$req"/>
-                                </div>
+                                <div><x-deal.payment-proof-sheet :id="'payment-proof-'.$position->id" :deal="$deal" :requirement="$req" :label="$reqFiles->isEmpty() ? 'Приложить платёжное поручение за менеджера' : 'Приложить ещё за менеджера'"/></div>
                             @endif
                             @if ($takeFor)
                                 <form method="post" action="/offers/{{ $n }}/exit/{{ $takeFor->id }}">
@@ -423,7 +420,7 @@
                         @foreach ($r->answer['fields'] ?? [] as $k => $v)<div class="text-sm"><span class="text-ink-muted">{{ collect($r->fields)->firstWhere('key', $k)['label'] ?? $k }}:</span> {{ $r->shown($k, $v) }}</div>@endforeach
                         {{-- Платёжка шага оплаты и подписанный договор — файлом в «Продаже» (одним PDF), в ходе сделки второй раз не показываем
                              (16.11.2026, договор — 17.11.2026). --}}
-                        @foreach ((in_array($r->answer['exit'] ?? null, \App\Offers\Documents\PaymentProofPdf::EXITS, true) || ($r->asks === \App\Workflow\Asks::Document && $r->stage?->aboutContract())) ? [] : $r->getMedia('files') as $f)<x-ui.file :name="$f->file_name" :mime="$f->mime_type" :bytes="$f->size" href="/files/{{ $f->id }}" class="py-1"/>@endforeach
+                        @foreach ((in_array($r->answer['exit'] ?? null, \App\Offers\Documents\PaymentProofPdf::EXITS, true) || ($r->asks === \App\Workflow\Asks::Document && $r->stage?->aboutContract())) ? [] : $r->getMedia('files') as $f)<x-ui.file :name="\App\Media\DocName::of($f)" :mime="$f->mime_type" :bytes="$f->size" href="/files/{{ $f->id }}" class="py-1"/>@endforeach
                     @endforeach
                     @foreach ($claims as [$invoice, $p])
                         <div class="mt-3 rounded-(--radius-m) bg-surface-2 p-3">
@@ -432,13 +429,13 @@
                                 <span class="nums font-semibold">{{ Money::rub($p->amount) }}</span>
                                 <span class="nums text-sm text-ink-dim">{{ \App\Support\Ago::html($p->paid_at, words: false) }}@if ($p->ref), № {{ $p->ref }}@endif</span>
                             </div>
-                            @if ($slip = $p->slip())<x-ui.file name="Платёжка" :mime="$slip->mime_type" :bytes="$slip->size" :size="\App\Support\Ago::at($slip->created_at, true, words: false)" :href="\App\Support\Docs::media($slip)['url']" class="mt-2"/>@endif
+                            @if ($slip = $p->slip())<x-ui.file name="Платёжное поручение" :mime="$slip->mime_type" :bytes="$slip->size" :size="\App\Support\Ago::at($slip->created_at, true, words: false)" :href="\App\Support\Docs::media($slip)['url']" class="mt-2"/>@endif
                             <div class="claim-acts mt-2">
                                 <form method="post" action="/work/payments/{{ $p->id }}/confirm" class="contents" data-turbo-confirm="Поступила {{ Money::rub($p->amount) }}?">@csrf<x-ui.button size="sm">Поступила</x-ui.button></form>
                                 <div data-controller="sheet" class="contents">
                                     <x-ui.button type="button" size="sm" variant="secondary" data-action="sheet#open">Не поступила</x-ui.button>
                                     <x-ui.sheet id="reject-{{ $p->id }}" title="Оплата не поступила">
-                                        <form method="post" action="/work/payments/{{ $p->id }}/reject" class="flex flex-col gap-3">@csrf<x-ui.field name="reason" label="Что не так" placeholder="Денег на счёте нет, платёжка не читается"/><x-ui.sheet-foot variant="secondary">Не поступила</x-ui.sheet-foot></form>
+                                        <form method="post" action="/work/payments/{{ $p->id }}/reject" class="flex flex-col gap-3">@csrf<x-ui.field name="reason" label="Что не так" placeholder="Денег на счёте нет, платёжное поручение не читается"/><x-ui.sheet-foot variant="secondary">Не поступила</x-ui.sheet-foot></form>
                                     </x-ui.sheet>
                                 </div>
                                 <x-deal.claim-other :payment="$p"/>

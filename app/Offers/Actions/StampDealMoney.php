@@ -47,7 +47,7 @@ final class StampDealMoney
             $at = Carbon::parse($tx->booked_at)->setTime(12, 0);
             if (! $deal->supplier_paid_at || $deal->supplier_paid_at->gt($at)) {
                 // Сделка на шаге нашей оплаты — пройдёт (`SetDealDate`), иначе только дата.
-                $deal = ($this->set)($deal, DealDates::PAID, $at, null, 'по выписке Сбера'.($tx->doc_number ? ', платёжка № '.$tx->doc_number : ''), $tx->doc_number);
+                $deal = ($this->set)($deal, DealDates::PAID, $at, null, 'по выписке Сбера'.($tx->doc_number ? ', платёжное поручение № '.$tx->doc_number : ''), $tx->doc_number);
             }
         }
         // Деньги за машину пришли без нашего счёта — шаг оплаты проходит сам (`MoneyIn`, 17.11.2026).

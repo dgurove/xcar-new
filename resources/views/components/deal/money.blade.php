@@ -49,8 +49,11 @@
         $paidBy = $invoices->filter(fn ($i) => ! $i->isOwed() && $i->state === InvoiceState::Issued && $i->remaining() > 0 && auth()->user()?->canEditDeals());
         // Гаражная Совкомбанка без цены — тоже (18.11.2026): цену продажи вписывают тут же, как «Продаю» менеджера.
         $editMoney = $deal->moneyOpen() && $deal->moneyEditable() && auth()->user()?->canEditDeals() && (! $deal->isGarage() || $deal->isGarageManager() || $deal->namesBuyer());
-        // Взаимозачёт со страховой — у ДКП собственнику, кто правит деньги (23.11.2026, `x-deal.offset-sheet`).
-        $offsetEdit = $editMoney && $deal->schemeOf() === \App\Offers\DealScheme::OwnerDkp && $deal->cost !== null;
+        // Сумма поставщику или собственнику и взаимозачёт со страховой — у схем с подбором, кто правит деньги (23.11.2026 ДКП,
+        // `x-deal.offset-sheet`; 24.11.2026 и «страховой напрямую», владелец: «редактировать можно всё, как в „Оплатах“»).
+        $offsetEdit = $editMoney && $deal->paysSelection() && ! $deal->isGarage() && $deal->cost !== null;
+        // Закупочная ПРАЙМ / Р.О.С. — шторкой `x-deal.cost-sheet`, пока по счетам не платили (24.11.2026, владелец).
+        $costEdit = $editMoney && ! $deal->paysSelection() && ! $deal->isGarage() && ! $deal->isAuction() && $deal->cost !== null;
         // Что раньше стояло строками («Кому», «Плательщик», «Кому» у подбора) — пунктами «⋯» (18.11.2026): шапки блоков и так это говорят.
         // «Кто платит…» — с 22.11.2026 строкой «Покупатель» (владелец: «из доп. меню убрать и вставить нормально»): в «⋯» — только
         // где строки покупателя нет.
@@ -93,6 +96,7 @@
                 </x-ui.more>
             @endif
             @if ($offsetEdit)<x-deal.offset-sheet :deal="$deal"/>@endif
+            @if ($costEdit)<x-deal.cost-sheet :deal="$deal"/>@endif
             @if ($editMoney)
             {{-- Шторка денег сделки — пунктом «⋯» (15.11.2026: «Изменить» в заголовке «Продажи» было непонятно, что меняет). --}}
             <div data-controller="sheet" class="contents" data-action="deal-money-{{ $deal->id }}:open@window->sheet#open">
@@ -253,15 +257,20 @@
                 </{{ $priceTag }}>
             @endif
             @if ($supplierSum && $offsetEdit)
-                {{-- ДКП собственнику — сумма нажимается: шторка «Взаимозачёт со страховой» (23.11.2026). --}}
-                <button type="button" class="row sale-row" data-controller="emit" data-action="emit#send" data-emit-event-param="offset-{{ $deal->id }}:open"><span class="sale-row-label">Собственнику</span><span class="sale-row-value nums">{{ $supplierSum }}</span><x-ui.chevron/></button>
+                {{-- Сумма поставщику или собственнику нажимается: шторка суммы и взаимозачёта (23.11.2026 ДКП, 24.11.2026 и
+                     «страховой напрямую»). --}}
+                <button type="button" class="row sale-row" data-controller="emit" data-action="emit#send" data-emit-event-param="offset-{{ $deal->id }}:open"><span class="sale-row-label">{{ $deal->schemeOf() === \App\Offers\DealScheme::OwnerDkp ? 'Собственнику' : 'Поставщику' }}</span><span class="sale-row-value nums">{{ $supplierSum }}</span><x-ui.chevron/></button>
             @elseif ($supplierSum)
                 <div class="row sale-row"><span class="sale-row-label">{{ $deal->schemeOf() === \App\Offers\DealScheme::OwnerDkp ? 'Собственнику' : 'Поставщику' }}</span><span class="sale-row-value nums">{{ $supplierSum }}</span><x-ui.chevron-space/></div>
             @endif
             {{-- ПРАЙМ / Р.О.С. — закупочная («вход», 23.11.2026, начальник: «вход, продажа, комиссия XCAR, комиссия менеджера»):
                  строки «Поставщику» у них нет, а счёт за ТС — закупочная и подбор одной суммой. --}}
             @if ($topPrice && $carBlock && $deal->cost !== null && ! $skips('cost'))
-                <div class="row sale-row"><span class="sale-row-label">Закупочная</span><span class="sale-row-value nums">{{ Money::rub((int) $deal->cost) }}</span><x-ui.chevron-space/></div>
+                @if ($costEdit)
+                    <x-deal.sale-row label="Закупочная" :value="Money::rub((int) $deal->cost)" data-controller="emit" data-action="emit#send" :data-emit-event-param="'cost-'.$deal->id.':open'"/>
+                @else
+                    <div class="row sale-row"><span class="sale-row-label">Закупочная</span><span class="sale-row-value nums">{{ Money::rub((int) $deal->cost) }}</span><x-ui.chevron-space/></div>
+                @endif
             @endif
             @foreach ($shown as $r)
                 @continue($r[0] === 'Услуги подбора')

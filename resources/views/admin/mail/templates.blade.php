@@ -10,7 +10,7 @@
                     <a href="{{ $base }}/{{ $template->id }}" class="flex min-w-0 flex-1 items-center gap-3">
                         <div class="min-w-0 flex-1">
                             <div class="font-medium">{{ $template->name }}</div>
-                            <div class="mt-1 truncate text-sm text-ink-muted">Просьба {{ \App\Offers\ExtraRequest::phrase(collect([$template]), $template->choices ? implode(' / ', $template->choices) : null) }}{{ $template->attach === \App\Mail\Template::PAY_PROOF ? ', платёжка во вложении' : '' }}</div>
+                            <div class="mt-1 truncate text-sm text-ink-muted">Просьба {{ \App\Offers\ExtraRequest::phrase(collect([$template]), $template->choices ? implode(' / ', $template->choices) : null) }}{{ $template->attach === \App\Mail\Template::PAY_PROOF ? ', платёжное поручение во вложении' : '' }}</div>
                         </div>
                         <x-ui.icon name="chevron-right" class="size-5 text-ink-dim"/>
                     </a>

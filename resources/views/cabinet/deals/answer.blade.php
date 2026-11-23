@@ -2,14 +2,10 @@
      задачу и на последний пункт чек-листа договора («Подписанный договор»). --}}
 @php use App\Workflow\Asks; @endphp
 @if ($requirement->asks === Asks::Document)
-    {{-- Шаг оплаты: платёжка сама закрывает шаг (`DealController::upload`) — после загрузки страница перечитывается. --}}
-    <div class="mt-5" data-controller="photos" data-photos-url-value="/deals/{{ $deal->id }}/files" @if ($deal->proofMove($requirement->stage)) data-photos-reload-value="true" @endif>
-        <input type="file" accept="image/*,.pdf,.heic" multiple class="sr-only" tabindex="-1" data-photos-target="input" data-action="change->photos#upload">
+    {{-- «Приложить» одним документом (`cabinet.deals.attach`, 24.11.2026): шаг оплаты платёжное поручение закрывает само
+         (`DealController::uploadDoc`) — после него страница перечитывается. --}}
+    <div class="mt-5">
         @include('cabinet.deals.files', ['requirement' => $requirement])
-        <div hidden data-photos-target="progress" class="my-2">
-            <div class="mb-1 text-sm text-ink-muted" data-label></div>
-            <div class="h-1.5 overflow-hidden rounded-full bg-surface-3"><div class="h-full bg-accent transition-[width]" data-bar style="width:0"></div></div>
-        </div>
         @include('cabinet.deals.attach')
         @if ($errors->has('files'))<p class="field-error mt-2">{{ $errors->first('files') }}</p>@endif
     </div>

@@ -46,6 +46,7 @@ use App\Workflow\Outcome;
 use App\Workflow\Position;
 use App\Workflow\Stage;
 use App\Workflow\Track;
+use App\Media\PhotosPdf;
 use Illuminate\Http\Request;
 use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Carbon;
@@ -372,13 +373,30 @@ class DealController
      */
     public function ownerPrice(Request $request, Deal $deal, UpdateDealMoney $update)
     {
-        abort_unless($deal->moneyOpen() && $deal->schemeOf() === DealScheme::OwnerDkp, 404);
+        // И «страховой напрямую» (24.11.2026, владелец: «редактировать можно всё»): сумма поставщику — та же `owner_price`.
+        abort_unless($deal->moneyOpen() && $deal->paysSelection() && ! $deal->isGarage(), 404);
+        $dkp = $deal->schemeOf() === DealScheme::OwnerDkp;
         $request->merge(['owner_price' => blank($request->input('owner_price')) ? null : Money::rubles($request->input('owner_price'))]);
         $owner = $request->boolean('none') ? null : $request->validate(['owner_price' => ['required', 'integer', 'min:1']],
-            ['owner_price.required' => 'Сколько получает собственник'])['owner_price'];
+            ['owner_price.required' => $dkp ? 'Сколько получает собственник' : 'Сколько получает поставщик'])['owner_price'];
         $update($deal, $request->user(), $deal->commission, owner: $owner, setOwner: true,
             note: $owner === null || (int) $owner === (int) $deal->cost ? 'Взаимозачёта со страховой нет'
-                : 'Собственнику по ДКП '.Money::rub($owner).', взаимозачёт со страховой '.Money::rub((int) $deal->cost - $owner));
+                : ($dkp ? 'Собственнику по ДКП ' : 'Поставщику ').Money::rub($owner).', взаимозачёт со страховой '.Money::rub((int) $deal->cost - $owner));
+
+        return back()->with('toast', 'Сохранено');
+    }
+
+    /**
+     * Закупочная в сделке ПРАЙМ / Р.О.С. (24.11.2026, владелец: «редактировать можно всё»; шторка `x-deal.cost-sheet`): пока по
+     * счетам не платили (`UpdateDealMoney`), договор и счёт за ТС встают заново. Закупочная предложения не трогается.
+     */
+    public function cost(Request $request, Deal $deal, UpdateDealMoney $update)
+    {
+        abort_unless($deal->moneyOpen() && ! $deal->paysSelection() && ! $deal->isGarage() && ! $deal->isAuction(), 404);
+        $request->merge(['cost' => blank($request->input('cost')) ? null : Money::rubles($request->input('cost'))]);
+        $cost = $request->validate(['cost' => ['required', 'integer', 'min:1']], ['cost.required' => 'Впишите закупочную'])['cost'];
+        $update($deal, $request->user(), $deal->commission, cost: $cost, setCost: true,
+            note: 'Закупочная в сделке '.($deal->cost !== null ? Money::rub((int) $deal->cost).' → ' : '').Money::rub($cost));
 
         return back()->with('toast', 'Сохранено');
     }
@@ -511,6 +529,17 @@ class DealController
         }
 
         return back()->with('toast', 'Подписанный договор приложен');
+    }
+
+    /** «Приложить» договор одним документом (24.11.2026, `x-ui.photo-pdf`): фото и файлы — один под названием человека. */
+    public function signedDoc(Request $request, Deal $deal, AttachSignedContract $attach, PhotosPdf $photos)
+    {
+        abort_unless(AttachSignedContract::allows($deal), 404);
+        $doc = $photos->fromRequest($request, $deal->offer->title());
+        $attach($deal, $doc['file'], $request->user(), named: true);
+        session()->flash('toast', 'Договор приложен');
+
+        return response()->json(['reload' => true, 'name' => $doc['name'], 'pages' => $doc['pages']]);
     }
 
     /** Подписанный договор одним PDF — файлы сделки и ответы шага договора (`SignedContractPdf`, 17.11.2026). */

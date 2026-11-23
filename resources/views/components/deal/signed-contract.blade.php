@@ -17,14 +17,9 @@
     {{-- Менеджеру на сайте — вопросом своей карточкой (16.11.2026, владелец: «договор и счёт сформируем мы по данным
          покупателя, а если уже подписали — можно приложить, разделить эти понятия, а то будут просить скинуть договор»). --}}
     <section {{ $attributes->class(['list deal-form min-w-0']) }}>
-        <form method="post" action="{{ $base }}/signed" enctype="multipart/form-data" class="contents signed-upload" data-controller="autosubmit">
-            @csrf
-            <label class="row sale-row signed-add">
-                <input type="file" name="files[]" multiple accept=".pdf,.jpg,.jpeg,.png,.webp,.heic,.heif,.doc,.docx" class="sr-only" data-action="change->autosubmit#submit">
-                <span class="sale-row-label">Договор уже подписан?</span>
-                <span class="sale-row-value text-accent-text">Приложить</span><x-ui.icon name="clip" class="size-5 shrink-0 text-ink-dim"/>
-            </label>
-        </form>
+        <x-deal.attach-signed :deal="$deal" :base="$base" button="row sale-row signed-add">
+            <x-slot:trigger><span class="sale-row-label">Договор уже подписан?</span><span class="sale-row-value text-accent-text">Приложить</span><x-ui.icon name="clip" class="size-5 shrink-0 text-ink-dim"/></x-slot:trigger>
+        </x-deal.attach-signed>
         @error('files')<p class="field-error">{{ $message }}</p>@enderror
         @error('files.*')<p class="field-error">{{ $message }}</p>@enderror
     </section>
@@ -41,20 +36,19 @@
             @if ($can)<div class="send-under"><x-deal.attach-signed :deal="$deal" :base="$base" wide/></div>@endif
         @endif
         @if ($can && $files->isEmpty())
-            <form method="post" action="{{ $base }}/signed" enctype="multipart/form-data" class="contents signed-upload" data-controller="autosubmit">
-                @csrf
-                <label @class(['row signed-add', 'sale-row' => $bare && $files->isEmpty()])>
-                    <input type="file" name="files[]" multiple accept=".pdf,.jpg,.jpeg,.png,.webp,.heic,.heif,.doc,.docx" class="sr-only" data-action="change->autosubmit#submit">
-                    {{-- Строкой «Продажи» «Подписанный договор — Приложить» (16.11.2026, `x-deal.sale-row`). --}}
-                    @if ($bare && $files->isEmpty())
+            {{-- Строкой «Продажи» «Подписанный договор — Приложить» (16.11.2026, `x-deal.sale-row`); нажатие — выбор фото и файлов,
+                 дальше шторка «Приложить» (`x-deal.attach-signed`, 24.11.2026). --}}
+            <x-deal.attach-signed :deal="$deal" :base="$base" :button="$bare ? 'row sale-row signed-add' : 'row signed-add'">
+                <x-slot:trigger>
+                    @if ($bare)
                         {{-- «Приложить» зелёным по краю значений других строк, серая скрепка — на месте «›» (16.11.2026, владелец). --}}
                         <span class="sale-row-label">{{ $label }}</span><span class="sale-row-value text-accent-text">Приложить</span><x-ui.icon name="clip" class="size-5 shrink-0 text-ink-dim"/>
                     @else
                         <x-ui.icon name="clip" class="size-5 shrink-0"/>
-                        <span class="min-w-0 flex-1">{{ $files->isEmpty() ? 'Приложить' : 'Приложить ещё' }}</span>
+                        <span class="min-w-0 flex-1">Приложить</span>
                     @endif
-                </label>
-            </form>
+                </x-slot:trigger>
+            </x-deal.attach-signed>
         @endif
     @php $rows = ob_get_clean(); @endphp
     @if ($bare)

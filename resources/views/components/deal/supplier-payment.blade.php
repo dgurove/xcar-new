@@ -54,7 +54,7 @@
         $insurerState = match (true) {
             $paid => ['оплачено', 'text-open'],
             \App\Workflow\Requirement::where('deal_id', $deal->id)->whereNotNull('done_at')->whereIn('answer->exit', \App\Offers\Documents\PaymentProofPdf::EXITS)->exists() => ['ждём подтверждения поставщика', 'text-ink-muted'],
-            default => ['ждём платёжку', 'text-ink-muted'],
+            default => ['ждём платёжное поручение', 'text-ink-muted'],
         };
         $bill = \App\Offers\SupplierInvoice::shown($offer)->first();
     }

@@ -18,14 +18,27 @@ use Illuminate\Validation\ValidationException;
  *
  * Платёжка на шаге оплаты — сразу PDF (16.11.2026, владелец: «почему-то в webp и jpeg, нет — как только её прикладывают, она
  * должна конвертироваться в пдф и сразу считаться платёжкой»): снимок — листом A4 тем же видом, что документ для страховой
- * (`PaymentProofPdf`), файл «Оплата-<номер убытка>.pdf».
+ * (`PaymentProofPdf`), файл «Платёжное поручение <марка модель>.pdf».
  */
 final class AttachRequirementFiles
 {
     public function __construct(private PhotoIngest $ingest) {}
 
-    public function __invoke(Requirement $requirement, UploadedFile $file): void
+    /**
+     * @param  bool  $named  готовый документ «Приложить» (`PhotosPdf::upload`, 24.11.2026): лежит под названием, что дал человек
+     *                       («Платёжное поручение Renault Duster.pdf»), без своего имени шага и без пересборки
+     */
+    public function __invoke(Requirement $requirement, UploadedFile $file, bool $named = false): void
     {
+        if ($named) {
+            $title = pathinfo($file->getClientOriginalName(), PATHINFO_FILENAME);
+            $ext = strtolower($file->getClientOriginalExtension());
+            $taken = $requirement->getMedia('files')->pluck('file_name')->all();
+            for ($n = 1; in_array($name = $title.($n > 1 ? ' '.$n : '').'.'.$ext, $taken, true); $n++);
+            $requirement->addMedia($file)->usingFileName($name)->usingName($title)->withCustomProperties(['title' => $title])->toMediaCollection('files');
+
+            return;
+        }
         $image = str_starts_with((string) $file->getMimeType(), 'image/') || strtolower($file->getClientOriginalExtension()) === 'heic';
         if ($image && self::paysOn($requirement)) {
             $this->imageAsPdf($requirement, $file);
@@ -39,7 +52,11 @@ final class AttachRequirementFiles
         }
         $name = pathinfo($file->getClientOriginalName(), PATHINFO_FILENAME);
         $name = self::paysOn($requirement) ? self::proofName($requirement) : (self::clean($name) ?: 'dokument').'.'.strtolower($file->getClientOriginalExtension());
-        $requirement->addMedia($file)->usingFileName($name)->toMediaCollection('files');
+        $media = $requirement->addMedia($file)->usingFileName($name);
+        if (self::paysOn($requirement)) {
+            $media->withCustomProperties(['title' => pathinfo($name, PATHINFO_FILENAME)]);
+        }
+        $media->toMediaCollection('files');
     }
 
     /** Просьба шага оплаты приложить документ — платёжка. */
@@ -70,16 +87,16 @@ final class AttachRequirementFiles
         }
         $pdf = Pdf::render('park.report.scan', ['pages' => array_map(fn ($j) => 'data:image/jpeg;base64,'.base64_encode($j), $pages)]);
         $requirement->addMediaFromString($pdf)->usingFileName(self::proofName($requirement))
-            ->withCustomProperties(['source_sha' => $sha, 'source' => $file->getClientOriginalName()])
+            ->withCustomProperties(['source_sha' => $sha, 'source' => $file->getClientOriginalName(), 'title' => pathinfo(self::proofName($requirement), PATHINFO_FILENAME)])
             ->toMediaCollection('files');
     }
 
-    /** «Оплата-0790-046-09068-26.pdf», следующие — «…-2.pdf». */
+    /** «Платёжное поручение Renault Duster.pdf» (24.11.2026, без номера убытка), следующие — «… 2.pdf». */
     private static function proofName(Requirement $requirement): string
     {
-        $base = self::clean(pathinfo($requirement->deal ? PaymentProofPdf::fileName($requirement->deal) : 'Оплата', PATHINFO_FILENAME)) ?: 'Oplata';
+        $base = pathinfo($requirement->deal ? PaymentProofPdf::fileName($requirement->deal) : 'Платёжное поручение', PATHINFO_FILENAME);
         $taken = $requirement->getMedia('files')->pluck('file_name')->all();
-        for ($n = 1; in_array($name = $base.($n > 1 ? '-'.$n : '').'.pdf', $taken, true); $n++);
+        for ($n = 1; in_array($name = $base.($n > 1 ? ' '.$n : '').'.pdf', $taken, true); $n++);
 
         return $name;
     }

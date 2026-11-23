@@ -204,6 +204,7 @@ Route::domain(config('xcar.crm_host'))->middleware(['auth', 'ability:isStaff'])-
         Route::get('/work/deals/{deal}/dkp.pdf', [DealContractController::class, 'show']);
         Route::get('/work/deals/{deal}/dkp.docx', [DealContractController::class, 'show']);
         Route::post('/work/deals/{deal}/signed', [DealController::class, 'signed']);
+        Route::post('/work/deals/{deal}/signed/doc', [DealController::class, 'signedDoc']);
         Route::delete('/work/deals/{deal}/signed/{media}', [DealController::class, 'removeSigned']);
         Route::get('/work/deals/{deal}/signed-contract.pdf', [DealController::class, 'signedPdf']);
         // Работа со сделкой модератору (17.11.2026, владелец с начальником: «модераторам полный доступ ко всем сделкам — данные
@@ -257,6 +258,7 @@ Route::domain(config('xcar.crm_host'))->middleware(['auth', 'ability:isStaff'])-
         Route::post('/work/deals/{deal}/signing-confirm', [SigningController::class, 'confirm']);
         Route::get('/work/deals/{deal}/signing.ics', [SigningController::class, 'ics']);
         Route::post('/work/deals/{deal}/payment-proof', [PaymentProofController::class, 'store']);
+        Route::post('/work/deals/{deal}/payment-proof/doc', [PaymentProofController::class, 'storeDoc']);
         Route::delete('/work/deals/{deal}/payment-proof/{media}', [PaymentProofController::class, 'remove']);
         Route::get('/work/deals/{deal}/payment-proof.pdf', [PaymentProofController::class, 'pdf']);
         Route::post('/work/deals/{deal}/payment-proof/to-invoice', [PaymentProofController::class, 'toInvoice']);
@@ -279,6 +281,7 @@ Route::domain(config('xcar.crm_host'))->middleware(['auth', 'ability:isStaff'])-
         // «Ещё счёт»; оплаты, ссылки и заявки об оплате — кусок «Оплат» `routes/money-shared.php`.
         Route::put('/work/deals/{deal}/money', [DealController::class, 'money']);
         Route::put('/work/deals/{deal}/owner-price', [DealController::class, 'ownerPrice']);
+        Route::put('/work/deals/{deal}/cost', [DealController::class, 'cost']);
         Route::get('/work/invoices/new', [InvoiceController::class, 'create']);
         Route::post('/work/invoices', [InvoiceController::class, 'store']);
     });

@@ -3,12 +3,14 @@
      с тем, что дальше («ждём подтверждения», «оплачено»). Ждёт из `supplier-rows`: $deal, $proofOpen, $proofReq, $proofFiles,
      $proofSent, $proofState. --}}
 @if ($proofOpen)
-    <div class="contents" data-controller="sheet">
-        <x-deal.sale-row label="Платёжка" :value="$proofFiles->isEmpty() ? 'Приложить' : 'приложена, '.$proofFiles->count()" :tone="$proofFiles->isEmpty() ? 'accent' : null" :icon="$proofFiles->isEmpty() ? 'clip' : null" data-action="sheet#open"/>
-        <x-deal.payment-proof-sheet :id="'payment-proof-card-'.$deal->id" :deal="$deal" :requirement="$proofReq"/>
-    </div>
+    {{-- Строкой «Платёжка — Приложить»: нажатие — выбор фото и файлов телефоном, дальше шторка «Приложить» (24.11.2026). --}}
+    <x-deal.payment-proof-sheet :id="'payment-proof-card-'.$deal->id" :deal="$deal" :requirement="$proofReq" button="row sale-row signed-add">
+        <x-slot:trigger>
+            <span class="sale-row-label">Платёжка</span><span @class(['sale-row-value', 'text-accent-text' => $proofFiles->isEmpty()])>{{ $proofFiles->isEmpty() ? 'Приложить' : 'приложена, '.$proofFiles->count() }}</span><x-ui.icon name="clip" class="size-5 shrink-0 text-ink-dim"/>
+        </x-slot:trigger>
+    </x-deal.payment-proof-sheet>
 @elseif ($proofSent)
-    <x-deal.doc-row :href="'/work/deals/'.$deal->id.'/payment-proof.pdf'" title="Платёжка" name="platezhka.pdf">
+    <x-deal.doc-row :href="'/work/deals/'.$deal->id.'/payment-proof.pdf'" title="Платёжное поручение" :name="\App\Offers\Documents\PaymentProofPdf::fileName($deal)">
         @if ($proofState)<span @class(['text-open' => str_starts_with($proofState, 'оплачено')])>{{ $proofState }}</span>@endif
     </x-deal.doc-row>
 @endif

@@ -74,7 +74,7 @@ class DealContractController
             return back()->with('toast', 'Не напоминаем');
         }
         if (! \App\Billing\Actions\NudgeInvoice::allows($invoice)) {
-            return back()->with('toast', 'Напоминать не о чем: счёт оплачен или менеджер уже приложил платёжку');
+            return back()->with('toast', 'Напоминать не о чем: счёт оплачен или менеджер уже приложил платёжное поручение');
         }
         if ($data['when'] === 'days') {
             $nudge->later($invoice, (int) ($data['days'] ?? 1), $request->user());

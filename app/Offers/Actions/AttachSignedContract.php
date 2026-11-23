@@ -32,12 +32,13 @@ final class AttachSignedContract
         return $deal !== null && $deal->state !== DealState::Cancelled && ! $deal->isAuction();
     }
 
-    public function __invoke(Deal $deal, UploadedFile $file, User $by): Media
+    /** @param  bool  $named  готовый документ «Приложить» (`PhotosPdf::upload`): под названием человека, как есть */
+    public function __invoke(Deal $deal, UploadedFile $file, User $by, bool $named = false): Media
     {
         if (! self::allows($deal)) {
             throw ValidationException::withMessages(['file' => 'К этой сделке договор не приложить']);
         }
-        $media = self::store($this->ingest, $deal, $file);
+        $media = $named ? self::named($deal, $file) : self::store($this->ingest, $deal, $file);
         Offer::find($deal->offer_id)?->log(OfferEventType::Note, $by, ['text' => 'Подписанный договор приложил '.$by->shortName()]);
         if (MarkContractSigned::allows($deal)) {
             ($this->mark)($deal, $by);
@@ -48,6 +49,16 @@ final class AttachSignedContract
         RefreshDeal::of($deal);
 
         return $media;
+    }
+
+    private static function named(Deal $deal, UploadedFile $file): Media
+    {
+        $title = pathinfo($file->getClientOriginalName(), PATHINFO_FILENAME);
+        $ext = strtolower($file->getClientOriginalExtension());
+        $taken = $deal->getMedia('signed_contract')->pluck('file_name')->all();
+        for ($n = 1; in_array($name = $title.($n > 1 ? ' '.$n : '').'.'.$ext, $taken, true); $n++);
+
+        return $deal->addMedia($file)->usingFileName($name)->usingName($title)->withCustomProperties(['title' => $title])->toMediaCollection('signed_contract');
     }
 
     /** Снимок — через `PhotoIngest` (HEIC — в JPEG, размер), остальное — как есть с чистым именем, как файл шага. */

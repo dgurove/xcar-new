@@ -32,6 +32,7 @@ use App\Support\Table\Column;
 use App\Support\Table\Table;
 use App\Support\Surface;
 use App\Support\TempFile;
+use App\Media\PhotosPdf;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
 
@@ -134,6 +135,24 @@ class MoneyController
         };
 
         return redirect($from)->with('toast', $toast)->with('open-link', $link?->id);
+    }
+
+    /**
+     * «Приложить платёжное поручение» к нашему счёту одним документом (24.11.2026, `x-ui.photo-pdf`): фото и файлы собраны
+     * в один (`PhotosPdf`) и идут чеком «я оплатил» на остаток — как файл `slip` у «По счёту» (`PayChoice`).
+     */
+    public function payDoc(Request $request, Deal $deal, PayChoice $choice, PhotosPdf $photos)
+    {
+        $me = $request->user();
+        $invoice = $deal->issuedInvoices()->whereKey((int) $request->input('invoice'))->firstOrFail();
+        abort_unless($invoice->isVisibleToManager($me) && ! $invoice->isOwed(), 404);
+        $doc = $photos->fromRequest($request, $deal->offer->title());
+        $pay = $request->duplicate($request->query->all(), ['way' => 'transfer', 'invoice' => $invoice->id], null, null, ['slip' => $doc['file']]);
+        [$toast, $link] = $choice($pay, $invoice, $me);
+        session()->flash('toast', $toast);
+        $link && session()->flash('open-link', $link->id);
+
+        return response()->json(['reload' => true, 'name' => $doc['name'], 'pages' => $doc['pages']]);
     }
 
     /**

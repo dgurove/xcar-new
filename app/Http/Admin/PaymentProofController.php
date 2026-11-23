@@ -4,6 +4,7 @@ namespace App\Http\Admin;
 
 use App\Billing\Actions\SwapPaymentProof;
 use App\Chats\Message;
+use App\Media\PhotosPdf;
 use App\Offers\Deal;
 use App\Offers\Documents\PaymentProofPdf;
 use App\Workflow\Actions\AttachChatFiles;
@@ -39,19 +40,43 @@ final class PaymentProofController
             app(AttachChatFiles::class)($requirement, $message);
         }
         if ($requirement->refresh()->getMedia('files')->isEmpty()) {
-            throw ValidationException::withMessages(['payment_proof' => 'Добавьте чек, скан или файл платёжки']);
+            throw ValidationException::withMessages(['payment_proof' => 'Добавьте чек, скан или файл платёжного поручения']);
         }
         if (! $request->boolean('pass')) {
             return back()->with('toast', 'Документ приложен');
         }
+        $this->pass($deal, $requirement, $request, $take);
+
+        return back()->with('toast', 'Платёжное поручение приложено');
+    }
+
+    /**
+     * «Приложить» за менеджера одним документом (24.11.2026, `x-ui.photo-pdf`): фото и файлы — один под названием человека
+     * («Платёжное поручение Renault Duster»), и, как у `store` с `pass`, его ответ шага. Страница перечитывается.
+     */
+    public function storeDoc(Request $request, Deal $deal, AttachRequirementFiles $attach, TakeExit $take, PhotosPdf $photos)
+    {
+        abort_unless($request->user()->canEditDeals(), 403);
+        $requirement = $this->open($deal);
+        $doc = $photos->fromRequest($request, $deal->offer->title());
+        $attach($requirement, $doc['file'], named: true);
+        if ($request->boolean('pass') && ! $requirement->done_at) {
+            $this->pass($deal, $requirement, $request, $take);
+        }
+        session()->flash('toast', 'Платёжное поручение приложено');
+
+        return response()->json(['reload' => true, 'name' => $doc['name'], 'pages' => $doc['pages']]);
+    }
+
+    /** Ответ менеджера «Оплатил, документ приложен» — за него (в «Истории» — за менеджера). */
+    private function pass(Deal $deal, Requirement $requirement, Request $request, TakeExit $take): void
+    {
         $exit = $deal->proofMove($requirement->stage);
         if (! $exit) {
             throw ValidationException::withMessages(['payment_proof' => 'У шага нет ответа «Оплатил, документ приложен»']);
         }
         Requirement::closeOpen($deal, $exit->stage_id, ['exit' => $exit->label, 'closed_by' => 'staff', 'by' => $request->user()->id]);
         $take($deal->offer, $exit, Actor::Manager, $request->user(), ['for' => 'manager']);
-
-        return back()->with('toast', 'Платёжка приложена');
     }
 
     /** «Это оплата ООО «ПРАЙМ»»: платёжка поставщику — на самом деле чек нашего счёта (`SwapPaymentProof`, 16.11.2026). */

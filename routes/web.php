@@ -228,6 +228,7 @@ Route::middleware(['auth', 'wall'])->group(function () {
         Route::get('/account/money/export', [MoneyController::class, 'export']);
         Route::get('/account/money/invoices/{invoice}', [MoneyController::class, 'invoice']);
         Route::post('/account/money/deals/{deal}/pay', [MoneyController::class, 'pay'])->middleware('own:deal');
+        Route::post('/account/money/deals/{deal}/pay/doc', [MoneyController::class, 'payDoc'])->middleware('own:deal');
         Route::post('/account/money/invoices/{invoice}/links', [MoneyController::class, 'link']);
         Route::delete('/account/money/links/{link}', [MoneyController::class, 'cancelLink']);
         Route::put('/account/money/links/{link}/email', [MoneyController::class, 'linkEmail']);
@@ -253,6 +254,9 @@ Route::middleware(['auth', 'wall'])->group(function () {
             Route::get('/deals/{deal}/dkp.pdf', [DealContractController::class, 'show']);
             Route::get('/deals/{deal}/dkp.docx', [DealContractController::class, 'show']);
             Route::post('/deals/{deal}/files', [DealController::class, 'upload']);
+            // «Приложить» одним документом (24.11.2026, `x-ui.photo-pdf`): шаг сделки и подписанный договор.
+            Route::post('/deals/{deal}/files/doc', [DealController::class, 'uploadDoc']);
+            Route::post('/deals/{deal}/signed/doc', [DealController::class, 'signedDoc']);
             Route::post('/deals/{deal}/receipt', [DealController::class, 'receipt']);
             Route::post('/deals/{deal}/chat-files', [DealController::class, 'chatFiles']);
             Route::post('/deals/{deal}/buyer-new', [DealController::class, 'buyerNew']);
