@@ -6153,23 +6153,28 @@ dialog.lightbox:not(.lb-one) .lb-pill--bottom { bottom: calc(var(--lb-strip-bott
   /* Пустая заметка — один заголовок с «Добавить», без отступа под пустым текстом. */
   /* `> .box-head`, а не `> div:first-child`: голый тег после `:has()` пересчитывал все div страницы на каждую вставку узла. */
   .deal-note:not([data-editing]):has(> [data-edit-card-target=view]:empty) > .box-head { margin-bottom: 0; }
-  .chat-row { position: relative; display: flex; align-items: center; gap: .75rem; padding: .625rem .75rem; border-radius: var(--radius-m); color: var(--color-ink); }
-  .chat-row + .chat-row::before { content: ''; position: absolute; top: 0; right: .75rem; left: 5rem; height: 1px; background: var(--color-line); }
-  .chat-row:not(:has(.chat-row-photo)) + .chat-row::before, .chat-row + .chat-row:not(:has(.chat-row-photo))::before { left: 4.25rem; }
+  /* Строка как в Telegram (24.11.2026, владелец: «поплотнее, полоски красивее»): фото 52, три строки 20 / 18 / 18, поля 7 px;
+     полоса — волосяная (1 px вдвое) у тела строки: от начала текста до правого края. */
+  .chat-row { position: relative; display: flex; align-items: center; gap: .75rem; padding: .4375rem 0 .4375rem .625rem; border-radius: var(--radius-m); color: var(--color-ink); }
+  .chat-row-body { position: relative; align-self: stretch; display: flex; flex-direction: column; justify-content: center; min-width: 0; flex: 1; padding-right: .75rem; }
+  .chat-row + .chat-row .chat-row-body::before { content: ''; position: absolute; top: -.4375rem; left: 0; right: 0; height: 1px; background: var(--color-line); transform: scaleY(.5); transform-origin: top; }
+  .chat-row-title { display: flex; align-items: center; gap: .375rem; min-width: 0; line-height: 1.25rem; }
+  .chat-row-who { display: flex; align-items: center; gap: .3125rem; min-width: 0; font-size: var(--text-sm); line-height: 1.125rem; }
+  /* Аватар 16 без фото — кружок с инициалами мельче шрифта строки, иначе «ДМ» читался серыми буквами без кружка. */
+  .chat-row-who .avatar { font-size: 7px !important; background: color-mix(in oklab, var(--color-ink) 10%, var(--color-surface)); }
+  .chat-row-body .text-sm { line-height: 1.125rem; }
   /* Логотип вендора за названием ТС у сотрудника (24.11.2026): серединой на середине заглавных, а не ниже строки (замер: -.22em
      опускал его на 5 px). */
-  .chat-row .vendor-logo { vertical-align: .14em; }
+  .chat-row-title .vendor-logo { vertical-align: 0; }
   @media (hover: hover) {
     .chat-row:hover { background: var(--color-surface-2); }
-    .chat-row:hover + .chat-row::before, .chat-row:hover::before, .chat-row:has(+ .chat-row:hover)::before { display: none; }
+    .chat-row:hover + .chat-row .chat-row-body::before, .chat-row:hover .chat-row-body::before { display: none; }
   }
   /* Поиск — шапкой списка: окно переписки начинается вровень с ним; поле той же ширины и скругления, что строки. */
   .chat-row[aria-current] { background: var(--color-surface-3); --side: var(--color-accent); }
-  .chat-row[aria-current]::before, .chat-row[aria-current] + .chat-row::before { display: none; }
-  .chat-row-photo { position: relative; flex-shrink: 0; width: 3.5rem; height: 2.5rem; }
-  .chat-row-photo > img, .chat-row-photo > svg { width: 100%; height: 100%; object-fit: cover; border-radius: var(--radius-m); background: var(--color-surface-3); }
-  .chat-row-avatar { position: absolute; right: -.375rem; bottom: -.375rem; box-shadow: 0 0 0 2px var(--color-surface); }
-  .chat-row[aria-current] .chat-row-avatar { box-shadow: 0 0 0 2px var(--color-surface-3); }
+  .chat-row[aria-current] .chat-row-body::before, .chat-row[aria-current] + .chat-row .chat-row-body::before { display: none; }
+  .chat-row-photo { position: relative; flex-shrink: 0; width: 3.25rem; height: 3.25rem; }
+  .chat-row-photo > img, .chat-row-photo > svg { width: 100%; height: 100%; object-fit: cover; border-radius: .875rem; background: var(--color-surface-3); }
   .chat-pane { display: none; min-height: 0; }
   .chat-split.has-current .chat-rows { display: none; }
   .chat-split.has-current .chat-pane { display: flex; flex-direction: column; }
