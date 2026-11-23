@@ -4,6 +4,7 @@ namespace App\Offers\Actions;
 
 use App\Billing\Actions\RecordPayment;
 use App\Billing\Actions\VoidPayment;
+use App\Billing\Events\PaymentConfirmed;
 use App\Billing\Invoice;
 use App\Billing\InvoiceState;
 use App\Billing\Payment;
@@ -20,6 +21,9 @@ use Illuminate\Support\Facades\DB;
  * дальше всё штатно: остаток, ссылка сделки на остаток (`EnsurePayLink`), оплачен целиком — шаг оплаты и выплата
  * (`AdvanceOnPayment`). Класть некуда — доплата сверх сделки (`Deal::creditExtra`).
  * Зачёт ручного счёта, который аннулировали, вернули или отвязали от сделки, гасится (`release`).
+ * Заявка менеджера «покупатель оплатил» на счёте занимает его остаток, и зачёт мимо неё не лёг бы никуда (23.11.2026,
+ * 2611123940: деньги от другого человека пришли по VIN, а сделка стояла на «Проверке оплаты»): заявку, что зачёт покрывает,
+ * зачёт и подтверждает — та же строка становится оплатой, как у выписки (`MatchTransaction`).
  */
 final class ApplyDealCredits
 {
@@ -27,12 +31,13 @@ final class ApplyDealCredits
 
     public function __invoke(Deal $deal, User $by): void
     {
-        DB::transaction(function () use ($deal, $by) {
+        $confirmed = DB::transaction(function () use ($deal, $by) {
+            $confirmed = [];
             Deal::whereKey($deal->id)->lockForUpdate()->first();
             $this->release($deal, $by);
             $credits = $deal->credits()->where('paid', '>', 0)->orderBy('id')->get();
             if ($credits->isEmpty()) {
-                return;
+                return [];
             }
             // Сначала подбор (его менеджер платит по ссылке), потом счёт ПРАЙМ; вознаграждение от вендора и выплаты — не сюда.
             $targets = Invoice::where('deal_id', $deal->id)->where('direction', 'issued')->where('state', InvoiceState::Issued)
@@ -40,6 +45,18 @@ final class ApplyDealCredits
             foreach ($credits as $credit) {
                 $left = round((float) $credit->paid - $this->applied($credit), 2);
                 foreach ($targets as $target) {
+                    if ($left <= 0) {
+                        break;
+                    }
+                    foreach ($target->claims()->whereNull('voided_at')->get() as $claim) {
+                        if ($claim->amount > $left + 0.005 || $claim->amount > $target->fresh()->remaining() + 0.005) {
+                            continue;
+                        }
+                        $payment = ($this->record)($target->fresh(), $by, (float) $claim->amount, null, PaymentSource::Credit, null, 'Зачёт, счёт '.$credit->label(), $claim);
+                        $payment->update(['credit_invoice_id' => $credit->id]);
+                        $confirmed[] = $payment;
+                        $left = round($left - $payment->amount, 2);
+                    }
                     if ($left <= 0) {
                         break;
                     }
@@ -53,7 +70,12 @@ final class ApplyDealCredits
                     $left = round($left - $amount, 2);
                 }
             }
+
+            return $confirmed;
         });
+        foreach ($confirmed as $payment) {
+            PaymentConfirmed::dispatch($payment, $by);
+        }
     }
 
     /** Зачтено по ручному счёту — живые оплаты-зачёты с ним. */

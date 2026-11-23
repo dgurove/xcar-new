@@ -4,12 +4,14 @@ namespace Tests\Feature;
 
 use App\Billing\Acquiring\LinkExists;
 use App\Billing\Actions\AttachServiceCar;
+use App\Billing\Actions\ClaimPayment;
 use App\Billing\Actions\IssueServiceInvoice;
 use App\Billing\Actions\RecordPayment;
 use App\Billing\Actions\VoidPayment;
 use App\Billing\ChargeKind;
 use App\Billing\Invoice;
 use App\Billing\InvoiceState;
+use App\Billing\PaymentState;
 use App\Billing\PaymentSource;
 use App\Billing\ServiceTitle;
 use App\Offers\Actions\AcceptBid;
@@ -128,6 +130,27 @@ class ManualLinkCreditTest extends TestCase
         $stage = $this->offer->fresh()->stage();
         app(TakeExit::class)($this->offer->fresh(), $stage->exitsFor(Actor::Manager, $deal)->firstWhere('label', 'Договор приложен'), Actor::Manager, $this->manager);
         $this->assertSame('Сделка закрыта', $this->offer->fresh()->stage()->name);
+    }
+
+    /** 23.11.2026, 2611123940: менеджер заявил оплату, деньги пришли зачётом — заявка занимала остаток, и зачёт не ложился никуда. */
+    public function test_credit_confirms_manager_claim(): void
+    {
+        $deal = $this->accepted();
+        $this->walkTo($deal, 'Связаться с владельцем');
+        $selection = $this->selection($deal);
+        $claim = app(ClaimPayment::class)($selection->fresh(), $this->manager, 80000, now());
+        $this->assertSame(PaymentState::Claimed, $claim->fresh()->state);
+
+        $manual = app(IssueServiceInvoice::class)(['name' => 'Другой плательщик'], $this->admin, 80000, ServiceTitle::DEFAULT, $this->offer, force: true);
+        app(RecordPayment::class)($manual->fresh(), $this->admin, 80000, now(), PaymentSource::Bank);
+
+        $claim->refresh();
+        $this->assertSame(PaymentState::Confirmed, $claim->state);
+        $this->assertSame(PaymentSource::Credit, $claim->source);
+        $this->assertSame($manual->id, $claim->credit_invoice_id);
+        $this->assertSame(InvoiceState::Paid, $selection->fresh()->state);
+        $this->assertSame(1, $selection->fresh()->allPayments()->count());
+        $this->assertEqualsWithDelta(0, $deal->fresh()->creditExtra(), 0.01);
     }
 
     public function test_refund_releases_credit(): void
