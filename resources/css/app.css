@@ -2084,7 +2084,9 @@ html.kb-open { --home-gap: 0px; }
   /* Кнопка первой в плашке (строк над ней нет) — отступ и сверху, а не прилипшей к краю. */
   .list > .send-under:first-child, .list > .contents:first-child > .send-under:first-child { padding-top: .75rem; }
   .send-pair { display: flex; gap: .5rem; }
-  .send-pair > form > .btn, .send-pair > .btn, .send-pair > .contents > .btn { flex: 1 1 0; min-width: 0; padding-inline: .5rem; white-space: nowrap; }
+  /* Пара кнопок под счётом и ссылкой — по ширине надписей, а не двумя равными половинами (23.11.2026, владелец: «Оплатил
+     наличными…» резалась «…» рядом с «Напомнить менеджеру» — «ужасно выглядит»). */
+  .send-pair > form > .btn, .send-pair > .btn, .send-pair > .contents > .btn { flex: 1 1 auto; min-width: 0; padding-inline: .75rem; white-space: nowrap; }
   /* «Напомнить через…» (`x-deal.nudge-sheet`, 19.11.2026): раскрывается чипами дней, без треугольника системы. */
   .nudge-later > summary { list-style: none; cursor: pointer; }
   .nudge-later > summary::-webkit-details-marker { display: none; }

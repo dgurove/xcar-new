@@ -3,7 +3,7 @@
      напоминать»). Кнопка серая под счётом рядом с «Оплата получена»; шторка — `NudgeInvoice`. «Через…» — чипы дней, напоминание
      уйдёт в 10:00 по Москве. Запланировано — словом в шторке, «Не напоминать» его снимает. --}}
 {{-- label / small — кнопкой в строке «Оплат» (22.11.2026): «Напомнить», маленькая. --}}
-@props(['deal', 'invoice', 'label' => 'Напомнить менеджеру', 'small' => false])
+@props(['deal', 'invoice', 'label' => 'Напомнить', 'small' => false])
 @php
     $id = 'nudge-'.$invoice->id;
     $last = \App\Billing\Actions\NudgeInvoice::lastAt($invoice);

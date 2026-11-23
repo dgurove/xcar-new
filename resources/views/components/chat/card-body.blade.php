@@ -14,7 +14,7 @@
 <span class="min-w-0 flex-1">
     <span class="flex items-baseline gap-2">
         <span class="truncate font-medium">{{ $title }}</span>
-        @if ($chat?->last_message_at)<span class="nums ml-auto shrink-0 text-xs text-ink-dim">{{ \App\Support\Ago::html($chat->last_message_at, short: true) }}</span>@endif
+        @if ($chat?->last_message_at)<span class="nums ml-auto shrink-0 text-sm text-ink-dim">{{ \App\Support\Ago::html($chat->last_message_at, short: true) }}</span>@endif
     </span>
     <span class="mt-0.5 flex items-center gap-2">
         @if ($chat)

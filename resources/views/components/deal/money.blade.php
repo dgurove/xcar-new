@@ -265,11 +265,12 @@
                 @php $rewardTag = $editMoney ? 'button' : 'div'; @endphp
                 <{{ $rewardTag }} @if ($editMoney) type="button" data-controller="emit" data-action="emit#send" data-emit-event-param="deal-money-{{ $deal->id }}:open" @endif class="row sale-row">
                     <span class="sale-row-label">Вознаграждение менеджера</span>
-                    @if ($deal->commission !== null)<span class="sale-row-value nums text-accent-text">{{ Money::rub((int) $deal->commission) }}</span>@elseif ($editMoney)<span class="sale-row-value text-accent-text">Назначить</span>@else<span class="sale-row-value text-ink-muted">назначим</span>@endif
+                    @if ($deal->commission !== null)<span class="sale-row-value nums">{{ Money::rub((int) $deal->commission) }}</span>@elseif ($editMoney)<span class="sale-row-value text-accent-text">Назначить</span>@else<span class="sale-row-value text-ink-muted">назначим</span>@endif
                     @if ($editMoney)<x-ui.chevron/>@else<x-ui.chevron-space/>@endif
                 </{{ $rewardTag }}>
             @endif
-            {{-- Услуги подбора — последней: что остаётся нам после вознаграждения. Нажимается, как вознаграждение (22.11.2026, владелец:
+            {{-- Услуги подбора — последней и зелёным (23.11.2026, владелец: «светиться должна сумма подбора, а не вознаграждение»):
+                 что остаётся нам после вознаграждения. Нажимается, как вознаграждение (22.11.2026, владелец:
                  «по сути должна быть такой же, как строка вознаграждения»): обе — от доли, шторка одна «Цена и вознаграждение». Доля
                  гаражной «платит менеджер» правится в гараже — у неё строка без стрелки. --}}
             @php
@@ -291,9 +292,9 @@
                     @if ($selRow && $selRow[1] === null)
                         @if ($selEdit)<span class="sale-row-value text-accent-text">Назначить</span>@else<span class="sale-row-value text-ink-muted">назначим</span>@endif
                     @elseif ($selRow)
-                        <span class="sale-row-value {{ $selRow[2] }}">{{ $selRow[1] }}</span>
+                        <span class="sale-row-value {{ $selRow[2] }} {{ str_contains($selRow[2], 'text-danger') ? '' : 'text-accent-text' }}">{{ $selRow[1] }}</span>
                     @else
-                        <span class="sale-row-value nums">{{ Money::rub((float) $selection->total) }}@if ($selRows === '' && $selWord)<span class="block text-sm {{ $selWord[1] }}">{{ $selWord[0] }}</span>@endif</span>
+                        <span class="sale-row-value nums text-accent-text">{{ Money::rub((float) $selection->total) }}@if ($selRows === '' && $selWord)<span class="block text-sm {{ $selWord[1] }}">{{ $selWord[0] }}</span>@endif</span>
                     @endif
                     @if ($selEdit)<x-ui.chevron/>@else<x-ui.chevron-space/>@endif
                 </{{ $selTag }}>
