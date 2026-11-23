@@ -5512,7 +5512,7 @@ html[data-theme-switch] #header, html[data-theme-switch] #tabbar, html[data-them
   .photo-pack-title { @apply flex min-w-0 items-baseline gap-x-1 whitespace-nowrap text-sm text-ink-muted; }
   .photo-pack-img { @apply relative flex aspect-[2/1] w-full items-center justify-center overflow-hidden rounded-(--radius-m) bg-surface-3 text-ink-muted; }
   .photo-pack-img img { width: 100%; height: 100%; object-fit: cover; }
-  .photo-pack-img.is-hidden img { @apply opacity-40 grayscale; }
+  .photo-pack-img.is-hidden img { @apply opacity-70; }
   @media (hover: hover) { .photo-pack-cover:hover .photo-pack-img { @apply brightness-95; } }
   .photo-pack-sub { @apply text-sm text-ink-dim; }
   /* Счёт пачки: значок открытого глаза и «14 из 28». */
@@ -5569,7 +5569,8 @@ html[data-theme-switch] #header, html[data-theme-switch] #tabbar, html[data-them
   .box .photo-strip, .box-nested .photo-strip, .phase .photo-strip { @apply mr-0 pr-0; }
   .photo-cell { @apply relative h-20 min-w-16 shrink-0 snap-start overflow-hidden rounded-(--radius-m) bg-surface-3 sm:h-24; touch-action: pan-x; }
   .photo-cell img { @apply h-full w-auto max-w-[16rem] cursor-zoom-in object-contain; }
-  .photo-cell.is-hidden img { @apply opacity-40 grayscale; }
+  /* Скрытый кадр — цветным, только чуть бледнее (23.11.2026, начальник: «цветными, а не чёрно-белыми», и при открытии тоже); что скрыт — говорит кружок без глаза. */
+  .photo-cell.is-hidden img { @apply opacity-70; }
   /* Глаз и поворот — сразу на экране, сервер догоняет (photos_controller#hide/#rotate): иконка — по классу плитки,
      поворот — CSS по --turn (четверти) и --fit (вписать боком), пока не пришёл повёрнутый файл. */
   /* Глаз — состояние кадра: открыт — фото видно, перечёркнут — скрыто. */
@@ -5702,8 +5703,7 @@ dialog.lightbox .lb-pill .pswp__button {
 dialog.lightbox .lb-pill .pswp__button[hidden], dialog.lightbox .lb-pill--top .pswp__button--zoom { display: none; }
 dialog.lightbox .lb-pill .pswp__button svg { width: 22px; height: 22px; pointer-events: none; }
 /* Главное фото в просмотре: у главного звезда залита лаймом (`activeFor`, 23.11.2026). */
-/* Скрытый кадр в просмотре — чёрно-белым, как на плитке (lightbox.js `lb-hidden`). */
-dialog.lightbox .pswp__img.lb-hidden { filter: grayscale(1); }
+/* Скрытый кадр в просмотре — цветным, как есть (23.11.2026, начальник); что скрыт — метка `lb-hidden-mark`. */
 dialog.lightbox .lb-hidden-mark {
   position: fixed; inset: 0; z-index: var(--z-viewer); display: none; align-items: center; justify-content: center;
   color: #fff; opacity: .55; pointer-events: none;
@@ -5747,7 +5747,7 @@ dialog.lightbox .lb-thumb {
 }
 dialog.lightbox .lb-thumb--gap { margin-left: 12px; }
 dialog.lightbox .lb-thumb img { display: block; width: 100%; height: 100%; object-fit: cover; pointer-events: none; }
-dialog.lightbox .lb-thumb.is-hidden img { filter: grayscale(1); opacity: .45; }
+dialog.lightbox .lb-thumb.is-hidden img { opacity: .6; }
 dialog.lightbox .lb-thumb.is-current { opacity: 1; box-shadow: inset 0 0 0 2px var(--color-accent); }
 dialog.lightbox .lb-thumb.is-current img { border-radius: 8px; clip-path: inset(2px round 6px); }
 dialog.lightbox .lb-thumb:focus-visible { outline: 2px solid #fff; outline-offset: 2px; }

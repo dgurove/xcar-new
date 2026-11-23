@@ -22,6 +22,7 @@ export default class extends Controller {
 
     disconnect() {
         this.observer?.disconnect();
+        this.bodyObserver?.disconnect();
         this.theme?.disconnect();
     }
 
@@ -42,10 +43,14 @@ export default class extends Controller {
         this.paint();
         try {
             const doc = this.frameTarget.contentDocument;
-            // «› Подпись» в письме раскрыли или свернули — высота заново.
-            if (doc && !doc.__fitToggle) {
-                doc.__fitToggle = true;
-                doc.addEventListener('toggle', () => this.size(doc), true);
+            // «› Подпись» в письме раскрыли или свернули — высота заново. Не по `toggle`: в песочнице без скриптов Safari событий
+            // письма родителю не отдаёт, подпись раскрывалась за краем рамки (23.11.2026, начальник: «жму — кнопка не работает»).
+            // Размер тела письма видит наблюдатель родителя — он и подгоняет рамку.
+            if (doc?.body && this.body !== doc.body) {
+                this.body = doc.body;
+                this.bodyObserver?.disconnect();
+                this.bodyObserver = new ResizeObserver(() => this.size(doc));
+                this.bodyObserver.observe(doc.body);
             }
             this.size(doc);
         } catch {

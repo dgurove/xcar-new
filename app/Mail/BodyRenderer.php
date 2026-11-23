@@ -38,7 +38,7 @@ final class BodyRenderer
                 return null;
             }
             // Без пустых строк, подпись — свёрнутой «Подпись ›» (17.11.2026, владелец: «пустые строки убирай везде»).
-            $lines = fn (string $t) => implode("\n", array_filter(preg_split('/\R/u', $t) ?: [], fn ($l) => trim(str_replace("\u{00A0}", ' ', $l)) !== ''));
+            $lines = fn (string $t) => implode("\n", array_filter(preg_split('/\R/u', $t) ?: [], fn ($l) => ! self::blankText($l)));
             $sign = $lines($sign);
 
             return $this->wrap($message, '<pre class="plain">'.e($lines($text)).'</pre>'
@@ -58,6 +58,12 @@ final class BodyRenderer
      * срезается, а сворачивается в «Подпись ›» в конце письма; пустых строк нет — пустые абзацы и блоки уходят, `<br>` подряд —
      * один, в начале и в конце блока — ни одного.
      */
+    /** Пусто для глаза: пробелы, неразрывные пробелы и невидимые символы (нулевой ширины, BOM). */
+    private static function blankText(string $text): bool
+    {
+        return trim(preg_replace('/[\s\x{00A0}\x{200B}-\x{200D}\x{2060}\x{FEFF}]+/u', '', $text) ?? '') === '';
+    }
+
     private function tidy(string $html, ?string $name): ?string
     {
         $dom = new \DOMDocument;
@@ -74,7 +80,10 @@ final class BodyRenderer
         Extraction\Signature::cutDom($dom, $body, $name, $sign);
         self::compact($body);
         self::compact($sign);
-        if (trim(str_replace("\u{00A0}", ' ', $sign->textContent)) !== '' || $sign->getElementsByTagName('img')->length) {
+        // «Подпись» — только когда в ней есть что раскрыть (23.11.2026, владелец: пустая — «жмёт и думает, что кнопка не работает»):
+        // текст (не пробелы и невидимые символы) или картинка с адресом.
+        $pictures = collect(iterator_to_array($sign->getElementsByTagName('img')))->contains(fn (\DOMElement $i) => trim($i->getAttribute('src')) !== '');
+        if (! self::blankText($sign->textContent) || $pictures) {
             $details = $dom->createElement('details');
             $details->setAttribute('class', 'sig');
             $summary = $dom->createElement('summary');
@@ -273,7 +282,6 @@ final class BodyRenderer
      * (Outlook `divRplyFwdMsg` и черта `border-top: solid #E1E1E1`, Gmail, Thunderbird, Yahoo), `<hr>`, абзац «От: / From: /
      * -----Original Message-----». Пустые абзацы в начале и в конце (Outlook ставит по два) — тоже. Признака нет — null.
      */
-
     private function withoutQuote(string $html): ?string
     {
         $dom = new \DOMDocument;
