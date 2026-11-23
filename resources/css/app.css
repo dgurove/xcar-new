@@ -465,6 +465,8 @@ html.kb-open { --home-gap: 0px; }
     .surface-site .container-site .btn-bleed { width: calc(100% + 2rem) !important; margin-inline: -1rem; }
     .surface-site .container-site .cards--list:not(dialog *, #detail *) { --sep-l: calc(1rem + var(--media-w) + .625rem); --sep-r: 1rem; }
     .surface-site .container-site .cards--list:not(dialog *, #detail *) > .card { padding-inline: 1rem; }
+    /* Подпись пачки в строках («Сегодня», «До 17:00 сегодня») — от поля экрана, как строки, а не вплотную к краю (23.11.2026). */
+    .surface-site .container-site .cards--list:not(dialog *, #detail *) > .cards-group { margin-inline: 0; padding-inline: 1rem; }
     /* Поиск чатов — во всю ширину, как список под ним (17.11.2026, владелец: «растяни ещё поиск в чатах»). */
     .surface-crm .chat-split-crm .chat-list-head .toolbar-search { margin-inline: -1rem; }
     .surface-site .chat-split-crm .chat-list-head .toolbar-search { margin-inline: -1rem; }

@@ -45,7 +45,9 @@ final class Cars
         $state = match ($o->state) {
             // На сайте черновик видят только в галерее и на оценке.
             OfferState::Draft => $crm ? $o->crmTab() : ($o->isGallery() ? 'в галерее' : 'нужно оценить'),
-            OfferState::Sold => 'в сделке'.(($name = $o->deal?->buyer?->shortName()) && $who ? ' у '.$name : ''),
+            // На сайте чужая сделка стоит у менеджера обычным предложением (опубликована для других или он в резерве до конца
+            // срока) — «в сделке» выдало бы, что машину отдали (23.11.2026); своя — строкой «ваша сделка» (`siteDeal`).
+            OfferState::Sold => $crm ? 'в сделке'.(($name = $o->deal?->buyer?->shortName()) && $who ? ' у '.$name : '') : 'в продаже',
             OfferState::Garage => 'в гараже'.(($name = $o->garageCar?->manager?->shortName()) && $who ? ' у '.$name : ''),
             // Где он в CRM — названием вкладки (13.10.2026), на сайте — как видит человек.
             default => $crm ? $o->crmTab() : mb_strtolower($o->state->labelFor(auth()->user())),

@@ -19,13 +19,16 @@
      заголовка тупо пустое место — туда сортировку, лупу, вид»): строка `.toolbar-head` — первой, над пилюлями.
      Сортировка — окошко x-ui.sort: поле и направление (владелец 06.10.2026: «кнопка сортировки, окошко — выбор
      критерия и ascending/descending»); прежнего меню исходов словами («Сначала дешёвые») больше нет.
+     pillQuery — с чем уходят ссылки пилюль (по умолчанию — весь адрес страницы);
      rows — шапка вкладок колеса «Предложений» (`x-admin.tab-head`, 17.11.2026, владелец): ряд кнопок (слева лупа, сортировка и
      вид из слота `extra`, справа «Фильтр» — `x-ui.filter-button`, окно во фрейме карточки), под ним переключатели вкладки
      (`Facet::quick`); на ПК — теми же рядами. Пилюль, действий и «Сбросить» в этом виде нет. --}}
-@props(['fit' => null, 'rows' => false, 'sort' => null, 'sortParam' => 'sort', 'pills' => [], 'dots' => [], 'pill' => '', 'pillParam' => 'view', 'pillDefault' => true, 'pillHome' => null, 'pillDrop' => [], 'counts' => [], 'badges' => [], 'bumps' => [], 'tones' => [], 'name' => 'list', 'action' => null, 'search' => null, 'searchTarget' => '#list', 'searchUrl' => null, 'q' => null, 'facets' => null, 'searchOpen' => false, 'sortToggles' => [], 'facetsReset' => true])
+@props(['fit' => null, 'rows' => false, 'sort' => null, 'sortParam' => 'sort', 'pills' => [], 'dots' => [], 'pill' => '', 'pillParam' => 'view', 'pillDefault' => true, 'pillHome' => null, 'pillDrop' => [], 'counts' => [], 'badges' => [], 'bumps' => [], 'tones' => [], 'name' => 'list', 'action' => null, 'search' => null, 'searchTarget' => '#list', 'searchUrl' => null, 'q' => null, 'facets' => null, 'searchOpen' => false, 'sortToggles' => [], 'facetsReset' => true, 'pillQuery' => null])
 @php
     $action ??= '/'.ltrim(request()->path(), '/');
-    $query = request()->query();
+    // pillQuery — параметры, которые несут ссылки пилюль, вместо адреса страницы (архив: пилюли ведут в каталог, и поиск и чипы
+    // архива туда уезжать не должны).
+    $query = $pillQuery ?? request()->query();
     $url = fn (array $set) => $action.'?'.str_replace('%2C', ',', http_build_query(array_filter(array_merge($query, $set), fn ($v) => $v !== null && $v !== '')));
     $sortUrl = fn (string $value) => \App\Support\Sort::url($value, $sortParam, $action);
     $q ??= is_string(request('q')) ? request('q') : '';

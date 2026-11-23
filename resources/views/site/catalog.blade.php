@@ -25,6 +25,10 @@
                  Раздел пуст целиком (покупателю ещё ничего не открыли) — сортировать и менять вид нечего (19.10.2026). --}}
             @php $none = ! ($gallery ? $counts['gallery'] : $counts['offers']) && blank($filters['q'] ?? null) && ! $allSeen; @endphp
             <x-ui.toolbar class="md:mt-5" :sort="$none ? null : $sorting" :pills="$views" :dots="$gallery ? [] : ['urgent' => 'urgent', 'fresh' => 'fresh', 'ending' => 'hot']" :pill="$filters['view'] ?? ''" :counts="$counts" :name="$gallery ? 'gallery' : 'catalog'" :facets="$facets" :search="filled($filters['q'] ?? null) ? 'Марка, модель, номер, VIN' : null" search-target="#catalog-list">
+                {{-- Архив менеджера (23.11.2026, начальник) — последней пилюлей: ушедшее за 30 дней, `/offers/archive`. --}}
+                @if (! $gallery && $user?->isManager())
+                    <x-slot:pillsExtra><a href="/offers/archive" class="pill">Архив</a></x-slot:pillsExtra>
+                @endif
                 <x-slot:extra>
                     @if ($selecting && $offers->isNotEmpty() && ! \App\Support\ListView::isTable($view))<button type="button" class="btn btn-s btn-quiet shrink-0 rounded-full" data-action="selection#toggle" data-selection-target="toggle" aria-pressed="false"><x-ui.icon name="check-circle" class="size-4"/><span class="hidden sm:inline">Выбрать</span></button>@endif
                     @unless ($none)<x-ui.view-switch :current="$view" :views="\App\Support\ListView::SHELVED"/>@endunless
@@ -180,6 +184,7 @@
                     @include('site.catalog-estimated')
                 @endif
                 @endif
+                @include('site.catalog-archive')
             </div>
         </div>
         @if ($selecting && $offers->isNotEmpty())

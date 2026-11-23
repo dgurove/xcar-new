@@ -131,6 +131,11 @@ final class ChangeOfferState
                 // «Срочно» — на этот выход в продажу (13.10.2026): вернулось потом — волны снова свои, а не всем сразу.
                 $offer->urgent_at = null;
                 $offer->urgent_by = null;
+                // Ушло из продажи — с этой минуты оно в архиве менеджеров, кому было открыто (`Offer::scopeArchivedFor`).
+                $offer->sale_ended_at = $at ?? now();
+            }
+            if ($next === OfferState::Open) {
+                $offer->sale_ended_at = null;
             }
             if ($from === OfferState::Draft && $next !== OfferState::Draft) {
                 $offer->auction_at = null;

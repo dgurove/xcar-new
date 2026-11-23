@@ -21,6 +21,11 @@ class OfferController
     public function show(Request $request, Offer $offer)
     {
         $user = $request->user();
+        // Ушло с витрины за последние 30 дней — архивная страница (23.11.2026, начальник): без причины, с «Написать». И тогда, когда
+        // по прямой ссылке предложение ещё видно (приём закрыт, ждёт решения): для него оно ушло.
+        if ($offer->isArchivedFor($user)) {
+            return $this->archived($request, $offer, $user);
+        }
         // Оценка больше не нужна (цену поставили, просьбу сняли), а черновик ему не виден — в «Предложения» словом, не 404:
         // сюда ведут уведомления «Оцените».
         if (! $offer->isVisibleTo($user) && $user && $offer->estimates()->where('user_id', $user->id)->exists()) {
@@ -73,6 +78,21 @@ class OfferController
         }
 
         return response()->noContent();
+    }
+
+    /** Архивная страница (`site/offers/archived`): фото, цена с витрины, характеристики и чат по ТС шторкой. */
+    private function archived(Request $request, Offer $offer, User $user)
+    {
+        $offer->load(['settlement', 'saleSettlement', 'media']);
+        if (in_array($offer->state, [OfferState::Archived, OfferState::Cancelled, OfferState::Delivered], true)) {
+            app(WarmPhotos::class)($offer);
+        }
+        $chat = Chat::where('offer_id', $offer->id)->where('user_id', $user->id)->first();
+        if ($request->boolean('chat') && $chat) {
+            app(MarkChatRead::class)($chat, $user);
+        }
+
+        return view('site.offers.archived', ['offer' => $offer, 'photos' => $offer->visiblePhotos(), 'chat' => $chat]);
     }
 
     /** Карточка строки таблицы: фото, метки, факты, цена как видит человек; подтвердить ценой или проявить интерес прямо тут. */

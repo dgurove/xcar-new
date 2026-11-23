@@ -27,6 +27,7 @@ use App\Http\PeopleMailController;
 use App\Http\Pwa\PushController;
 use App\Http\Pwa\PwaController;
 use App\Http\SearchController;
+use App\Http\Site\ArchiveController;
 use App\Http\Site\BidController;
 use App\Http\Site\CatalogController;
 use App\Http\Site\ChatController;
@@ -101,6 +102,8 @@ Route::middleware('wall')->group(function () {
     Route::view('/faq', 'site.pages.voprosy');
     Route::get('/gallery', [CatalogController::class, 'gallery']);
     Route::get('/offers/cards', [FragmentController::class, 'cards']);
+    // Архив менеджера (23.11.2026) — раньше `/offers/{offer}`: иначе «archive» искался бы номером.
+    Route::get('/offers/archive', [ArchiveController::class, 'index'])->middleware('ability:isManager');
     Route::get('/offers/{offer}', [OfferController::class, 'show'])->name('offers.show');
     Route::get('/offers/{offer}/card', [FragmentController::class, 'card']);
 });

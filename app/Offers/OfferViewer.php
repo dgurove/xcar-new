@@ -20,6 +20,16 @@ class OfferViewer extends Model
 
     protected $guarded = [];
 
+    /**
+     * Строка — пара (предложение, человек): своего ключа у таблицы нет. Без этого `save()` и `delete()` модели писали по пустому ключу
+     * и меняли все строки предложения (23.11.2026: `$offer->viewers()->updateOrCreate([...])` сдвинул волну всем менеджерам).
+     */
+    protected function setKeysForSaveQuery($query)
+    {
+        return $query->where('offer_id', $this->getOriginal('offer_id') ?? $this->getAttribute('offer_id'))
+            ->where('user_id', $this->getOriginal('user_id') ?? $this->getAttribute('user_id'));
+    }
+
     protected function casts(): array
     {
         return ['opens_at' => 'datetime', 'notified_at' => 'datetime'];

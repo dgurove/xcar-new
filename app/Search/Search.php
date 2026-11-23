@@ -128,8 +128,18 @@ final class Search
             ->with([])->latest('published_at')->limit(12)->get()
             ->each(fn (Offer $o) => $cars->offer($o, link: "/offers/{$o->number}", crm: false));
 
+        // Архив менеджера (23.11.2026, начальник: «через поиск — второстепенно: сначала опубликованные, потом архивные») — своей
+        // группой после «ТС», без причины ухода: город строкой.
+        $archive = $user->isManager()
+            ? Offer::archivedFor($user)->search($t)->whereNotIn('offers.id', $offers->pluck('id'))->with(['saleSettlement', 'settlement'])
+                ->latestLeft()->limit(self::ROWS)->get()
+            : collect();
+
         return [
             'cars' => ['title' => 'ТС', 'rows' => $cars->top(self::CARS)] + self::more($offers->isNotEmpty(), 'Все предложения', '/offers?q='.urlencode($t->raw)),
+            'archive' => ['title' => 'Архив', 'rows' => $archive
+                ->map(fn (Offer $o) => new Hit($o->titleWithYear(), "/offers/{$o->number}", array_values(array_filter([$o->saleCity()?->title()]))))->all()]
+                + self::more($archive->isNotEmpty(), 'Весь архив', '/offers/archive?q='.urlencode($t->raw)),
             'people' => ['title' => 'Покупатели', 'rows' => $user->isManager() ? self::people($user->buyers(), $t, fn (User $u) => "/buyers/{$u->id}") : []],
         ];
     }

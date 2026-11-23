@@ -20,6 +20,7 @@ use App\Logistics\Transport;
 use App\Logistics\TransportKind;
 use App\Logistics\TransportState;
 use App\Mail\Candidate;
+use App\Mail\Message;
 use App\Mail\Template;
 use App\Mail\Thread;
 use App\Offers\Partner\Handover;
@@ -55,6 +56,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 
 #[Fillable([
@@ -288,6 +290,8 @@ class Offer extends Model
             'partner_price_at' => 'datetime',
             'published_at' => 'datetime',
             'bids_close_at' => 'datetime',
+            'sale_ended_at' => 'datetime',
+            'deal_shown_until' => 'datetime',
             'first_look_until' => 'datetime',
             'intake_closed_at' => 'datetime',
             'no_bids_alerted_for' => 'datetime',
@@ -812,9 +816,9 @@ class Offer extends Model
      * Кто из менеджеров видит открытые документы машины (`managedBy`): покупатели сделок — идущей, закрытой и параллельной —
      * и держатель гаража. Именами в подписи документа CRM (23.11.2026, владелец: «пиши не „менеджер сделки“, а конкретно имя»).
      *
-     * @return \Illuminate\Support\Collection<int, User>
+     * @return Collection<int, User>
      */
-    public function fileViewers(): \Illuminate\Support\Collection
+    public function fileViewers(): Collection
     {
         // Несорвавшиеся сделки — это и есть `held` вместе с идущими параллельными.
         $ids = Deal::where('offer_id', $this->id)->whereNotNull('buyer_id')->whereNull('deals.cancelled_at')->pluck('buyer_id')
@@ -1068,6 +1072,74 @@ class Offer extends Model
                 ->where('offers.bids_close_at', '>', now())
                 ->whereHas('bids', fn ($x) => $x->where('user_id', $user->id)->where('state', BidState::Active)))));
     }
+
+    /** Сколько дней ушедшее с витрины стоит в архиве менеджера. */
+    public const ARCHIVE_DAYS = 30;
+
+    /**
+     * Когда предложение ушло с витрины — SQL над `offers`: сняли из продажи (`sale_ended_at`) или кончился срок приёма — что
+     * раньше; опубликованная для других сделка — конец её показа, если он позже (до него она у них на витрине); показ кончился вместе
+     * со сделкой (`PublishDeal::clear` стирает публикацию) — момент остаётся в `deal_shown_until`.
+     */
+    public const LEFT_SQL = 'greatest(least(offers.sale_ended_at, offers.bids_close_at), case when offers.deal_published_at is not null then offers.deal_show_until end, offers.deal_shown_until)';
+
+    /**
+     * Архив менеджера (23.11.2026, начальник: «все предложения, что ушли за последние 30 дней, — зайти и написать админам по ней»;
+     * «почему она туда попала, видеть не должны: даже если она у кого-то в сделке — для них она просто архивная»): ушло с витрины
+     * не раньше `ARCHIVE_DAYS` дней назад, его волна показа наступила до ухода (чужой эксклюзив, ушедший до волны остальных, не
+     * виден), сейчас его нет ни на витрине, ни в галерее, и это не его дело — ни живого подтверждения, ни своей неотменённой сделки,
+     * ни гаража, ни просьбы оценить. Регионы — не замок, а чип списка (`CatalogQuery::facets`, как у каталога): страница и чат
+     * открываются по ссылке. Видимость (`visibleTo`) архив не расширяет: по нему не идут ни уведомления, ни анонсы.
+     */
+    public function scopeArchivedFor(Builder $q, ?User $user): Builder
+    {
+        if (! $user || ! $user->isManager()) {
+            return $q->whereRaw('false');
+        }
+        $left = self::LEFT_SQL;
+
+        return $q->whereNotNull('offers.published_at')
+            ->whereRaw("{$left} between ? and ?", [now()->subDays(self::ARCHIVE_DAYS), now()])
+            ->whereHas('viewers', fn ($v) => $v->where('user_id', $user->id)->whereRaw("offer_viewers.opens_at <= {$left}"))
+            ->whereNotIn('offers.id', self::query()->siteList($user)->select('offers.id'))
+            // Не в галерее. Без `whereNot(inGallery)`: у черновика без окна (`gallery_until` пуст) условие — NULL, и `not` выкидывал
+            // почти все вернувшиеся в черновики (приём без подтверждений, «Снять с продажи», аукцион).
+            ->where(fn ($g) => $g->where('offers.state', '!=', OfferState::Draft)->orWhereNull('offers.gallery_until')->orWhere('offers.gallery_until', '<=', now()))
+            // Его просят оценить (`isAskedOf`) — это задача «Нужно оценить» со своей страницей, а не архив.
+            ->where(fn ($e) => $e->where('offers.state', '!=', OfferState::Draft)->orWhereDoesntHave('estimates', fn ($x) => $x->open()->where('user_id', $user->id)))
+            ->whereDoesntHave('bids', fn ($b) => $b->where('user_id', $user->id)->whereIn('state', [BidState::Active, BidState::Accepted]))
+            ->whereNotExists(fn ($d) => $d->from('deals')->whereColumn('deals.offer_id', 'offers.id')->where('deals.buyer_id', $user->id)->whereNull('deals.cancelled_at'))
+            ->whereNotExists(fn ($g) => $g->from('garage_cars')->whereColumn('garage_cars.offer_id', 'offers.id')->where('garage_cars.manager_id', $user->id));
+    }
+
+    /** Новые в архиве — первыми (по моменту ухода). */
+    public function scopeLatestLeft(Builder $q): Builder
+    {
+        return $q->orderByRaw(self::LEFT_SQL.' desc')->orderByDesc('offers.id');
+    }
+
+    /** Когда ушло с витрины — тем же правилом, что `LEFT_SQL`. */
+    public function leftAt(): ?Carbon
+    {
+        $at = collect([$this->sale_ended_at, $this->bids_close_at])->filter()->min();
+        $shows = collect([$this->deal_published_at ? $this->deal_show_until : null, $this->deal_shown_until])->filter();
+        $show = $shows->max();
+
+        return $show && (! $at || $show->gt($at)) ? $show : $at;
+    }
+
+    /** В архиве у этого человека (`scopeArchivedFor`) — страница открывается архивной, по нему можно написать. Ответ — на запрос. */
+    public function isArchivedFor(?User $user): bool
+    {
+        if (! $user?->isManager() || ! $this->exists) {
+            return false;
+        }
+
+        return $this->archivedMemo[$user->id] ??= self::query()->whereKey($this->id)->archivedFor($user)->exists();
+    }
+
+    /** @var array<int, bool> `isArchivedFor` по людям — на этот экземпляр (страница, плашка чата и `chatOpenFor` спрашивают одно). */
+    private array $archivedMemo = [];
 
     /**
      * Предложения в CRM: админу — все, модератору — его группы не из закупки. Не то же, что `visibleTo`: модератор, который
@@ -1349,12 +1421,13 @@ class Offer extends Model
      * сделка, гараж, вывоз), — на всех этапах до продажи из гаража и после (05.10.2026, владелец: «пока тачка в гараже у
      * менеджера, писать ему, задавать вопросы»). Галка «Чат с покупателями» таких не закрывает. С витрины — только тому,
      * кому предложение видно (13.10.2026: номер любого опубликованного приходит всем в живых событиях каталога, и чат
-     * показывал фото и цену до волны).
+     * показывал фото и цену до волны). Из архива менеджера (`isArchivedFor`, 23.11.2026, начальник: «зайти и написать админам
+     * по ней») — всегда, и без галки чата.
      */
     public function chatOpenFor(?User $user): bool
     {
         return $user && $user->canChat()
-            && ($this->worksWith($user) || ($this->chat_enabled && $this->state->isPublic() && $this->isVisibleTo($user)));
+            && ($this->worksWith($user) || ($this->chat_enabled && $this->state->isPublic() && $this->isVisibleTo($user)) || $this->isArchivedFor($user));
     }
 
     /**
@@ -1865,7 +1938,7 @@ class Offer extends Model
 
         return ['asking' => (int) ($p['asking'] ?? 0), 'bids' => (int) ($p['bids'] ?? 0),
             'closed_at' => isset($p['closed_at']) ? Carbon::parse($p['closed_at']) : null,
-            'letter' => isset($p['letter']) ? \App\Mail\Message::find($p['letter']) : null];
+            'letter' => isset($p['letter']) ? Message::find($p['letter']) : null];
     }
 
     public function log(OfferEventType $type, ?User $user = null, array $payload = []): OfferEvent

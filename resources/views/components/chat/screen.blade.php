@@ -4,8 +4,9 @@
 @props(['chat', 'messages', 'user', 'name', 'other' => null, 'offer' => null, 'back' => \App\Chats\Chat::ROOT, 'open' => null, 'firstUnread' => 0, 'more' => false, 'readonly' => false, 'link' => null, 'sheet' => false, 'status' => false, 'chats' => null, 'greet' => true])
 @php
     $offer ??= $chat?->offer;
-    // Машина ушла от человека (круг сузили, сделка, снята) — переписка остаётся, а цены и перехода к машине нет.
-    $carOpen = $offer && ($readonly || $offer->isVisibleTo($user));
+    // Машина ушла от человека (круг сузили, сделка, снята) — переписка остаётся, а цены и перехода к машине нет; в его архиве
+    // (`Offer::isArchivedFor`, 30 дней) — плашка ведёт на архивную страницу.
+    $carOpen = $offer && ($readonly || $offer->isVisibleTo($user) || $offer->isArchivedFor($user));
     $price = $carOpen ? \App\Offers\PriceView::for($offer, $user) : null;
     $seen = $status === false ? $other?->seenLabel() : $status;
     // Вид сотрудника — в CRM и у сотрудника в XCAR Chat (`Chat::staffView`); карточка человека и меню — только в CRM.

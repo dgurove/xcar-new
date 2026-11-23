@@ -132,9 +132,13 @@ final class PublishDeal
     public static function clear(Offer $offer): void
     {
         if ($offer->deal_published_at !== null || $offer->deal_show_until !== null || $offer->deal_audience_rules !== null) {
-            Offer::whereKey($offer->id)->update(['deal_published_at' => null, 'deal_show_until' => null, 'deal_audience_rules' => null]);
+            // Когда показ кончился — остаётся моментом ухода с витрины для архива менеджеров (`Offer::LEFT_SQL`): иначе те, кто видел
+            // машину только этой публикацией, теряли её из архива, как только сделка закрылась или сорвалась.
+            $shown = $offer->deal_published_at ? collect([now(), $offer->deal_show_until])->filter()->min() : $offer->deal_shown_until;
+            Offer::whereKey($offer->id)->update(['deal_published_at' => null, 'deal_show_until' => null, 'deal_audience_rules' => null, 'deal_shown_until' => $shown]);
             $offer->deal_published_at = $offer->deal_show_until = $offer->deal_audience_rules = null;
-            $offer->syncOriginalAttributes(['deal_published_at', 'deal_show_until', 'deal_audience_rules']);
+            $offer->deal_shown_until = $shown;
+            $offer->syncOriginalAttributes(['deal_published_at', 'deal_show_until', 'deal_audience_rules', 'deal_shown_until']);
         }
     }
 }
