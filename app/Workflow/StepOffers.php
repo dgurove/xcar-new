@@ -35,7 +35,7 @@ final class StepOffers
         }
         // Доп. просьба на стадии решения менеджера — «Берёт» / «Не берёт» за него (`x-route.extra-step`).
         $extra = ExtraAsk::holding($deal);
-        if ($extra || ($user->canManageCrm() && RepriceFlow::for($offer))) {
+        if ($extra || RepriceFlow::for($offer)) {
             return new self(withdraws: $extra?->phase() === ExtraAsk::MANAGER && $deal->buyer_id !== null);
         }
         $staff = $stage->exitsFor(Actor::Staff, $deal)->reject(fn (Outcome $x) => $x->acceptsBid());

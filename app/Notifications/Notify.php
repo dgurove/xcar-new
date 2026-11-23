@@ -140,7 +140,7 @@ final class Notify
     /** Кто ведёт сделки: админы и модераторы (24.11.2026, владелец: модераторы ведут сделку целиком — письма, ход, деньги сделки). */
     public static function dealStaff(): Collection
     {
-        return User::withRole(Role::Admin, Role::Moderator)->get();
+        return User::withRole(Role::Admin, Role::Moderator)->whereNull('rejected_at')->where('is_demo', false)->get();
     }
 
     /**

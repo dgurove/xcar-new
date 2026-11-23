@@ -6769,4 +6769,19 @@ dialog.lightbox:not(.lb-one) .lb-pill--bottom { bottom: calc(var(--lb-strip-bott
   .letter-doc { display: flex; align-items: center; gap: .625rem; min-width: 0; height: 3.25rem; padding: 0 .75rem 0 .5rem; border-radius: var(--radius-m); background: var(--color-surface-2); font-size: var(--text-base); color: var(--color-ink); }
   @media (hover: hover) { .letter-doc:hover { background: var(--color-surface-3); } }
   .letter-photos-icon { display: grid; flex: none; place-items: center; width: 2.25rem; height: 2.25rem; border-radius: var(--radius-s); background: var(--color-surface); color: var(--color-ink-muted); }
+
+  /* «Как работать» (24.11.2026, `admin/help`): кто делает шаг — кружком цвета человека, текст обычный. */
+  .help-dot { display: inline-block; flex: none; width: .625rem; height: .625rem; border-radius: 9999px; background: var(--color-ink-dim); }
+  .help-dot--team { background: var(--color-word); }
+  .help-dot--andrey { background: var(--color-warn); }
+  .help-dot--katya { background: var(--color-req-release); }
+  .help-dot--manager { background: var(--color-open); }
+  .help-dot--supplier { background: var(--color-closed); }
+  .help-dot--system { background: transparent; border: 2px solid var(--color-closed); }
+  .help-who { display: inline-flex; align-items: center; gap: .5rem; }
+  .help-num { display: inline-grid; flex: none; place-items: center; width: 1.5rem; height: 1.5rem; border-radius: 9999px; background: var(--color-danger); color: #fff; font-size: var(--text-xs); font-weight: 600; }
+  .help-steps { display: flex; flex-direction: column; gap: .5rem; }
+  .help-steps li { display: flex; align-items: flex-start; gap: .625rem; }
+  .help-steps li > .help-num { margin-top: .0625rem; }
+  .help-shot { display: block; width: 100%; height: auto; border-radius: var(--radius-m); background: var(--color-surface-2); }
 }

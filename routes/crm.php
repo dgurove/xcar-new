@@ -12,6 +12,7 @@ use App\Http\Admin\ExtraAskController;
 use App\Http\Admin\GalleryController;
 use App\Http\Admin\GarageController;
 use App\Http\Admin\GiveController;
+use App\Http\Admin\HelpController;
 use App\Http\Admin\HomeController;
 use App\Http\Admin\InterestController;
 use App\Http\Admin\InvoiceController;
@@ -143,6 +144,8 @@ Route::domain(config('xcar.crm_host'))->middleware(['auth', 'ability:isStaff'])-
     });
     // Кабинет CRM = «Настройки»: корень — профиль (общий экран с сайтом), /account сюда же.
     Route::get('/settings', [ProfileController::class, 'profile']);
+    // «Как работать» (24.11.2026): кто что делает в сделке, путь сделки поставщиков, снимки.
+    Route::get('/settings/help', [HelpController::class, 'index']);
     Route::permanentRedirect('/account', '/settings');
     // Форма профиля (имя, фото) шлёт PUT /account. Редирект выше ловит любой метод, а маршрут того же адреса перекрывает
     // объявленный раньше — поэтому PUT строго после него; без него фото и имя в CRM молча терялись.

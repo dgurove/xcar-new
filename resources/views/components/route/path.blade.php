@@ -38,9 +38,11 @@
     // Имена блоков как есть: кто вывозит, видно строкой над путём («Стоит у Сергей К.» имя не склоняет).
     $blockName = fn ($block) => $block->name;
     [$breaks, $moves] = $exits->partition(fn ($x) => $x->to?->block && $x->to->block_id !== $stage->block_id && $x->to->block->isDeadEnd())->all();
-    // Модератор ведёт сделку целиком (24.11.2026, владелец: «всё по сделке»), выставить в продажу — нет (`Outcome::publishes`).
+    // Модератор ведёт сделку целиком (24.11.2026, владелец: «всё по сделке»), выставить в продажу — нет (`Outcome::publishes`),
+    // тупик до сделки («Подтверждений нет») — тоже: это решение по продаже (`RouteController::exit`).
     if (! auth()->user()?->canManageCrm()) {
         $moves = $moves->reject(fn ($x) => $x->publishes())->values();
+        $breaks = $deal ? $breaks : collect();
     }
     // Исход сотрудника «… за менеджера» (Альфа: «Договор подписан за менеджера») — тот же ответ, что «За менеджера: «Договор
     // подписан»» в «⋯» шага: второй раз не даём (19.11.2026, владелец: «не должно быть двух плашек действий»).
@@ -53,7 +55,9 @@
     }
     // Переоценка в сделке — свой шаг «Переоценка» перед этапом маршрута (04.11.2026, владелец: «почему согласование с
     // поставщиком, если идёт переоценка — мы ещё ничего не приняли»): пока он не пройден, этап ждёт впереди без кнопок.
-    $reflow = $position->track === \App\Workflow\Track::Sale && auth()->user()?->canManageCrm() ? \App\Offers\RepriceFlow::for($offer) : null;
+    // Модератору шаг — без решений (его кнопки — маршруты админа), но этап держится и у него: иначе его кнопки жались мимо переоценки.
+    $repricing = $position->track === \App\Workflow\Track::Sale && auth()->user()?->canEditDeals() ? \App\Offers\RepriceFlow::for($offer) : null;
+    $reflow = auth()->user()?->canManageCrm() ? $repricing : null;
     // Доп. просьба поставщику держит ход сделки (18.11.2026, `Offers\ExtraAsk`): свой шаг на месте этапа, этап ждёт следом без кнопок.
     $extra = $position->track === \App\Workflow\Track::Sale && auth()->user()?->canEditDeals() ? \App\Offers\ExtraAsk::holding($deal) : null;
     // Ответы — только идущей сделки (06.11.2026, владелец: Макаров «передумал» в сделке № 83, машину отдали Трофимову, а в шаге
@@ -116,10 +120,16 @@
     @foreach ($path as $step)
         {{-- Переоценка встаёт на место текущего этапа: пройденные — выше, этап — следом за ней. --}}
         @if ($reflow && $step['state'] === Path::CURRENT)<x-route.reprice-step :flow="$reflow"/>@endif
+        @if ($repricing && ! $reflow && $step['state'] === Path::CURRENT)
+            <div class="step step--current">
+                <span class="step-dot"></span>
+                <div class="step-body"><div class="step-head"><span class="step-title">Переоценка</span></div><p class="mt-1 text-sm text-ink-muted">решает администратор</p></div>
+            </div>
+        @endif
         @if ($extra && $step['state'] === Path::CURRENT)<x-route.extra-step :ask="$extra" :deal="$deal"/>@endif
         @php
             // Пока цена не назначена, идёт переоценка или доп. просьба держит сделку, этап маршрута — впереди, без кнопок.
-            if (($pricing || $reflow || $extra) && $step['state'] === Path::CURRENT) $step['state'] = Path::NEXT;
+            if (($pricing || $repricing || $extra) && $step['state'] === Path::CURRENT) $step['state'] = Path::NEXT;
             $block = $step['block'];
             // Только то, что менеджер ответил сам (есть выход): просьбу, закрытую сменой этапа, отменой или оплатой мимо него
             // (`closed_by`), «Менеджер: …» не подписываем.
@@ -389,6 +399,9 @@
                          к блоку «… по договору комиссии» в «Деньгах» (там обе суммы, назначение и реквизиты). --}}
                     @if ($deal && $stage->paysOut() && auth()->user()?->canEditDeals() && ($sp = $deal->contract?->supplier_price) !== null && ($sc = $deal->supplierCost()) !== null && $sp !== $sc)
                         <x-route.task-row icon="file" urgent href="#money">По договору комиссии {{ \App\Support\Money::rub($sp) }}, у нас {{ \App\Support\Money::rub($sc) }}</x-route.task-row>
+                    {{-- Сколько платить — в самом шаге (24.11.2026, «Как работать»: Катя искала сумму в «Продаже» строкой «Закупочная»). --}}
+                    @elseif ($deal && $stage->paysOut() && auth()->user()?->canEditDeals() && ($sc = $deal->supplierCost()))
+                        <x-route.task-row icon="wallet" href="#money">Перевести поставщику {{ \App\Support\Money::rub($sc) }}</x-route.task-row>
                     @endif
                     {{-- Документ об оплате (10.11.2026): на шаге оплаты админ прикладывает за менеджера (чек прислал в чат), дальше — одним
                          PDF для страховой (`PaymentProofPdf`), пока письмо об оплате не ушло. --}}
