@@ -45,13 +45,36 @@ final class ReadEarlier
             ($m->id === $message->id && $later) || ($m->id !== $message->id && $before($m) && ($later || ! in_array($m->id, $group, true)))
         ))->pluck('id')->all();
 
-        $read = $this->mark->apply(array_values($ids), true);
-        // Наше письмо (из почтовой программы — легло синхронизацией) — вся цепочка до него прочитана.
-        if ($message->direction === Direction::Out) {
-            $read = [...$read, ...$this->chain($message)];
-        }
+        return $this->mark->apply(array_values($ids), true);
+    }
 
-        return $read;
+    /**
+     * Письмо впервые легло и ветка уже привязана к делу (`Ingest` после `MessageParsed`) — непрочитанным во всей цепочке
+     * остаётся только последнее (23.11.2026, владелец: «новое письмо в цепочке — все остальные прочитаны, неважно от нас или
+     * от них; заспамили 10 писем — на счётчике одно»): раньше него прочитано, кроме частей этого же письма («ч.2»); само
+     * прочитано, если в цепочке уже есть письмо позже (из ящика догрузилось старое). @return list<int>
+     */
+    public function arrived(Message $message): array
+    {
+        if (! $message->date_at || ! ($threads = self::chainThreads($message))) {
+            return [];
+        }
+        $parts = $this->parts($message);
+        $later = Message::whereIn('thread_id', $threads)->whereNotIn('id', $parts)->where('date_at', '>', $message->date_at)->exists();
+        $self = $later && $message->direction === Direction::In && ! $message->is_seen ? $this->mark->apply([$message->id], true) : [];
+
+        return [...$self, ...$this->chain($message, $parts)];
+    }
+
+    /** Части одного письма с ним самим: голова «ч.2» и её части (`NodeTitle::continued`) — в его ветке. @return list<int> */
+    private function parts(Message $message): array
+    {
+        $incoming = Message::where('thread_id', $message->thread_id)->where('direction', Direction::In)->whereNotNull('date_at')
+            ->orderBy('date_at')->orderBy('id')->get(['id', 'thread_id', 'direction', 'date_at', 'from_email', 'parsed', 'text_body', 'html_body']);
+        $continued = NodeTitle::continued($incoming);
+        $head = $continued[$message->id] ?? $message->id;
+
+        return [$message->id, $head, ...array_keys(array_filter($continued, fn ($h) => $h === $head))];
     }
 
     /**
@@ -59,27 +82,27 @@ final class ReadEarlier
      * все предыдущие», «мы написали поставщику — значит все предыдущие прочитаны»). Цепочка — дело «Почты» (`Boxes::group`:
      * предложение или ТС, цепочка «Из писем», иначе ветка) в ящиках той же стороны: письмо пришло на offer@, ответ ушёл с
      * deal@ — одна цепочка. Зовут, когда письмо открыли (`MarkMessageRead`, `MarkThreadRead`), прочитали в ящике (`Sync`) и
-     * когда письмо наше (`OnMessage::onSent`, синхронизация). Новое входящее цепочку не читает — только свою ветку (18.11).
+     * когда письмо наше (`OnMessage::onSent`) или новое (`arrived`).
      *
+     * @param  list<int>  $except  части того же письма — не трогать
      * @return list<int>
      */
-    public function chain(Message $message): array
+    public function chain(Message $message, array $except = []): array
     {
         if (! $message->date_at || ! ($threads = self::chainThreads($message))) {
             return [];
         }
         $ids = Message::whereIn('thread_id', $threads)->where('direction', Direction::In)->where('is_seen', false)
-            ->where('date_at', '<', $message->date_at)->pluck('id')->all();
+            ->where('date_at', '<', $message->date_at)->when($except, fn ($q) => $q->whereNotIn('id', $except))->pluck('id')->all();
 
         return $this->mark->apply($ids, true);
     }
 
-    /** В цепочке позже письма есть прочитанное или наше — оно прочитано по `chain` (страж синхронизации флагов). */
+    /** В цепочке позже письма есть другое — оно прочитано по `chain` / `arrived` (страж синхронизации флагов). */
     public static function settledInChain(Message $message): bool
     {
         return $message->date_at && ($threads = self::chainThreads($message)) && Message::whereIn('thread_id', $threads)
-            ->where('id', '!=', $message->id)->where('date_at', '>', $message->date_at)
-            ->where(fn ($q) => $q->where('is_seen', true)->orWhere('direction', Direction::Out))->exists();
+            ->where('id', '!=', $message->id)->where('date_at', '>', $message->date_at)->exists();
     }
 
     /** Ветки цепочки письма — подзапросом; ветки нет — null. */

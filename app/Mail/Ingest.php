@@ -60,7 +60,13 @@ final class Ingest
         }
         // Ветка уже привязана — файлы этого письма едут к машине; если привяжется сейчас (OnMessage), LinkThread поставит джобу на всю ветку.
         $linked = $message->thread?->isLinked() ?? false;
+        $first = $message->thread_id !== $was;
         MessageParsed::dispatch($message, $quiet);
+        // Ветка привязана к делу (`OnMessage`) — непрочитанным во всей цепочке остаётся только это письмо (`ReadEarlier::arrived`).
+        if ($first && ($fresh = $message->fresh(['account', 'thread'])) && in_array($message->id, $this->readEarlier->arrived($fresh), true)) {
+            $message->is_seen = true;
+            $message->syncOriginalAttribute('is_seen');
+        }
         if ($linked) {
             ImportThreadFiles::dispatch($message->thread_id, $message->id);
         }

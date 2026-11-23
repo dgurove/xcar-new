@@ -34,8 +34,7 @@ class ReadSettledCommand extends Command
               exists(select 1 from mail_messages x where x.thread_id = m.thread_id and x.id <> m.id
                 and (x.date_at > m.date_at or (x.date_at = m.date_at and x.id > m.id))) later,
               exists(select 1 from mail_messages x join mail_threads tx on tx.id = x.thread_id join mail_accounts ax on ax.id = x.account_id
-                where ax.scope = a.scope and (case when ax.scope = 'park' then coalesce('v:' || tx.vehicle_id, 'c:' || tx.candidate_id, 't:' || tx.id) else coalesce('o:' || tx.offer_id, 'c:' || tx.candidate_id, 't:' || tx.id) end) = (case when a.scope = 'park' then coalesce('v:' || t.vehicle_id, 'c:' || t.candidate_id, 't:' || t.id) else coalesce('o:' || t.offer_id, 'c:' || t.candidate_id, 't:' || t.id) end) and x.date_at > m.date_at
-                and (x.is_seen or x.direction = 'out')) chain_later,
+                where ax.scope = a.scope and (case when ax.scope = 'park' then coalesce('v:' || tx.vehicle_id, 'c:' || tx.candidate_id, 't:' || tx.id) else coalesce('o:' || tx.offer_id, 'c:' || tx.candidate_id, 't:' || tx.id) end) = (case when a.scope = 'park' then coalesce('v:' || t.vehicle_id, 'c:' || t.candidate_id, 't:' || t.id) else coalesce('o:' || t.offer_id, 'c:' || t.candidate_id, 't:' || t.id) end) and x.date_at > m.date_at) chain_later,
               exists(select 1 from reply_reviews r join mail_messages rm on rm.id = r.message_id where r.state = 'done'
                 and rm.thread_id = m.thread_id and rm.date_at >= m.date_at) reviewed,
               exists(select 1 from offer_reprices rp where rp.message_id = m.id and rp.state in ('applied', 'dismissed')) repriced,
@@ -72,7 +71,7 @@ class ReadSettledCommand extends Command
         $left = [];
         foreach ($rows as $r) {
             $reason = match (true) {
-                (bool) $r->chain_later => 'позже в цепочке прочитанное или наше',
+                (bool) $r->chain_later => 'позже в цепочке есть письмо',
                 (bool) $r->later => 'позже в ветке есть письмо',
                 $r->ostate && in_array($r->ostate, $settled, true) && $r->date_at <= ($moved[$r->car_id.':'.$r->ostate]->at ?? $dealStart[$r->oid] ?? '') => 'до перехода: '.$r->ostate,
                 $r->candidate_id && $r->oid && isset($byHand[$r->car_id]) && $r->date_at <= $r->ocreated => 'черновик завели из цепочки',
