@@ -1,7 +1,9 @@
 {{-- Строка «Ваш ход» в «Сделках» CRM (27.10.2026, владелец: «не видно, что нужно сделать, а что просто просрочено»): что
      сделать — заголовок группы, здесь машина, вендор с убытком, менеджер, сколько ждёт числом (серым; срок вышел — красным,
      без слова «просрочено») и кнопка дела. Рыжего нет: вся группа — наш ход. Столбцы — `DealController::table('us')`. --}}
-@props(['deal', 'todo', 'table'])
+{{-- debt — долг сделки во вкладке «Менеджер должен нам» (`DealDebt`, 24.11.2026, владелец: «непонятно сколько и за что»):
+     столбцы «За что», «Должен», «Срок» вместо «Ждёт»; на телефоне под названием — «за ТС 620 000 ₽» и срок цветом. --}}
+@props(['deal', 'todo', 'table', 'debt' => null])
 @php
     $offer = $deal->offer;
     $position = $offer->position();
@@ -29,7 +31,11 @@
         @case('title')
     <td class="{{ $col->classes() }}">
         <x-cell.title :key="$deal->offer->number" :offer="$offer">@if ($garage)<span class="ms-1.5 whitespace-nowrap text-sm text-ink-muted">гараж</span>@endif</x-cell.title>
+        @if ($table->has('owed'))
+        <span class="cell-sub sm:hidden">@if ($debt){{ $debt->what ?: 'долг' }} <span class="nums {{ $debt->late() ? 'text-danger' : '' }}">{{ \App\Support\Money::rub($debt->owed) }}</span> <span class="inline-block whitespace-nowrap {{ $debt->dueTone() }}">{{ $debt->dueWord() }}</span>@endif</span>
+        @else
         <span class="cell-sub sm:hidden">@if ($ask){{ \Illuminate\Support\Str::ucfirst($ask->phrase()) }}@else<x-vendor.ref :vendor-id="$offer->vendor_id" :ref="$offer->claim_ref">@if ($burning)<x-offer.binding :offer="$offer" icon/>@endif</x-vendor.ref>@endif{{ "" }}@if ($wait && ! $inButton) <span class="inline-block whitespace-nowrap {{ $tone }}">{!! $wait !!}</span>@endif</span>
+        @endif
     </td>
         @break
         @case('vendor')
@@ -40,6 +46,16 @@
         @break
         @case('manager')
     <td class="{{ $col->classes() }}"><x-cell.person :user="$deal->buyer" from="lg"/></td>
+        @break
+        @case('what')
+    <td class="{{ $col->classes() }} {{ $debt ? '' : 'text-ink-dim' }}" @if ($debt) title="{{ $debt->label() }}" @endif>{{ $debt?->label() ?? '—' }}</td>
+        @break
+        @case('owed')
+    {{-- Просроченная часть — красным; весь долг просрочен — всё число красным. --}}
+    <td class="{{ $col->classes() }} {{ $debt && $debt->overdue >= $debt->owed && $debt->late() ? 'text-danger' : '' }}">@if ($debt){{ \App\Support\Money::rub($debt->owed) }}@if ($debt->late() && $debt->overdue < $debt->owed)<span class="cell-sub text-danger">просрочено {{ \App\Support\Money::rub($debt->overdue) }}</span>@endif @endif</td>
+        @break
+        @case('due')
+    <td class="{{ $col->classes() }} whitespace-nowrap {{ $debt?->dueTone() }}">{{ $debt?->dueWord() }}</td>
         @break
         @case('wait')
     <td class="{{ $col->classes() }} whitespace-nowrap {{ $tone }}">{!! $wait !!}</td>

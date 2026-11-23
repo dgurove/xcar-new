@@ -46,7 +46,31 @@ final class DealDebt
         public readonly ?string $later,          // срока ещё нет: «после договора»
         public readonly string $status = '',     // что с оплатой: «счёта нет: не указал покупателя», «счёт от 24 окт»
         public readonly bool $ours = false,      // мешаем мы: счёт выставить, долю вписать
+        public readonly string $what = '',       // за что: «за ТС», «за ТС и подбор», «подбор», «поставщику» (24.11.2026)
     ) {}
+
+    /**
+     * За что долг словом (24.11.2026, владелец про «Менеджер должен нам»: «непонятно сколько и за что»): по видам открытых счетов —
+     * счёт за ТС ПРАЙМ / Р.О.С. с подбором внутри (`InvoiceSplit::splits`) — «за ТС и подбор», подбор — «подбор», ручная ссылка — «по
+     * ссылке», прочее — словом вида.
+     *
+     * @param  iterable<Invoice>  $open
+     */
+    private static function whatOf(iterable $open, Deal $deal): string
+    {
+        return collect($open)->map(fn (Invoice $i) => match ($i->kind) {
+            ChargeKind::Sale => InvoiceSplit::splits($i, $deal) ? 'за ТС и подбор' : 'за ТС',
+            ChargeKind::Selection => 'подбор',
+            ChargeKind::Service => 'по ссылке',
+            default => mb_strtolower($i->kind->label()),
+        })->unique()->implode(' и ');
+    }
+
+    /** «За что» и что с оплатой одной фразой: «за ТС, счёт от 20.11». */
+    public function label(): string
+    {
+        return implode(', ', array_filter([$this->what, $this->status]));
+    }
 
     /** Нам ничего не должны и не будут — null; всё оплачено — `owed` 0. */
     public static function of(Deal $deal): ?self
@@ -67,7 +91,7 @@ final class DealDebt
             };
 
             return new self($owed, round($open->filter->isOverdue()->sum(fn (Invoice $i) => $i->remaining()), 2), $first->due_at,
-                $claimed, $first->due_at ? null : $first->laterLabel(), $status, $claimed);
+                $claimed, $first->due_at ? null : $first->laterLabel(), $status, $claimed, self::whatOf($open, $deal));
         }
         if ($invoices->contains(fn (Invoice $i) => ! $i->isOwed())) {
             return new self(0, 0, null, false, null, 'оплачено');
@@ -88,11 +112,18 @@ final class DealDebt
         // шаг оплаты прошёл сам, сюда сделка не попадает.
         $got = DealDates::throughUs($deal) ? MoneyIn::received($deal) : 0;
         $due = $deal->payDue();
+        // Счёта нет: ПРАЙМ / Р.О.С. — платёж нам за ТС (с подбором, если цена выше закупочной), гаражная — за ТС, иначе — платёж
+        // поставщику на шаге оплаты.
+        $what = match (true) {
+            $deal->isPrime() && ! $deal->isGarage() => $deal->cost !== null && (int) $deal->amount > (int) $deal->cost ? 'за ТС и подбор' : 'за ТС',
+            $deal->isGarage() => 'за ТС',
+            default => 'поставщику',
+        };
         if ($got > 0 && $got < $amount) {
             $rest = round($amount - $got, 2);
             $late = $due && $due->copy()->startOfDay()->lt(today());
 
-            return new self($rest, $late ? $rest : 0, $due, false, null, 'пришло '.Money::nums($got).' из '.Money::nums($amount), false);
+            return new self($rest, $late ? $rest : 0, $due, false, null, 'пришло '.Money::nums($got).' из '.Money::nums($amount), false, $what);
         }
         $gap = $deal->invoiceGap();
         $late = $due && $due->copy()->startOfDay()->lt(today());
@@ -105,7 +136,7 @@ final class DealDebt
             default => ['счёта нет: '.mb_lcfirst(Position::gapAction(in_array($gap, ['share', 'commission', 'ros_requisites'], true) ? $gap : 'invoice', $deal)['button']), true],
         };
 
-        return new self($amount, $late ? $amount : 0, $due, false, null, $status, $ours);
+        return new self($amount, $late ? $amount : 0, $due, false, null, $status, $ours, $what);
     }
 
     public function paid(): bool

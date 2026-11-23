@@ -170,6 +170,17 @@ class DealController
         $groups = $whole !== null ? self::stageGroups($whole, $live) : null;
         // «Менеджер должен нам» — сверху итог: кто сколько должен нам (27.10.2026, `DealDebt`).
         $debts = $whole !== null && $preset === 'paying' ? self::debts($whole) : null;
+        // Строка — сколько, за что и срок (24.11.2026, владелец: «непонятно сколько и за что»): долг сделки к строке, в группе —
+        // сначала просроченные, дальше по сроку, сумма — в заголовке группы.
+        if ($debts !== null && $groups !== null) {
+            $of = $whole->mapWithKeys(fn (Deal $d) => [$d->id => DealDebt::of($d)]);
+            $groups = $groups->map(function (array $g) use ($of) {
+                $rows = $g['rows']->map(fn ($r) => [...$r, 'debt' => $of[$r['deal']->id] ?? null])
+                    ->sortBy(fn ($r) => [$r['debt']?->late() ? 0 : 1, $r['debt']?->due?->getTimestamp() ?? PHP_INT_MAX])->values();
+
+                return [...$g, 'rows' => $rows, 'sum' => $rows->sum(fn ($r) => $r['debt']?->owed ?? 0)];
+            });
+        }
         $table = ListView::isTable(ListView::pick($request, 0));
         $deals = match (true) {
             $whole !== null => new LengthAwarePaginator([], $whole->count(), 1),
@@ -250,7 +261,7 @@ class DealController
      * (`x-deal.todo-row`): что сделать или кого ждём — заголовок группы, у строки — сколько ждёт и кнопка дела. «Завершённые» и
      * лупа — таблица с этапом, оплатой и суммой (`x-deal.table-row`).
      */
-    public static function table(bool $staged = false, bool $actions = true, bool $asked = false): Table
+    public static function table(bool $staged = false, bool $actions = true, bool $asked = false, bool $debt = false): Table
     {
         $title = new Column('title', 'Марка, модель', grow: true);
         // Ширина у каждого столбца (29.10.2026): без неё `x-ui.table :rest` гадали числом в виде, и название то резалось, то
@@ -261,8 +272,13 @@ class DealController
         return $staged
             // Кнопка дела — самой правой, за сроком «Ждёт».
             // «Доп. просьба» (18.11.2026) — что попросили у поставщика, своим столбцом: группа говорит, чего ждём, строка — о чём.
-            ? Table::of(...array_filter([$title, $vendor, $asked ? new Column('asked', 'Попросили', from: 'sm', clip: true, cell: 'whitespace-nowrap', role: ColRole::State, rem: 16) : null, $manager,
-                new Column('wait', 'Ждёт', from: 'sm', role: ColRole::When, rem: 8), $actions ? new Column('action', role: ColRole::When, rem: 9) : null]))
+            ? Table::of(...array_filter([$title, $vendor, $asked ? new Column('asked', 'Попросили', from: 'sm', clip: true, cell: 'whitespace-nowrap', role: ColRole::State, rem: 16) : null,
+                // «Менеджер должен нам» (24.11.2026): за что, сколько и срок оплаты — вместо «Ждёт» (`DealDebt`).
+                $debt ? new Column('what', 'За что', from: 'sm', clip: true, role: ColRole::State, rem: 16) : null,
+                $manager,
+                $debt ? new Column('owed', 'Должен', from: 'sm', num: true, class: 'nums', rem: 8) : null,
+                $debt ? new Column('due', 'Срок', from: 'sm', role: ColRole::When, rem: 8) : new Column('wait', 'Ждёт', from: 'sm', role: ColRole::When, rem: 8),
+                $actions ? new Column('action', role: ColRole::When, rem: 9) : null]))
             : new Table([$title, $vendor, new Column('number', '№', from: '2xl', class: 'nums', role: ColRole::Code, rem: 7), $manager,
                 new Column('stage', 'Этап', from: 'sm', role: ColRole::State, rem: 12),
                 new Column('term', 'Что сейчас', from: 'sm', sort: 'deadline', role: ColRole::When, rem: 9),
