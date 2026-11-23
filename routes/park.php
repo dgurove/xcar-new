@@ -82,6 +82,7 @@ Route::domain(config('xcar.park_host'))->middleware(['auth', 'section:park'])->g
     Route::delete('/cars/{vehicle}/media/{media}', [VehicleController::class, 'destroyMedia'])->middleware('park.manage');
     // Переименовать документ (13.11.2026, Сергей): всем людям парковки, как добавить; удалить — управляющему.
     Route::patch('/cars/{vehicle}/media/{media}', [VehicleController::class, 'renameMedia']);
+    Route::post('/cars/{vehicle}/media/{media}/scan', [VehicleController::class, 'scanMedia']);
     Route::post('/cars/{vehicle}/note', [VehicleController::class, 'note']);
     // Отчёт о приёме вендору: письмо из формы и «Уже отправили» (12.10.2026).
     // Окно действия (x-park.act-window): шаги приёма, выдачи и письма вендору; приём и выдача без заявки заводят её сами.

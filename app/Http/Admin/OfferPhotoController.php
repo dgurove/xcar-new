@@ -3,6 +3,10 @@
 namespace App\Http\Admin;
 
 use App\Mail\Extraction\ArchivePhotoExtractor;
+use App\Mail\Extraction\DocumentText;
+use App\Mail\Scan\OfferSubject;
+use App\Mail\Scan\Paper;
+use App\Mail\Scan\Reader;
 use App\Media\Actions\RotatePhoto;
 use App\Media\Actions\UnmarkPhoto;
 use App\Media\DocName;
@@ -140,6 +144,23 @@ class OfferPhotoController
         ForManagers::toggle($media);
 
         return $this->gallery($offer->refresh());
+    }
+
+    /**
+     * «Распознать» в меню документа (23.11.2026, владелец: «распознания очень не хватает: документ прикреплён, почему-то не
+     * распознался, и непонятно, как запустить»): прочитанный текст забыт, документ читается заново впереди очереди; по концу
+     * чтения найденное встаёт само или вариантами в сводке ТС (`AutoScan::finished` → `Cars\Sources\Collect`).
+     */
+    public function scan(Request $request, Offer $offer, Media $media)
+    {
+        $this->own($offer, $media);
+        abort_unless($media->collection_name === 'papers', 404);
+        $file = new Paper($media);
+        abort_unless(DocumentText::scannable($file), 422, 'Этот файл не распознать');
+        DocumentText::forget($file);
+        Reader::read(OfferSubject::for($offer, $request->user()), [$file->scanId()]);
+
+        return back()->with('toast', 'Распознаём документ: найденное встанет в данные ТС');
     }
 
     public function visibility(Request $request, Offer $offer)

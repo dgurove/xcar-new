@@ -73,7 +73,8 @@
         <div class="row justify-between"><span class="text-ink-muted">Хранение в счёте вендору за {{ now()->locale('ru')->isoFormat('MMMM') }}</span><span class="nums text-ink-muted">{{ Money::rub($vendorDue) }}</span></div>
     @endif
 </div>
-<x-park.photos :vehicle="$vehicle" :stage="PhotoStage::Release" nested :collapsed="! $win" edit :files="$win" class="mt-3"/>
+{{-- Кадры выдачи — пачкой своей стадии, съёмка в её шторке (23.11.2026, владелец: «тоже пачкой»); в окне — и файлы («Акт выдачи»). --}}
+<div class="mt-3">@include('park.vehicles.detail-photos', ['root' => 'step-photos', 'mode' => 'step', 'only' => PhotoStage::Release, 'files' => $win])</div>
 {{-- Редкие исходы — серым текстом в одну строку по центру, как второстепенные действия внизу листа в приложениях (16.11.2026,
      владелец: пилюли «Покупатель отказался» и «Выдать без QR» стояли вразнобой и «по-дурацки»). В окне — в подвале под «Выдать». --}}
 @php

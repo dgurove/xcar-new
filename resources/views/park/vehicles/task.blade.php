@@ -20,5 +20,6 @@
             <form method="post" action="/requests/{{ $t->id }}/plan" id="insp-plan-{{ $t->id }}" hidden>@csrf</form>
         </div>
     @endif
-    <x-mail.letters :messages="$messages" :url="'/cars/'.$vehicle->id.'/letters'" :stages="[$taskLetterId]"/>
+    {{-- «Написать / Ответить» словами в строке темы, как в CRM (23.11.2026: «единые модули»); у закрытого дела — без ответа. --}}
+    <x-mail.letters :messages="$messages" :url="'/cars/'.$vehicle->id.'/letters'" :stages="[$taskLetterId]" :reply="! $vehicle->state->isFinal()"><x-slot:tools></x-slot:tools></x-mail.letters>
 </section>

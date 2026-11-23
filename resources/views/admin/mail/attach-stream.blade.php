@@ -5,7 +5,6 @@
 <turbo-stream action="replace" target="gallery"><template>@include('admin.offers.gallery', ['offer' => $model])</template></turbo-stream>
 <turbo-stream action="replace" target="papers"><template>@include('admin.offers.papers', ['offer' => $model])</template></turbo-stream>
 @else
-<turbo-stream action="replace" target="photos-{{ \App\Park\PhotoStage::Vendor->value }}"><template><x-park.photos :vehicle="$model" :stage="\App\Park\PhotoStage::Vendor"/></template></turbo-stream>
+<turbo-stream action="replace" target="case-photos"><template>@include('park.vehicles.detail-photos', ['vehicle' => $model, 'root' => 'case-photos', 'mode' => 'case'])</template></turbo-stream>
 <turbo-stream action="replace" target="papers"><template>@include('park.vehicles.papers', ['vehicle' => $model])</template></turbo-stream>
-<turbo-stream action="replace" target="papers-chips"><template>@include('park.vehicles.papers-chips', ['vehicle' => $model])</template></turbo-stream>
 @endif

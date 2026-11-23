@@ -16,7 +16,6 @@
     $dealChat = $deal?->isActive() && $deal->buyer;
     $otherChats = $car->otherChats();
     $chatUnread = $otherChats->sum('unread_for_staff');
-    $docs = $selling ? [] : \App\Offers\OfferFiles::docs($offer, \App\Offers\OfferFiles::threads($offer));
     $form = 'detail-edit-'.$n;
     // Заведённая машина — сеткой ниже хода сделки (`x-car.summary`), правка — шторкой «Данные ТС» (23.11.2026, владелец выбрал
     // из макетов; № убытка и VIN — по-прежнему тегами под названием). Пустой черновик — разделами полей, как было.
@@ -81,9 +80,6 @@
                     @if (! $holderActs && $personDeal)<x-deal.person-link :deal="$personDeal" pill/>@endif
                 </div>
             @endif
-            {{-- Документы — сами файлы чипами одной строкой с прокруткой вбок (12.11.2026, владелец: «реальные чипы документов,
-                 если pdf — то pdf, цвет и имя»), а не пилюлей «Документы N». --}}
-            @if ($docs)<x-ui.docs-chips :docs="$docs"/>@endif
             {{-- Что сейчас: черновик — «Цены» по шагам (метки — под блоком), открытое — «Приём», слот, аукцион, архив, «Без
                  подтверждений» — плашкой с кнопками; оценённый — ответы менеджеров на корректировку. --}}
             @if ($steps)
@@ -103,14 +99,12 @@
                  несколько раз дублируется»): путь — текущим шагом, вывоз — без лесенки, деньги — без числа шапки, без ДКП. --}}
             @if ($admin || ($deals && ($deal || $garageCar)))<div class="@container/lanes min-w-0">@include('admin.offers.lanes', ['compact' => true])</div>@endif
             @if ($carAside)<section><x-car.summary :offer="$offer" :sheet="'car-edit-'.$n" as="section" :codes="false" :place="false"/></section>@endif
-            {{-- Доп. запрос поставщику (17.11.2026, `x-offer.extra-request`) — над письмами: последний запрос и «Сделать доп. запрос». --}}
-            @if ($extraRequest)<x-offer.extra-request :offer="$offer" :messages="$messages"/>@endif
-            {{-- Письма — все строками, как в «Почте»: по ним заполняют поля и оценивают (11.10.2026). --}}
-            @if ($letters)
-                <section>
-                    <x-mail.letters :messages="$messages" :url="'/offers/'.$n.'/letters'" :asks="$asks" :stages="$stages" split/>
-                </section>
-            @endif
+            {{-- Документы в сделке и гараже — тем же разделом, что у продающейся и на странице (23.11.2026, владелец: «в окне сделки
+                 тоже документ надо нормально отображать»; были чипами в шапке без «кто видит»): строка открывает, «⋯» — меню. --}}
+            @unless ($selling)@include('admin.offers.papers-block', ['inHead' => true, 'asSection' => true])@endunless
+            {{-- Письма и доп. просьбы — тем же куском, что на странице (23.11.2026: «единые модули»): «Написать» и «+ Доп. просьба» словами. --}}
+            @php $mailCard = $letters && collect($messages)->isNotEmpty(); @endphp
+            @if ($mailCard || $extraRequest)<section class="flex flex-col gap-4">@include('admin.offers.mail-card')</section>@endif
             {{-- Одна форма окна: «Цены» и поля ТС, пока машина продаётся; «Показ» — тот же модуль, что на странице. --}}
             <form method="post" action="/offers/{{ $n }}" id="{{ $form }}" class="detail-edit flex flex-col gap-5" @if ($admin) data-price-guard="edit" data-price-guard-offer="{{ $n }}" @endif data-controller="vin save-bar" data-save-bar-partial-value="true" data-save-bar-dirty-value="{{ $errors->any() && old('_fields') !== null ? 'true' : 'false' }}" data-save-bar-sent-value="{{ json_encode(array_values((array) old('_fields', []))) }}" data-turbo-frame="detail">
                 @csrf @method('put') @if ($errors->has('price_check'))<input type="hidden" name="price_ok" value="1">@endif

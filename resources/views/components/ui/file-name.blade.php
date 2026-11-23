@@ -8,4 +8,5 @@
     $ext = preg_match('/(?<=.)\.(?=[a-z0-9]{0,4}[a-z])[a-z0-9]{1,5}$/iu', $name, $m) ? $m[0] : '';
     $dot = $ext === '' ? false : mb_strlen($name) - mb_strlen($ext);
 @endphp
-{{ $ext === '' ? $name : mb_substr($name, 0, $dot) }}@if ($ext !== '')<span class="file-ext">{{ $ext }}</span>@endif
+{{-- Длинное имя режется «…» в основе, расширение остаётся целым («Акт-приема-…-26.docx», а не «…26.do…», логистика). --}}
+@if ($ext === ''){{ $name }}@else<span class="fname"><span class="fname-base">{{ mb_substr($name, 0, $dot) }}</span><span class="file-ext">{{ $ext }}</span></span>@endif

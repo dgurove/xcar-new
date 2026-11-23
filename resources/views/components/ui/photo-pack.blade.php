@@ -5,8 +5,9 @@
      Пачки стоят рядом сеткой `.photo-packs` (две в строку). Обёртка — сам photos_controller (значения — атрибутами) и
      sheet_controller; слот — тело шторки: поле выбора файлов и `x-ui.photos grid`. Глаз считается так же, как в ряду
      (`hideBy` или `Media\Hidden`); счёт и тусклую обложку после нажатий пересчитывает контроллер (`count`, `cover`).
-     hide=false — глаза нет, под обложкой просто «N фото». --}}
-@props(['id', 'photos', 'title' => null, 'when' => null, 'hide' => true, 'hideBy' => null, 'mainId' => null])
+     hide=false — глаза нет, под обложкой просто «N фото». all=false — без «Скрыть все» (логистика: глаз там — «видит исполнитель»,
+     пачкой его не ставят). Слот `bar` — свои действия справа в строке счёта шторки («Документ из фото» в окнах приёма и выдачи). --}}
+@props(['id', 'photos', 'title' => null, 'when' => null, 'hide' => true, 'hideBy' => null, 'mainId' => null, 'all' => true])
 @php
     $hidden = fn ($m) => $hide && ($hideBy ? $hideBy($m) : \App\Media\Hidden::is($m));
     $total = $photos->count();
@@ -36,7 +37,7 @@
         <span class="photo-pack-sub photo-count" data-photos-target="count">@if ($eye)<x-ui.icon name="eye" class="size-3.5"/>@endif{{ $words }}</span>
     </button>
     <x-ui.sheet :id="$id.'-pack'" :title="$head" wide class="photo-pack-sheet">
-        <div class="photo-pack-bar"><span class="photo-count" data-photos-target="count">@if ($eye)<x-ui.icon name="eye" class="size-3.5"/>@endif{{ $words }}</span>@if ($hide)<x-ui.photos-all/>@endif</div>
+        <div class="photo-pack-bar"><span class="photo-count" data-photos-target="count">@if ($eye)<x-ui.icon name="eye" class="size-3.5"/>@endif{{ $words }}</span><span class="flex items-center gap-4">@isset($bar){{ $bar }}@endisset @if ($hide && $all)<x-ui.photos-all/>@endif</span></div>
         {{ $slot }}
     </x-ui.sheet>
 </div>

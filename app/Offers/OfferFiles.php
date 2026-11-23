@@ -4,12 +4,10 @@ namespace App\Offers;
 
 use App\Mail\Candidate;
 use App\Mail\Chains\NodeTitle;
-use App\Mail\Direction;
 use App\Mail\Message;
 use App\Mail\Scope;
 use App\Mail\Thread;
 use App\Media\ForManagers;
-use App\Support\Docs;
 use App\Users\User;
 use Illuminate\Support\Collection;
 
@@ -19,12 +17,6 @@ use Illuminate\Support\Collection;
  */
 final class OfferFiles
 {
-    /** Ветки писем предложения. */
-    public static function threads(Offer $offer): Collection
-    {
-        return Thread::where('offer_id', $offer->id)->get();
-    }
-
     /**
      * Карточка «Письма» (x-mail.letters): все письма по машине строками, как в «Почте», — те же ветки, что окно писем
      * (`Thread::ofCar`: ящики продаж, у того, кто ведёт парковку, ещё ветки её ТС), поэтому число в заголовке и окно
@@ -49,28 +41,6 @@ final class OfferFiles
             'asks' => $messages->filter(fn (Message $m) => in_array($m->thread_id, $waiting, true) && ! $m->isOurs())->groupBy('thread_id')->map->last()->values(),
             'stages' => $messages->isEmpty() ? collect() : collect(Candidate::where('offer_id', $offer->id)->latest('id')->first(['id', 'stages'])?->stages ?? [])->pluck('message_id'),
         ];
-    }
-
-    public static function docs(Offer $offer, Collection $threads): array
-    {
-        // Входящие, а не «не наши»: сотрудник пересылает письмо вендора со своего ящика — это оно же, в цитате. Письма
-        // ТС парковки сюда не идут (почта сторон не пересекается) — их файлы уже лежат у ТС, `papers()` их видит.
-        $letters = Message::with(['attachments', 'account'])->whereIn('thread_id', $threads->pluck('id'))->where('direction', Direction::In)->orderBy('date_at')->get();
-        $letter = $letters->first(fn (Message $m) => ! $m->isOurs()) ?? $letters->first();
-        // «Вся переписка» у письма в шторке — окно-лента всех веток предложения на его же странице.
-        $thread = $threads->isNotEmpty() ? "/offers/{$offer->number}?window=/offers/{$offer->number}/letters" : null;
-        $papers = $offer->papers();
-        $names = $papers->pluck('file_name')->map(fn ($n) => Docs::norm($n))->all();
-        ['docs' => $files, 'photos' => $pictures] = Docs::fromLetters($letters, '/work/mail');
-        $photos = $offer->photos();
-
-        return array_values(array_filter([
-            $letter ? Docs::letter($letter, '/work/mail', $thread) : null,
-            ...$papers->map(fn ($m) => Docs::media($m))->all(),
-            ...array_filter($files, fn ($d) => ! in_array(Docs::norm($d['name']), $names, true)),
-            // Свои фото — лентой сверху окна, чипа «Фото 98» нет (16.11.2026, владелец: «юзлес»); своих нет — картинки из писем чипом.
-            $photos->isNotEmpty() ? null : Docs::photos($pictures, '/work/mail'),
-        ]));
     }
 
     /** Документы ТС тому, кто с ней работает: сотруднику — все, менеджеру — отмеченные «Видно менеджеру». Писем нет. */

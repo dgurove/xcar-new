@@ -294,6 +294,15 @@ final class DocumentText
         return [$path];
     }
 
+    /**
+     * Забыть прочитанное — «Распознать» у документа (23.11.2026, владелец: «документ прикреплён, почему-то не распознался, и
+     * непонятно, как запустить»): без этого чтение файл с готовым текстом пропускает.
+     */
+    public static function forget(ScanFile $attachment): void
+    {
+        Storage::disk(Parts::CACHE_DISK)->delete(self::key($attachment));
+    }
+
     private static function put(ScanFile $attachment, string $text): void
     {
         Storage::disk(Parts::CACHE_DISK)->put(self::key($attachment), $text);

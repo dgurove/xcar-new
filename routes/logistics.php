@@ -77,6 +77,7 @@ Route::domain(config('xcar.logistics_host'))->middleware(['auth', 'ability:canLo
     // Фото и документы машины: глаз «кто видит» (кадр — `photos#hide`, документ — кнопка в строке).
     Route::post('/transports/{transport}/files/{media}/hide', [TransportController::class, 'fileEye']);
     Route::post('/transports/{transport}/files/{media}/eye', [TransportController::class, 'fileEye']);
+    Route::patch('/transports/{transport}/files/{media}', [TransportController::class, 'renameFile']);
     Route::post('/transports/{transport}/papers', [TransportController::class, 'paper']);
     Route::put('/transports/{transport}/details', [TransportController::class, 'details']);
     Route::post('/transports/{transport}/pickup', [TransportController::class, 'pickup']);

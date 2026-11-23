@@ -47,15 +47,13 @@
             </x-ui.card>
         </form>
 
-        <x-ui.card title="Фотографии" class="order-2 lg:col-span-2" data-controller="photos" data-photos-url-value="/purchases/cars/{{ $car->id }}/media">
-            <input type="file" accept="image/*,.heic" multiple class="sr-only" tabindex="-1" data-photos-target="input" data-action="change->photos#upload">
+        <x-ui.card class="order-2 !pb-3 lg:col-span-2">
             @if ($car->cloud_url || $car->photos_state->needsAttention())
                 <div class="mb-3 flex flex-wrap items-center gap-2">
                     <x-ui.state :tone="$car->photos_state->needsAttention() ? 'urgent' : 'plain'">{{ $car->photos_state->label() }}{{ $car->photos_error ? ': '.$car->photos_error : '' }}</x-ui.state>
                     @if ($car->cloud_leftovers)<span class="text-sm text-ink-muted">В облаке осталось: {{ collect($car->cloud_leftovers)->pluck('name')->implode(', ') }}</span>@endif
                 </div>
             @endif
-            <div hidden data-photos-target="progress" class="mb-3"><div class="mb-1 text-sm text-ink-muted" data-label></div><div class="h-1.5 overflow-hidden rounded-full bg-surface-3"><div class="h-full bg-accent transition-[width]" data-bar style="width:0"></div></div></div>
             @include('admin.purchases.gallery')
         </x-ui.card>
 

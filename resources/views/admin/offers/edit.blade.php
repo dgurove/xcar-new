@@ -121,20 +121,7 @@
         @php $mailCard = $letters && auth()->user()->canCrmMail() && collect($messages)->isNotEmpty(); @endphp
         @if ($mailCard || $extraRequest)
             <x-ui.card class="order-1 flex flex-col gap-4 @4xl:order-none">
-                @if ($mailCard)
-                    {{-- «Ответить» и «Доп. просьба» — лаймовыми словами справа под темой писем (23.11.2026, владелец выбрал из макетов). --}}
-                    @php $hasAsks = $extraRequest && \App\Offers\ExtraAsk::where('offer_id', $offer->id)->exists(); @endphp
-                    <x-mail.letters :messages="$messages" :url="'/offers/'.$n.'/letters'" :asks="$asks" :stages="$stages" split>
-                        <x-slot:tools>
-                            @if ($extraRequest)<button type="button" class="letters-act" data-controller="emit" data-action="emit#send" data-emit-event-param="letters:open" data-emit-url-param="/work/mail/new?offer={{ $n }}&extra=1"><x-ui.icon name="plus" class="size-4"/>Доп. просьба</button>@endif
-                        </x-slot:tools>
-                        @if ($hasAsks)
-                            <x-slot:above><x-offer.extra-request :offer="$offer" :messages="$messages" :compose="false" class="mb-4"/></x-slot:above>
-                        @endif
-                    </x-mail.letters>
-                @elseif ($extraRequest)
-                    <x-offer.extra-request :offer="$offer" :messages="$messages"/>
-                @endif
+                @include('admin.offers.mail-card')
             </x-ui.card>
         @endif
         <form method="post" action="/offers/{{ $n }}" id="offer-form" @if (auth()->user()->canManageCrm()) data-price-guard="edit" data-price-guard-offer="{{ $n }}" @endif data-controller="vin draft save-bar next glow empty-blocks{{ $empty ? ' drop-empty' : '' }}" data-glow-fields-value="{{ json_encode($glow) }}" data-save-bar-dirty-value="{{ $errors->any() ? 'true' : 'false' }}" @if ($empty) data-drop-empty-url-value="/offers/{{ $n }}/drop-empty" @endif @class(['contents' => $carAside, 'order-3 flex flex-col gap-4 @4xl:order-none' => ! $carAside])>

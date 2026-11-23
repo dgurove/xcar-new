@@ -3068,13 +3068,20 @@ html.kb-open { --home-gap: 0px; }
   .file-row { @apply flex items-center gap-2 py-0.5; }
   /* Кто видит документ — подписью под именем внутри строки файла (`x-ui.file` слот `under`, 23.11.2026): «только мы» серым,
      открытый — именами лаймом («видит Иван Петров»); нажатие переключает. */
-  .paper-access { @apply block max-w-full truncate text-left text-xs text-ink-dim hover:text-ink-muted; }
-  .paper-access.is-open:hover { @apply text-accent-hover; }
+  .paper-access { @apply block max-w-full truncate text-xs text-ink-dim; }
+  /* Тумблер в пункте меню документа («Показывать менеджеру») — вид `.switch` без своего поля: пункт сам кнопка формы. */
+  .menu-switch { @apply relative ml-auto h-[1.375rem] w-9 shrink-0 rounded-full; background: rgb(120 120 128 / .32); transition: background-color var(--dur-fast); }
+  .menu-switch::before { content: ''; position: absolute; top: 2px; left: 2px; width: 1.125rem; height: 1.125rem; border-radius: 9999px; background: #fff; box-shadow: 0 1px 2px rgb(0 0 0 / .2); transition: translate var(--dur-fast); }
+  .menu-switch.is-on { background: var(--color-accent); }
+  .menu-switch.is-on::before { translate: .875rem 0; }
   .paper-access.is-open { @apply text-accent-text; }
   .file-name { @apply flex min-w-0 flex-1 flex-col; }
   .file-name > [data-file-name] { @apply truncate; }
   /* Расширение файла — приглушённо везде (`x-ui.file-name`, 23.11.2026, владелец). */
   .file-ext { color: var(--color-ink-dim); }
+  .fname { display: inline-flex; max-width: 100%; min-width: 0; vertical-align: bottom; }
+  .fname-base { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .fname > .file-ext { flex: none; }
   .file-sub { @apply truncate text-sm text-ink-muted; }
   .file-acts { @apply -mr-1 flex shrink-0 items-center gap-1.5; }
   /* Иконки действий: кнопка шириной с иконку и 4 px полей, между ними 6 px, высота 36 px — строки плотнее (13.11.2026). */
@@ -4065,6 +4072,9 @@ html.kb-open { --home-gap: 0px; }
   .more-pill::before { content: ''; position: absolute; inset: -.5rem -.25rem; }
   /* На сером фоне страницы — белая, иначе сливается (владелец: «если фон серый, кнопка белая»). */
   .more-pill--light { background: var(--color-surface); }
+  /* «⋯» у документа — просто точки без плашки (23.11.2026, владелец); нажатие — лёгкая подложка, как отклик. */
+  .more-pill.more-pill--bare { background: transparent; }
+  .more-pill.more-pill--bare:active, .more-pill.more-pill--bare[aria-expanded="true"] { background: var(--color-surface-2); }
   .more-pill:active, .more-pill[aria-expanded="true"] { background: var(--color-surface-3); color: var(--color-ink); }
   @media (hover: hover) { .more-pill:hover { background: var(--color-surface-3); color: var(--color-ink); } }
   .detail-head--stack .detail-aside { grid-column: 1 / -1; grid-row: 2; text-align: left; margin-top: .125rem; }
@@ -5436,9 +5446,6 @@ html[data-theme-switch] #header, html[data-theme-switch] #tabbar, html[data-them
   .photos-all[hidden] { display: none; }
   /* Идёт «Скрыть все» — кнопка бледная, а не молчит на повторное нажатие (08.10.2026). */
   .photos-all[aria-busy="true"] { opacity: .45; pointer-events: none; }
-  /* «Скрыть все» над сеткой кадров дела ТС на стоянке (`park/vehicles/photo-body`): справа, без видимой кнопки ряда нет. */
-  .photos-over { @apply mb-1.5 flex justify-end gap-4; }
-  .photos-over:not(:has(> button:not([hidden]))) { display: none; }
   /* Пачки кадров обложками (`x-ui.photo-pack`, 23.11.2026, владелец: ленты — «неудобно и некрасиво»): две в строку, подпись
      сверху, обложка 2:1 (владелец выбрал из макетов: 4:3 занимала полокна), «Открыто N из M» снизу. Одна пачка — на половину ширины; на широкой странице обложка не шире 16rem. */
   .photo-packs { display: grid; grid-template-columns: repeat(2, minmax(0, 16rem)); gap: .75rem; }

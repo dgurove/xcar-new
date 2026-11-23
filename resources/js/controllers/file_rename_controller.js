@@ -67,8 +67,10 @@ export default class extends Controller {
             // Расширение — приглушённо, как в разметке (`x-ui.file-name`).
             if (this.label) {
                 const ext = answer.name.match(EXT)?.[0] ?? '';
-                const tail = Object.assign(document.createElement('span'), { className: 'file-ext', textContent: ext });
-                this.label.replaceChildren(ext ? answer.name.slice(0, -ext.length) : answer.name, ...(ext ? [tail] : []));
+                const el = (cls, text) => Object.assign(document.createElement('span'), { className: cls, textContent: text });
+                const wrap = ext ? el('fname', '') : null;
+                if (wrap) wrap.append(el('fname-base', answer.name.slice(0, -ext.length)), el('file-ext', ext));
+                this.label.replaceChildren(wrap ?? answer.name);
             }
             // Шторка документов берёт имя из ссылки строки.
             // Ссылок с документом у строки бывает две (значок и имя, `x-ui.file` с подписью под именем) — обе.

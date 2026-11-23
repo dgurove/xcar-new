@@ -13,6 +13,7 @@
         </div>
     @endif
     @if ($photos->isNotEmpty())
-        <div data-controller="photos" data-photos-readonly-value="true" data-photos-group-value="car-{{ $vehicle->id }}" data-photos-order="{{ array_search(\App\Park\PhotoStage::from($stage), \App\Park\PhotoStage::cases(), true) }}"><x-ui.photos :photos="$photos" readonly grid :hide="false" :main="false" id="phase-{{ $step->key }}"/></div>
+        {{-- Пачкой своей стадии, только смотреть (23.11.2026: «единые модули»). --}}
+        @include('park.vehicles.detail-photos', ['root' => 'phase-'.$step->key, 'mode' => 'view', 'only' => \App\Park\PhotoStage::from($stage)])
     @endif
 </div>

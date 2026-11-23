@@ -13,8 +13,8 @@
     $handles = auth()->user()->parkHandles();
     $open = $req !== null;
     $cur = App\Park\Timeline::current($steps);
-    // Блок кадров стоит в ленте того шага, на котором их снимают, и справа на всех остальных: видны всегда.
-    $shooting = match ($cur?->key) { 'intake' => PhotoStage::Intake, 'release' => PhotoStage::Release, default => null };
+    // Машина заведена — данные сводкой под фото (`x-car.summary`), правка шторкой; без марки и модели — полями слева.
+    $carAside = $vehicle->brand_id && $vehicle->model_id;
     // Перевозка в логистике (10.10.2026) — строкой шапки: ход, кто везёт, прибытие. Ссылка — тому, кому логистика открыта.
     $transport = \App\Logistics\Transport::openFor($vehicle);
     $transportLine = $transport ? implode(', ', array_filter([$transport->next(), $transport->carrier(), $transport->destinationLabel()])) : null;
@@ -97,10 +97,21 @@
         @if ($cur)@include('park.vehicles.now-step')@endif
         {{-- Машина — страницей, действие — окном (`x-park.act-window`, 12.10.2026): приём, письмо вендору и выдача
              открываются кнопкой текущего шага; поля ТС — своей формой с «Сохранить изменения». --}}
+        {{-- Заведённая машина (марка и модель есть) — сводкой под фото справа, правка — шторкой «Данные ТС» в этой форме (23.11.2026,
+             владелец: «на парковке данные по ТС тоже завернуть в блок под фото, как в CRM»); без марки — полями, как было. --}}
         @if ($canManage && ! $state->isFinal())
-            <form method="post" action="/cars/{{ $vehicle->id }}" id="vehicle-form" class="flex flex-col gap-4" data-controller="vin save-bar draft next empty-blocks" data-save-bar-dirty-value="{{ $errors->any() ? 'true' : 'false' }}">
+            <form method="post" action="/cars/{{ $vehicle->id }}" id="vehicle-form" @class(['contents' => $carAside, 'flex flex-col gap-4' => ! $carAside]) data-controller="vin save-bar draft next empty-blocks" data-save-bar-dirty-value="{{ $errors->any() ? 'true' : 'false' }}">
                 @csrf @method('put')
-                @include('park.vehicles.fields-block')
+                @if ($carAside)
+                    @php $parkKeys = [...\App\Cars\CarFields::names(\App\Park\Vehicle::class, ...\App\Park\VehicleFields::BLOCKS), 'value', 'storage_rate']; @endphp
+                    <x-car.edit-sheet :id="'vehicle-edit-'.$vehicle->id" form="vehicle-form" :open="$errors->hasAny($parkKeys)">
+                        <x-car.blocks :lane="$vehicle" :blocks="\App\Park\VehicleFields::BLOCKS" as="section" :required="['brand_id']"/>
+                        @include('park.vehicles.storage-block', ['fold' => null, 'as' => 'section'])
+                    </x-car.edit-sheet>
+                    <x-ui.save-bar page/>
+                @else
+                    @include('park.vehicles.fields-block')
+                @endif
             </form>
         @endif
         @if ($letters)@include('park.vehicles.letters-card')@endif
@@ -121,30 +132,23 @@
 
     <div class="flex min-w-0 flex-col gap-4">
         @if (($byQr ?? false) && $vehicle->vendor?->release_by_qr && ! ($pass ?? null)?->isDeal() && $vehicle->state === \App\Park\VehicleState::Stored)@include('park.vehicles.pickup-card')@endif
-        {{-- Документы — над фото: их обычно немного. Строками; «+ Документ» и искра «Из документов» — в строке подписи справа,
+        {{-- Документы — над фото: их обычно немного. Строками; «+ Добавить» лаймом в строке подписи справа, как в CRM (23.11.2026),
              как «+ Фото» у пустых блоков кадров (20.10.2026). --}}
-        <x-ui.card title="Документы" data-controller="photos" data-photos-url-value="/cars/{{ $vehicle->id }}/media" data-photos-collection-value="papers">
-            <x-slot:actions><span class="flex items-center gap-2"><x-ui.button type="button" variant="secondary" size="sm" data-action="photos#pick"><x-ui.icon name="plus" class="size-4"/> Документ</x-ui.button></span></x-slot:actions>
-            <input type="file" accept=".pdf,.jpg,.jpeg,.png,.webp,.heic,.doc,.docx" multiple class="sr-only" tabindex="-1" data-photos-target="input" data-action="change->photos#upload">
-            <div hidden data-photos-target="progress" class="mb-3">
-                <div class="mb-1 text-sm text-ink-muted" data-label></div>
-                <div class="h-1.5 overflow-hidden rounded-full bg-surface-3"><div class="h-full bg-accent transition-[width]" data-bar style="width:0"></div></div>
-            </div>
+        <section class="box" data-controller="photos" data-photos-url-value="/cars/{{ $vehicle->id }}/media" data-photos-collection-value="papers">
+            <x-car.papers-head/>
             @include('park.vehicles.papers')
-        </x-ui.card>
+        </section>
         {{-- Кадры стадиями: от страховой, при приёме, при выдаче. Та, что сейчас снимается, стоит в ленте шага. Кадры
              письма ещё прикрепляются (ImportThreadFiles) — строка хода и заглушки в «От страховой», attach_controller
              переспрашивает их. --}}
         <div class="contents" data-controller="attach" data-attach-url-value="/cars/{{ $vehicle->id }}/attach" data-attach-car-value="{{ $vehicle->car_id }}">
         <x-mail.attach-line :model="$vehicle"/>
-        @foreach (PhotoStage::cases() as $one)
-            {{-- От страховой и (после приёма) при приёме — всегда с добавлением, даже пустые: машина одна, кадры к ней кладут и
-                 в CRM, и тут, в любой момент (владелец, 05.10.2026). --}}
-            @php $editable = $one->addable($vehicle); @endphp
-            @if ($one !== $shooting && ($editable || $vehicle->photos()->contains(fn ($m) => PhotoStage::of($m) === $one)))
-                <x-park.photos :vehicle="$vehicle" :stage="$one" :edit="$editable"/>
-            @endif
-        @endforeach
+        {{-- Пачками по стадии, как в CRM (23.11.2026, владелец: «на парковке развёрнутая плитка всех»): от страховой и (после приёма)
+             при приёме — всегда с добавлением, даже пустые: машина одна, кадры к ней кладут и в CRM, и тут (владелец, 05.10.2026). --}}
+        <x-ui.card class="!pb-3">
+            @include('park.vehicles.detail-photos', ['root' => 'case-photos', 'mode' => 'case'])
+            @if ($carAside)<x-car.summary :lane="$vehicle" :sheet="'vehicle-edit-'.$vehicle->id" :codes="false" :edit="$canManage && ! $state->isFinal()"/>@endif
+        </x-ui.card>
         </div>
 
         @if ($money && ($vehicle->invoices->isNotEmpty() || $pendingCharges->isNotEmpty() || $vehicle->accepted_at))

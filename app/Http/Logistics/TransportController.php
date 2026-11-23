@@ -712,6 +712,20 @@ class TransportController
     }
 
     /**
+     * «Переименовать» в меню документа окна вывоза (23.11.2026, как в CRM и на парковке): ведущим и логисту — тем, кто документы
+     * и добавляет (`keeps`); имя одно у машины (`Media\DocName`), его видят и CRM, и парковка.
+     */
+    public function renameFile(Request $request, Transport $transport, Media $media)
+    {
+        $this->acts($request, $transport);
+        abort_unless($this->keeps($request, $transport) && FileAccess::belongs($transport, $media) && $media->collection_name === 'papers', 404);
+        $data = $request->validate(['name' => ['nullable', 'string', 'max:200']]);
+        [, $now] = \App\Media\DocName::rename($media, (string) ($data['name'] ?? ''));
+
+        return $request->expectsJson() ? response()->json(['name' => $now]) : back()->with('toast', 'Переименовано');
+    }
+
+    /**
      * «+ Документ» в карточке задачи (22.10.2026, владелец: документы и фото исполнитель шлёт логисту почтой и мессенджерами,
      * прикрепляет она): документом машины, сразу видным логисту (`FileAccess` — отметка `logist`), исполнителю — глазом.
      */

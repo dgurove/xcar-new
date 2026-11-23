@@ -13,6 +13,10 @@
 @endphp
 <x-ui.detail>
     <x-ui.row-card :href="$href" :title="$car->titleWithYear()" :photos="$car->visiblePhotos()" :facts="$car->facts()">
+        {{-- Кадры — пачкой, как в окне машины (23.11.2026: «единые модули»; была лента), только смотреть. --}}
+        @if ($car->photos()->isNotEmpty())
+            <x-slot:media>@include('admin.purchases.gallery', ['readonly' => true])</x-slot:media>
+        @endif
         {{-- Коды чипами, что не так — словами, где и какой тип — фразой (владелец 10.10.2026: «одно к машине относится,
              другое к фактам»). --}}
         <x-slot:marks>

@@ -3,7 +3,7 @@
      своей стороны (у продажи — продажи, у парковки — парковки); имя поля — имя дорожки (`CarFields::name`). Новая
      машина (заявка руками, разбор письма) — значения из `$values`. Что у продажи своего — суффиксы номера убытка
      (Мигторг, «б/н»), глазик VIN, «С НДС» по вендору. --}}
-@props(['lane' => null, 'of' => null, 'block', 'values' => [], 'fold' => null, 'hints' => [], 'required' => [], 'as' => 'card', 'top' => null, 'without' => []])
+@props(['lane' => null, 'of' => null, 'block', 'values' => [], 'fold' => null, 'hints' => [], 'required' => [], 'as' => 'card', 'top' => null, 'without' => [], 'variantSheets' => true])
 @php
     use App\Cars\CarFields;
     use App\Offers\{Offer, OfferState};
@@ -86,7 +86,9 @@
 <x-car.card :title="$title" :fold="$fold" :empty="$cells->isEmpty()" :as="$as" {{ $attributes }}>
     <x-slot:top>
         {{ $top }}
-        <x-car.variants :lane="$lane" :variants="$variants"/>
+        {{-- variantSheets=false — шторки вариантов уже стоят на экране своим вызовом (окно «Наличия»: строки спорных полей ведут к ним),
+             вторые с теми же id внутри закрытой шторки «Данные ТС» перехватывали бы `getElementById` (23.11.2026). --}}
+        @if ($variantSheets)<x-car.variants :lane="$lane" :variants="$variants"/>@endif
     </x-slot:top>
     <x-slot:view>
         @if ($cells->isNotEmpty())

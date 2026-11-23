@@ -6,9 +6,15 @@
      (шторки вариантов живут в ней). --}}
 {{-- Окно машины (23.11.2026, владелец выбрал из макетов): ниже хода сделки, `as=section`, без кодов (№, № убытка и VIN —
      тегами под названием окна) и без города (он в строке «где машина»). --}}
-@props(['offer', 'sheet', 'as' => 'card', 'codes' => true, 'place' => true])
+{{-- Для любой дорожки (23.11.2026, владелец: «на парковке данные по ТС тоже завернуть в блок под фото, как в CRM»): `lane` —
+     предложение CRM или ТС парковки (`offer` — прежнее имя). У ТС парковки — свои ячейки «Страхователь» и «Оценочная» (её блоки
+     `VehicleFields::BLOCKS` и «Хранение»), CRM-только (№ предложения, ДЛ, город продажи) — только у предложения. `edit=false` —
+     без «Изменить» (кто не правит машину). --}}
+@props(['offer' => null, 'lane' => null, 'sheet', 'as' => 'card', 'codes' => true, 'place' => true, 'edit' => true])
 @php
     use App\Cars\CarFields;
+    $offer = $lane ?? $offer;
+    $sale = $offer instanceof \App\Offers\Offer;
     $car = $offer->carRecord();
     $show = fn (string $c) => CarFields::show($c, $car?->{$c});
     // Части одной ячейки через запятую: первая как есть, остальные со строчной («Хэтчбек, серый»).
@@ -16,45 +22,50 @@
         ? implode($sep, [$parts[0], ...array_map(fn ($p) => mb_strtolower(mb_substr($p, 0, 1)).mb_substr($p, 1), array_slice($parts, 1))]) : null;
     $hints = \App\Cars\Sources\Variants::visible($offer, ['car', 'year', 'vin', 'color', 'mileage', 'plate', 'pts', 'sts', 'body', 'transmission', 'drive', 'fuel', 'engine_volume', 'engine_power', 'city']);
     $hint = fn (string ...$fields) => collect($fields)->map(fn ($f) => $hints[$f] ?? null)->filter()->first();
-    $number = $codes && \App\Offers\OfferNumber::isPublic($offer) ? (string) $offer->number : null;
+    $number = $sale && $codes && \App\Offers\OfferNumber::isPublic($offer) ? (string) $offer->number : null;
+    $ref = $car?->claim_ref;
     $vendor = $offer->vendor_id ? \App\Vendors\Vendor::badges()->get($offer->vendor_id) : null;
     $pts = $car?->pts;
     $engine = $join([$join([$show('fuel'), $show('engine_volume')], ' '), $show('engine_power')]);
 @endphp
 <div @class(['car-summary-head', 'car-summary-head--section' => $as === 'section'])>
     <h2 class="{{ $as === 'section' ? 'detail-section !mb-0' : 'box-title' }}">Транспортное средство</h2>
-    <button type="button" class="edit-card-toggle" data-controller="emit" data-action="emit#send" data-emit-event-param="{{ $sheet }}:open">Изменить</button>
+    @if ($edit)<button type="button" class="edit-card-toggle" data-controller="emit" data-action="emit#send" data-emit-event-param="{{ $sheet }}:open">Изменить</button>@endif
 </div>
 <dl @class(['car-summary', 'car-summary--section' => $as === 'section'])>
     @if ($hint('car', 'year'))
-        <div class="col-span-2"><dt>Марка, модель</dt><dd>{{ $offer->titleWithYear() }}</dd><x-car.summary-hint :v="$hint('car', 'year')" :sheet="$sheet"/></div>
+        <div class="col-span-2"><dt>Марка, модель</dt><dd>{{ $offer->titleWithYear() }}</dd><x-car.summary-hint :v="$hint('car', 'year')" :sheet="$sheet" :edit="$edit"/></div>
     @endif
     @if ($number)<div><dt>Номер</dt><dd><x-ui.copy-code :value="$number" done="Номер в буфере"/></dd></div>@endif
     @if (! $codes)
-    @elseif ($offer->claim_ref)
-        <div><dt>{{ $offer->leaseRef() ? '№ ДЛ' : '№ убытка' }}</dt><dd><x-vendor.ref :vendor-id="$offer->vendor_id" :ref="$offer->claim_ref" copy/></dd></div>
+    @elseif ($ref)
+        <div><dt>{{ $sale && $offer->leaseRef() ? '№ ДЛ' : '№ убытка' }}</dt><dd><x-vendor.ref :vendor-id="$offer->vendor_id" :ref="$ref" copy/></dd></div>
     @elseif ($vendor)
         <div><dt>Вендор</dt><dd><x-vendor.name :vendor="$vendor"/></dd></div>
     @endif
-    @if (($codes && $car?->vin) || $hint('vin'))<div><dt>VIN</dt><dd><x-ui.vin-code :vin="$car?->vin"/></dd><x-car.summary-hint :v="$hint('vin')" :sheet="$sheet"/></div>@endif
-    @if ($car?->plate || $hint('plate'))<div><dt>Госномер</dt><dd><x-ui.copy-code :value="$car?->plate"/></dd><x-car.summary-hint :v="$hint('plate')" :sheet="$sheet"/></div>@endif
+    @if (($codes && $car?->vin) || $hint('vin'))<div><dt>VIN</dt><dd><x-ui.vin-code :vin="$car?->vin"/></dd><x-car.summary-hint :v="$hint('vin')" :sheet="$sheet" :edit="$edit"/></div>@endif
+    @if ($car?->plate || $hint('plate'))<div><dt>Госномер</dt><dd><x-ui.copy-code :value="$car?->plate"/></dd><x-car.summary-hint :v="$hint('plate')" :sheet="$sheet" :edit="$edit"/></div>@endif
     @if ($pts || $hint('pts'))
-        <div><dt>{{ preg_match('/^\d{15}$/', preg_replace('/\s+/', '', (string) $pts)) ? 'ЭПТС' : 'ПТС' }}</dt><dd><x-ui.copy-code :value="$pts"/></dd><x-car.summary-hint :v="$hint('pts')" :sheet="$sheet"/></div>
+        <div><dt>{{ preg_match('/^\d{15}$/', preg_replace('/\s+/', '', (string) $pts)) ? 'ЭПТС' : 'ПТС' }}</dt><dd><x-ui.copy-code :value="$pts"/></dd><x-car.summary-hint :v="$hint('pts')" :sheet="$sheet" :edit="$edit"/></div>
     @endif
-    @if ($car?->sts || $hint('sts'))<div><dt>СТС</dt><dd><x-ui.copy-code :value="$car?->sts"/></dd><x-car.summary-hint :v="$hint('sts')" :sheet="$sheet"/></div>@endif
+    @if ($car?->sts || $hint('sts'))<div><dt>СТС</dt><dd><x-ui.copy-code :value="$car?->sts"/></dd><x-car.summary-hint :v="$hint('sts')" :sheet="$sheet" :edit="$edit"/></div>@endif
     @if ($car?->policy_no)<div><dt>Полис</dt><dd><x-ui.copy-code :value="$car->policy_no"/></dd></div>@endif
     @if (($body = $join([$show('body'), $show('color')])) || $hint('body', 'color'))
-        <div><dt>Кузов, цвет</dt><dd>{{ $body }}</dd><x-car.summary-hint :v="$hint('body', 'color')" :sheet="$sheet"/></div>
+        <div><dt>Кузов, цвет</dt><dd>{{ $body }}</dd><x-car.summary-hint :v="$hint('body', 'color')" :sheet="$sheet" :edit="$edit"/></div>
     @endif
     @if ($engine || $hint('fuel', 'engine_volume', 'engine_power'))
-        <div><dt>Двигатель</dt><dd>{{ $engine }}</dd><x-car.summary-hint :v="$hint('fuel', 'engine_volume', 'engine_power')" :sheet="$sheet"/></div>
+        <div><dt>Двигатель</dt><dd>{{ $engine }}</dd><x-car.summary-hint :v="$hint('fuel', 'engine_volume', 'engine_power')" :sheet="$sheet" :edit="$edit"/></div>
     @endif
     @if (($gear = $join([$show('transmission'), $show('drive')])) || $hint('transmission', 'drive'))
-        <div><dt>КПП, привод</dt><dd>{{ $gear }}</dd><x-car.summary-hint :v="$hint('transmission', 'drive')" :sheet="$sheet"/></div>
+        <div><dt>КПП, привод</dt><dd>{{ $gear }}</dd><x-car.summary-hint :v="$hint('transmission', 'drive')" :sheet="$sheet" :edit="$edit"/></div>
     @endif
-    @if (($km = $show('mileage')) || $hint('mileage'))<div><dt>Пробег</dt><dd>{{ $km }}</dd><x-car.summary-hint :v="$hint('mileage')" :sheet="$sheet"/></div>@endif
-    @if ($place && ($offer->settlement || $hint('city')))
-        <div><dt>Город</dt><dd>@if ($offer->settlement)<x-ui.place>{{ $offer->settlement->title() }}</x-ui.place>@endif</dd><x-car.summary-hint :v="$hint('city')" :sheet="$sheet"/></div>
+    @if (($km = $show('mileage')) || $hint('mileage'))<div><dt>Пробег</dt><dd>{{ $km }}</dd><x-car.summary-hint :v="$hint('mileage')" :sheet="$sheet" :edit="$edit"/></div>@endif
+    @if (! $sale && ($car?->insured_name || $car?->insured_phone))
+        <div><dt>Страхователь</dt><dd>{{ $car->insured_name }}@if ($car->insured_name && $car->insured_phone)<br>@endif @if ($car->insured_phone)<x-ui.tel :value="$car->insured_phone" :text="$car->insured_phone"/>@endif</dd></div>
     @endif
-    @if ($place && $offer->sellsElsewhere())<div><dt>Город продажи</dt><dd><x-ui.place>{{ $offer->saleSettlement?->title() }}</x-ui.place></dd></div>@endif
+    @if (! $sale && $offer->value)<div><dt>Оценочная</dt><dd class="nums">{{ \App\Support\Money::rub((int) $offer->value) }}</dd></div>@endif
+    @if ($sale && $place && ($offer->settlement || $hint('city')))
+        <div><dt>Город</dt><dd>@if ($offer->settlement)<x-ui.place>{{ $offer->settlement->title() }}</x-ui.place>@endif</dd><x-car.summary-hint :v="$hint('city')" :sheet="$sheet" :edit="$edit"/></div>
+    @endif
+    @if ($sale && $place && $offer->sellsElsewhere())<div><dt>Город продажи</dt><dd><x-ui.place>{{ $offer->saleSettlement?->title() }}</x-ui.place></dd></div>@endif
 </dl>

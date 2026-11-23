@@ -6,7 +6,7 @@
      22.10.2026 (владелец со слов Татьяны: «зачем фотки два раза», «логист не может прикреплять» — исполнитель шлёт ей фото
      почтой и мессенджерами): ленты сверху карточки больше нет, кадры машины — здесь всем, кто их видит; ниже «Фото при
      вывозе» (`x-logistics.photos`, `pickup` — добавляют `pickup`: ведущие и логист всегда, исполнитель до «Забрал»; пока
-     открыта шторка «Забрал» — копия `view`, снимают в ней) и «+ Документ» ведущим и логисту (`TransportController::paper`). --}}
+     открыта шторка «Забрал» — копия `view`, снимают в ней) и «+ Добавить» (лаймом, как в CRM и на парковке) ведущим и логисту (`TransportController::paper`). --}}
 @props(['t'])
 @php
     use App\Logistics\FileAccess;
@@ -27,36 +27,80 @@
     $eye = $who === 'logist' ? 'Видит логист' : 'Видит исполнитель';
 @endphp
 <section id="transport-files-{{ $t->id }}" @if ($photos->isEmpty() && $papers->isEmpty() && ! $pickup && ! $addsPapers) hidden @endif class="mt-5">
-    @if ($photos->isNotEmpty())
-        <div data-controller="photos" data-photos-url-value="/transports/{{ $t->id }}/files" data-photos-readonly-value="true">
-            <h3 class="list-head">Фото <span class="nums font-normal text-ink-dim">{{ $photos->count() }}</span></h3>
-            <x-ui.photos :photos="$photos" readonly :hide="(bool) $who" :hide-by="$who ? fn ($m) => ! FileAccess::sees($m, $who) : null" :eye-title="$eye" :main="false" :id="'transport-files-photos-'.$t->id"/>
+    {{-- Кадры пачками, как в CRM и на парковке (23.11.2026, владелец: «в окнах логистики всё ещё горизонтальная лента»): по стадии
+         машины с глазом «Видит логист / исполнитель» (`hideBy` — `FileAccess::sees`), и «При погрузке» — кадры вывоза, сюда же
+         добавляют, пока можно (`$pickupEdit`; пока открыта шторка «Забрал» — снимают в ней, здесь только смотреть). --}}
+    @php
+        $blocks = $photos->isNotEmpty() ? \App\Media\PhotoBlocks::of($photos) : [];
+        $shots = $pickup ? $t->photos('pickup') : collect();
+        $shoots = $pickupEdit && ! $pickupView;
+        $hideBy = $who ? fn ($m) => ! FileAccess::sees($m, $who) : null;
+    @endphp
+    @if ($blocks || $pickup)
+        <div class="photo-packs">
+            @foreach ($blocks as $i => ['stage' => $stage, 'photos' => $own, 'when' => $when])
+                @php $row = 'transport-'.$t->id.'-'.$stage->value; @endphp
+                <x-ui.photo-pack :id="$row" :photos="$own" :title="$stage->label()" :when="$when" :hide="(bool) $who" :hide-by="$hideBy" :all="false"
+                    data-photos-url-value="/transports/{{ $t->id }}/files" data-photos-readonly-value="true" data-photos-group-value="transport-{{ $t->id }}" data-photos-order="{{ $i }}">
+                    <x-ui.photos :photos="$own" readonly :hide="(bool) $who" :hide-by="$hideBy" :eye-title="$eye" :main="false" :id="$row" grid/>
+                </x-ui.photo-pack>
+            @endforeach
+            @if ($pickup)
+                @php $row = 'transport-'.$t->id.'-pickup'; @endphp
+                <x-ui.photo-pack :id="$row" :photos="$shots" :title="\App\Park\PhotoStage::Pickup->label()" :when="\App\Media\PhotoBlocks::day($shots)" :hide="false"
+                    data-photos-url-value="/transports/{{ $t->id }}/media" data-photos-stage-value="pickup" :data-photos-readonly-value="$shoots ? null : 'true'"
+                    data-photos-group-value="transport-{{ $t->id }}" data-photos-order="{{ count($blocks) }}">
+                    @if ($shoots)
+                        <input type="file" accept="image/*,.heic,.heif" multiple class="sr-only" tabindex="-1" data-photos-target="input" data-action="change->photos#upload">
+                        <div hidden data-photos-target="progress" class="mb-3">
+                            <div class="mb-1 text-sm text-ink-muted" data-label></div>
+                            <div class="h-1.5 overflow-hidden rounded-full bg-surface-3"><div class="h-full bg-accent transition-[width]" data-bar style="width:0"></div></div>
+                        </div>
+                    @endif
+                    <x-ui.photos :photos="$shots" :readonly="! $shoots" :hide="false" :main="false" :id="$row" grid/>
+                </x-ui.photo-pack>
+            @endif
         </div>
     @endif
-    @if ($pickup)
-        <x-logistics.photos :t="$t" at="pickup" :edit="$pickupEdit" :view="$pickupView" class="{{ $photos->isNotEmpty() ? '!mt-4' : '!mt-0' }}"/>
-    @endif
     @if ($papers->isNotEmpty() || $addsPapers)
-        <div class="list-head mt-4 flex items-center justify-between gap-3">
-            <span>Документы@if ($papers->isNotEmpty()) <span class="nums font-normal text-ink-dim">{{ $papers->count() }}</span>@endif</span>
+        {{-- Шапка как у документов в CRM и на парковке (`x-car.papers-head`): подпись слева, «+ Добавить» справа; файлы уходят своей
+             формой задачи (`TransportController::paper`, видны логисту сразу). --}}
+        <div class="letters-head letters-head--acts mt-5">
+            <h2 class="!text-sm !font-medium">Документы</h2>
             @if ($addsPapers)
-                <form method="post" action="/transports/{{ $t->id }}/papers" enctype="multipart/form-data" data-controller="autosubmit" class="contents">@csrf
-                    <label class="cursor-pointer text-sm font-normal text-accent-text">+ Документ<input type="file" name="files[]" multiple class="sr-only" tabindex="-1" data-action="change->autosubmit#submit"></label>
+                <form method="post" action="/transports/{{ $t->id }}/papers" enctype="multipart/form-data" data-controller="autosubmit" class="letters-acts">@csrf
+                    <label class="letters-act relative cursor-pointer"><x-ui.icon name="plus" class="size-4"/>Добавить<input type="file" name="files[]" multiple class="sr-only" tabindex="-1" data-action="change->autosubmit#submit"></label>
                 </form>
             @endif
         </div>
         <div class="flex flex-col">
+            {{-- Как документы в CRM и на парковке (23.11.2026, владелец: «сделать как в CRM — «⋯» с тумблером»): строка открывает,
+                 под именем — «только мы» или «видит исполнитель» (лаймом), справа «⋯» без плашки: тумблер «Показывать
+                 исполнителю» (логисту — за кого решает этот человек, `FileAccess::toggleFor`) и «Переименовать» — ведущим и логисту. --}}
             @foreach ($papers as $m)
-                @php $open = $who ? FileAccess::sees($m, $who) : true; @endphp
-                <x-ui.file :name="$m->file_name" :mime="$m->mime_type" :bytes="$m->size" :href="'/files/'.$m->id">
-                    @if ($who)
-                        {{-- Глаз как у «Видно менеджеру» в CRM: открыт — лаймовый, закрыт — серый. --}}
-                        <form method="post" action="/transports/{{ $t->id }}/files/{{ $m->id }}/eye" class="contents">@csrf
-                            <button @class(['btn btn-ghost btn-s px-2', 'text-accent-text' => $open, 'text-ink-dim' => ! $open]) title="{{ $eye }}: {{ $open ? 'да' : 'нет' }}" aria-label="{{ $eye }}: {{ $open ? 'скрыть' : 'показать' }}">
-                                <x-ui.icon :name="$open ? 'eye' : 'eye-off'" class="size-5"/>
-                            </button>
-                        </form>
+                @php
+                    $open = $who ? FileAccess::sees($m, $who) : true;
+                    $docName = \App\Media\DocName::of($m);
+                    $base = '/transports/'.$t->id.'/files/'.$m->id;
+                    $target = $who === 'logist' ? 'логисту' : 'исполнителю';
+                @endphp
+                <x-ui.file :name="$docName" :mime="$m->mime_type" :bytes="$m->size" :href="'/files/'.$m->id">
+                    @if ($who || $keeps)
+                        <span class="contents" data-controller="file-rename" data-file-rename-url-value="{{ $base }}" data-file-rename-name-value="{{ $docName }}">
+                            <x-ui.more :id="'transport-paper-'.$t->id.'-'.$m->id" label="Действия с документом" class="more-pill--bare" data-file-rename-target="edit">
+                                @if ($who)
+                                    <form method="post" action="{{ $base }}/eye">@csrf
+                                        <button class="menu-item" role="menuitemcheckbox" aria-checked="{{ $open ? 'true' : 'false' }}"><x-ui.icon name="user" class="size-5 shrink-0 text-ink-muted"/><span class="flex-1 whitespace-nowrap text-left">Показывать {{ $target }}</span><span @class(['menu-switch', 'is-on' => $open]) aria-hidden="true"></span></button>
+                                    </form>
+                                @endif
+                                @if ($keeps)<button type="button" class="menu-item" role="menuitem" data-action="file-rename#start"><x-ui.icon name="edit" class="size-5 text-ink-muted"/>Переименовать</button>@endif
+                            </x-ui.more>
+                            <button type="button" class="btn btn-ghost btn-s px-2 text-accent-text" data-file-rename-target="save" data-action="file-rename#save" aria-label="Сохранить имя" hidden><x-ui.icon name="check" class="size-5"/></button>
+                        </span>
                     @endif
+                    <x-slot:under>
+                        @if ($who)<span @class(['paper-access', 'is-open' => $open])>{{ $open ? mb_strtolower($eye) : 'только мы' }}</span>@endif
+                    </x-slot:under>
                 </x-ui.file>
             @endforeach
         </div>

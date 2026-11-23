@@ -16,7 +16,11 @@ use App\Mail\Candidate;
 use App\Mail\Direction;
 use App\Mail\Extraction\Patterns;
 use App\Mail\Message;
+use App\Mail\Extraction\DocumentText;
 use App\Mail\Scan\AutoScan;
+use App\Mail\Scan\Paper;
+use App\Mail\Scan\Reader;
+use App\Mail\Scan\VehicleSubject;
 use App\Mail\Thread;
 use App\Mail\Threads;
 use App\Media\Actions\RotatePhoto;
@@ -481,6 +485,21 @@ class VehicleController
         }
 
         return $request->expectsJson() ? response()->json(['name' => $now]) : back()->with('toast', 'Переименовано');
+    }
+
+    /**
+     * «Распознать» в меню документа (23.11.2026, владелец: «распознания очень не хватает»; как в CRM, `OfferPhotoController::scan`):
+     * прочитанный текст забыт, документ читается заново; по концу чтения найденное — в поля ТС (`AutoScan::finished`).
+     */
+    public function scanMedia(Request $request, Vehicle $vehicle, Media $media)
+    {
+        abort_unless($this->owns($vehicle, $media) && $media->collection_name === 'papers', 404);
+        $file = new Paper($media);
+        abort_unless(DocumentText::scannable($file), 422, 'Этот файл не распознать');
+        DocumentText::forget($file);
+        Reader::read(new VehicleSubject($vehicle), [$file->scanId()]);
+
+        return back()->with('toast', 'Распознаём документ: найденное встанет в данные ТС');
     }
 
     public function note(Request $request, Vehicle $vehicle)

@@ -1,10 +1,10 @@
-{{-- Ряд фотографий: плитка «добавить» стоит вне прокрутки, справа лента
-     кадров со snap; на кадре действия глаз, поворот, корзина, скрытый —
+{{-- Кадры плиткой: «добавить» первой клеткой, дальше квадраты; на кадре действия глаз, поворот, корзина, скрытый —
      серый, главное — первый видимый (лаймовая звезда-метка; сменить — в просмотре или долгим нажатием по кадру), порядок перетаскиванием, клик по
      кадру — просмотрщик, файлы можно бросить на карточку. Живёт внутри
      data-controller="photos"; turbo-stream подменяет ряд целиком.
      readonly — только смотреть (кадры из письма рядом с приёмом): без плитки «добавить» и без действий; с hide — остаётся глаз.
-     grid — сетка квадратов вместо ленты (дело на стоянке: все кадры видны сразу и в узкой колонке).
+     Всегда плиткой (сетка квадратов): с 23.11.2026 кадры везде в шторке пачки (`x-ui.photo-pack`), лент нет; `grid` — прежнее
+     имя, принимается и ничего не меняет.
      rotatable=false — без поворота (помощник парковки).
      deletable=false — без корзины (удаляют только в полном редакторе); замыкание — решает по кадру.
      pending — сколько заглушек «качается» в конце ряда. add=false — без плитки «добавить» (карточка строки парковки).
@@ -14,10 +14,10 @@
      hideBy — что значит глаз: по умолчанию «скрыт с сайта» (`Media\Hidden`), в логистике — «не видит логист / исполнитель»
      (`Logistics\FileAccess`, замыкание «скрыт ли кадр»); eyeTitle — подсказка глаза («Логисту»).
      Цикл кадров — без отступов: у машины бывает 240 кадров, отступы шаблона давали ~70 КБ на карточку. --}}
-@props(['photos', 'hide' => true, 'hideBy' => null, 'eyeTitle' => null, 'main' => true, 'mainId' => null, 'readonly' => false, 'id' => 'gallery', 'grid' => false, 'deletable' => true, 'rotatable' => true, 'pending' => 0, 'add' => true])
-<div id="{{ $id }}" class="{{ $grid ? 'photo-grid' : 'photo-row' }}" @if ($main && ! $readonly) data-main @endif>
-    @if (! $readonly && $add)<button type="button" class="photo-add" data-action="photos#pick" aria-label="Добавить фото"><x-ui.icon name="camera" class="size-6"/></button>@endif
-    <div class="{{ $grid ? 'contents' : 'photo-strip' }}" data-photos-target="grid">
+@props(['photos', 'hide' => true, 'hideBy' => null, 'eyeTitle' => null, 'main' => true, 'mainId' => null, 'readonly' => false, 'id' => 'gallery', 'grid' => false, 'deletable' => true, 'rotatable' => true, 'pending' => 0, 'add' => true, 'addLabel' => 'Добавить фото'])
+<div id="{{ $id }}" class="photo-grid" @if ($main && ! $readonly) data-main @endif>
+    @if (! $readonly && $add)<button type="button" class="photo-add" data-action="photos#pick" aria-label="{{ $addLabel }}" title="{{ $addLabel }}"><x-ui.icon name="camera" class="size-6"/></button>@endif
+    <div class="contents" data-photos-target="grid">
     @php $mainShown = false; @endphp
 @foreach ($photos as $media)
 @php $hidden = $hide && ($hideBy ? $hideBy($media) : \App\Media\Hidden::is($media)); @endphp

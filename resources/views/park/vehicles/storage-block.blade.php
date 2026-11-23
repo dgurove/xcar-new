@@ -22,7 +22,7 @@
     ];
     $empty = $value === null && ! $variant && ($vehicle?->storage_rate === null || ! $rate);
 @endphp
-<x-car.card title="Хранение" :fold="$fold" :empty="$empty">
+<x-car.card title="Хранение" :fold="$fold" :empty="$empty" :as="$as ?? 'card'">
     <x-slot:top>
         <x-car.variants :lane="$vehicle" :variants="array_filter(['value' => $variant])"/>
     </x-slot:top>

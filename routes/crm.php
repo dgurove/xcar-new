@@ -230,6 +230,7 @@ Route::domain(config('xcar.crm_host'))->middleware(['auth', 'ability:isStaff'])-
         Route::post('/offers/{offer}/extra-asks/decide', [ExtraAskController::class, 'decide']);
         Route::post('/offers/{offer}/pickup', [RouteController::class, 'pickup']);
         Route::post('/offers/{offer}/media/{media}/managers', [OfferPhotoController::class, 'managers']);
+        Route::post('/offers/{offer}/media/{media}/scan', [OfferPhotoController::class, 'scan']);
         Route::delete('/offers/{offer}/pickup', [RouteController::class, 'dropPickup']);
         Route::post('/offers/{offer}/pickup/back', [RouteController::class, 'pickupBack']);
         Route::post('/offers/{offer}/pickup/backdate', [RouteController::class, 'pickupBackdate']);

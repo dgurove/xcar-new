@@ -23,9 +23,10 @@
         {{-- У названия — госномер сразу за ним и значок связи (12.10.2026). --}}
         {{-- Состояние — на шкале полоски срока (`x-park.stay`: «выдана (98 д)», «ждём приёма», «отменена: …»), не посередине полосы
              окошка (12.11.2026, владелец: повторяло бы шкалу). --}}
-        <x-slot:badge>@if ($vehicle->plate)<x-ui.plate :value="$vehicle->plate" class="ml-1.5 align-[.15em] text-sm" copy/>@endif<x-ui.links :vehicle="$vehicle"/></x-slot:badge>
-        {{-- Кадры блоками по стадии с глазом (показ в продаже) и «Показать все»; добавляют и удаляют — в деле ТС. --}}
-        @if ($vehicle->photos()->isNotEmpty() && ! ($fromRequests ?? false))
+        <x-slot:badge>@if ($vehicle->plate)<x-ui.plate :value="$vehicle->plate" class="ml-1.5 align-[.15em] text-sm" copy/>@endif<x-car.keys :count="$vehicle->keys_count"/><x-ui.links :vehicle="$vehicle"/></x-slot:badge>
+        {{-- Кадры пачками по стадии с глазом (показ в продаже); добавляют и удаляют — в деле ТС. И из «Заявок» — пачками, а не лентой
+             (23.11.2026, владелец: «в окнах на парковке всё ещё горизонтальная лента»). --}}
+        @if ($vehicle->photos()->isNotEmpty())
             <x-slot:media>@include('park.vehicles.detail-photos')</x-slot:media>
         @endif
         {{-- Под названием — коды машины одним рядом (убыток с логотипом вендора, VIN; копируются нажатием, значков нет —
@@ -68,20 +69,32 @@
         @if ($task)
             @include('park.vehicles.task')
         @endif
-        {{-- Документы — прямо в окошке (02.11.2026, владелец: «срочно отображай документы в окошке»), чипами одной строкой с
-             прокруткой вбок и «+ Документ» последним (12.11.2026, владелец: «реальные чипы документов»): `park.vehicles.papers-chips`. --}}
+        {{-- Данные ТС сводкой, как в окне машины CRM (23.11.2026, владелец: «на парковке данные по ТС тоже завернуть в блок, как в
+             CRM»): «Изменить» — та же шторка «Данные ТС» со своей формой (`PUT /cars/{id}`, ответ — в окно), управляющему у
+             незакрытого дела. --}}
+        @if ($vehicle->brand_id && $vehicle->model_id)
+            @php $canEditCar = auth()->user()->canManagePark() && ! $state->isFinal(); @endphp
+            <section class="mt-4"><x-car.summary :lane="$vehicle" :sheet="'vehicle-edit-'.$vehicle->id" as="section" :codes="false" :edit="$canEditCar"/></section>
+            @if ($canEditCar)
+                <form method="post" action="/cars/{{ $vehicle->id }}" id="vehicle-window-form-{{ $vehicle->id }}" class="contents" data-controller="vin">
+                    @csrf @method('put')
+                    <x-car.edit-sheet :id="'vehicle-edit-'.$vehicle->id" :form="'vehicle-window-form-'.$vehicle->id" :open="$errors->hasAny([...\App\Cars\CarFields::names(\App\Park\Vehicle::class, ...\App\Park\VehicleFields::BLOCKS), 'value', 'storage_rate'])">
+                        <x-car.blocks :lane="$vehicle" :blocks="\App\Park\VehicleFields::BLOCKS" as="section" :required="['brand_id']" :variant-sheets="false"/>
+                        @include('park.vehicles.storage-block', ['fold' => null, 'as' => 'section'])
+                    </x-car.edit-sheet>
+                </form>
+            @endif
+        @endif
+        {{-- Документы — прямо в окошке (02.11.2026, владелец: «срочно отображай документы в окошке»), строками, как в деле и в CRM
+             (23.11.2026: «единые модули»; были чипами): строка открывает, «⋯» — распознать, переименовать, удалить. --}}
         <section class="mt-3" data-controller="photos" data-photos-url-value="/cars/{{ $vehicle->id }}/media" data-photos-collection-value="papers">
-            <input type="file" accept=".pdf,.jpg,.jpeg,.png,.webp,.heic,.doc,.docx" multiple class="sr-only" tabindex="-1" data-photos-target="input" data-action="change->photos#upload">
-            <div hidden data-photos-target="progress" class="mb-2">
-                <div class="mb-1 text-sm text-ink-muted" data-label></div>
-                <div class="h-1.5 overflow-hidden rounded-full bg-surface-3"><div class="h-full bg-accent transition-[width]" data-bar style="width:0"></div></div>
-            </div>
-            @include('park.vehicles.papers-chips')
+            <x-car.papers-head section/>
+            @include('park.vehicles.papers')
         </section>
         @if (! $task && $messages->isNotEmpty())
             {{-- Без заявки — письма ТС той же лентой, что в задаче и деле (x-mail.letters). --}}
             <section class="mt-3">
-                <x-mail.letters :messages="$messages" :url="'/cars/'.$vehicle->id.'/letters'" :reply="! $state->isFinal()"/>
+                <x-mail.letters :messages="$messages" :url="'/cars/'.$vehicle->id.'/letters'" :reply="! $state->isFinal()"><x-slot:tools></x-slot:tools></x-mail.letters>
             </section>
         @endif
         {{-- Остальное по машине — одной группой строк, как «Настройки» iOS (20.10.2026, владелец: «симпатичнее и компактнее,

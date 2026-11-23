@@ -14,13 +14,7 @@
     $carKeys = [...\App\Cars\CarFields::names(\App\Offers\Offer::class, 'car', 'papers', 'specs'), 'show_vin', ...$saleKeys];
     $carOpen = ($errors->hasAny($carKeys) && ! str_starts_with((string) old('_form'), 'handover-')) || array_intersect($hints ?? [], $carKeys);
 @endphp
-<div class="contents" data-controller="sheet" data-action="{{ $sheetId }}:open@window->sheet#open">
-    <x-ui.sheet :id="$sheetId" title="Данные ТС" wide :open="(bool) $carOpen">
-        <div class="flex flex-col gap-5">
-            <x-car.blocks :lane="$offer" :blocks="['car', 'papers', 'specs']" as="section" :hints="$hints ?? []"
-                :required="$carRequired"/>
-            @include('admin.offers.fields.sale', ['as' => 'section', 'fold' => null, 'form' => $carForm])
-        </div>
-        <x-ui.sheet-foot type="submit" foot="mt-4" :form="$carForm" data-action="sheet#close" data-save-part="{{ implode(' ', $carKeys) }}">Сохранить</x-ui.sheet-foot>
-    </x-ui.sheet>
-</div>
+<x-car.edit-sheet :id="$sheetId" :form="$carForm" :open="$carOpen" :part="implode(' ', $carKeys)">
+    <x-car.blocks :lane="$offer" :blocks="['car', 'papers', 'specs']" as="section" :hints="$hints ?? []" :required="$carRequired"/>
+    @include('admin.offers.fields.sale', ['as' => 'section', 'fold' => null, 'form' => $carForm])
+</x-car.edit-sheet>
