@@ -245,24 +245,26 @@ class OfferController
      * «Только мои» в колесе (18.11.2026; 24.11.2026, владелец: «модераторам всегда включён без возможности выключить, Андрею и
      * Кате по умолчанию включён, но можно выключить, при перезаходе опять включается; все этапы по умолчанию видит только главный
      * администратор»): включён ли, можно ли выключить (`locked` — модератору нельзя), свои вкладки (`TabOwner`) и ответственные
-     * каждой (аватарки). Вкладки ожидания (`DealTabs::WAITING`) ответственного не имеют — они свои тому, у кого есть вкладка
-     * сделок, иначе с «Только мои» их не видел бы никто. null — не сотрудник CRM.
+     * каждой (аватарки). Вкладки ожидания (`DealTabs::WAITING`) ответственного не имеют, и с «Только мои» их нет (владелец):
+     * там нашего дела нет. null — не сотрудник CRM.
      *
-     * @return array{on: bool, locked: bool, keys: list<string>, owners: array<string, \Illuminate\Support\Collection>}|null
+     * @return array{on: bool, locked: bool, keys: list<string>, owners: array<string, \Illuminate\Support\Collection>, people: ?\Illuminate\Support\Collection, as: ?int}|null
      */
     public static function tabMine(?User $user): ?array
     {
         if (! $user?->isStaff()) {
             return null;
         }
-        $keys = TabOwner::presetsOf($user);
-        if (array_intersect($keys, array_keys(self::DEAL_TABS))) {
-            $keys = [...$keys, ...DealTabs::WAITING];
-        }
+        // Главный администратор смотрит «Только мои» глазами сотрудника (24.11.2026, владелец): `?mine_as=` — выбор рядом с тумблером.
+        $people = $user->isOwner() ? TabOwner::staff()->reject(fn (User $u) => $u->isOwner())->values() : null;
+        $as = $people?->firstWhere('id', (int) request()->query('mine_as'));
+        $whose = $as ?? $user;
+        $keys = TabOwner::presetsOf($whose);
         $locked = ! $user->canManageCrm();
 
         // Включён у всех, кроме главного администратора; выключить на этот заход — колесо (`tab_wheel_controller`, sessionStorage).
-        return ['on' => $locked || ! $user->isOwner(), 'locked' => $locked, 'keys' => $keys, 'owners' => TabOwner::owners()];
+        return ['on' => $locked || $as !== null || ! $user->isOwner(), 'locked' => $locked, 'keys' => $keys, 'owners' => TabOwner::owners(),
+            'people' => $people, 'as' => $as?->id];
     }
 
     /** Разделы колеса человека — только у разделов, где есть его вкладки. */

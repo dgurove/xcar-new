@@ -92,7 +92,7 @@
             @endforeach
         </div>
     @endif
-    <div id="{{ $id }}" @class(['tab-wheel', 'is-mine' => $mineOn]) data-wheel role="dialog" aria-label="Вкладки" hidden>
+    <div id="{{ $id }}" @class(['tab-wheel', 'is-mine' => $mineOn]) data-wheel role="dialog" aria-label="Вкладки" @if ($mine['as'] ?? null) data-mine-as @endif hidden>
         <x-ui.icon name="chevron-right" class="tab-wheel-chev text-xl sm:text-2xl size-[.9em]"/>
         <nav class="tab-wheel-scroll">
             @php($seenAll = false)
@@ -115,13 +115,14 @@
                             {{-- Зелёное число — сразу за названием (16.11.2026, владелец: «зелёные счётчики возле заголовков, а не справа»):
                                  внутри названия, растёт вместе с ним; серое «всего» — справа. «›» у выбранной — на ПК (на телефоне она
                                  одна, на месте заголовка, `.tab-wheel-chev`). --}}
-                            <span class="tab-wheel-label">@if ((string) $pill === $key)<x-ui.icon name="chevron-right" class="tab-wheel-mark size-[.9em]"/>@endif{{ $label }}@isset($badges[$key])<span class="badge nums tab-wheel-badge" data-pill-count="{{ $badges[$key] }}" @unless ($counts[$badges[$key]] ?? 0) hidden @endunless>{{ ($counts[$badges[$key]] ?? 0) ?: '' }}</span>@endisset</span>
+                            <span class="tab-wheel-label">@if ((string) $pill === $key)<x-ui.icon name="chevron-right" class="tab-wheel-mark size-[.9em]"/>@endif{{ $label }}@if (in_array($key, $waits, true))<x-ui.icon name="clock" class="tab-wheel-wait size-[.7em] lg:size-3.5"/>@endif{{ "" }}@isset($badges[$key])<span class="badge nums tab-wheel-badge" data-pill-count="{{ $badges[$key] }}" @unless ($counts[$badges[$key]] ?? 0) hidden @endunless>{{ ($counts[$badges[$key]] ?? 0) ?: '' }}</span>@endisset</span>
                             <span class="tab-wheel-nums">
                                 @if (array_key_exists($key, $counts))<span class="nums" data-pill-count="{{ $key }}">{{ $counts[$key] ?: '' }}</span>@endif
                                 {{-- Чья вкладка (24.11.2026, владелец: «маленькие аватарки кому она принадлежит, справа от чисел, не смещая их»):
                                      за краем строки, числа стоят ровно. --}}
-                                @php($people = $mine['owners'][$key] ?? null)
-                                @if ($people && $people->isNotEmpty())
+                                {{-- Главного администратора в аватарках нет (владелец): он видит всё и так. --}}
+                                @php($people = ($mine['owners'][$key] ?? collect())->reject(fn ($u) => $u->isOwner()))
+                                @if ($people->isNotEmpty())
                                     <span class="tab-wheel-owners" title="{{ $people->pluck('name')->implode(', ') }}">@foreach ($people->take(3) as $u)<x-ui.avatar :user="$u" :size="16"/>@endforeach</span>
                                 @endif
                             </span>
@@ -136,6 +137,13 @@
         {{-- Модератору тумблера нет: у него всегда только свои (24.11.2026, владелец). --}}
         @if ($mine !== null && ! $mine['locked'])
             <label class="tab-wheel-mine">
+                {{-- Главному администратору — чьи «Только мои» показать (`?mine_as=`, `tab_wheel_controller#viewAs`). --}}
+                @if ($mine['people'] ?? null)
+                    <select class="tab-wheel-as" aria-label="Чьи вкладки">
+                        <option value="">Мои</option>
+                        @foreach ($mine['people'] as $u)<option value="{{ $u->id }}" @selected($mine['as'] === $u->id)>{{ $u->name }}</option>@endforeach
+                    </select>
+                @endif
                 <span>Только мои</span>
                 <input type="checkbox" class="switch" @checked($mineOn)>
             </label>

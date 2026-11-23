@@ -1491,7 +1491,18 @@ html.kb-open { --home-gap: 0px; }
   .tab-wheel-label .tab-wheel-badge { background: var(--color-danger); color: #fff; }
   .tab-wheel-nums { position: relative; margin-inline-start: auto; display: flex; align-items: center; gap: .5rem; font-size: var(--text-sm); color: var(--color-ink-dim); }
   /* Ответственные вкладки (24.11.2026, владелец: «справа от чисел, не смещая их, за пределами») — за краем строки: числа стоят ровно. */
-  .tab-wheel-owners { position: absolute; left: 100%; top: 50%; translate: 0 -50%; margin-inline-start: .5rem; display: flex; gap: .125rem; }
+  .tab-wheel-owners { position: absolute; left: 100%; top: 50%; translate: 0 -50%; margin-inline-start: .375rem; display: flex; }
+  /* Стопкой внахлёст «О))» (владелец), как у оценщиков в чипе «Оценить»: кольцо цвета подложки колеса. */
+  .tab-wheel-owners .avatar { box-shadow: 0 0 0 1.5px var(--color-wheel); }
+  .tab-wheel-owners .avatar + .avatar { margin-inline-start: -5px; }
+  /* Левая — поверх правой (владелец). */
+  .tab-wheel-owners .avatar { position: relative; }
+  .tab-wheel-owners .avatar:nth-child(1) { z-index: 3; }
+  .tab-wheel-owners .avatar:nth-child(2) { z-index: 2; }
+  /* Чьи «Только мои» (главный администратор): системный выбор мелким шрифтом подписи. */
+  .tab-wheel-as { field-sizing: content; max-width: 11rem; border: 0; background: transparent; font: inherit; color: var(--color-ink); cursor: pointer; }
+  /* Вкладка ожидания — на месте красного счётчика серые часы (владелец): «тут ждём»; полупрозрачны вместе с названием. */
+  .tab-wheel-wait { display: inline-block; margin-inline-start: .3em; vertical-align: .15em; color: var(--color-ink-muted); }
   /* «Только мои» включён — аватарок нет (владелец): и так видно, что вкладки свои. */
   .tab-wheel.is-mine .tab-wheel-owners { display: none; }
   /* Вкладка, где мы только ждём (`DealTabs::WAITING`, 17.11.2026, владелец: «regular font полупрозрачный»): обычный вес и
@@ -1527,7 +1538,7 @@ html.kb-open { --home-gap: 0px; }
       padding-inline: var(--wheel-left) max(1rem, env(safe-area-inset-right)); scroll-snap-align: start; view-timeline: --wheel-row block;
     }
     /* Аватарки ответственных — за краем строки; у края телефона им место отступом справа, одинаковым у всех строк. */
-    .tab-wheel:not(.is-mine) .tab-wheel-item { padding-inline-end: calc(max(1rem, env(safe-area-inset-right)) + 3.5rem); }
+    .tab-wheel:not(.is-mine) .tab-wheel-item { padding-inline-end: calc(max(1rem, env(safe-area-inset-right)) + 2.75rem); }
     /* Мелкое — масштабом от левого края: текст не прыгает. */
     .tab-wheel-label { transform-origin: left center; transform: scale(var(--wheel-small)); }
     .tab-wheel-item[aria-current] .tab-wheel-label { transform: none; }
@@ -1574,7 +1585,8 @@ html.kb-open { --home-gap: 0px; }
     }
     .tab-wheel-col { display: flex; flex-direction: column; min-width: 0; }
     /* Аватарки ответственных — за краем столбца: промежуток шире на три аватарки, иначе они наезжали на соседний столбец. */
-    .tab-wheel:not(.is-mine) .tab-wheel-scroll { column-gap: calc(clamp(1.5rem, 4vw, 4rem) + 3.75rem); }
+    .tab-wheel:not(.is-mine) .tab-wheel-scroll { column-gap: calc(clamp(1rem, 2.5vw, 2.5rem) + 2.75rem); }
+    .tab-wheel-wait { margin-inline-start: .4em; vertical-align: middle; }
     .tab-wheel-item { height: 2.25rem; cursor: pointer; }
     .tab-wheel-label { font-size: var(--text-lg); font-weight: 400; letter-spacing: 0; color: var(--color-ink-muted); transition: color var(--dur-fast); }
     /* Выбранная — шрифтом заголовка, как на телефоне (17.11.2026, владелец: «на телефоне нравится, а тут такой же, как все»). */

@@ -89,7 +89,10 @@ export default class extends Controller {
         this.scroll = wheel.querySelector('.tab-wheel-scroll');
         const toggle = wheel.querySelector('.tab-wheel-mine input');
         const saved = mineSaved();
-        if (toggle && saved !== null) { toggle.checked = saved; wheel.classList.toggle('is-mine', saved); }
+        // Смотрим чужие «Только мои» (`data-mine-as`) — своя память тумблера не мешает.
+        if (toggle && saved !== null && !wheel.hasAttribute('data-mine-as')) wheel.classList.toggle('is-mine', saved);
+        // Тумблер — по колесу: морф Turbo оставляет у переключателя прежнее состояние.
+        if (toggle) toggle.checked = wheel.classList.contains('is-mine');
         this.collect();
         this.chosen = null;
         document.documentElement.append(wheel);
@@ -153,6 +156,19 @@ export default class extends Controller {
         try { sessionStorage.setItem(MINE, on ? '1' : '0'); } catch { /* без памяти — до перезагрузки */ }
     }
 
+    // Главный администратор выбрал, чьи «Только мои» смотреть: та же страница с `mine_as`, колесо открывается снова, когда она
+    // встала (Turbo её морфит — контроллер не переподключается).
+    viewAs(event) {
+        const url = new URL(location.href);
+        if (event.target.value) url.searchParams.set('mine_as', event.target.value); else url.searchParams.delete('mine_as');
+        // Сначала снять запись колеса в истории, потом заменить адрес — иначе «Назад» колеса увёл бы с новой страницы.
+        this.close(true);
+        overlays.shut(ID).then(() => {
+            document.addEventListener('turbo:load', () => setTimeout(() => document.querySelector('.tab-title-btn')?.click(), 550), { once: true });
+            Turbo.visit(url.toString(), { action: 'replace' });
+        });
+    }
+
     listen() {
         const s = this.scroll;
         this.off = new AbortController();
@@ -169,6 +185,7 @@ export default class extends Controller {
         this.wheel.addEventListener('click', (e) => this.tap(e), opts);
         // Колесо открыто вне своего контроллера (в `<html>`), действия Stimulus до тумблера не доходят — слушаем сами.
         this.wheel.querySelector('.tab-wheel-mine input')?.addEventListener('change', (e) => this.onlyMine(e), opts);
+        this.wheel.querySelector('.tab-wheel-as')?.addEventListener('change', (e) => this.viewAs(e), opts);
         document.addEventListener('keydown', (e) => this.key(e), opts);
         // Наш визит — по адресу (ответ мог прийти редиректом); начался чужой — колесо его не ждёт.
         document.addEventListener('turbo:visit', (e) => { this.mine = !!this.url && e.detail.url === this.url; }, opts);
