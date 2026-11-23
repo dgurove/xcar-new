@@ -30,15 +30,4 @@ enum CarPlace: string
             self::Buyer => 'У покупателя',
         };
     }
-
-    /** Подпись на витрине: что ТС стоит у другого менеджера, наружу не выходит — «У нас». */
-    public function publicLabel(): ?string
-    {
-        // Привезли по чужому адресу — на витрине места не пишем: «У нас» было бы неправдой.
-        return match ($this) {
-            self::Keeper => self::WithUs->label(),
-            self::Elsewhere, self::Depot, self::Buyer => null,
-            default => $this->label(),
-        };
-    }
 }
