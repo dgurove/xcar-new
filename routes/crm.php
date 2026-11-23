@@ -276,6 +276,7 @@ Route::domain(config('xcar.crm_host'))->middleware(['auth', 'ability:isStaff'])-
         // касается договоров и счетов», «пусть цену продажи и сумму вознаграждения тоже могут менять»): цена и вознаграждение,
         // «Ещё счёт»; оплаты, ссылки и заявки об оплате — кусок «Оплат» `routes/money-shared.php`.
         Route::put('/work/deals/{deal}/money', [DealController::class, 'money']);
+        Route::put('/work/deals/{deal}/owner-price', [DealController::class, 'ownerPrice']);
         Route::get('/work/invoices/new', [InvoiceController::class, 'create']);
         Route::post('/work/invoices', [InvoiceController::class, 'store']);
     });

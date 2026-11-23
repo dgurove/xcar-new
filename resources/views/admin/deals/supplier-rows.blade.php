@@ -27,5 +27,10 @@
     <div class="row sale-row"><span class="sale-row-label">Оплата поставщику</span><span class="sale-row-value text-open">{{ $proofState }}</span><x-ui.chevron-space/></div>
 @endif
 @if ($deal->schemeOf() === \App\Offers\DealScheme::OwnerDkp && $deal->offset())
-    <div class="row sale-row"><span class="sale-row-label">Взаимозачёт со страховой</span><span class="sale-row-value nums">−{{ \App\Support\Money::rub($deal->offset()) }}</span><x-ui.chevron-space/></div>
+    {{-- Нажимается — шторка «Взаимозачёт со страховой» (`x-deal.offset-sheet`, 23.11.2026), у тех, кто правит деньги. --}}
+    @if ($offsetEdit ?? false)
+        <button type="button" class="row sale-row" data-controller="emit" data-action="emit#send" data-emit-event-param="offset-{{ $deal->id }}:open"><span class="sale-row-label">Взаимозачёт со страховой</span><span class="sale-row-value nums">−{{ \App\Support\Money::rub($deal->offset()) }}</span><x-ui.chevron/></button>
+    @else
+        <div class="row sale-row"><span class="sale-row-label">Взаимозачёт со страховой</span><span class="sale-row-value nums">−{{ \App\Support\Money::rub($deal->offset()) }}</span><x-ui.chevron-space/></div>
+    @endif
 @endif

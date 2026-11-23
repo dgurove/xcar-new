@@ -365,6 +365,24 @@ class DealController
         return back()->with('toast', 'Сохранено');
     }
 
+    /**
+     * Взаимозачёт со страховой (23.11.2026, владелец: «не понимаю, как настраивать — строка некликабельная»): ДКП собственнику,
+     * сумма собственнику (`owner_price`) — взаимозачёт = закупочная − она (`Deal::offset`); «Без взаимозачёта» — собственнику
+     * закупочная. Шторка `x-deal.offset-sheet`; деньги и счета — `UpdateDealMoney`, пока по счетам не платили.
+     */
+    public function ownerPrice(Request $request, Deal $deal, UpdateDealMoney $update)
+    {
+        abort_unless($deal->moneyOpen() && $deal->schemeOf() === DealScheme::OwnerDkp, 404);
+        $request->merge(['owner_price' => blank($request->input('owner_price')) ? null : Money::rubles($request->input('owner_price'))]);
+        $owner = $request->boolean('none') ? null : $request->validate(['owner_price' => ['required', 'integer', 'min:1']],
+            ['owner_price.required' => 'Сколько получает собственник'])['owner_price'];
+        $update($deal, $request->user(), $deal->commission, owner: $owner, setOwner: true,
+            note: $owner === null || (int) $owner === (int) $deal->cost ? 'Взаимозачёта со страховой нет'
+                : 'Собственнику по ДКП '.Money::rub($owner).', взаимозачёт со страховой '.Money::rub((int) $deal->cost - $owner));
+
+        return back()->with('toast', 'Сохранено');
+    }
+
     /** «Схема» строкой в окошке и в сделке (03.11.2026): сменить — деньги, счета и шаг реквизитов встают по новой. */
     public function scheme(Request $request, Deal $deal, ChangeDealScheme $change)
     {

@@ -137,6 +137,30 @@ class DkpDealFlowTest extends TestCase
         $this->assertEqualsWithDelta(80000, $invoice->fresh()->openLink()->amount, 0.01);
     }
 
+    /**
+     * Взаимозачёт со страховой правится шторкой (23.11.2026, `DealController::ownerPrice`): собственнику 760 000 — взаимозачёт
+     * 19 000, подбор 850 000 − 760 000 − 20 000 = 70 000 и счёт подбора на 70 000; больше закупочной — ошибка; «Без взаимозачёта» —
+     * собственнику закупочная; по счёту платили — не правится.
+     */
+    public function test_owner_price_sets_offset_and_selection(): void
+    {
+        [, $deal] = $this->deal();
+        $url = \App\Support\Surface::Crm->url('/work/deals/'.$deal->id.'/owner-price');
+        $this->actingAs($this->admin)->put($url, ['owner_price' => '760 000'])->assertSessionHasNoErrors()->assertRedirect();
+        $deal = $deal->fresh();
+        $this->assertSame(19000, $deal->offset());
+        $this->assertSame(70000, $deal->selectionDue());
+        $this->assertEqualsWithDelta(70000, $deal->issuedInvoices()->where('kind', ChargeKind::Selection)->where('state', InvoiceState::Issued)->sole()->total, 0.01);
+
+        $this->actingAs($this->admin)->put($url, ['owner_price' => '800 000'])->assertSessionHasErrors('owner_price');
+        $this->actingAs($this->admin)->put($url, ['none' => 1])->assertSessionHasNoErrors();
+        $this->assertSame(0, $deal->fresh()->offset());
+
+        $invoice = $deal->fresh()->issuedInvoices()->where('kind', ChargeKind::Selection)->where('state', InvoiceState::Issued)->sole();
+        app(RecordPayment::class)($invoice, $this->admin, 1000, now(), PaymentSource::Bank);
+        $this->actingAs($this->admin)->put($url, ['owner_price' => '760 000'])->assertSessionHasErrors();
+    }
+
     public function test_cancelled_deal_voids_unpaid_selection_invoice(): void
     {
         [, $deal] = $this->deal();

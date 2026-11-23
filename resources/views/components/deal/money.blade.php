@@ -49,6 +49,8 @@
         $paidBy = $invoices->filter(fn ($i) => ! $i->isOwed() && $i->state === InvoiceState::Issued && $i->remaining() > 0 && auth()->user()?->canEditDeals());
         // Гаражная Совкомбанка без цены — тоже (18.11.2026): цену продажи вписывают тут же, как «Продаю» менеджера.
         $editMoney = $deal->moneyOpen() && $deal->moneyEditable() && auth()->user()?->canEditDeals() && (! $deal->isGarage() || $deal->isGarageManager() || $deal->namesBuyer());
+        // Взаимозачёт со страховой — у ДКП собственнику, кто правит деньги (23.11.2026, `x-deal.offset-sheet`).
+        $offsetEdit = $editMoney && $deal->schemeOf() === \App\Offers\DealScheme::OwnerDkp && $deal->cost !== null;
         // Что раньше стояло строками («Кому», «Плательщик», «Кому» у подбора) — пунктами «⋯» (18.11.2026): шапки блоков и так это говорят.
         // «Кто платит…» — с 22.11.2026 строкой «Покупатель» (владелец: «из доп. меню убрать и вставить нормально»): в «⋯» — только
         // где строки покупателя нет.
@@ -76,6 +78,7 @@
                         <div class="menu-group">
                             @if ($editMoney)<button type="button" class="menu-item w-full" data-controller="emit" data-action="emit#send" data-emit-event-param="deal-money-{{ $deal->id }}:open">{{ $deal->isGarageManager() ? 'Вознаграждение менеджера…' : 'Цена и вознаграждение…' }}</button>@endif
                             @if ($withContract)<button type="button" class="menu-item w-full" data-controller="emit" data-action="emit#send" data-emit-event-param="dkp-{{ $deal->id }}:open">Данные договора…</button>@endif
+                            @if ($offsetEdit && ! $deal->offset())<button type="button" class="menu-item w-full" data-controller="emit" data-action="emit#send" data-emit-event-param="offset-{{ $deal->id }}:open">Взаимозачёт со страховой…</button>@endif
                         </div>
                     @endif
                     @if ($paidBy->contains->isDocument() || ($deal->moneyOpen() && $issued->isNotEmpty()))
@@ -89,6 +92,7 @@
                     @endif
                 </x-ui.more>
             @endif
+            @if ($offsetEdit)<x-deal.offset-sheet :deal="$deal"/>@endif
             @if ($editMoney)
             {{-- Шторка денег сделки — пунктом «⋯» (15.11.2026: «Изменить» в заголовке «Продажи» было непонятно, что меняет). --}}
             <div data-controller="sheet" class="contents" data-action="deal-money-{{ $deal->id }}:open@window->sheet#open">
@@ -248,7 +252,10 @@
                     @if ($editMoney)<x-ui.chevron/>@else<x-ui.chevron-space/>@endif
                 </{{ $priceTag }}>
             @endif
-            @if ($supplierSum)
+            @if ($supplierSum && $offsetEdit)
+                {{-- ДКП собственнику — сумма нажимается: шторка «Взаимозачёт со страховой» (23.11.2026). --}}
+                <button type="button" class="row sale-row" data-controller="emit" data-action="emit#send" data-emit-event-param="offset-{{ $deal->id }}:open"><span class="sale-row-label">Собственнику</span><span class="sale-row-value nums">{{ $supplierSum }}</span><x-ui.chevron/></button>
+            @elseif ($supplierSum)
                 <div class="row sale-row"><span class="sale-row-label">{{ $deal->schemeOf() === \App\Offers\DealScheme::OwnerDkp ? 'Собственнику' : 'Поставщику' }}</span><span class="sale-row-value nums">{{ $supplierSum }}</span><x-ui.chevron-space/></div>
             @endif
             {{-- ПРАЙМ / Р.О.С. — закупочная («вход», 23.11.2026, начальник: «вход, продажа, комиссия XCAR, комиссия менеджера»):
