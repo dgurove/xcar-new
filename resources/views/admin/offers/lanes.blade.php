@@ -37,7 +37,9 @@
     // Сделка на странице (23.11.2026, владелец: «„Сделку“ — в „Подтверждения“ справа сверху над чатом, вывоз — под ходом сделки,
     // продажу — справа»): «Подтверждения» рисует правая колонка страницы над «Историей» (`admin/offers/edit`), здесь две колонки — слева ход
     // сделки и под ним вывоз, справа «Продажа» и «Оплата поставщику». Окно — как было.
-    $dealPage = ! $compact && $third === 'deal';
+    // Гаражная со сделкой на странице — так же (24.11.2026, владелец: «продажа и оплата поставщику на компе справа от хода
+    // сделки, вывоз — слева над гаражом»): слева ход с расчётом, вывоз, «Гараж»; справа «Продажа» и «Оплата поставщику».
+    $dealPage = ! $compact && ($third === 'deal' || ($third === 'garage' && $cardsDeal));
 @endphp
 @if ($dealPage)
     <div class="grid grid-cols-1 items-start gap-4 @[34rem]/lanes:grid-cols-2">
@@ -48,11 +50,29 @@
                 @else
                     <x-ui.card title="Ход сделки" id="sale"><div class="steps">{!! $tail !!}</div></x-ui.card>
                 @endif
+                @if ($garageCar?->isSold() && ! $garageCar->settledByDeal())
+                    <x-ui.card title="Расчёт">
+                        @if ($g['moreSale'])
+                            <x-slot:actions>@include('garage.cars.actions', ['buttons' => [], 'more' => $g['moreSale'], 'bar' => false, 'menuKey' => '-sale'] + $g)</x-slot:actions>
+                        @endif
+                        @include('garage.cars.money', $g)
+                    </x-ui.card>
+                @endif
             @endif
             @if ($pickupLane)<x-logistics.lane :offer="$offer" :deal="$deal?->isActive() ? $deal : null"/>@endif
             @if ($handover)<x-deal.handover :deal="$deal"/>@endif
+            @if ($third === 'garage')
+                @include('admin.offers.garage-card', ['compact' => false])
+                @if ($offer->deal && $bids->where('state', \App\Offers\BidState::Active)->isNotEmpty())
+                    <x-ui.card title="Подтверждения">
+                        <x-slot:actions><x-offer.bid-for :offer="$offer" head/></x-slot:actions>
+                        @include('admin.offers.bids', ['inside' => true, 'compact' => false, 'addHead' => true])
+                    </x-ui.card>
+                @endif
+                @if ($offer->interests->isNotEmpty())@include('admin.offers.interests')@endif
+            @endif
         </div>
-        <div class="flex min-w-0 flex-col gap-4">@include('admin.offers.deal-cards', ['deal' => $deal, 'compact' => false])</div>
+        <div class="flex min-w-0 flex-col gap-4">@include('admin.offers.deal-cards', ['deal' => $cardsDeal, 'compact' => false])</div>
     </div>
 @elseif ($count)
     <div @class(['grid grid-cols-1 items-start gap-4', '@[34rem]/lanes:grid-cols-2' => $count > 1, '@[52rem]/lanes:grid-cols-3' => $count > 2])>
