@@ -541,6 +541,15 @@ final class Facets
         return $this->url([$f->key => $f->byDefault ? ($on ? '0' : null) : ($on ? '' : '1')]);
     }
 
+    /** Ссылка пилюли варианта (`Facet::pills`): вариант добавить к выбору или снять, прочие чипы — как есть. */
+    public function pillUrl(Facet $f, string $value, bool $on): string
+    {
+        $now = $this->excluded($f->key) === null ? $this->selected($f->key) : [];
+        $next = $on ? array_values(array_diff($now, [$value])) : [...$now, $value];
+
+        return $this->url([$f->key => implode(',', $next)]);
+    }
+
     /** @return array<string, string> параметры адреса, которые форма шторки чипа несёт скрытыми полями */
     public function carry(string $except): array
     {

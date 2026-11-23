@@ -1664,6 +1664,10 @@ html.kb-open { --home-gap: 0px; }
   @media (min-width: 768px) {
     .toolbar-row { overflow: visible; margin: 0; padding: 0; }
     .toolbar-row > div { flex-wrap: wrap; }
+    /* Много быстрых чипов (менеджеры «На оценке у», 24.11.2026) — переносятся под кнопки, «Фильтр» остаётся у правого края. */
+    .toolbar-side:has(> .toolbar-toggles) { flex: 1 1 0%; flex-wrap: wrap; min-width: 0; }
+    .toolbar-bar:has(> .toolbar-side > .toolbar-toggles) { align-items: flex-start; }
+    .toolbar-toggles .toolbar-row > div { flex-wrap: wrap; }
   }
   /* «Фильтр» — капсула с подписью; выбрано не по умолчанию — лаймовая с числом и × (как выбранный чип). */
   .filter-btn { max-width: 14rem; }
@@ -1726,6 +1730,8 @@ html.kb-open { --home-gap: 0px; }
   }
   @media (hover: hover) { a.pill:hover, button.pill:hover { @apply bg-hover text-ink; } }
   .pill-lg { @apply px-4; }
+  /* Пилюля варианта с аватаром (`Facet::pills`, «На оценке у»): аватар у левого края капсулы. */
+  .facet-pill:has(> .avatar) { padding-left: .3125rem; }
   .pill[aria-current="true"], .pill[aria-current="page"], .pill-accent { @apply bg-accent font-medium text-white; }
   @media (hover: hover) { a.pill[aria-current="true"]:hover, a.pill[aria-current="page"]:hover, a.pill-accent:hover { @apply bg-accent-hover text-white; } }
   /* Бейдж нового в пилюле: на лаймовой текущей лаймовый пропадал — инверсия, как у текущего таба. */

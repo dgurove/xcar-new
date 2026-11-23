@@ -529,9 +529,13 @@ class OfferController
             ],
             default => self::facets(),
         }, ...($admin ? [
-            // Срок обязывающего горит, покупателя нет (19.10.2026, владелец: «прям ПАНИКА!!!») — красной точкой с числом; на
-            // «Есть подтверждения» — подтверждение есть, а принять не успели (`undecided`).
-            Facet::toggle('binding', 'Горит срок', fn ($o) => Binding::scope($o, $preset === 'bids' ? 'undecided' : 'panic'))->dot('danger')->icon('fire'),
+            // «Без продажной» и «На оценке у менеджеров» — вместо «Горит срок» менеджеры, кому отдали на оценку (24.11.2026,
+            // начальник): пилюлями с аватаром и числом, несколько — машины любого из них.
+            ...(in_array($preset, ['unpriced', 'estimating'], true) ? [self::estimatorFacet()] : [
+                // Срок обязывающего горит, покупателя нет (19.10.2026, владелец: «прям ПАНИКА!!!») — красной точкой с числом; на
+                // «Есть подтверждения» — подтверждение есть, а принять не успели (`undecided`).
+                Facet::toggle('binding', 'Горит срок', fn ($o) => Binding::scope($o, $preset === 'bids' ? 'undecided' : 'panic'))->dot('danger')->icon('fire'),
+            ]),
             // Переоценка ждёт решения (28.10.2026) — оранжевой точкой, пока такие есть.
             Facet::toggle('reprice', 'Переоценка', fn ($o) => $o->whereHas('reprices', fn ($r) => $r->where('state', Reprice::PENDING)))->dot('hot')->icon('refresh'),
         ] : [])];
@@ -740,6 +744,20 @@ class OfferController
     }
 
     /** «На оценке у менеджеров»: черновик без цены продажи (закупочная — любая) с открытой просьбой оценить. */
+    /** «На оценке у»: менеджеры с открытой просьбой оценить по машинам списка (`Estimate::open`), числом машин. */
+    private static function estimatorFacet(): Facet
+    {
+        return Facet::custom('estimator', 'На оценке у', ['менеджер', 'менеджера', 'менеджеров'],
+            fn (Builder $q, array $ids) => $q->whereHas('estimates', fn ($e) => $e->open()->whereIn('offer_estimates.user_id', array_map('intval', $ids))),
+            fn (Builder $q) => \App\Offers\Estimate::query()->open()
+                ->whereIn('offer_estimates.offer_id', Facet::bare((clone $q)->toBase())->select('offers.id'))
+                ->selectRaw('offer_estimates.user_id, count(distinct offer_estimates.offer_id) as n')->groupBy('offer_estimates.user_id')
+                ->pluck('n', 'user_id')->map(fn ($n) => (int) $n)->mapWithKeys(fn ($n, $id) => [(string) $id => $n])->all(),
+        )->labels(fn (array $ids) => \App\Users\User::whereIn('id', array_map('intval', $ids))->with(\App\Users\User::withAvatar())->get()
+            ->mapWithKeys(fn ($u) => [(string) $u->id => new \App\Support\Facets\Option((string) $u->id, $u->shortName(), user: $u)])->all())
+            ->icon('user')->pills();
+    }
+
     public static function estimating(Builder $q): Builder
     {
         return $q->where('offers.state', OfferState::Draft)->whereNull('slot_at')->where(fn ($p) => $p->whereNull('asking_price')->orWhere('asking_price', 0))
