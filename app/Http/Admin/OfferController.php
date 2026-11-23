@@ -530,7 +530,7 @@ class OfferController
             default => self::facets(),
         }, ...($admin ? [
             // «Без продажной» и «На оценке у менеджеров» — вместо «Горит срок» менеджеры, кому отдали на оценку (24.11.2026,
-            // начальник): пилюлями с аватаром и числом, несколько — машины любого из них.
+            // начальник): чипом с галками в ряду шапки, несколько — машины любого из них.
             ...(in_array($preset, ['unpriced', 'estimating'], true) ? [self::estimatorFacet()] : [
                 // Срок обязывающего горит, покупателя нет (19.10.2026, владелец: «прям ПАНИКА!!!») — красной точкой с числом; на
                 // «Есть подтверждения» — подтверждение есть, а принять не успели (`undecided`).
@@ -755,7 +755,7 @@ class OfferController
                 ->pluck('n', 'user_id')->map(fn ($n) => (int) $n)->mapWithKeys(fn ($n, $id) => [(string) $id => $n])->all(),
         )->labels(fn (array $ids) => \App\Users\User::whereIn('id', array_map('intval', $ids))->with(\App\Users\User::withAvatar())->get()
             ->mapWithKeys(fn ($u) => [(string) $u->id => new \App\Support\Facets\Option((string) $u->id, $u->shortName(), user: $u)])->all())
-            ->icon('user')->pills();
+            ->icon('user')->dropdown();
     }
 
     public static function estimating(Builder $q): Builder

@@ -1730,8 +1730,6 @@ html.kb-open { --home-gap: 0px; }
   }
   @media (hover: hover) { a.pill:hover, button.pill:hover { @apply bg-hover text-ink; } }
   .pill-lg { @apply px-4; }
-  /* Пилюля варианта с аватаром (`Facet::pills`, «На оценке у»): аватар у левого края капсулы. */
-  .facet-pill:has(> .avatar) { padding-left: .3125rem; }
   .pill[aria-current="true"], .pill[aria-current="page"], .pill-accent { @apply bg-accent font-medium text-white; }
   @media (hover: hover) { a.pill[aria-current="true"]:hover, a.pill[aria-current="page"]:hover, a.pill-accent:hover { @apply bg-accent-hover text-white; } }
   /* Бейдж нового в пилюле: на лаймовой текущей лаймовый пропадал — инверсия, как у текущего таба. */
