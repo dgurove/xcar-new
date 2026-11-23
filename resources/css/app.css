@@ -1489,7 +1489,11 @@ html.kb-open { --home-gap: 0px; }
   /* Наши дела во вкладке — красным счётчиком с белым числом, как у разделов таб-бара CRM (17.11.2026, владелец: «не зелёные,
      а счётчики как на разделах»). Два класса — `.badge` ниже по файлу. */
   .tab-wheel-label .tab-wheel-badge { background: var(--color-danger); color: #fff; }
-  .tab-wheel-nums { margin-inline-start: auto; display: flex; align-items: center; gap: .5rem; font-size: var(--text-sm); color: var(--color-ink-dim); }
+  .tab-wheel-nums { position: relative; margin-inline-start: auto; display: flex; align-items: center; gap: .5rem; font-size: var(--text-sm); color: var(--color-ink-dim); }
+  /* Ответственные вкладки (24.11.2026, владелец: «справа от чисел, не смещая их, за пределами») — за краем строки: числа стоят ровно. */
+  .tab-wheel-owners { position: absolute; left: 100%; top: 50%; translate: 0 -50%; margin-inline-start: .5rem; display: flex; gap: .125rem; }
+  /* «Только мои» включён — аватарок нет (владелец): и так видно, что вкладки свои. */
+  .tab-wheel.is-mine .tab-wheel-owners { display: none; }
   /* Вкладка, где мы только ждём (`DealTabs::WAITING`, 17.11.2026, владелец: «regular font полупрозрачный»): обычный вес и
      полупрозрачное название; выбранная — тоже обычным весом, но в полный цвет. */
   .tab-wheel-item.is-wait .tab-wheel-label { font-weight: 400; }
@@ -1522,6 +1526,8 @@ html.kb-open { --home-gap: 0px; }
       height: var(--wheel-row); max-width: calc(var(--wheel-left) + 26rem);
       padding-inline: var(--wheel-left) max(1rem, env(safe-area-inset-right)); scroll-snap-align: start; view-timeline: --wheel-row block;
     }
+    /* Аватарки ответственных — за краем строки; у края телефона им место отступом справа, одинаковым у всех строк. */
+    .tab-wheel:not(.is-mine) .tab-wheel-item { padding-inline-end: calc(max(1rem, env(safe-area-inset-right)) + 3.5rem); }
     /* Мелкое — масштабом от левого края: текст не прыгает. */
     .tab-wheel-label { transform-origin: left center; transform: scale(var(--wheel-small)); }
     .tab-wheel-item[aria-current] .tab-wheel-label { transform: none; }
@@ -1567,6 +1573,8 @@ html.kb-open { --home-gap: 0px; }
       column-gap: clamp(1.5rem, 4vw, 4rem); padding: var(--wheel-top) 2rem 3rem var(--wheel-left);
     }
     .tab-wheel-col { display: flex; flex-direction: column; min-width: 0; }
+    /* Аватарки ответственных — за краем столбца: промежуток шире на три аватарки, иначе они наезжали на соседний столбец. */
+    .tab-wheel:not(.is-mine) .tab-wheel-scroll { column-gap: calc(clamp(1.5rem, 4vw, 4rem) + 3.75rem); }
     .tab-wheel-item { height: 2.25rem; cursor: pointer; }
     .tab-wheel-label { font-size: var(--text-lg); font-weight: 400; letter-spacing: 0; color: var(--color-ink-muted); transition: color var(--dur-fast); }
     /* Выбранная — шрифтом заголовка, как на телефоне (17.11.2026, владелец: «на телефоне нравится, а тут такой же, как все»). */

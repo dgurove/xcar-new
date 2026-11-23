@@ -24,9 +24,6 @@ final class TabOwner extends Model
 
     protected $table = 'offer_tab_owners';
 
-    /** @var array<int, list<string>> вкладки человека на запрос */
-    private static array $memo = [];
-
     public function user(): BelongsTo
     {
         return $this->belongsTo(User::class);
@@ -44,7 +41,21 @@ final class TabOwner extends Model
     /** Вкладки, за которые человек отвечает. @return list<string> */
     public static function presetsOf(User $user): array
     {
-        return self::$memo[$user->id] ??= self::where('user_id', $user->id)->pluck('preset')->all();
+        return array_keys(array_filter(self::owners(), fn (Collection $people) => $people->contains('id', $user->id)));
+    }
+
+    /**
+     * Ответственные каждой вкладки (аватарки в колесе, «Только мои») — один запрос на веб-запрос. Не статическим полем: воркер
+     * Octane живёт дольше запроса, и после «Ответственных» другие воркеры показывали прежних (24.11.2026).
+     *
+     * @return array<string, Collection<int, User>>
+     */
+    public static function owners(): array
+    {
+        $owners = fn () => self::query()->with(['user' => fn ($q) => $q->with(User::withAvatar())])->orderBy('id')->get()
+            ->groupBy('preset')->map(fn ($rows) => new Collection($rows->pluck('user')->filter()->values()->all()))->all();
+
+        return app()->runningInConsole() ? $owners() : once($owners);
     }
 
     /** Кого можно назначить: администраторы и модераторы, не отклонённые и не демо. @return Collection<int, User> */
@@ -55,6 +66,6 @@ final class TabOwner extends Model
 
     public static function forget(): void
     {
-        self::$memo = [];
+        \Illuminate\Support\Once::flush();
     }
 }

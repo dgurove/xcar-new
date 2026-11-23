@@ -3,7 +3,6 @@ import * as Turbo from '@hotwired/turbo';
 import * as overlays from '../overlays';
 import { reducedMotion } from '../lib/motion';
 import { scrollTop, scrollToY } from '../lib/scroller';
-import { request } from '../lib/http';
 
 // Вкладки экрана колесом во весь экран (`x-ui.tab-title`, 30.10.2026, владелец: «как в iOS, как на Apple Watch»).
 //
@@ -42,6 +41,15 @@ function tick() {
 // Логотип CRM ведёт сюда (`Surface::brand`, 17.11.2026: космос на `/` не прижился): колесо «Предложений» открывается само,
 // а на самих `/offers` — на месте, без перехода и с чипами вкладки.
 const LOGO = '/offers#tabs';
+// «Только мои» на этот заход (24.11.2026, владелец: «можно выключить, при перезаходе пусть опять включается»): помнит вкладка
+// браузера или приложения, новый заход — снова как задал сервер (`OfferController::tabMine`).
+const MINE = 'wheel-mine';
+function mineSaved() {
+    try {
+        const v = sessionStorage.getItem(MINE);
+        return v === null ? null : v === '1';
+    } catch { return null; }
+}
 const HOME = '/offers';
 
 export default class extends Controller {
@@ -79,6 +87,9 @@ export default class extends Controller {
         this.wheel = wheel;
         this.button = button;
         this.scroll = wheel.querySelector('.tab-wheel-scroll');
+        const toggle = wheel.querySelector('.tab-wheel-mine input');
+        const saved = mineSaved();
+        if (toggle && saved !== null) { toggle.checked = saved; wheel.classList.toggle('is-mine', saved); }
         this.collect();
         this.chosen = null;
         document.documentElement.append(wheel);
@@ -133,15 +144,13 @@ export default class extends Controller {
         this.scroll.scrollTop = this.pos(this.current);
     }
 
-    // Тумблер «Только мои» (18.11.2026, владелец): колесо сужается сразу, запоминается у человека в фоне. Имя не `mine`: это поле «наш визит» ниже — оно затирало обработчик после первого закрытия колеса, и тумблер молчал.
+    // Тумблер «Только мои» (18.11.2026, владелец): колесо сужается сразу, запоминается на этот заход (`MINE`). Имя не `mine`: это поле «наш визит» ниже — оно затирало обработчик после первого закрытия колеса, и тумблер молчал.
     onlyMine(event) {
         const on = event.target.checked;
         this.wheel.classList.toggle('is-mine', on);
         this.collect();
         if (!this.cols) this.place();
-        const body = new FormData();
-        body.append('on', on ? '1' : '0');
-        request('/offers/wheel-mine', { method: 'POST', body });
+        try { sessionStorage.setItem(MINE, on ? '1' : '0'); } catch { /* без памяти — до перезагрузки */ }
     }
 
     listen() {

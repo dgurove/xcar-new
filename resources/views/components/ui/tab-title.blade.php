@@ -25,8 +25,8 @@
      одноимённый чип чужим значением: «Этап» сделок в «Этап гаража», и список пустел). waits — вкладки, где мы только ждём
      (`DealTabs::WAITING`, 17.11.2026, владелец: «regular font полупрозрачный, чтобы показать, что там чисто ждать надо»). mine —
      «Только мои» (18.11.2026, владелец выбрал тумблер iOS макета): ['on', 'keys'] — включён ли и за какие вкладки человек отвечает
-     (`OfferController::tabMine`); тумблер в правом нижнем углу колеса, включён — не свои пункты и пустые разделы прячутся
-     (`is-mine`, `data-not-mine`), ˄ ˅ ходят только по своим. --}}
+     (`OfferController::tabMine`); тумблер в правом нижнем углу колеса (модератору его нет — всегда свои), включён — не свои пункты
+     и пустые разделы прячутся (`is-mine`, `data-not-mine`), ˄ ˅ ходят только по своим; у вкладки — аватарки ответственных. --}}
 @props(['pills' => [], 'pill' => '', 'pillParam' => 'view', 'pillHome' => null, 'counts' => [], 'badges' => [], 'bumps' => [], 'fallback' => '', 'id' => 'tab-menu', 'sections' => [], 'heads' => [], 'columns' => [], 'skipEmpty' => true, 'drop' => [], 'keep' => null, 'waits' => [], 'mine' => null])
 @php
     $action = '/'.ltrim(request()->path(), '/');
@@ -118,6 +118,12 @@
                             <span class="tab-wheel-label">@if ((string) $pill === $key)<x-ui.icon name="chevron-right" class="tab-wheel-mark size-[.9em]"/>@endif{{ $label }}@isset($badges[$key])<span class="badge nums tab-wheel-badge" data-pill-count="{{ $badges[$key] }}" @unless ($counts[$badges[$key]] ?? 0) hidden @endunless>{{ ($counts[$badges[$key]] ?? 0) ?: '' }}</span>@endisset</span>
                             <span class="tab-wheel-nums">
                                 @if (array_key_exists($key, $counts))<span class="nums" data-pill-count="{{ $key }}">{{ $counts[$key] ?: '' }}</span>@endif
+                                {{-- Чья вкладка (24.11.2026, владелец: «маленькие аватарки кому она принадлежит, справа от чисел, не смещая их»):
+                                     за краем строки, числа стоят ровно. --}}
+                                @php($people = $mine['owners'][$key] ?? null)
+                                @if ($people && $people->isNotEmpty())
+                                    <span class="tab-wheel-owners" title="{{ $people->pluck('name')->implode(', ') }}">@foreach ($people->take(3) as $u)<x-ui.avatar :user="$u" :size="16"/>@endforeach</span>
+                                @endif
                             </span>
                         </a>
                     @endforeach
@@ -127,7 +133,8 @@
                 <p class="tab-wheel-none">Вам не назначены вкладки</p>
             @endif
         </nav>
-        @if ($mine !== null)
+        {{-- Модератору тумблера нет: у него всегда только свои (24.11.2026, владелец). --}}
+        @if ($mine !== null && ! $mine['locked'])
             <label class="tab-wheel-mine">
                 <span>Только мои</span>
                 <input type="checkbox" class="switch" @checked($mineOn)>

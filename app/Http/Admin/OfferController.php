@@ -241,31 +241,28 @@ class OfferController
         return array_diff_key(self::PRESETS, $hidden + ($user->canEditDeals() ? [] : ['garage' => true, 'selection' => true] + self::DEAL_TABS));
     }
 
-    /** Память «Только мои» колеса (`ListPrefs`): список и ключ. */
-    public const MINE_LIST = 'offers-wheel';
-
     /**
-     * «Только мои» в колесе (18.11.2026, владелец): включён ли у человека и за какие вкладки он отвечает (`TabOwner`). null —
-     * не сотрудник CRM.
+     * «Только мои» в колесе (18.11.2026; 24.11.2026, владелец: «модераторам всегда включён без возможности выключить, Андрею и
+     * Кате по умолчанию включён, но можно выключить, при перезаходе опять включается; все этапы по умолчанию видит только главный
+     * администратор»): включён ли, можно ли выключить (`locked` — модератору нельзя), свои вкладки (`TabOwner`) и ответственные
+     * каждой (аватарки). Вкладки ожидания (`DealTabs::WAITING`) ответственного не имеют — они свои тому, у кого есть вкладка
+     * сделок, иначе с «Только мои» их не видел бы никто. null — не сотрудник CRM.
      *
-     * @return array{on: bool, keys: list<string>}|null
+     * @return array{on: bool, locked: bool, keys: list<string>, owners: array<string, \Illuminate\Support\Collection>}|null
      */
     public static function tabMine(?User $user): ?array
     {
         if (! $user?->isStaff()) {
             return null;
         }
+        $keys = TabOwner::presetsOf($user);
+        if (array_intersect($keys, array_keys(self::DEAL_TABS))) {
+            $keys = [...$keys, ...DealTabs::WAITING];
+        }
+        $locked = ! $user->canManageCrm();
 
-        return ['on' => (bool) ListPrefs::value($user, self::MINE_LIST, 'mine'), 'keys' => TabOwner::presetsOf($user)];
-    }
-
-    /** Тумблер «Только мои» колеса: колесо прячет вкладки сразу, сюда — запомнить (на всех устройствах человека). */
-    public function wheelMine(Request $request)
-    {
-        ListPrefs::put($request, self::MINE_LIST, 'mine', $request->boolean('on') ? 1 : null);
-
-        // Колесо шлёт `fetch` — ему ответ без страницы; формой (без скрипта) — назад.
-        return $request->expectsJson() ? response()->noContent() : back();
+        // Включён у всех, кроме главного администратора; выключить на этот заход — колесо (`tab_wheel_controller`, sessionStorage).
+        return ['on' => $locked || ! $user->isOwner(), 'locked' => $locked, 'keys' => $keys, 'owners' => TabOwner::owners()];
     }
 
     /** Разделы колеса человека — только у разделов, где есть его вкладки. */

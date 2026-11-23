@@ -88,7 +88,6 @@ Route::domain(config('xcar.crm_host'))->middleware(['auth', 'ability:isStaff'])-
     Route::patch('/offers/filters/{filter}', [SavedFilterController::class, 'update'])->whereNumber('filter');
     Route::delete('/offers/filters/{filter}', [SavedFilterController::class, 'destroy'])->whereNumber('filter');
     // «Только мои» в колесе вкладок (18.11.2026): помнится у человека, любому сотруднику CRM.
-    Route::post('/offers/wheel-mine', [OfferController::class, 'wheelMine']);
     // «Оценить → Из текста»: оценочные из сообщения — модератору тоже, он ставит закупочную.
     Route::post('/offers/valuations/file', [OfferValuationController::class, 'file'])->middleware('throttle:10,1');
     Route::post('/offers/valuations/preview', [OfferValuationController::class, 'preview']);
