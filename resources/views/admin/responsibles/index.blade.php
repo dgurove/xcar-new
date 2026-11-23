@@ -11,8 +11,9 @@
                     <x-ui.sheet-row>
                         <span class="min-w-0 flex-1 truncate">{{ $label }}</span>
                         @if ($people->isEmpty())
-                            {{-- Без ответственного вкладку с «Только мои» не видит никто, кроме главного администратора (24.11.2026). --}}
-                            <span class="shrink-0 text-sm text-danger">никто</span>
+                            {{-- Без ответственного вкладку с «Только мои» не видит никто, кроме главного администратора (24.11.2026); вкладке
+                                 ожидания это можно — там нашего дела нет. --}}
+                            <span @class(['shrink-0 text-sm', 'text-danger' => ! in_array($key, \App\Offers\DealTabs::WAITING, true), 'text-ink-dim' => in_array($key, \App\Offers\DealTabs::WAITING, true)])>никто</span>
                         @else
                             <span class="flex shrink-0 gap-1" title="{{ $people->pluck('name')->implode(', ') }}">
                                 @foreach ($people->take(3) as $u)<x-ui.avatar :user="$u" :size="26"/>@endforeach

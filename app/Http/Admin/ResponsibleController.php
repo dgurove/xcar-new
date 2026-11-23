@@ -23,9 +23,7 @@ final class ResponsibleController
         $head = null;
         foreach (OfferController::PRESETS as $key => $label) {
             $head = OfferController::SECTIONS[$key] ?? $head;
-            if (TabOwner::assignable($key)) {
-                $groups[$head ?? ''][$key] = $label;
-            }
+            $groups[$head ?? ''][$key] = $label;
         }
 
         return view('admin.responsibles.index', [
