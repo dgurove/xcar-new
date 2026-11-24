@@ -167,20 +167,14 @@ class DealController
         $live = Rows::keys();
         // Вкладка этапа (16.11.2026, владелец: «сначала наше дело, потом кого ждём»): дела зелёными группами по тому, что сделать,
         // дальше «Ждём менеджера», «Ждём поставщика». Числа групп — по всему списку, строки живого обновления — только запрошенные.
-        $groups = $whole !== null ? self::stageGroups($whole, $live) : null;
-        // «Менеджер должен нам» — сверху итог: кто сколько должен нам (27.10.2026, `DealDebt`).
+        // «Менеджер должен нам» — сверху итог: кто сколько должен нам (27.10.2026, `DealDebt`); с 24.11.2026 — и бывшая «Оплата за
+        // подбор» (`payingGroups`).
         $debts = $whole !== null && $preset === 'paying' ? self::debts($whole) : null;
-        // Строка — сколько, за что и срок (24.11.2026, владелец: «непонятно сколько и за что»): долг сделки к строке, в группе —
-        // сначала просроченные, дальше по сроку, сумма — в заголовке группы.
-        if ($debts !== null && $groups !== null) {
-            $of = $whole->mapWithKeys(fn (Deal $d) => [$d->id => DealDebt::of($d)]);
-            $groups = $groups->map(function (array $g) use ($of) {
-                $rows = $g['rows']->map(fn ($r) => [...$r, 'debt' => $of[$r['deal']->id] ?? null])
-                    ->sortBy(fn ($r) => [$r['debt']?->late() ? 0 : 1, $r['debt']?->due?->getTimestamp() ?? PHP_INT_MAX])->values();
-
-                return [...$g, 'rows' => $rows, 'sum' => $rows->sum(fn ($r) => $r['debt']?->owed ?? 0)];
-            });
-        }
+        $groups = match (true) {
+            $whole === null => null,
+            $debts !== null => self::payingGroups($whole, $live),
+            default => self::stageGroups($whole, $live),
+        };
         $table = ListView::isTable(ListView::pick($request, 0));
         $deals = match (true) {
             $whole !== null => new LengthAwarePaginator([], $whole->count(), 1),
@@ -237,6 +231,64 @@ class DealController
     }
 
     /**
+     * «Менеджер должен нам» одной вкладкой с бывшей «Оплатой за подбор» (24.11.2026, владелец: «объединим»): сделки шага оплаты и
+     * сделки с открытым счётом подбора на любом этапе (`scope`). Группы: «Выставить ссылку» (подбор не отправлен, а сделка на шаге
+     * оплаты — `SelectionController::unsentIds`, кнопка «Выставить»), «Подтвердить оплату» (менеджер сообщил — «Пришли»), наши дела
+     * шага оплаты (`stageGroups`), остальное — «Ждём менеджера». Строка — долг сделки (`DealDebt`: за что, сколько, срок), в группе
+     * сначала просроченные, дальше по сроку; сумма — в заголовке группы.
+     *
+     * @return Collection<string, array>
+     */
+    private static function payingGroups(Collection $deals, ?array $live): Collection
+    {
+        $of = $deals->mapWithKeys(fn (Deal $d) => [$d->id => DealDebt::of($d)]);
+        $unsent = array_flip(\App\Http\Admin\SelectionController::unsentIds());
+        $stage = array_flip(DealTabs::ids('paying'));
+        $none = ['key' => '', 'title' => '', 'rank' => 0, 'since' => null, 'button' => null];
+        $unsentBill = fn (Deal $d) => $d->invoices->first(fn ($i) => $i->kind === \App\Billing\ChargeKind::Selection && $i->direction === 'issued'
+            && $i->state === \App\Billing\InvoiceState::Issued && ! $i->shown_at && (float) $i->paid <= 0);
+        $claimOf = fn (Deal $d) => $d->invoices->filter(fn ($i) => $i->direction === 'issued' && $i->state === \App\Billing\InvoiceState::Issued)
+            ->flatMap(fn ($i) => $i->claims)->sortBy('paid_at')->first();
+        [$issue, $rest] = $deals->partition(fn (Deal $d) => isset($unsent[$d->offer_id]) && $unsentBill($d));
+        [$claimed, $rest] = $rest->partition(fn (Deal $d) => $claimOf($d) !== null);
+        [$onStep, $others] = $rest->partition(fn (Deal $d) => isset($stage[$d->offer_id]));
+
+        $groups = collect();
+        if ($issue->isNotEmpty()) {
+            $groups['do:issue'] = ['title' => 'Выставить ссылку', 'ours' => true, 'danger' => true, 'rank' => -2, 'size' => $issue->count(),
+                'rows' => $issue->map(fn (Deal $d) => ['deal' => $d, 'todo' => [...$none, 'key' => 'issue', 'issue' => $unsentBill($d)]])];
+        }
+        if ($claimed->isNotEmpty()) {
+            $groups['do:claimed'] = ['title' => 'Подтвердить оплату', 'ours' => true, 'rank' => -1, 'size' => $claimed->count(),
+                'rows' => $claimed->map(fn (Deal $d) => ['deal' => $d, 'todo' => [...$none, 'key' => 'claim', 'claim' => $claimOf($d)]])];
+        }
+        // Шаг оплаты — как вкладка этапа: наши дела и «Ждём поставщика» своими группами; «Ждём менеджера» — вместе с подбором
+        // других этапов одной группой.
+        $waiting = $others->map(fn (Deal $d) => ['deal' => $d, 'todo' => $none]);
+        foreach (self::stageGroups($onStep, null) as $key => $g) {
+            if ($key === 'wait:manager') {
+                $waiting = $waiting->concat($g['rows']);
+            } else {
+                $groups[$key] = $g;
+            }
+        }
+        if ($waiting->isNotEmpty()) {
+            $groups['wait:manager'] = ['title' => 'Ждём менеджера', 'ours' => false, 'rank' => 1000, 'size' => $waiting->count(), 'rows' => $waiting];
+        }
+
+        return $groups->map(function (array $g) use ($of, $live) {
+            $rows = collect($g['rows'])->map(fn ($r) => [...$r, 'debt' => $of[$r['deal']->id] ?? null])
+                ->sortBy(fn ($r) => [$r['debt']?->late() ? 0 : 1, $r['debt']?->due?->getTimestamp() ?? PHP_INT_MAX])->values();
+            $sum = $rows->sum(fn ($r) => $r['debt']?->owed ?? 0);
+            if ($live !== null) {
+                $rows = $rows->filter(fn ($r) => in_array((string) $r['deal']->offer?->number, $live, true))->values();
+            }
+
+            return [...$g, 'size' => $g['size'], 'rows' => $rows, 'sum' => $sum];
+        })->filter(fn (array $g) => $live === null || $g['rows']->isNotEmpty())->sortBy('rank');
+    }
+
+    /**
      * «Оплата» — кто сколько должен (27.10.2026): группы по менеджеру (аукцион — своей группой), у группы сумма и просрочено;
      * первыми — у кого больше просрочено, внутри — просроченные, дальше по сроку. Весь список одной страницей.
      *
@@ -276,7 +328,7 @@ class DealController
                 // «Менеджер должен нам» (24.11.2026): за что, сколько и срок оплаты — вместо «Ждёт» (`DealDebt`).
                 $debt ? new Column('what', 'За что', from: 'sm', clip: true, role: ColRole::State, rem: 16) : null,
                 $manager,
-                $debt ? new Column('owed', 'Должен', from: 'sm', num: true, class: 'nums', rem: 8) : null,
+                $debt ? new Column('owed', 'Должен', num: true, class: 'nums', rem: 8) : null,
                 $debt ? new Column('due', 'Срок', from: 'sm', role: ColRole::When, rem: 8) : new Column('wait', 'Ждёт', from: 'sm', role: ColRole::When, rem: 8),
                 $actions ? new Column('action', role: ColRole::When, rem: 9) : null]))
             : new Table([$title, $vendor, new Column('number', '№', from: '2xl', class: 'nums', role: ColRole::Code, rem: 7), $manager,
@@ -308,6 +360,10 @@ class DealController
             'finished' => $q->where(fn ($w) => $w->where(fn ($d) => $d->done()->whereHas('offer', fn ($o) => $o->where('offers.state', OfferState::Delivered)))
                 ->orWhere(fn ($g) => $g->whereNull('deals.cancelled_at')->whereHas('offer', fn ($o) => $o->where('offers.state', OfferState::Garage)
                     ->whereHas('garageCar', fn ($c) => $c->where('state', CarState::Settled))))),
+            // «Менеджер должен нам» (24.11.2026, вместе с «Оплатой за подбор»): шаг оплаты и любая сделка с открытым счётом подбора.
+            'paying' => $q->where(fn ($w) => $w->where(fn ($s) => $s->active()->whereHas('offer', fn ($o) => $o->where('offers.state', OfferState::Sold)
+                ->whereIn('offers.id', DealTabs::ids('paying'))))
+                ->orWhere(fn ($s) => $s->whereNull('deals.cancelled_at')->whereIntegerInRaw('deals.offer_id', SelectionController::ids()))),
             // Этап маршрута — раскладка `DealTabs`.
             default => $q->active()->whereHas('offer', fn ($o) => $o->where('offers.state', OfferState::Sold)->whereIn('offers.id', DealTabs::ids($preset))),
         };

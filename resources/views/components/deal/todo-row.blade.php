@@ -2,7 +2,7 @@
      сделать — заголовок группы, здесь машина, вендор с убытком, менеджер, сколько ждёт числом (серым; срок вышел — красным,
      без слова «просрочено») и кнопка дела. Рыжего нет: вся группа — наш ход. Столбцы — `DealController::table('us')`. --}}
 {{-- debt — долг сделки во вкладке «Менеджер должен нам» (`DealDebt`, 24.11.2026, владелец: «непонятно сколько и за что»):
-     столбцы «За что», «Должен», «Срок» вместо «Ждёт»; на телефоне под названием — «за ТС 620 000 ₽» и срок цветом. --}}
+     столбцы «За что», «Должен», «Срок» вместо «Ждёт»; на телефоне под названием — «за ТС 620 000 ₽», справа — срок цветом или кнопка. --}}
 @props(['deal', 'todo', 'table', 'debt' => null])
 @php
     $offer = $deal->offer;
@@ -32,7 +32,8 @@
     <td class="{{ $col->classes() }}">
         <x-cell.title :key="$deal->offer->number" :offer="$offer">@if ($garage)<span class="ms-1.5 whitespace-nowrap text-sm text-ink-muted">гараж</span>@endif</x-cell.title>
         @if ($table->has('owed'))
-        <span class="cell-sub sm:hidden">@if ($debt){{ $debt->what ?: 'долг' }} <span class="nums {{ $debt->late() ? 'text-danger' : '' }}">{{ \App\Support\Money::rub($debt->owed) }}</span> <span class="inline-block whitespace-nowrap {{ $debt->dueTone() }}">{{ $debt->dueWord() }}</span>@endif</span>
+        {{-- Телефон: под названием — за что и срок цветом; сумма или кнопка — справа (ячейка «Должен»). --}}
+        <span class="cell-sub sm:hidden">@if ($debt){{ $debt->what ?: 'долг' }}@if (empty($todo['issue']) && empty($todo['claim'])) <span class="inline-block whitespace-nowrap {{ $debt->dueTone() }}">{{ $debt->dueWord() }}</span>@else <span class="nums">{{ \App\Support\Money::rub($debt->owed) }}</span>@endif @endif</span>
         @else
         <span class="cell-sub sm:hidden">@if ($ask){{ \Illuminate\Support\Str::ucfirst($ask->phrase()) }}@else<x-vendor.ref :vendor-id="$offer->vendor_id" :ref="$offer->claim_ref">@if ($burning)<x-offer.binding :offer="$offer" icon/>@endif</x-vendor.ref>@endif{{ "" }}@if ($wait && ! $inButton) <span class="inline-block whitespace-nowrap {{ $tone }}">{!! $wait !!}</span>@endif</span>
         @endif
@@ -51,11 +52,16 @@
     <td class="{{ $col->classes() }} {{ $debt ? '' : 'text-ink-dim' }}" @if ($debt) title="{{ $debt->label() }}" @endif>{{ $debt?->label() ?? '—' }}</td>
         @break
         @case('owed')
-    {{-- Просроченная часть — красным; весь долг просрочен — всё число красным. --}}
-    <td class="{{ $col->classes() }} {{ $debt && $debt->overdue >= $debt->owed && $debt->late() ? 'text-danger' : '' }}">@if ($debt){{ \App\Support\Money::rub($debt->owed) }}@if ($debt->late() && $debt->overdue < $debt->owed)<span class="cell-sub text-danger">просрочено {{ \App\Support\Money::rub($debt->overdue) }}</span>@endif @endif</td>
+    {{-- Просроченная часть — красным; весь долг просрочен — всё число красным. На телефоне у строк «Выставить ссылку» и
+         «Подтвердить оплату» здесь кнопка (на ПК она на месте срока). --}}
+    @php($act = ! empty($todo['issue']) || ! empty($todo['claim']))
+    <td class="{{ $col->classes() }} {{ $debt && $debt->overdue >= $debt->owed && $debt->late() ? 'text-danger' : '' }}">@if ($act)<span class="sm:hidden"><x-deal.todo-pay-action :deal="$deal" :todo="$todo"/></span>@endif<span @class(['max-sm:hidden' => $act])>@if ($debt){{ \App\Support\Money::rub($debt->owed) }}@if ($debt->late() && $debt->overdue < $debt->owed)<span class="cell-sub text-danger">просрочено {{ \App\Support\Money::rub($debt->overdue) }}</span>@endif @endif</span></td>
         @break
         @case('due')
-    <td class="{{ $col->classes() }} whitespace-nowrap {{ $debt?->dueTone() }}">{{ $debt?->dueWord() }}</td>
+    {{-- «Менеджер должен нам» (24.11.2026, вместе с «Оплатой за подбор»): наш ход — кнопкой на месте срока, как было в «Оплате за
+         подбор»: «Выставить» неотправленный подбор, «Пришли» — менеджер сообщил об оплате. --}}
+    @php($claim = $todo['claim'] ?? null)
+    <td class="{{ $col->classes() }} whitespace-nowrap {{ empty($todo['issue']) && ! $claim ? $debt?->dueTone() : '' }}">@if (! empty($todo['issue']) || $claim)<x-deal.todo-pay-action :deal="$deal" :todo="$todo"/>@else{{ $debt?->dueWord() }}@endif</td>
         @break
         @case('wait')
     <td class="{{ $col->classes() }} whitespace-nowrap {{ $tone }}">{!! $wait !!}</td>
