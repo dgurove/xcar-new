@@ -8,7 +8,7 @@
 @php
     use App\Offers\ExtraAsk;
     use App\Support\Ago;
-    $asks = ExtraAsk::where('offer_id', $offer->id)->orderByDesc('id')->get();
+    $asks = ExtraAsk::where('offer_id', $offer->id)->orderByDesc('id')->with(['deal', 'decider'])->get();
     $n = $offer->number;
     $last = $asks->first();
     $reopen = $last && $last->answered_at && in_array($last->decision, [null, ExtraAsk::ANSWERED], true) && auth()->user()?->canEditDeals();
@@ -37,14 +37,14 @@
                                     <span class="text-accent-text">показать менеджеру</span>
                                 @elseif ($phase === ExtraAsk::MANAGER)
                                     <span>ждём решения менеджера</span>
-                                @elseif ($ask->decision === ExtraAsk::TAKE)
-                                    <span>менеджер берёт</span>
-                                @elseif ($ask->decision === ExtraAsk::DROP)
-                                    <span class="text-danger">менеджер отказался</span>
+                                {{-- Решение — с тем, кто и когда (24.11.2026): нажал сотрудник — «за него Имя». --}}
+                                @elseif (in_array($ask->decision, [ExtraAsk::TAKE, ExtraAsk::DROP], true))
+                                    @php $decider = $ask->decided_by && $ask->decided_by !== $ask->deal?->buyer_id ? $ask->decider?->shortName() : null; @endphp
+                                    <span @class(['text-danger' => $ask->decision === ExtraAsk::DROP])>{{ $ask->decision === ExtraAsk::TAKE ? 'менеджер берёт' : 'менеджер отказался' }}{{ $decider ? ', за него '.$decider : '' }}@if ($ask->decided_at), {!! Ago::html($ask->decided_at, true, words: false) !!}@endif</span>
                                 @elseif ($ask->answer_message_id)
                                     <button type="button" class="text-left" data-controller="emit" data-action="emit#send" data-emit-event-param="letters:open" data-emit-url-param="{{ $letter($ask->answer_message_id) }}">ответили {!! Ago::html($ask->answered_at, true, words: false) !!} ›</button>
                                 @else
-                                    <span>ответили не письмом</span>
+                                    <span>ответили не письмом{{ $ask->phone_answer ? ': '.$ask->phone_answer : '' }}</span>
                                 @endif
                             </span>
                         </span>

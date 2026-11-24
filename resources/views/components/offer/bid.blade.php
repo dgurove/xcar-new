@@ -42,6 +42,11 @@
     $sheet = $active || $accepted;
     $diffText = $diff ? ($diff > 0 ? '+' : '−').Money::nums(abs($diff)) : null;
     $alerts = $high || ($loss && $active) || (! $active && ! $accepted) || $counter || $bid->counterDeclined();
+    // На чём сошлись (24.11.2026, владелец: «кто решил — видно, что решили — нет»): отказался от контрпредложения — «отказался от N»
+    // вместо голого «отозвано»; согласился — «по контрпредложению, было N».
+    $refusedCounter = $bid->counterDeclined();
+    $wasBefore = $accepted || $active ? $bid->amountBeforeCounter() : null;
+    $byCounter = $bid->counter_state === \App\Offers\CounterState::Accepted;
 @endphp
 {{-- Строка (19.11.2026, владелец по макетам, вариант 3: «всё в кучу свалено», «кнопки слева — бред»; 20.11.2026, вариант Б: «имя
      сверху, сумма под именем слева, дата и время справа» — имя рвалось по буквам): имя на всю ширину, ниже цена светофором
@@ -57,10 +62,11 @@
         @if ($high)<x-ui.state tone="danger">больше чем вдвое выше цены, проверьте сумму</x-ui.state>@endif
         @if ($loss && $active)<x-ui.state tone="danger">{{ $under > 0 ? 'ниже закупочной на '.Money::nums($under) : 'равна закупочной' }}</x-ui.state>@endif
         {{-- Принятое — под подписью «Принято», словом не повторяется. --}}
-        @if (! $active && ! $accepted)<x-ui.state :tone="$bid->state === BidState::Declined ? 'danger' : 'closed'">{{ mb_strtolower($bid->state->label()) }}</x-ui.state>@endif
+        @if (! $active && ! $accepted && ! $refusedCounter)<x-ui.state :tone="$bid->state === BidState::Declined ? 'danger' : 'closed'">{{ mb_strtolower($bid->state->label()) }}</x-ui.state>@endif
         @if ($counter)<x-ui.state tone="accent"><span class="nums">→ {{ Money::rub($bid->counter_amount) }}</span>, ждём ответа</x-ui.state>@if ($bid->counter_remind_at)<span>напомним {!! \App\Support\Ago::html($bid->counter_remind_at, true, words: false) !!}</span>@endif
-        @elseif ($bid->counterDeclined())<span>отказался от <span class="nums">{{ Money::rub($bid->counter_amount) }}</span></span>@endif
-    @php $alert = ob_get_clean(); $rowAlert = (! $active && ! $accepted) || $counter; @endphp
+        @elseif ($refusedCounter)<span>отказался от контрпредложения <span class="nums">{{ Money::rub($bid->counter_amount) }}</span></span>
+        @elseif ($byCounter)<span>по контрпредложению{{ $wasBefore ? ', было ' : '' }}@if ($wasBefore)<span class="nums">{{ Money::nums($wasBefore) }}</span>@endif</span>@endif
+    @php $alert = ob_get_clean(); $rowAlert = (! $active && ! $accepted) || $counter || $byCounter; @endphp
     @php ob_start(); @endphp
         <x-ui.avatar :user="$who" :size="36"/>
         <span class="min-w-0 flex-1">
@@ -71,8 +77,10 @@
             </span>
             @if ($rowAlert)
                 <span class="bid-line-sub">
-                    @if (! $active && ! $accepted)<x-ui.state :tone="$bid->state === BidState::Declined ? 'danger' : 'closed'">{{ mb_strtolower($bid->state->label()) }}</x-ui.state>@endif
-                    @if ($counter)<x-ui.state tone="accent"><span class="nums">→ {{ Money::rub($bid->counter_amount) }}</span>, ждём ответа</x-ui.state>@if ($bid->counter_remind_at)<span>напомним {!! \App\Support\Ago::html($bid->counter_remind_at, true, words: false) !!}</span>@endif @endif
+                    @if ($refusedCounter)<x-ui.state tone="closed">отказался от <span class="nums">{{ Money::rub($bid->counter_amount) }}</span></x-ui.state>
+                    @elseif (! $active && ! $accepted)<x-ui.state :tone="$bid->state === BidState::Declined ? 'danger' : 'closed'">{{ mb_strtolower($bid->state->label()) }}</x-ui.state>@endif
+                    @if ($counter)<x-ui.state tone="accent"><span class="nums">→ {{ Money::rub($bid->counter_amount) }}</span>, ждём ответа</x-ui.state>@if ($bid->counter_remind_at)<span>напомним {!! \App\Support\Ago::html($bid->counter_remind_at, true, words: false) !!}</span>@endif
+                    @elseif ($byCounter)<span>по контрпредложению{{ $wasBefore ? ', было ' : '' }}@if ($wasBefore)<span class="nums">{{ Money::nums($wasBefore) }}</span>@endif</span>@endif
                 </span>
             @endif
         </span>

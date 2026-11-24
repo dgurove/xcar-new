@@ -3255,6 +3255,8 @@ html.kb-open { --home-gap: 0px; }
   .reprice-meta { display: flex; flex-wrap: wrap; align-items: baseline; gap: .125rem .75rem; margin-top: .125rem; font-size: var(--text-sm); color: var(--color-ink-muted); }
   .reprice-letter { color: inherit; }
   .reprice-done, .reprice-later { margin-top: .5rem; font-size: var(--text-sm); color: var(--color-ink-muted); }
+  /* Что решили по переоценке — числами, тёмным (24.11.2026); кто и когда — `.reprice-done` под ним. */
+  .reprice-decided { margin-top: .5rem; font-size: var(--text-sm); }
   .reprice-acts { display: flex; flex-wrap: wrap; gap: .5rem; margin-top: .75rem; }
   /* Подшаги этапа — строками внутри шага, без своей второй полоски (05.11.2026, владелец: «какой сакральный смысл во второй
      полоске, которая всё сдвигает — в итоге нихера места не остаётся»): точка — в строке названия, всё под ним (кто, кнопки)
@@ -3274,6 +3276,11 @@ html.kb-open { --home-gap: 0px; }
   .substep-title { font-weight: 500; }
   .substep--wait .substep-title { font-weight: 400; color: var(--color-ink-muted); }
   .substep-meta { font-size: var(--text-sm); color: var(--color-ink-muted); }
+  /* Что решили — под исходом, от его начала (24.11.2026, `x-route.done-row`): своя фраза, переносится, не режется. */
+  .substep-what { min-width: 0; font-weight: 500; color: var(--color-ink); overflow-wrap: anywhere; }
+  /* Блок получения пройден, а письмо поставщику о вывозе не ушло (24.11.2026, `x-route.pickup-letter`): не закрыт — без галки,
+     рыжей точкой, как дело под ним. */
+  .step--open .step-dot { width: 1.125rem; height: 1.125rem; margin-top: .375rem; background: var(--color-urgent); }
   /* Кто действует — аватар (логотип вендора, знак XCAR) и имя с состоянием строкой, кнопки — под ними своей строкой во всю ширину
      шага (16.11.2026, владелец: «аватарка кнопке никак не мешает»): в узкой дорожке редактора и на телефоне рядом с ними имя
      сжималось до «Вла…». Одна строка на «Переоценку» и подпункт «сейчас» любого шага пути (`x-route.who`, 04.11.2026). */

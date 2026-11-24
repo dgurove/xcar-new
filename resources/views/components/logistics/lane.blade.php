@@ -80,7 +80,9 @@
                 <x-car.keys :count="$keys"/>
             </div>
         @endif
-        @if ($pickupLetter && $pickupLetter['url'])
+        {{-- У идущей сделки письмо — делом в ходе сделки (`x-route.pickup-letter`, 24.11.2026): одно действие — одно место. --}}
+        {{-- Путь продажи рисуется (`CarView::lanes` `sale`: позиция есть и сделка не аукцион) — дело там. --}}
+        @if ($pickupLetter && $pickupLetter['url'] && ! ($deal?->isActive() && ! $deal->isAuction() && $offer->position(\App\Workflow\Track::Sale) && auth()->user()?->canEditDeals()))
             <div class="mb-4">
                 <x-route.task-row icon="send" :emit="$pickupLetter['url']" urgent>
                     {{ $pickupLetter['title'] }}

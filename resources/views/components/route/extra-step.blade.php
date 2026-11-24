@@ -32,13 +32,25 @@
                         <button type="button" class="menu-item w-full" role="menuitem" data-controller="emit" data-action="emit#send" data-emit-event-param="letters:open" data-emit-url-param="{{ $letters($ask->message_id) }}"><x-ui.icon name="mail" class="size-4"/>Письмо с просьбой</button>
                     @endif
                     @if ($phase === ExtraAsk::SUPPLIER)
-                        <form method="post" action="/offers/{{ $n }}/extra-asks/{{ $ask->id }}/phone" class="contents" data-turbo-confirm="Поставщик ответил не письмом?" data-turbo-confirm-label="Ответили">@csrf<button class="menu-item w-full" role="menuitem">Ответили не письмом</button></form>
+                        {{-- Шторкой с «Что ответили» (24.11.2026): иначе потом не узнать, что сказали по телефону. --}}
+                        <button type="button" class="menu-item w-full" role="menuitem" data-controller="emit" data-action="emit#send" data-emit-event-param="extra-phone-{{ $ask->id }}:open">Ответили не письмом…</button>
                     @else
                         <form method="post" action="/offers/{{ $n }}/extra-asks/{{ $ask->id }}/reopen" class="contents">@csrf<button class="menu-item w-full" role="menuitem">Вопрос не решён</button></form>
                     @endif
                 </div>
             </x-ui.more>
         </div>
+        @if ($phase === ExtraAsk::SUPPLIER)
+            <div class="contents" data-controller="sheet" data-action="extra-phone-{{ $ask->id }}:open@window->sheet#open">
+                <x-ui.sheet :id="'extra-phone-'.$ask->id" title="Ответили не письмом">
+                    <form method="post" action="/offers/{{ $n }}/extra-asks/{{ $ask->id }}/phone" class="flex flex-col gap-4">
+                        @csrf
+                        <div class="fields"><x-ui.field name="phone_answer" :id="'extra-phone-answer-'.$ask->id" label="Что ответили" type="textarea"/></div>
+                        <x-ui.sheet-foot>Ответили</x-ui.sheet-foot>
+                    </form>
+                </x-ui.sheet>
+            </div>
+        @endif
 
         {{-- Что попросили — главной строкой; под ней серым письмо, ответ и сколько ждём — одним рядом. --}}
         <p class="reprice-line">{{ \Illuminate\Support\Str::ucfirst($ask->phrase()) }}</p>
@@ -53,9 +65,14 @@
             @elseif ($phase === ExtraAsk::MANAGER && $ask->answer_message_id)
                 <button type="button" class="reprice-letter" data-controller="emit" data-action="emit#send" data-emit-event-param="letters:open" data-emit-url-param="{{ $letters($ask->answer_message_id) }}">ответ {{ Ago::html($ask->answered_at, words: false) }} ›</button>
             @elseif ($phase === ExtraAsk::MANAGER)
-                <span>ответили не письмом</span>
+                <span>ответили не письмом {{ Ago::html($ask->answered_at, words: false) }}</span>
             @endif
         </p>
+
+        {{-- Что ответили не письмом (24.11.2026, `phone_answer`) — тёмной строкой под просьбой. --}}
+        @if ($ask->phone_answer && $ask->answered_at && ! $ask->answer_message_id)
+            <p class="reprice-decided">Ответили: {{ $ask->phone_answer }}</p>
+        @endif
 
         {{-- Что делать сейчас: ответ пришёл — письмо строкой «Показать менеджеру?» и «Вопрос не решён»; показали — менеджер решает. --}}
         @if ($phase === ExtraAsk::SHOW)

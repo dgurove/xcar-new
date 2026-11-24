@@ -47,7 +47,8 @@
             @endif
         </div>
 
-        <p class="reprice-line nums">{{ $who }} <b>{{ Money::rub($reprice->to_price) }}</b> вместо <s>{{ Money::nums((int) $reprice->from_price) }}</s></p>
+        {{-- Просьба поставщика как есть (`asked_price`, 24.11.2026): «Принять…» другой суммой перезаписывает `to_price`. --}}
+        <p class="reprice-line nums">{{ $who }} <b>{{ Money::rub($reprice->asked_price ?? $reprice->to_price) }}</b> вместо <s>{{ Money::nums((int) $reprice->from_price) }}</s></p>
         <p class="reprice-meta nums">
             @if ($reprice->value)<span>оценочная @if ($valueWas)<s>{{ Money::nums($valueWas) }}</s> @endif{{ Money::rub($reprice->value) }}</span>@endif
             @if ($letter)
@@ -57,13 +58,35 @@
             @endif
         </p>
 
-        {{-- Сделанное — серой строкой. --}}
+        {{-- Что решили — числами, кто и когда — серой строкой (24.11.2026, владелец: «„Цену решил Андрей Кузнецов“, менеджер сделал
+             контрпредложение, а какую цену решил — непонятно, неясно с чем сравнивать»): закупочная, цена продажи после решения
+             (её менеджер и видит в вопросе — `asking_to`) и что со сделкой (`choices.deal`). --}}
         @if ($price === RepriceFlow::DONE)
-            <p class="reprice-done nums">Цену {{ $reprice->decider ? 'решил '.$reprice->decider->shortName() : 'решили' }} {{ Ago::html($reprice->decided_at, words: false) }}</p>
+            @php
+                // Цена продажи — только записанная в вопросе на момент решения: у предложения она могла смениться после.
+                $saleNow = $ask?->asking_to;
+                $dealWord = match ($reprice->choices['deal'] ?? null) {
+                    'keep' => 'сумму сделки не меняли', 'update' => 'закупочную в сделке обновили', 'ask' => 'спросили менеджера', default => null,
+                };
+            @endphp
+            <p class="reprice-decided nums">Решили: закупочная <b>{{ Money::rub($reprice->to_price) }}</b>@if ($saleNow), цена продажи <b>{{ Money::rub($saleNow) }}</b>@endif</p>
+            <p class="reprice-done nums !mt-0.5">{{ $reprice->decider?->shortName() ?? 'Решили' }}, {{ Ago::html($reprice->decided_at, words: false) }}{{ $dealWord ? ', '.$dealWord : '' }}</p>
         @endif
         @if ($taker === RepriceFlow::DONE && $ask && ! $ask->isOpen() && $buyer)
-            {{-- Гаражная — согласие на закупочную, цены подтверждения у неё нет (`RepriceAsk::agreesOnly`, 17.11.2026). --}}
-            <p class="reprice-done nums">{{ $buyer->shortName() }} согласен на {{ $ask->agreesOnly() ? 'закупочную '.Money::rub($ask->to_price) : Money::rub((int) $flow->deal->amount) }}{{ $ask->answered_at ? ', '.Ago::at($ask->answered_at, words: false) : '' }}</p>
+            {{-- Гаражная — согласие на закупочную, цены подтверждения у неё нет (`RepriceAsk::agreesOnly`, 17.11.2026). На чьей цене
+                 сошлись (24.11.2026): наше контрпредложение новее его цены — на нём, иначе на его. --}}
+            @php
+                $onCounter = $ask->counter_price && $ask->counter_at && (! $ask->offered_at || $ask->counter_at->gt($ask->offered_at));
+                $settled = $ask->agreesOnly() ? null : ($onCounter ? $ask->counter_price : ($ask->offered_price ?? (int) $flow->deal->amount));
+            @endphp
+            <p class="reprice-decided nums">
+                @if ($ask->agreesOnly())
+                    {{ $buyer->shortName() }} согласен на закупочную <b>{{ Money::rub($ask->to_price) }}</b>
+                @else
+                    {{ $buyer->shortName() }} согласен на <b>{{ Money::rub((int) $settled) }}</b>{{ $onCounter ? ', наше контрпредложение' : ($ask->offered_price ? ', его цена' : '') }}@if ($onCounter && $ask->offered_price) <span class="text-ink-muted">(он предлагал {{ Money::nums((int) $ask->offered_price) }})</span>@endif
+                @endif
+                @if ($ask->answered_at)<span class="text-ink-muted">{{ $ask->byStaff() ? ', за него '.($ask->answeredBy?->shortName() ?? 'сотрудник') : '' }}, {{ Ago::html($ask->answered_at, words: false) }}</span>@endif
+            </p>
         @endif
 
         {{-- Что делать сейчас. --}}
@@ -80,12 +103,13 @@
                 <x-ui.avatar :user="$buyer" :size="32"/>
                 <div class="min-w-0">
                     <div class="truncate">{{ $buyer->shortName() }}</div>
+                    {{-- С чем сравнивать его цену — что мы просим (цена продажи после решения, `asking_to`), 24.11.2026. --}}
                     @if ($ask?->isOffered())
-                        <x-ui.state tone="urgent" class="nums">предлагает {{ Money::rub((int) $ask->offered_price) }}{{ $ask->counter_price ? ', от нашего отказался' : '' }}</x-ui.state>
+                        <x-ui.state tone="urgent" class="nums">предлагает {{ Money::rub((int) $ask->offered_price) }}{{ $ask->asking_to ? ', просим '.Money::rub((int) $ask->asking_to) : '' }}{{ $ask->counter_price ? ', от нашего '.Money::nums((int) $ask->counter_price).' отказался' : '' }}</x-ui.state>
                     @elseif ($ask?->isCountered())
                         <x-ui.state :tone="$ask->late() ? 'danger' : 'accent'" class="nums">наше {{ Money::rub((int) $ask->counter_price) }} вместо {{ Money::nums((int) $ask->offered_price) }}, {{ $ask->late() ? 'не ответил, срок ' : 'думает до ' }}{{ Ago::at($ask->due_at, true, words: false) }}</x-ui.state>
                     @elseif ($ask?->isPending())
-                        <x-ui.state :tone="$ask->late() ? 'danger' : 'plain'" class="nums">{{ $ask->late() ? ($ask->agreesOnly() ? 'не ответил, срок ' : 'не назвал цену, срок ') : 'думает до ' }}{{ Ago::at($ask->due_at, true, words: false) }}</x-ui.state>
+                        <x-ui.state :tone="$ask->late() ? 'danger' : 'plain'" class="nums">{{ $ask->asking_to && ! $ask->agreesOnly() ? 'просим '.Money::rub((int) $ask->asking_to).', ' : '' }}{{ $ask->late() ? ($ask->agreesOnly() ? 'не ответил, срок ' : 'не назвал цену, срок ') : 'думает до ' }}{{ Ago::at($ask->due_at, true, words: false) }}</x-ui.state>
                     @endif
                 </div>
                 @if ($ask?->isOpen())

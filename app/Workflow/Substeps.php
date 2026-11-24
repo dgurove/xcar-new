@@ -29,7 +29,7 @@ final class Substeps
 
     /**
      * @param  Collection  $journal  `Path::journal` той же ветки
-     * @return Collection<int, array{stage: ?Stage, name: string, state: string, at: ?Carbon, user_id: ?int}>
+     * @return Collection<int, array{stage: ?Stage, name: string, state: string, at: ?Carbon, user_id: ?int, what: list<string>, for: ?string}>
      */
     public static function for(Position $position, Collection $journal, ?Deal $deal = null): Collection
     {
@@ -57,10 +57,11 @@ final class Substeps
             $done = $byId->get($entry['stage_id']) ?? $stages->firstWhere('name', $entry['stage']);
             $seen[] = $done?->id;
             $rows->push(['stage' => $done, 'name' => $next['exit'] ?? $done?->name ?? (string) $entry['stage'],
-                'state' => self::DONE, 'at' => $next['at'] ?? null, 'user_id' => $next['user_id'] ?? null]);
+                'state' => self::DONE, 'at' => $next['at'] ?? null, 'user_id' => $next['user_id'] ?? null,
+                'what' => $next ? self::what($next, $done, $deal) : [], 'for' => $next['for'] ?? null]);
         }
 
-        $rows->push(['stage' => $stage, 'name' => $stage->name, 'state' => self::NOW, 'at' => $position->entered_at, 'user_id' => null]);
+        $rows->push(['stage' => $stage, 'name' => $stage->name, 'state' => self::NOW, 'at' => $position->entered_at, 'user_id' => null, 'what' => [], 'for' => null]);
 
         $current = $byId->get($stage->id) ?? $stage;
         while (true) {
@@ -71,9 +72,31 @@ final class Substeps
             }
             $current = $byId->get($targets->first());
             $seen[] = $current->id;
-            $rows->push(['stage' => $current, 'name' => $current->name, 'state' => self::WAIT, 'at' => null, 'user_id' => null]);
+            $rows->push(['stage' => $current, 'name' => $current->name, 'state' => self::WAIT, 'at' => null, 'user_id' => null, 'what' => [], 'for' => null]);
         }
 
         return $rows;
+    }
+
+    /**
+     * Что решили выходом (`ExitWhat`, в событии с 24.11.2026). Прежние записи без значения: время подписания — по сделке сейчас,
+     * пока она в этом блоке («Запись на подписание»), колонки ещё те самые. @return list<string>
+     */
+    public static function what(array $entry, ?Stage $from, ?Deal $deal): array
+    {
+        if (! empty($entry['what'])) {
+            return array_values((array) $entry['what']);
+        }
+        $exit = $deal && $from ? $from->exits->first(fn (Outcome $e) => $e->label === ($entry['raw_exit'] ?? $entry['exit'])) : null;
+        if (! $exit || ! (\App\Offers\Signing::pickExit($exit) || \App\Offers\Signing::confirmExit($exit) || \App\Offers\Signing::slotsExit($exit))) {
+            return [];
+        }
+        // Время, что согласовали, и слоты поставщика потом перезаписывает «Запись подтверждена»: текущее значение — их, только пока
+        // сделка стоит там, куда этот выход привёл. Подтверждённое время после записи не меняется (новые слоты сматывают журнал).
+        if (! \App\Offers\Signing::confirmExit($exit) && ($entry['stage_id'] ?? null) !== $deal->offer?->position()?->stage_id) {
+            return [];
+        }
+
+        return ExitWhat::signing($deal, $exit);
     }
 }

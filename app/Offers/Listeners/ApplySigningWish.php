@@ -34,6 +34,9 @@ final class ApplySigningWish
         if ($offer->position(Track::Sale)?->stage_id !== $e->to->id) {
             return;
         }
-        app(SaveSigningWish::class)->pass($deal->setRelation('offer', $offer), $e->by, staff: true);
+        // Время назвал тот, кто сохранил пожелание (`signing_wish.by`, обычно сам менеджер), а не сотрудник, что нажал «Договор
+        // готов» (24.11.2026: «Время согласовано — Виталий Зайцев за менеджера», хотя выбирал менеджер).
+        $author = \App\Users\User::find($deal->signing_wish['by'] ?? 0);
+        app(SaveSigningWish::class)->pass($deal->setRelation('offer', $offer), $author ?? $e->by, staff: true);
     }
 }

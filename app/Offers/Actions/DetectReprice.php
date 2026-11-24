@@ -90,7 +90,8 @@ final class DetectReprice
             $pending->update(['state' => Reprice::SUPERSEDED]);
             $offer->log(OfferEventType::Reprice, $by, ['reprice' => $pending->id, 'state' => Reprice::SUPERSEDED, 'from' => $pending->from_price, 'to' => $pending->to_price]);
         }
-        $reprice = $offer->reprices()->create(['from_price' => $offer->floor_price, 'to_price' => $price, 'value' => $value, 'source' => $source,
+        // `asked_price` — просьба поставщика как есть: «Принять…» другой суммой перезапишет `to_price` (24.11.2026).
+        $reprice = $offer->reprices()->create(['from_price' => $offer->floor_price, 'to_price' => $price, 'asked_price' => $price, 'value' => $value, 'source' => $source,
             'message_id' => $message?->id, 'created_by' => $by?->id, 'state' => Reprice::PENDING]);
         $reprice->setRelation('offer', $offer)->setRelation('message', $message);
         $offer->log(OfferEventType::Reprice, $by, ['reprice' => $reprice->id, 'state' => Reprice::PENDING, 'from' => $reprice->from_price,

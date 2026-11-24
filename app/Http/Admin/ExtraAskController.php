@@ -24,7 +24,7 @@ final class ExtraAskController
     public function phone(Request $request, Offer $offer, ExtraAsk $ask, SettleExtraAsk $settle)
     {
         abort_unless($ask->offer_id === $offer->id, 404);
-        $settle->byPhone($ask, $request->user());
+        $settle->byPhone($ask, $request->user(), $request->string('phone_answer')->limit(2000, '')->value());
 
         return back(fallback: "/offers/{$offer->number}")->with('toast', $ask->fresh()->isOpen() ? 'Ждём решения менеджера' : 'Просьба решена');
     }

@@ -87,22 +87,26 @@ final class SettleExtraAsk
             }
             // Решённая ответом (этап уже шёл дальше) — пауза начинается заново.
             $frozen = $ask->decided_at ? ['frozen_at' => now()] : [];
-            $ask->update(['since_at' => now(), 'answered_at' => null, 'answer_message_id' => null, 'shown_at' => null, 'decided_at' => null, 'decision' => null, 'decided_by' => null] + $frozen);
+            $ask->update(['since_at' => now(), 'answered_at' => null, 'answer_message_id' => null, 'phone_answer' => null, 'shown_at' => null, 'decided_at' => null, 'decision' => null, 'decided_by' => null] + $frozen);
             $ask->offer->log(OfferEventType::ExtraRequest, $by, ['state' => 'reopened', 'ask' => $ask->id]);
         });
         $ask->deal && Disclose::publish($ask->deal);
     }
 
-    /** «Ответили не письмом» (по телефону): как ответ; на согласовании — сразу ход менеджера, ему уведомление. */
-    public function byPhone(ExtraAsk $ask, User $by): void
+    /**
+     * «Ответили не письмом» (по телефону): как ответ; на согласовании — сразу ход менеджера, ему уведомление. `$text` — что ответили
+     * (24.11.2026, необязательно): строкой в шаге, в «Доп. просьбах» и в «Истории».
+     */
+    public function byPhone(ExtraAsk $ask, User $by, ?string $text = null): void
     {
         $ask = $ask->fresh('deal');
         if (! $ask || $ask->phase() !== ExtraAsk::SUPPLIER) {
             throw ValidationException::withMessages(['extra' => 'Поставщик уже ответил']);
         }
         $manager = $ask->asks_manager && $ask->deal?->isActive();
-        $ask->update(['answered_at' => now()] + ($manager ? ['shown_at' => now()] : ['decided_at' => now(), 'decision' => ExtraAsk::ANSWERED, 'decided_by' => $by->id]));
-        $ask->offer->log(OfferEventType::ExtraRequest, $by, ['state' => 'phone', 'ask' => $ask->id]);
+        $text = trim((string) $text) ?: null;
+        $ask->update(['answered_at' => now(), 'phone_answer' => $text] + ($manager ? ['shown_at' => now()] : ['decided_at' => now(), 'decision' => ExtraAsk::ANSWERED, 'decided_by' => $by->id]));
+        $ask->offer->log(OfferEventType::ExtraRequest, $by, ['state' => 'phone', 'ask' => $ask->id, ...($text ? ['answer' => $text] : [])]);
         $manager ? $ask->deal->buyer?->notify(new ExtraAskDecisionNotice($ask)) : $this->thaw($ask);
         $ask->deal && Disclose::publish($ask->deal);
     }

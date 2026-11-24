@@ -25,7 +25,7 @@ use Illuminate\Support\Collection;
  * порядке, берём» / «Отказываюсь» (`labels`): осмотр до «Беру в работу» и после — один модуль (18.11.2026, владелец: «это одно и то
  * же, выглядеть и работать должно одинаково»; прежний этап Альфы «Осмотр перед оплатой» снят).
  */
-#[Fillable(['offer_id', 'deal_id', 'message_id', 'text', 'asks_manager', 'asked_by', 'asked_at', 'since_at', 'frozen_at', 'answered_at',
+#[Fillable(['offer_id', 'deal_id', 'message_id', 'text', 'phone_answer', 'asks_manager', 'asked_by', 'asked_at', 'since_at', 'frozen_at', 'answered_at',
     'answer_message_id', 'shown_at', 'decided_at', 'decision', 'decided_by', 'remind_at'])]
 class ExtraAsk extends Model
 {
@@ -73,6 +73,12 @@ class ExtraAsk extends Model
     public function message(): BelongsTo
     {
         return $this->belongsTo(Message::class);
+    }
+
+    /** Кто решил (берёт / отказался): менеджер сам или сотрудник за него. */
+    public function decider(): BelongsTo
+    {
+        return $this->belongsTo(\App\Users\User::class, 'decided_by');
     }
 
     public function answer(): BelongsTo

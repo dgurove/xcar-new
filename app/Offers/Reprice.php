@@ -20,7 +20,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  *
  * `choices` после решения: `{"bids": {"12": "update", "13": "keep"}, "deal": "keep"}`.
  */
-#[Fillable(['offer_id', 'from_price', 'to_price', 'value', 'source', 'message_id', 'state', 'choices', 'created_by', 'decided_by', 'decided_at', 'answered_at', 'answered_by'])]
+#[Fillable(['offer_id', 'from_price', 'to_price', 'asked_price', 'value', 'source', 'message_id', 'state', 'choices', 'created_by', 'decided_by', 'decided_at', 'answered_at', 'answered_by'])]
 class Reprice extends Model
 {
     use FastAttributes;
@@ -40,7 +40,7 @@ class Reprice extends Model
 
     protected function casts(): array
     {
-        return ['from_price' => 'int', 'to_price' => 'int', 'value' => 'int', 'choices' => 'array', 'decided_at' => 'datetime', 'answered_at' => 'datetime'];
+        return ['from_price' => 'int', 'to_price' => 'int', 'asked_price' => 'int', 'value' => 'int', 'choices' => 'array', 'decided_at' => 'datetime', 'answered_at' => 'datetime'];
     }
 
     public function offer(): BelongsTo

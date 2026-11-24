@@ -64,7 +64,9 @@ final class SaveSigningWish
 
             return;
         }
-        Requirement::closeOpen($deal, $exit->stage_id, ['exit' => $exit->label, 'closed_by' => $by ? 'staff' : 'wish', 'by' => $by?->id]);
-        ($this->take)($deal->offer, $exit, Actor::Manager, $by, ['for' => 'manager']);
+        // Названо самим менеджером сделки — его ответ, не «за менеджера» (24.11.2026, `ApplySigningWish`).
+        $own = $by !== null && $by->id === $deal->buyer_id;
+        Requirement::closeOpen($deal, $exit->stage_id, ['exit' => $exit->label, 'closed_by' => $by && ! $own ? 'staff' : 'wish', 'by' => $by?->id]);
+        ($this->take)($deal->offer, $exit, Actor::Manager, $by, $own ? [] : ['for' => 'manager']);
     }
 }

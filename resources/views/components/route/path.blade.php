@@ -21,9 +21,18 @@
     $n = $offer->number;
     $stage = $position->stage;
     $path = Path::for($offer, $position->track);
+    // Кто решал в пройденных блоках — одним запросом на путь (`x-route.done-row`).
+    $pathPeople = \App\Users\User::whereIn('id', $path->flatMap(fn ($st) => $st['left']->map(fn ($l) => $l['next']['user_id'] ?? null))->filter()->unique()->values())->get()->keyBy('id');
     // «Подтверждение принято» — не кнопка: в сделку ведёт только «Принять» у подтверждения.
     // Деньги сделки на этапах оплаты; её же ветка решает, какие кнопки видны (гараж «платим мы» — гаражные).
     $deal = $offer->deal?->isActive() ? $offer->deal : null;
+    // Письмо поставщику о вывозе (Совкомбанк, `Logistics\PickupLetters`; 24.11.2026, владелец: «вкладка кричит, что мы должны
+    // поставщику отправить акт, захожу — а там ждём оплату», «пока акт не отправлен, „Получение автомобиля“ не закрыт»): дело —
+    // в блоке получения пути (блок с шагом «Забрать автомобиль», `Stage::handsStep`). Пройден — он без галки, с делом; текущий
+    // или впереди — дело в текущем шаге. Дорожка «Вывоз» его тогда не повторяет (`x-logistics.lane`).
+    $pickupLetter = $deal && $position->track === \App\Workflow\Track::Sale && auth()->user()?->canEditDeals() ? \App\Logistics\PickupLetters::due($offer) : null;
+    $receiptBlock = $pickupLetter ? ($path->first(fn ($st) => $st['block']->stages->contains(fn ($s) => $s->handsStep()))['block'] ?? null)?->id : null;
+    $letterInBlock = $pickupLetter && $receiptBlock && $path->firstWhere('block.id', $receiptBlock)['state'] === Path::DONE;
     // Исход, что ведёт на согласие менеджера (Альфа), — «Спросить менеджера» (27.10.2026, владелец: «Поставщик согласовал»
     // читали как «сразу в работу», а это только вопрос менеджеру). Подпись исхода в маршруте не меняется — по ней узнают шаг.
     $asks = fn ($x) => $x->actor === Actor::Staff && $x->to?->asksConsent();
@@ -127,6 +136,14 @@
             </div>
         @endif
         @if ($extra && $step['state'] === Path::CURRENT)<x-route.extra-step :ask="$extra" :deal="$deal"/>@endif
+        {{-- Этап ждёт впереди (назначение цены, переоценка, доп. просьба), а письмо о вывозе — нет: своим шагом рядом с ними,
+             иначе дело пропало бы и из пути, и из дорожки «Вывоз» (24.11.2026). --}}
+        @if ($pickupLetter && ! $letterInBlock && $step['state'] === Path::CURRENT && ($pricing || $repricing || $extra))
+            <div class="step step--open">
+                <span class="step-dot"></span>
+                <div class="step-body"><div class="step-head"><span class="step-title">{{ $pickupLetter['kind'] === 'act' ? 'Акт вывоза' : 'Дата вывоза' }}</span></div><x-route.pickup-letter :offer="$offer" :due="$pickupLetter"/></div>
+            </div>
+        @endif
         @php
             // Пока цена не назначена, идёт переоценка или доп. просьба держит сделку, этап маршрута — впереди, без кнопок.
             if (($pricing || $repricing || $extra) && $step['state'] === Path::CURRENT) $step['state'] = Path::NEXT;
@@ -138,8 +155,9 @@
                 ->reject(fn ($r) => $step['state'] === Path::CURRENT && $r->stage_id === $position->stage_id && $r->done_at < $position->entered_at)
                 ->sortBy('done_at');
         @endphp
-        <div class="step step--{{ $step['state'] }}">
-            <span class="step-dot">@if ($step['state'] === Path::DONE)<x-ui.icon name="check" class="size-3"/>@endif</span>
+        @php $unfinished = $letterInBlock && $block->id === $receiptBlock && $step['state'] === Path::DONE; @endphp
+        <div @class(['step', 'step--'.$step['state'], 'step--open' => $unfinished])>
+            <span class="step-dot">@if ($step['state'] === Path::DONE && ! $unfinished)<x-ui.icon name="check" class="size-3"/>@endif</span>
             <div class="step-body">
                 @if ($step['state'] === Path::DONE)
                     <details class="step-details">
@@ -151,11 +169,25 @@
                             <x-ui.icon name="chevron-down" class="step-chevron size-4 text-ink-dim"/>
                         </summary>
                         <div class="mt-1 flex flex-col gap-1">
-                            @foreach ($step['stages'] as $s)
-                                <div class="flex flex-wrap items-baseline gap-x-2 text-sm"><span>{{ $block->stages->firstWhere('id', $s['stage_id'])?->name ?? $s['stage'] }}</span><span class="nums text-ink-dim">{{ \App\Support\Ago::html($s['at'], true, words: false) }}</span></div>
-                            @endforeach
+                            {{-- Этапы блока — исходом, которым из них ушли, что решили, кто и когда (24.11.2026, `Path::for` `left`, вид
+                                 подпунктов `x-route.done-row`); не ушли (конец пути) — именем этапа и временем входа. --}}
+                            <ol class="substeps substeps--done !mt-0">
+                                @foreach ($step['left'] as $l)
+                                    @php
+                                        $s = $l['entry'];
+                                        $nx = $l['next'];
+                                        $stageName = $block->stages->firstWhere('id', $s['stage_id'])?->name ?? $s['stage'];
+                                    @endphp
+                                    <x-route.done-row :name="$nx['exit'] ?? $stageName" :what="$nx ? \App\Workflow\Substeps::what($nx, $block->stages->firstWhere('id', $s['stage_id']), $deal ?? $offer->lastDeal) : []"
+                                        :at="$nx['at'] ?? $s['at']" :by="$nx ? $pathPeople->get($nx['user_id'])?->shortName() : null" :for="$nx['for'] ?? null"/>
+                                @endforeach
+                            </ol>
+                            @php $leftNames = $step['left']->map(fn ($l) => mb_strtolower((string) ($l['next']['exit'] ?? '')))->filter(); @endphp
                             @foreach ($answers as $r)
+                                {{-- Ответ, что уже стоит строкой решения выше, второй раз не пишем — только его поля и файлы. --}}
+                                @unless ($leftNames->contains(mb_strtolower($r->answer['label'] ?? $r->answer['exit'] ?? '')))
                                 <div class="text-sm"><span class="text-ink-muted">{{ $answerer($r) }}:</span> {{ $r->answer['label'] ?? $r->answer['exit'] ?? $r->title }}@if (($r->answer['closed_by'] ?? null) === 'staff') <span class="text-ink-muted">(за него {{ $answeredBy->get($r->answer['by'] ?? 0)?->shortName() ?? 'сотрудник' }})</span>@endif <span class="nums text-ink-dim">{{ \App\Support\Ago::html($r->done_at, true, words: false) }}</span></div>
+                                @endunless
                                 @foreach ($r->answer['fields'] ?? [] as $k => $v)<div class="text-sm"><span class="text-ink-muted">{{ collect($r->fields)->firstWhere('key', $k)['label'] ?? $k }}:</span> {{ $r->shown($k, $v) }}</div>@endforeach
                                 {{-- Платёжка шага оплаты и подписанный договор — файлом в «Продаже» (одним PDF), в ходе сделки второй раз не показываем
                              (16.11.2026, договор — 17.11.2026). --}}
@@ -171,6 +203,9 @@
                             @endif
                         </div>
                     </details>
+                    @if ($unfinished)
+                        <x-route.pickup-letter :offer="$offer" :due="$pickupLetter"/>
+                    @endif
                 @elseif ($step['state'] === Path::CURRENT)
                     @php
                         // Подпункты блока (`Workflow\Substeps`, 04.11.2026, владелец: «как переоценку — так и остальные этапы»):
@@ -251,10 +286,8 @@
                     @if ($subs->where('state', \App\Workflow\Substeps::DONE)->isNotEmpty())
                         <ol class="substeps substeps--done">
                             @foreach ($subs->where('state', \App\Workflow\Substeps::DONE) as $sub)
-                                <li class="substep substep--done">
-                                    <span class="substep-dot"><x-ui.icon name="check" class="size-2.5"/></span>
-                                    <div class="substep-body"><div class="substep-head"><span class="substep-title">{{ $sub['name'] }}</span>@if ($sub['at'])<span class="substep-meta">@if ($by = $doneBy->get($sub['user_id'])){{ $by->shortName() }}, @endif<span class="nums">{{ \App\Support\Ago::html($sub['at'], true, words: false) }}</span></span>@endif</div></div>
-                                </li>
+                                {{-- Что решили — под исходом (`ExitWhat`, 24.11.2026). --}}
+                                <x-route.done-row :name="$sub['name']" :what="$sub['what']" :at="$sub['at']" :by="$doneBy->get($sub['user_id'])?->shortName()" :for="$sub['for']"/>
                             @endforeach
                         </ol>
                     @endif
@@ -402,6 +435,10 @@
                     {{-- Сколько платить — в самом шаге (24.11.2026, «Как работать»: Катя искала сумму в «Продаже» строкой «Закупочная»). --}}
                     @elseif ($deal && $stage->paysOut() && auth()->user()?->canEditDeals() && ($sc = $deal->supplierCost()))
                         <x-route.task-row icon="wallet" href="#money">Перевести поставщику {{ \App\Support\Money::rub($sc) }}</x-route.task-row>
+                    @endif
+                    {{-- Письмо о вывозе, а блок получения ещё не пройден (текущий или впереди) — делом текущего шага (24.11.2026). --}}
+                    @if ($pickupLetter && ! $letterInBlock)
+                        <x-route.pickup-letter :offer="$offer" :due="$pickupLetter"/>
                     @endif
                     {{-- Документ об оплате (10.11.2026): на шаге оплаты админ прикладывает за менеджера (чек прислал в чат), дальше — одним
                          PDF для страховой (`PaymentProofPdf`), пока письмо об оплате не ушло. --}}

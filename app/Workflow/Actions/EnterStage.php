@@ -19,6 +19,7 @@ use App\Offers\Signing;
 use App\Offers\Slots;
 use App\Users\User;
 use App\Workflow\Events\StageEntered;
+use App\Workflow\ExitWhat;
 use App\Workflow\Outcome;
 use App\Workflow\Position;
 use App\Workflow\Presets\Route;
@@ -171,10 +172,14 @@ final class EnterStage
             Requirement::askFor($deal, $to, $position);
         }
 
+        // Что решили выходом (24.11.2026, `Workflow\ExitWhat`): время подписания, слоты поставщика, поля сотрудника, платёжка —
+        // строками в событие, журнал пути и «История» показывают их у шага. Платёжка остаётся и в `fields` (прежние записи).
+        $what = $back ? [] : ExitWhat::of($deal?->fresh(), $exit, $payload, $out);
         $offer->log(OfferEventType::StageEntered, $by, [
             'track' => $track->value, 'from' => $from?->name, 'to' => $to->name, 'block' => $to->block?->name, 'exit' => $exit?->label,
             'from_id' => $from?->id, 'to_id' => $to->id, ...($back ? ['back' => true] : []), ...($letter ? ['letter' => $letter] : []),
             ...($out ? ['fields' => $out] : []), ...($said ? ['label' => $said] : []), ...($for ? ['for' => $for] : []),
+            ...($what ? ['what' => $what] : []),
         ]);
         StageEntered::dispatch($offer, $track, $from, $to, $exit, $by, $deal, $letter, $quiet);
         // Машина сделки на нашей парковке: стало можно забирать — выдача, пропуск, получатель (18.10.2026, одна дверь).

@@ -23,7 +23,7 @@ final class Path
 
     /**
      * @param  ?Carbon  $since  журнал с этой даты (кабинет менеджера — с начала сделки)
-     * @return Collection<int, array{block: Block, state: string, at: ?Carbon, stages: Collection}>
+     * @return Collection<int, array{block: Block, state: string, at: ?Carbon, stages: Collection, left: Collection}>
      */
     public static function for(Offer $offer, Track $track, ?Carbon $since = null): Collection
     {
@@ -44,6 +44,9 @@ final class Path
                 $passed = false;
             }
             $stages = $journal->where('block', $block->name)->values();
+            // Пройденный блок строками решений (24.11.2026, владелец: «что решили — никак не посмотреть»): этап и выход, которым из
+            // него ушли, — следующая запись журнала (как подпункты `Substeps`): исход, что решили, кто и когда.
+            $left = $journal->filter(fn ($e) => $e['block'] === $block->name)->keys()->map(fn ($i) => ['entry' => $journal[$i], 'next' => $journal[$i + 1] ?? null])->values();
 
             return [
                 'block' => $block,
@@ -51,6 +54,7 @@ final class Path
                 // Когда в блок вошли: у текущего — по позиции, у пройденного — первый вход по журналу.
                 'at' => $current ? $position->block_entered_at : ($stages->first()['at'] ?? null),
                 'stages' => $stages,
+                'left' => $left,
             ];
         });
     }
@@ -60,7 +64,7 @@ final class Path
      * этап, где уже были, сматывает журнал до прежнего входа: отменённые и пройденные зря шаги из пути пропадают
      * (в «Истории» они остаются), и вернувшийся назад блок не стоит галочкой впереди текущего.
      *
-     * @return Collection<int, array{at: Carbon, block: string, stage: ?string, stage_id: ?int, from: ?string, from_id: ?int, exit: ?string, user_id: ?int}>
+     * @return Collection<int, array{at: Carbon, block: string, stage: ?string, stage_id: ?int, from: ?string, from_id: ?int, exit: ?string, user_id: ?int, raw_exit: ?string, what: list<string>, for: ?string}>
      */
     public static function journal(Offer $offer, Track $track, ?Carbon $since = null, ?Deal $parallel = null): Collection
     {
@@ -83,8 +87,11 @@ final class Path
         $journal = [];
         foreach ($entries as $e) {
             $p = $e->payload;
+            // `what` — что решили выходом (`ExitWhat`, с 24.11.2026; платёжка — и в прежних `fields`), `for` — нажал сотрудник за менеджера.
+            $what = $p['what'] ?? collect($p['fields'] ?? [])->map(fn ($v, $k) => $k.': '.$v)->values()->all();
             $entry = ['at' => $e->created_at, 'block' => $p['block'], 'stage' => $p['to'] ?? null, 'stage_id' => $p['to_id'] ?? null,
-                'from' => $p['from'] ?? null, 'from_id' => $p['from_id'] ?? null, 'exit' => $p['label'] ?? $p['exit'] ?? null, 'user_id' => $e->user_id];
+                'from' => $p['from'] ?? null, 'from_id' => $p['from_id'] ?? null, 'exit' => $p['label'] ?? $p['exit'] ?? null, 'user_id' => $e->user_id,
+                'raw_exit' => $p['exit'] ?? null, 'what' => (array) $what, 'for' => $p['for'] ?? null];
             // Снова в этапе, где уже были (откат, «Оплата не поступила», «Отказываюсь»), — всё после прежнего входа
             // из пути уходит. Откат оставляет прежний вход (с ним и выход, которым пришли тогда, — его и отменит
             // следующий откат), обычный возврат — новый: отменять надо уже его («Оплата не поступила»).

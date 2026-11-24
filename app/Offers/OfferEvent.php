@@ -108,7 +108,9 @@ class OfferEvent extends Model
                 isset($p['garage']) => 'В гараж, поставщику '.(GaragePayer::tryFrom($p['garage']) === GaragePayer::Us ? 'платим мы' : 'платит '.mb_strtolower(GaragePayer::tryFrom($p['garage'])?->label() ?? '')),
                 // Закупочную менеджера поправили при принятии — было и стало.
                 isset($p['cost']) => 'Подтверждение принято, закупочная менеджера '.Money::plain((int) $p['cost'][0], sign: false).' → '.Money::rub((int) $p['cost'][1]),
-                default => 'Подтверждение принято',
+                // Сумма и чьё (24.11.2026, владелец: «кто решил — видно, что решили — нет»).
+                default => 'Подтверждение принято'.(isset($p['amount']) ? ': '.Money::rub((int) $p['amount']) : '')
+                    .(($who = self::bidManager($p)) !== '' ? ', '.$who : ''),
             },
             OfferEventType::BidDeclined => 'Подтверждение отклонено',
             OfferEventType::BidWithdrawn => 'Подтверждение отозвано',
@@ -122,7 +124,9 @@ class OfferEvent extends Model
             OfferEventType::Interest => ! empty($p['withdrawn']) ? 'Интерес снят' : (! empty($p['placed_by']) ? 'Интерес, внесён за менеджера' : 'Интерес'),
             OfferEventType::StageEntered => (($p['track'] ?? '') === 'service' ? 'Вывоз: ' : 'Этап: ').($p['to'] ?? '').(! empty($p['back']) ? ', шаг отменён' : (! empty($p['exit']) ? ' («'.($p['label'] ?? $p['exit']).'»'.(! empty($p['letter']) ? ' по письму' : '').(($p['for'] ?? null) === 'manager' ? ' за менеджера' : '').')' : ''))
                 // Платёжка нашей оплаты поставщику («Поставщику оплачено»): «дата оплаты 19 октября 2026, номер платёжки 512».
-                .(! empty($p['fields']) ? ', '.collect($p['fields'])->map(fn ($v, $k) => mb_strtolower($k).' '.$v)->implode(', ') : ''),
+                // Что решили выходом (`Workflow\ExitWhat`, 24.11.2026): время подписания, поля сотрудника; платёжка — в нём же.
+                .(! empty($p['what']) ? ': '.implode(', ', (array) $p['what'])
+                    : (! empty($p['fields']) ? ', '.collect($p['fields'])->map(fn ($v, $k) => mb_strtolower($k).' '.$v)->implode(', ') : '')),
             OfferEventType::Parallel => self::parallelText($p),
             OfferEventType::StageOverdue => 'Срок вышел: '.($p['stage'] ?? ''),
             OfferEventType::StageReminded => 'Срок подходит: '.($p['stage'] ?? ''),
@@ -130,12 +134,13 @@ class OfferEvent extends Model
             OfferEventType::InsurerReplied => 'Страховая ответила'.(! empty($p['contact']) ? ', есть контакт' : ''),
             OfferEventType::SupplierLetter => 'Письмо поставщику отправлено',
             // Доп. просьба поставщику (17.11.2026, `Offers\ExtraRequest`; 18.11.2026 — «просьба», и её ход, `Offers\ExtraAsk`).
+            // Какая просьба — её текстом (24.11.2026): у одной машины их бывает несколько.
             OfferEventType::ExtraRequest => match ($p['state'] ?? null) {
-                'answered' => 'Поставщик ответил на доп. просьбу',
-                'phone' => 'Доп. просьба: поставщик ответил не письмом',
-                'reopened' => 'Доп. просьба снова активна: вопрос не решён',
-                'take' => 'Доп. просьба решена: менеджер берёт в работу'.(! empty($p['for']) ? ' (за него)' : ''),
-                'drop' => 'Доп. просьба: менеджер отказался'.(! empty($p['for']) ? ' (за него)' : ''),
+                'answered' => 'Поставщик ответил на доп. просьбу'.self::askText($p),
+                'phone' => 'Доп. просьба: поставщик ответил не письмом'.self::askText($p).(! empty($p['answer']) ? ', ответ: '.$p['answer'] : ''),
+                'reopened' => 'Доп. просьба снова активна: вопрос не решён'.self::askText($p),
+                'take' => 'Доп. просьба решена: менеджер берёт в работу'.(! empty($p['for']) ? ' (за него)' : '').self::askText($p),
+                'drop' => 'Доп. просьба: менеджер отказался'.(! empty($p['for']) ? ' (за него)' : '').self::askText($p),
                 default => 'Доп. просьба поставщику'.(! empty($p['text']) ? ': '.$p['text'] : ''),
             },
             OfferEventType::Estimate => self::estimateText($p),
@@ -156,9 +161,17 @@ class OfferEvent extends Model
                 'dismissed' => 'Переоценка '.Money::plain((int) ($p['from'] ?? 0), sign: false).' → '.Money::rub((int) ($p['to'] ?? 0)).' отклонена',
                 'superseded' => 'Переоценка '.Money::plain((int) ($p['from'] ?? 0), sign: false).' → '.Money::rub((int) ($p['to'] ?? 0)).' заменена новой',
                 // Вопрос менеджеру о выросшей закупочной (28.10.2026, `AnswerReprice`).
-                'agreed' => ($p['manager'] ?? 'Менеджер').' согласен на закупочную '.Money::rub((int) ($p['to'] ?? 0)).(($p['for'] ?? null) === 'manager' ? ' (за менеджера)' : ''),
+                'agreed' => ($p['manager'] ?? 'Менеджер').(isset($p['price']) ? ' согласен, цена '.Money::rub((int) $p['price']).', закупочная ' : ' согласен на закупочную ')
+                    .Money::rub((int) ($p['to'] ?? 0)).(($p['for'] ?? null) === 'manager' ? ' (за менеджера)' : ''),
                 'refused' => ($p['manager'] ?? 'Менеджер').' отказался от закупочной '.Money::rub((int) ($p['to'] ?? 0)).(! empty($p['deal']) ? ', сделка отменена' : ', подтверждение снято')
                     .(($p['for'] ?? null) === 'manager' ? ' (за менеджера)' : ''),
+                // Торг с менеджером сделки (24.11.2026): чья цена и на какой сошлись. У `countered` и `counter_refused` нет `from`/`to`
+                // — до 24.11 они падали в «Переоценка на решение: 0 → 0 ₽».
+                'offered' => ($p['manager'] ?? 'Менеджер').' предложил '.Money::rub((int) ($p['price'] ?? 0))
+                    .(isset($p['to']) ? ', закупочная '.Money::plain((int) ($p['from'] ?? 0), sign: false).' → '.Money::rub((int) $p['to']) : ''),
+                'countered' => 'Наше контрпредложение '.Money::rub((int) ($p['counter'] ?? 0)).', '.($p['manager'] ?? 'менеджер').' предлагал '.Money::rub((int) ($p['price'] ?? 0)),
+                'counter_refused' => ($p['manager'] ?? 'Менеджер').' отказался от контрпредложения '.Money::rub((int) ($p['counter'] ?? 0))
+                    .', остаётся на '.Money::rub((int) ($p['price'] ?? 0)).(($p['for'] ?? null) === 'manager' ? ' (за менеджера)' : ''),
                 default => 'Переоценка на решение: '.Money::plain((int) ($p['from'] ?? 0), sign: false).' → '.Money::rub((int) ($p['to'] ?? 0))
                     .(($p['source'] ?? '') === 'letter' ? ' по письму поставщика' : ''),
             },
@@ -250,6 +263,22 @@ class OfferEvent extends Model
     private static function managerName(int $id): string
     {
         return once(fn () => User::find($id)?->shortName() ?? '');
+    }
+
+    /** Чьё подтверждение приняли: менеджер подтверждения или сделки (`manager` у «Отдать» без подтверждения). */
+    private static function bidManager(array $p): string
+    {
+        $id = isset($p['manager']) ? (int) $p['manager'] : (isset($p['bid_id']) ? (int) once(fn () => DB::table('bids')->where('id', $p['bid_id'])->value('user_id')) : 0);
+
+        return $id ? self::managerName($id) : '';
+    }
+
+    /** «: «Пришлите фото VIN»» — текст доп. просьбы строки, коротко. */
+    private static function askText(array $p): string
+    {
+        $text = isset($p['ask']) ? once(fn () => DB::table('extra_asks')->where('id', $p['ask'])->value('text')) : null;
+
+        return $text ? ': «'.\Illuminate\Support\Str::limit(trim(preg_replace('/\s+/u', ' ', (string) $text)), 80, '…').'»' : '';
     }
 
     private static function purchaseText(OfferEventType $type, array $p): string

@@ -94,10 +94,25 @@ class Bid extends Model
         return $this->counter_state === CounterState::Pending && $this->state === BidState::Active;
     }
 
-    /** Отказался от контрпредложения — админу серым «отказался от N» в строке. */
+    /**
+     * Отказался от контрпредложения — админу «отказался от N» в строке. Отказ снимает подтверждение (`AnswerCounter`: Withdrawn) —
+     * до 24.11.2026 тут ждали Active, и строка говорила голое «отозвано».
+     */
     public function counterDeclined(): bool
     {
-        return $this->counter_state === CounterState::Declined && $this->state === BidState::Active;
+        return $this->counter_state === CounterState::Declined && in_array($this->state, [BidState::Active, BidState::Withdrawn], true);
+    }
+
+    /** Цена до нашего контрпредложения, когда он на него согласился (`amount` уже его): последняя поданная, из «Истории». */
+    public function amountBeforeCounter(): ?int
+    {
+        if ($this->counter_state !== CounterState::Accepted) {
+            return null;
+        }
+        $was = OfferEvent::where('offer_id', $this->offer_id)->where('type', OfferEventType::BidPlaced)
+            ->where('payload->bid_id', $this->id)->reorder()->orderByDesc('id')->first()?->payload;
+
+        return isset($was['amount']) && (int) $was['amount'] !== (int) $this->amount ? (int) $was['amount'] : null;
     }
 
     /** Кто внёс за менеджера (`PlaceBidFor`), у обычного подтверждения — никто. */

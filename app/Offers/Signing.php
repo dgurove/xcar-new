@@ -89,7 +89,7 @@ final class Signing
      *
      * @return Collection<int, Carbon>|null
      */
-    public static function wish(Deal $deal): ?Collection
+    public static function wish(Deal $deal, bool $past = false): ?Collection
     {
         $slots = collect($deal->signing_wish['slots'] ?? [])->map(function ($s) {
             try {
@@ -97,7 +97,7 @@ final class Signing
             } catch (\Throwable) {
                 return null;
             }
-        })->filter(fn (?Carbon $c) => $c?->isFuture())->sort()->values();
+        })->filter(fn (?Carbon $c) => $c && ($past || $c->isFuture()))->sort()->values();
 
         return $slots->isNotEmpty() ? $slots : null;
     }
@@ -119,17 +119,17 @@ final class Signing
      *
      * @return list<array{day: Carbon, times: list<string>}>
      */
-    public static function byDay(Deal $deal): array
+    public static function byDay(Deal $deal, bool $past = false): array
     {
-        return self::wish($deal)?->groupBy(fn (Carbon $c) => $c->toDateString())
+        return self::wish($deal, $past)?->groupBy(fn (Carbon $c) => $c->toDateString())
             ->map(fn (Collection $g) => ['day' => $g->first()->copy()->startOfDay(), 'times' => $g->map(fn (Carbon $c) => $c->format('G:i'))->values()->all()])
             ->values()->all() ?? [];
     }
 
-    /** «чт 12.11 в 12:00 или 14:00, пт 13.11 в 9:00» — строкой шага и чата; null — не названо. */
-    public static function wishLine(Deal $deal): ?string
+    /** «чт 12.11 в 12:00 или 14:00, пт 13.11 в 9:00» — строкой шага и чата; null — не названо. `past` — и прошедшие (запись о прошлом, `ExitWhat`). */
+    public static function wishLine(Deal $deal, bool $past = false): ?string
     {
-        $days = array_map(fn ($d) => $d['day']->locale('ru')->isoFormat('dd').' '.$d['day']->format('d.m').' в '.self::either($d['times']), self::byDay($deal));
+        $days = array_map(fn ($d) => $d['day']->locale('ru')->isoFormat('dd').' '.$d['day']->format('d.m').' в '.self::either($d['times']), self::byDay($deal, $past));
 
         return $days ? implode(', ', $days) : null;
     }
