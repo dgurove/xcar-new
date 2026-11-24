@@ -95,6 +95,22 @@ final class SellFromStatement
     }
 
     /** Имя из выписки — это кто-то из менеджеров системы: все слова его имени есть среди слов плательщика. */
+    /**
+     * Предоплата гаража (24.11.2026, владелец: «это предоплата»): все поступления по выписке — от самого менеджера (в выписке
+     * его имя, `BuyerFromStatement::payer` не находит покупателя) или от другого менеджера системы. Машину ещё не продали —
+     * дела «Деньги пришли: записать продажу» нет: цену назовёт менеджер, когда продаст («Продаю»).
+     */
+    public static function prepaid(Deal $deal): bool
+    {
+        $txs = self::arrivals($deal);
+
+        return $txs->isNotEmpty() && $txs->every(function (Transaction $tx) use ($deal) {
+            $name = BuyerFromStatement::payer($tx, $deal)['name'] ?? null;
+
+            return $name === null || self::managerNamed($name);
+        });
+    }
+
     private static function managerNamed(string $payer): bool
     {
         $words = fn (string $n) => array_values(array_filter(preg_split('/\s+/u', mb_strtolower(trim($n))), fn ($w) => mb_strlen($w) > 1));

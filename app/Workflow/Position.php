@@ -171,12 +171,17 @@ class Position extends Model
         }
         // Первая оплата по ссылке — одним запросом на все сделки списка (16.11.2026: было по запросу на строку), как
         // `RepriceAsk::dealDue`; в очереди и консоли — запросом.
-        if (! app()->runningInConsole()) {
-            return self::firstCredits()->get($deal->id);
+        $at = app()->runningInConsole()
+            ? (($min = Invoice::where('credit_deal_id', $deal->id)->where('kind', ChargeKind::Service)->where('state', InvoiceState::Paid)->min('created_at')) ? Carbon::parse($min) : null)
+            : self::firstCredits()->get($deal->id);
+        // Гаражную ещё не продали, а платил сам менеджер — предоплата, не продажа (24.11.2026, владелец: «это предоплата»):
+        // нашего дела «Деньги пришли» нет, цену он назовёт, когда продаст.
+        $car = $deal->buyer_id ? null : $deal->garageCar;
+        if ($at && $car && ! $car->isSold() && \App\Offers\Actions\SellFromStatement::prepaid($deal)) {
+            return null;
         }
-        $at = Invoice::where('credit_deal_id', $deal->id)->where('kind', ChargeKind::Service)->where('state', InvoiceState::Paid)->min('created_at');
 
-        return $at ? Carbon::parse($at) : null;
+        return $at;
     }
 
     /** @return Collection<int, Carbon> сделка → первая оплаченная разовая ссылка, засчитанная в неё */
