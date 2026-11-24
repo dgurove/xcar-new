@@ -27,8 +27,9 @@
     $contract = \App\Offers\DealContract::for($deal)->loadMissing(['buyer.party']);
     $cb = $contract->buyer;
     $cbReady = (bool) $cb?->party?->readyAsBuyer();
-    // Покупатель — с согласия или когда покупка согласована (`Deal::buyerOpen`); до того его не спрашиваем.
-    $buyerShown = $cb || ($live && ($deal->buyer_asked_at || $deal->buyerOpen()) && ($deal->hasContract() || $deal->needsBuyer()));
+    // Покупатель — сразу с открытия сделки (24.11.2026, владелец: «не после „Беру в работу“, а изначально, как только подтверждение
+    // приняли»; до того — с согласия, `Deal::buyerOpen`). Спрашивать о нём (уведомления, «ваш ход») по-прежнему с согласия.
+    $buyerShown = $cb || ($live && ($deal->hasContract() || $deal->needsBuyer()));
     $pickHere = $live && $mine && ! $me->isSuperBuyer() && (! $cb || $cb->isBuyerDraft());
     $left = fn ($i) => $i ? round($i->remaining() - $i->claimed(), 2) : 0;
     $payable = fn ($i) => $i && $mine && $i->state === InvoiceState::Issued && $left($i) > 0;

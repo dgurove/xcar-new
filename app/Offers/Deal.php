@@ -904,7 +904,8 @@ class Deal extends Model implements HasMedia
     public function collectsBuyer(): bool
     {
         // С согласия — и у «страховой напрямую» (10.11.2026): покупатель нужен поставщику, когда тот попросит реквизиты.
-        return $this->hasContract() || $this->asksBuyerData() || ($this->agreed() && $this->buyerAhead());
+        // С открытия сделки (24.11.2026, владелец: блок покупателя «изначально, как только подтверждение приняли»; до того — с согласия).
+        return $this->hasContract() || $this->asksBuyerData() || $this->buyerAhead();
     }
 
     /**
