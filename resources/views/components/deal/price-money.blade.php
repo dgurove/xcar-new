@@ -35,6 +35,9 @@
                     <p class="text-sm text-ink-muted" data-reveal-target="pane" data-reveal-key="0">Счёт и договор: <span class="nums">{{ Money::rub($apart['one']) }}</span></p>
                     <p class="text-sm text-ink-muted" data-reveal-target="pane" data-reveal-key="1">Счёт и договор: <span class="nums">{{ Money::rub($apart['car']) }}</span>, подбор ссылкой: <span class="nums">{{ Money::rub($apart['fee']) }}</span></p>
                 </div>
+            @elseif ($total !== null && $deal->splitsSelection() && $one !== null)
+                {{-- Р.О.С. — подбор всегда отдельной ссылкой ПРАЙМ (24.11.2026, владелец), выбора нет. --}}
+                <p class="text-sm text-ink-muted">Счёт и договор: <span class="nums">{{ Money::rub($total) }}</span>, подбор ссылкой: <span class="nums">{{ Money::rub(max(0, $one - $total)) }}</span></p>
             @elseif ($total !== null)<p class="text-sm text-ink-muted">Счёт и договор: <span class="nums">{{ Money::rub($total) }}</span></p>@endif
         @endif
     </div>

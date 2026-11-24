@@ -607,17 +607,24 @@ class Deal extends Model implements HasMedia
      * 20.11.2026 подбор отделялся сам, когда НДС поставщика не 5 % ПРАЙМ (владелец: «чтобы мозги не выносили в бухгалтерии»), и у
      * Совкомбанка без НДС — всегда; 24.11.2026 владелец по BMW X6 2611164186: «если через ПРАЙМ, должно быть в стоимость ТС в счёте
      * включено; можно функцию, чтобы отдельно ссылкой, но по умолчанию счёт единый». Тогда счёт за ТС и ДКП — на закупочную, подбор
-     * (цена − вознаграждение − наличные − закупочная) — своим счётом ПРАЙМ по ссылке, 5 %.
+     * (цена − вознаграждение − наличные − закупочная) — своим счётом ПРАЙМ по ссылке, 5 %. **Р.О.С. — всегда отдельно** (24.11.2026,
+     * владелец: «Р.О.С. не в счёте, Р.О.С. отдельно ссылкой должен быть»): счёт Р.О.С. — на закупочную, подбор — ссылкой, выбора нет.
      */
     public function splitsSelection(): bool
     {
-        return $this->selection_apart && $this->canSplitSelection();
+        return $this->moneyKnown() && ($this->seller() === Seller::Ros || ($this->seller() === Seller::Prime && $this->selection_apart));
     }
 
-    /** Подбор можно вынести из счёта за ТС: ПРАЙМ продаёт, не гараж, деньги сделки известны. */
+    /** Подбор можно вынести из счёта за ТС выбором: ПРАЙМ продаёт (у Р.О.С. он отдельно всегда), не гараж, деньги известны. */
     public function canSplitSelection(): bool
     {
-        return $this->isPrime() && ! $this->isGarage() && $this->seller() === Seller::Prime && $this->cost !== null && $this->amount !== null && $this->contract !== null;
+        return $this->moneyKnown() && $this->seller() === Seller::Prime;
+    }
+
+    /** Счёт ПРАЙМ / Р.О.С. за ТС не гаража с известными ценой, закупочной и договором — его можно делить с подбором. */
+    private function moneyKnown(): bool
+    {
+        return $this->isPrime() && ! $this->isGarage() && $this->cost !== null && $this->amount !== null && $this->contract !== null;
     }
 
     /**

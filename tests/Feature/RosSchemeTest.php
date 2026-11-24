@@ -89,4 +89,24 @@ class RosSchemeTest extends TestCase
         $this->assertSame(DealScheme::Ros, $deal->fresh()->schemeOf());
         $this->assertNull(DealContract::for($deal->fresh())->buyer_user_id);
     }
+
+    /** Р.О.С. — подбор всегда отдельной ссылкой (24.11.2026, владелец): счёт и договор Р.О.С. на закупочную, выбора нет. */
+    public function test_ros_selection_always_apart(): void
+    {
+        $deal = $this->deal(true);
+        app(ChangeDealScheme::class)($deal->fresh(), DealScheme::Ros, $this->admin);
+        $deal = $deal->fresh();
+        $deal->forceFill(['commission' => 50000])->save();
+        DealContract::for($deal);
+        $deal = $deal->fresh();
+        $this->assertTrue($deal->splitsSelection());
+        $this->assertFalse($deal->canSplitSelection(), 'выбора нет');
+        $this->assertSame((int) $deal->cost, DealContract::priceFor($deal));
+        $this->assertSame(1150000 - 50000 - (int) $deal->cost, $deal->selectionDue());
+
+        app(ChangeDealScheme::class)($deal, DealScheme::Prime, $this->admin);
+        $prime = $deal->fresh();
+        $this->assertFalse($prime->splitsSelection(), 'ПРАЙМ по умолчанию — в счёте за ТС');
+        $this->assertTrue($prime->canSplitSelection());
+    }
 }

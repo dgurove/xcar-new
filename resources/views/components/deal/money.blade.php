@@ -305,7 +305,8 @@
                 $selWhere = match (true) {
                     $deal->isGarageManager() || ($selRow && $selRow[1] === null) => null,
                     (bool) $selection => \App\Billing\Invoice::feeByLink($selection->kind, $selection->seller) ? 'отдельно по ссылке' : 'отдельным счётом',
-                    $deal->isPrime() && ! $deal->splitsSelection() => 'в счёте за ТС',
+                    $deal->splitsSelection() => 'отдельно по ссылке',
+                    $deal->isPrime() => 'в счёте за ТС',
                     default => null,
                 };
             @endphp
