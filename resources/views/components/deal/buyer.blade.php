@@ -11,7 +11,8 @@
     $manager = $deal->buyer;
     $buyer = $contract->buyer;
     // Параллельная (07.11.2026) — тоже живая: её покупателя смотрят и заполняют за менеджера так же.
-    $live = $deal->isLive() && ! $deal->isDirect() && $manager?->isManager();
+    // Покупатель с гаражом (24.11.2026) — его клиента выбираем и заводим за него так же, как покупателя менеджера.
+    $live = $deal->isLive() && ! $deal->isDirect() && ($manager?->isManager() || $deal->forGarageBuyer());
     $isManager = $buyer && $buyer->id === $deal->buyer_id;
     $ready = $buyer?->party?->readyAsBuyer();
     $gap = $buyer?->party?->gapWord();
@@ -64,7 +65,7 @@
      в «страховой напрямую» и ДКП он и платит поставщику или собственнику — «Плательщик — имя ›», как у блока ПРАЙМ; в ПРАЙМ —
      «Покупатель». Кто платит по счёту ПРАЙМ — строкой «Плательщик» над счётом (`x-deal.payer`). --}}
 {{-- Гаражная Совкомбанка (`namesBuyer`) — покупателя называет менеджер, сменить его можно (22.11.2026); прочая гаражная — нет. --}}
-@if ($live && ! ($deal->isGarage() && ! $deal->namesBuyer() && $buyer))
+@if ($live && ($deal->forGarageBuyer() || ! ($deal->isGarage() && ! $deal->namesBuyer() && $buyer)))
     @php
         $rows = \App\Support\People::contractBuyers($manager, $manager->name, 'на себя, нужен паспорт', 'на себя, данные есть');
     @endphp

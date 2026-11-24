@@ -104,6 +104,8 @@ class DealContract extends Model
     {
         return match (true) {
             $deal->isDkp() => $deal->ownerPrice(),
+            // Покупатель с гаражом — его цена гаража, закупочной в договоре нет (24.11.2026).
+            $deal->forGarageBuyer() => ($p = $deal->garageCar?->buyer_price) ? (int) $p : null,
             $deal->isGarage() && ! $deal->namesBuyer() => $deal->cost,
             // Ставка ТС не 5 % ПРАЙМ — подбор отдельным счётом (`Deal::splitsSelection`), договор и счёт за ТС — на закупочную.
             $deal->splitsSelection() => (int) $deal->cost,

@@ -886,9 +886,11 @@ class Deal extends Model implements HasMedia
     /** Договор собираем мы: ДКП собственника или ПРАЙМ (в том числе с менеджером гаражной); «страховой» — нет. */
     public function hasContract(): bool
     {
-        // Покупатель с гаражом — только счёт на его цену, договора мы не собираем (20.10.2026).
+        // Покупатель с гаражом (20.10.2026 — только счёт на его цену, договора не было): с 24.11.2026 у ПРАЙМ — договор на его
+        // клиента (владелец по Voyah Free 779934/2026: «счёт и договор должен быть не на Ананьева, у него свой покупатель»), цена —
+        // его цена гаража (`DealContract::priceFor`); данные клиента вносим мы в CRM, держателя не спрашиваем (`needsBuyer`).
         if ($this->forGarageBuyer()) {
-            return false;
+            return $this->isPrime() || $this->isDkp();
         }
 
         return $this->isDkp() || ($this->isPrime() && (! $this->isGarage() || $this->isGarageManager() || $this->namesBuyer()));

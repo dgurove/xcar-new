@@ -62,7 +62,7 @@ class PeopleController
         $forDeal = $kind === 'buyer' && self::staffForDeal($me);
         $deal = $kind === 'buyer' && $request->filled('deal')
             ? Deal::whereKey($request->integer('deal'))->unless($forDeal, fn ($q) => $q->where('buyer_id', $me->id))->first() : null;
-        abort_if($forDeal && ! $deal?->buyer?->isManager(), 403);
+        abort_if($forDeal && ! ($deal?->buyer?->isManager() || $deal?->forGarageBuyer()), 403);
         $owner = $forDeal ? $deal->buyer : $me;
         $invite = fn () => match ($kind) {
             'buyer' => $issue->buyer($owner, $deal?->id),

@@ -169,7 +169,8 @@ final class SyncDealInvoices
         if ($deal->forGarageBuyer()) {
             $price = $deal->garageCar()->value('buyer_price');
 
-            return $price ? ['party' => $deal->payerParty(),
+            // Платит покупатель по договору (его клиент, 24.11.2026), не выбран — сам держатель.
+            return $price ? ['party' => $deal->payerParty(sale: true),
                 'lines' => [['title' => $deal->offer->invoiceTitle(), 'qty' => 1, 'unit' => 'pc', 'price' => (float) $price, 'kind' => ChargeKind::Sale->value]]] : null;
         }
         if (! $deal->isPrime() || $deal->cost === null || ! $deal->buyer) {

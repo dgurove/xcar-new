@@ -27,7 +27,7 @@
     // Договор есть — выбор человека ставит и его (`SetDealPayer`), «Другой покупатель» заводит покупателя менеджера (у гаражной с
     // названным покупателем выбора нет — как в `x-deal.buyer`), прежний «Другой» — сторона только для счёта.
     $withDeal = $pick && $deal->hasContract();
-    $pickNew = $withDeal && ! ($deal->isGarage() && ! $deal->namesBuyer() && $deal->contract?->buyer_user_id);
+    $pickNew = $withDeal && ($deal->forGarageBuyer() || ! ($deal->isGarage() && ! $deal->namesBuyer() && $deal->contract?->buyer_user_id));
 @endphp
 @if (! $can && $row && $capped)
     <div class="list-cap !px-0">Покупатель</div>
