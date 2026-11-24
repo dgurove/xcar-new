@@ -176,7 +176,8 @@ class Position extends Model
             : self::firstCredits()->get($deal->id);
         // Гаражную ещё не продали, а платил сам менеджер — предоплата, не продажа (24.11.2026, владелец: «это предоплата»):
         // нашего дела «Деньги пришли» нет, цену он назовёт, когда продаст.
-        $car = $deal->buyer_id ? null : $deal->garageCar;
+        // Покупатель сделки у гаражной Совкомбанка — сам менеджер (`buyer_id`), машина — `garageCar` в любом случае.
+        $car = $deal->garageCar;
         if ($at && $car && ! $car->isSold() && \App\Offers\Actions\SellFromStatement::prepaid($deal)) {
             return null;
         }
