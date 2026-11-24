@@ -48,7 +48,10 @@ final class AskEstimates
             $open = $offer->estimates()->open()->pluck('user_id')->all();
             // Эксклюзив — только когда оценивает один: ни других новых, ни уже открытых просьб (ревью 02.11.2026: «Отдать
             // ещё» одному при двух думающих давало ему эксклюзив, и его оценка закрыла их).
-            $exclusive = $exclusive && $managers->count() === 1 && $open === [] && ! $base ? $exclusive : null;
+            // Вопрос «Эксклюзив: Нет / 3 / 5 / 7» задан (один, никто не думает, не корректировка) — ответ «Нет» хранится как 0, решение
+            // принято (24.11.2026: `null` читался «не решали», и пачка «Оцененных» не выпускала 9 машин, `Exclusive::undecided`).
+            $offered = $managers->count() === 1 && $open === [] && ! $base;
+            $exclusive = $offered ? (int) $exclusive : null;
             $created = $managers->reject(fn (User $u) => in_array($u->id, $open, true))->map(fn (User $u) => Estimate::create([
                 'offer_id' => $offer->id, 'user_id' => $u->id, 'asked_by' => $by?->id,
                 'state' => EstimateState::Asked, 'due_at' => now()->addDays($days), 'base_price' => $base,

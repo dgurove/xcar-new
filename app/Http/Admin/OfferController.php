@@ -1545,7 +1545,7 @@ class OfferController
                 $schedule($offer, $when, $request->user(), batch: $offers->count() > 1, until: Slots::urgentUntil($request->input('urgent_until')));
                 $done++;
             } catch (ValidationException $e) {
-                $failed[] = $offer->titleWithYear().', '.(isset($e->errors()['exclusive']) ? 'решите эксклюзив за оценку'
+                $failed[] = $offer->titleWithYear().', '.(isset($e->errors()['exclusive']) ? 'оценивали несколько — выставьте отдельно, выбрав, кому эксклюзив'
                     : 'нет '.str_replace(['Для публикации не хватает: ', 'фотографии'], ['', 'фото'], (string) collect($e->errors())->flatten()->first()));
             }
         }

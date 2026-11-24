@@ -120,11 +120,11 @@ class HeavyEstimateTest extends TestCase
         app(AskEstimates::class)($one->fresh(), [$this->other], $this->admin);
         $this->assertSame([5, null], Estimate::where('offer_id', $one->id)->orderBy('id')->pluck('exclusive_days')->all());
 
-        // Уже думает другой — эксклюзива новому нет.
+        // Уже думает другой — эксклюзива новому нет (вопроса не было — пусто); первому вопрос был, «Нет» — 0.
         $busy = $this->draft('MAN', '5691/046/00911/26');
         app(AskEstimates::class)($busy, [$this->other], $this->admin);
         app(AskEstimates::class)($busy->fresh(), [$this->roma], $this->admin, exclusive: 5);
-        $this->assertSame([null, null], Estimate::where('offer_id', $busy->id)->orderBy('id')->pluck('exclusive_days')->all());
+        $this->assertSame([0, null], Estimate::where('offer_id', $busy->id)->orderBy('id')->pluck('exclusive_days')->all());
     }
 
     public function test_exclusive_follows_intake(): void
@@ -333,6 +333,13 @@ class HeavyEstimateTest extends TestCase
         $this->assertSame([$roma->id], \App\Offers\Exclusive::preferred(\App\Offers\Exclusive::undecided($krone->fresh())));
         $this->actingAs($this->admin)->post($url, ['state' => 'gallery'])->assertSessionHasErrors('state');
         $this->assertFalse($krone->fresh()->isGallery());
+
+        // Просьба одному с «Нет» — решение: выставляется без вопроса (24.11.2026, пачка не выпускала 9 машин).
+        $solo = $this->draft('Geely', '5691/046/00915/26');
+        $one = app(AskEstimates::class)($solo, [$this->roma], $this->admin, exclusive: 0)->sole();
+        $this->assertSame(0, $one->fresh()->exclusive_days);
+        app(GiveEstimate::class)($one, 1000000, $this->roma);
+        $this->assertTrue(\App\Offers\Exclusive::undecided($solo->fresh())->isEmpty());
 
         // Без выбора не выходит — и ошибка видна плашкой (`state`).
         $this->actingAs($this->admin)->post($url, ['state' => 'open', 'when' => 'now', 'price_ok' => 1])->assertSessionHasErrors(['exclusive', 'state']);
