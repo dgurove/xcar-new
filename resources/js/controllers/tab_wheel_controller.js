@@ -93,6 +93,9 @@ export default class extends Controller {
         if (toggle && saved !== null && !wheel.hasAttribute('data-mine-as')) wheel.classList.toggle('is-mine', saved);
         // Тумблер — по колесу: морф Turbo оставляет у переключателя прежнее состояние.
         if (toggle) toggle.checked = wheel.classList.contains('is-mine');
+        // Чьи «Только мои» — тоже по серверу (24.11.2026): морф оставлял в поле прежний выбор над вкладками другого человека.
+        const as = wheel.querySelector('.tab-wheel-as');
+        if (as) as.value = as.querySelector('option[selected]')?.value ?? '';
         this.collect();
         this.chosen = null;
         document.documentElement.append(wheel);
