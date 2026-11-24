@@ -12,16 +12,36 @@
 @endphp
 <div class="list">
     @if ($hide)
-    <div class="row flex-col items-start gap-1 py-4">
-        <span class="text-sm text-ink-muted">Цена продажи</span>
-        <span class="nums text-[32px] leading-none font-bold">{{ Money::exact($car->offer?->asking_price) }}</span>
-    </div>
+    {{-- Цена продажи — его (24.11.2026, «как в сделке»): вписал — она, нет — наша подсказка; нажатие — ввести. Вознаграждение — ниже. --}}
+    @php $sellable = $car->deal && $car->state !== \App\Garage\CarState::Settled; @endphp
+    <{{ $sellable ? 'button type=button data-controller=emit data-action=emit#send data-emit-event-param=sale-price:open' : 'div' }} class="row w-full items-center gap-3 py-4 text-left">
+        <span class="flex min-w-0 flex-1 flex-col items-start gap-1">
+            <span class="text-sm text-ink-muted">Цена продажи</span>
+            <span class="nums text-[32px] leading-none font-bold">{{ Money::exact($car->deal?->amount ?? $car->offer?->asking_price) }}</span>
+        </span>
+        @if ($sellable)<x-ui.chevron/>@endif
+    </{{ $sellable ? 'button' : 'div' }}>
+    @if ($car->deal?->amount !== null)
+        <div class="row justify-between"><span>Ваше вознаграждение</span><span class="nums text-open">{{ Money::rub((int) $car->deal->amount - (int) $car->buyer_price) }}</span></div>
+    @endif
     @else
     <div class="row flex-col items-start gap-1 py-4">
         <span class="text-sm text-ink-muted">{{ $left > 0 ? 'К оплате' : 'Цена' }}</span>
         <span class="nums text-[32px] leading-none font-bold {{ $holderInvoice?->isOverdue() ? 'text-danger' : '' }}">{{ Money::exact($left > 0 ? $left : $car->buyer_price) }}</span>
         @if ($claimed > 0)<span class="mt-1 text-sm text-urgent">Сообщили об оплате {{ Money::exact($claimed) }}, ждём подтверждения</span>@endif
     </div>
+    @if ($car->deal && $car->state !== \App\Garage\CarState::Settled)
+        {{-- Цена продажи и вознаграждение (24.11.2026): как в сделке — сколько платит клиент, разница с ценой — его. --}}
+        <button type="button" class="row justify-between w-full text-left" data-controller="emit" data-action="emit#send" data-emit-event-param="sale-price:open">
+            <span>Цена продажи</span>
+            <span class="flex items-center gap-2">@if ($car->deal->amount !== null)<span class="nums">{{ Money::rub($car->deal->amount) }}</span>@else<span class="text-accent-text">Указать</span>@endif<x-ui.chevron/></span>
+        </button>
+    @elseif ($car->deal?->amount !== null)
+        <div class="row justify-between"><span>Цена продажи</span><span class="nums">{{ Money::rub($car->deal->amount) }}</span></div>
+    @endif
+    @if ($car->deal?->amount !== null)
+        <div class="row justify-between"><span>Ваше вознаграждение</span><span class="nums text-open">{{ Money::rub((int) $car->deal->amount - (int) $car->buyer_price) }}</span></div>
+    @endif
     @if ($left > 0 && (float) $left !== (float) $car->buyer_price)
         <div class="row justify-between"><span>Цена</span><span class="nums">{{ Money::rub($car->buyer_price) }}</span></div>
     @endif

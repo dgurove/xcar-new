@@ -327,6 +327,7 @@ Route::middleware(['auth', 'wall'])->group(function () {
         Route::post('/cars/{offer}/price-check', [GarageSettlementController::class, 'priceCheck'])->middleware('throttle:60,1');
         Route::delete('/cars/{offer}/sold', [GarageSettlementController::class, 'unsold']);
         Route::put('/cars/{offer}/buyer-price', [GarageSettlementController::class, 'buyerPrice']);
+        Route::put('/cars/{offer}/sale-price', [GarageSettlementController::class, 'salePrice']);
         Route::post('/cars/{offer}/settle', [GarageSettlementController::class, 'settle']);
         Route::post('/cars/{offer}/payments', [GarageSettlementController::class, 'pay']);
         Route::post('/cars/{offer}/checkout', [GarageSettlementController::class, 'checkout']);

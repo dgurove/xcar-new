@@ -241,12 +241,19 @@
             \App\Offers\DealScheme::OwnerDkp => 'владельцу по ДКП',
         };
     @endphp
-    @if ($topPrice || $supplierSum || $shown || $rewardRow || ($feeBilled && $selection))
+    @php $garageBuyer = $deal->forGarageBuyer(); @endphp
+    @if ($topPrice || $supplierSum || $shown || $rewardRow || $garageBuyer || ($feeBilled && $selection))
         {{-- Без своей подписи (22.11.2026, владелец: «шрифты скачут» — «Продажа» и «Итог» стояли двумя подписями подряд): список
              сразу под заголовком; числа одного вида — 15 обычным, полужирным только цена продажи. --}}
         <div class="list mb-3">
             @if ($schemeWord)
                 @if ($schemeEdit)<x-deal.sale-row label="Покупатель платит" :value="$schemeWord" data-controller="emit" data-action="emit#send" data-emit-event-param="scheme-{{ $deal->id }}:open"/>@else<div class="row sale-row"><span class="sale-row-label">Покупатель платит</span><span class="sale-row-value">{{ $schemeWord }}</span><x-ui.chevron-space/></div>@endif
+            @endif
+            @if ($garageBuyer)
+                {{-- Покупатель с гаражом (24.11.2026): цену продажи вводит он сам в гараже (`SetGarageSalePrice`), вознаграждение — разница
+                     с его ценой; счёт и договор — на его цену. --}}
+                <div class="row sale-row"><span class="sale-row-label">Цена продажи</span>@if ($deal->amount !== null)<span class="sale-row-value nums font-semibold">{{ Money::rub($deal->amount) }}</span>@else<span class="sale-row-value text-ink-muted">не указана</span>@endif<x-ui.chevron-space/></div>
+                @if ($deal->amount !== null)<div class="row sale-row"><span class="sale-row-label">Вознаграждение покупателя</span><span class="sale-row-value nums">{{ Money::rub((int) $deal->commission) }}</span><x-ui.chevron-space/></div>@endif
             @endif
             @if ($topPrice)
                 @php $priceTag = $editMoney ? 'button' : 'div'; @endphp

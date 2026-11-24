@@ -93,6 +93,18 @@ class SettlementController
         return back()->with('toast', 'Цена покупателю '.Money::rub($price));
     }
 
+    /** Цена продажи у покупателя с гаражом — он сам или сотрудник; вознаграждение — разница с его ценой (`SetGarageSalePrice`). */
+    public function salePrice(Request $request, Offer $offer, \App\Garage\Actions\SetGarageSalePrice $set)
+    {
+        $car = $this->car($request, $offer);
+        abort_unless($request->user()->garageStaff() || $car->manager_id === $request->user()->id, 403);
+        $request->merge(['sale_price' => Money::rubles($request->input('sale_price'))]);
+        $price = $request->validate(['sale_price' => ['required', 'integer', 'min:1']], ['sale_price.required' => 'Цена продажи'])['sale_price'];
+        $set($car, $price, $request->user());
+
+        return back()->with('toast', 'Цена продажи '.Money::rub($price));
+    }
+
     /** Счёт по машине за вычетом расходов и вознаграждения менеджера: платит менеджер или его покупатель — плательщик, как у сделки. */
     public function settle(Request $request, Offer $offer, SettleGarageCar $settle)
     {

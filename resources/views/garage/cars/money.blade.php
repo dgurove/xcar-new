@@ -35,6 +35,18 @@
             </span>
             @if ($editable)<x-ui.chevron/>@endif
         </{{ $editable ? 'button' : 'div' }}>
+    @if ($car->deal && $car->state !== \App\Garage\CarState::Settled)
+        {{-- Цена продажи и вознаграждение (24.11.2026): как в сделке — сколько платит клиент, разница с ценой — его. --}}
+        <button type="button" class="row justify-between w-full text-left" data-controller="emit" data-action="emit#send" data-emit-event-param="sale-price:open">
+            <span>Цена продажи</span>
+            <span class="flex items-center gap-2">@if ($car->deal->amount !== null)<span class="nums">{{ Money::rub($car->deal->amount) }}</span>@else<span class="text-accent-text">Указать</span>@endif<x-ui.chevron/></span>
+        </button>
+    @elseif ($car->deal?->amount !== null)
+        <div class="row justify-between"><span>Цена продажи</span><span class="nums">{{ Money::rub($car->deal->amount) }}</span></div>
+    @endif
+    @if ($car->deal?->amount !== null)
+        <div class="row justify-between"><span>Вознаграждение покупателя</span><span class="nums text-open">{{ Money::rub((int) $car->deal->amount - (int) $car->buyer_price) }}</span></div>
+    @endif
         @if ($price)<div class="{{ $row }}"><span>Закупочная</span><span class="nums">{{ Money::rub($price) }}</span></div>@endif
         @if ($ours > 0)<div class="{{ $row }}"><span>Наши расходы</span><span class="nums">{{ Money::exact($ours) }}</span></div>@endif
         @if ($s['profit'] !== null)<div class="{{ $row }}"><span>Прибыль</span><span class="nums {{ $s['profit'] < 0 ? 'text-danger' : '' }}">{{ Money::exact($s['profit']) }}</span></div>@endif

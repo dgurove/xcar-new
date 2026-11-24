@@ -142,6 +142,21 @@
     </div>
 @endif
 
+@if (($buyerCar ?? $asBuyer ?? false) && $car->deal && $car->state !== \App\Garage\CarState::Settled)
+    {{-- Цена продажи у покупателя с гаражом (24.11.2026): сколько платит его клиент всего; вознаграждение — разница с его ценой. --}}
+    <div {!! $wrap('sale-price') !!}>
+        <x-ui.sheet id="sale-price-{{ $n }}" title="Цена продажи">
+            <form method="post" action="/garage/cars/{{ $n }}/sale-price" class="flex flex-col gap-3">
+                @csrf @method('put')
+                <div class="fields">
+                    <x-ui.field name="sale_price" label="Цена продажи, ₽" :value="old('sale_price', $car->deal->amount)" :id="'sale-price-'.$n.'-field'" required/>
+                </div>
+                <x-ui.sheet-foot type="submit" variant="primary">Сохранить</x-ui.sheet-foot>
+            </form>
+        </x-ui.sheet>
+    </div>
+@endif
+
 @if ($asBuyer ?? false)
     @if ($holderDue)
         {{-- Покупатель с гаражом платит свой счёт сделки — той же шторкой, что в «Оплатах» кабинета. --}}
