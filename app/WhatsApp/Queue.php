@@ -92,6 +92,15 @@ final class Queue
             ->orderByRaw($opened)->orderBy('offers.id');
     }
 
+    /**
+     * В продаже, но уже не всем менеджерам (эксклюзив за оценку, волну сдвинули на будущее): пост в группе надо снять
+     * (`RetractOfferNotices`), откроется всем — уйдёт снова. Ушедшую из продажи не трогаем: «в группу второй раз никогда».
+     */
+    public static function narrowed(\App\Offers\Offer $offer): bool
+    {
+        return \App\Offers\Offer::query()->whereKey($offer->id)->whereRaw(self::selling('offers'))->whereRaw('not ('.self::toAll('offers').')')->exists();
+    }
+
     /** В продаже, приём идёт, не демо. */
     private static function selling(string $o): string
     {

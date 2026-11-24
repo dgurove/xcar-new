@@ -56,12 +56,34 @@ final class RetractOfferNotices implements ShouldQueue
             ->each(fn ($number) => ($id = Offer::where('number', $number)->value('id')) ? self::dispatch($id) : null);
     }
 
+    /**
+     * Пост в группе WhatsApp (24.11.2026: Krone и Howo ушли туда «Всем сразу», потом стали эксклюзивом Ромы — пост висел у всех):
+     * машина в продаже, но уже не всем (`Queue::narrowed`) — пост удаляется у всех, строка очереди тоже, и откроется всем снова —
+     * уйдёт заново (`Queue::group`). Ушедшую из продажи не трогаем. Сбой связи — строка остаётся, попробует следующий отзыв.
+     */
+    private function group(Offer $offer): void
+    {
+        $key = 'offer:'.$offer->id;
+        $sent = DB::table('whatsapp_messages')->where('key', $key)->where('kind', 'group')->whereNotNull('message_id')->exists();
+        $gateway = app(\App\WhatsApp\Gateway::class);
+        if (! $sent || ! $gateway->configured() || ! \App\WhatsApp\Queue::narrowed($offer)) {
+            return;
+        }
+        try {
+            $gateway->revoke($key);
+            DB::table('whatsapp_messages')->where('key', $key)->where('kind', 'group')->delete();
+        } catch (Throwable $e) {
+            Log::info('WhatsApp: пост машины в группе не удалился', ['offer' => $offer->id, 'error' => $e->getMessage()]);
+        }
+    }
+
     public function handle(OffersBot $bot, Bot $main, Publisher $publish): void
     {
         $offer = Offer::find($this->offerId);
         if (! $offer) {
             return;
         }
+        $this->group($offer);
         $cards = DB::table('offer_bot_sent')->where('offer_id', $offer->id)->whereNotNull('message_id')->get();
         $unsent = Cards::unsent($offer);
         $notices = DatabaseNotification::whereIn('type', self::TYPES)->where('data->offer', $offer->number)->get(['id', 'notifiable_id']);

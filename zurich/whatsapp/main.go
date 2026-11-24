@@ -681,6 +681,9 @@ func (s *service) revoke(w http.ResponseWriter, r *http.Request) {
 		reply(w, http.StatusBadGateway, map[string]string{"error": "удаление: " + err.Error()})
 		return
 	}
+	// Удалили — ключ забываем (24.11.2026, эксклюзив Ромы по Krone и Howo): машина снова откроется всем — пост уйдёт заново,
+	// а не вернётся id удалённого.
+	_, _ = s.db.ExecContext(context.Background(), `delete from xcar_sent where key = ?`, key)
 	reply(w, http.StatusOK, map[string]string{"id": id})
 }
 

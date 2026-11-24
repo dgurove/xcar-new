@@ -264,6 +264,37 @@ class WhatsAppTest extends TestCase
         $this->assertSame('', $this->sent[1]['to']);
     }
 
+    public function test_narrowed_offer_leaves_group_and_comes_back(): void
+    {
+        // 24.11.2026: Krone ушла в группу «Всем сразу», потом стала эксклюзивом Ромы — пост удаляется у всех, а когда
+        // откроется всем — уходит снова.
+        $revoked = [];
+        Http::fake(['zurich:9444/revoke' => function ($r) use (&$revoked) {
+            $revoked[] = $r->data()['key'] ?? null;
+
+            return Http::response(['id' => 'M1']);
+        }]);
+        $roma = $this->manager('79000000601');
+        $denis = $this->manager('79000000602');
+        $this->wave($this->offer, $roma, now()->subMinutes(5));
+        $this->wave($this->offer, $denis, now()->subMinutes(5));
+        $this->assertTrue($this->step());
+        $this->assertSame('offer:'.$this->offer->id, $this->sent[0]['key']);
+
+        // Эксклюзив: Денису — через 5 дней.
+        $this->wave($this->offer, $denis, now()->addDays(5));
+        \App\Offers\Jobs\RetractOfferNotices::dispatchSync($this->offer->id);
+        $this->assertSame(['offer:'.$this->offer->id], $revoked);
+        $this->assertFalse(DB::table('whatsapp_messages')->where('key', 'offer:'.$this->offer->id)->exists());
+
+        // Открылась всем — снова в группу.
+        $this->travel(5)->days();
+        $this->offer->forceFill(['bids_close_at' => now()->addDay()])->save();
+        $this->later();
+        $this->assertTrue($this->step());
+        $this->assertSame('offer:'.$this->offer->id, last($this->sent)['key']);
+    }
+
     public function test_hidden_from_one_goes_personal_never_to_group(): void
     {
         // «Не показывать» Денису: группе нельзя никогда, остальным с WhatsApp — лично; без WhatsApp — никак.

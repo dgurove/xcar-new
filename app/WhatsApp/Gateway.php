@@ -75,6 +75,23 @@ final class Gateway
         return $this->over(fn (PendingRequest $http) => (array) $http->timeout($wait + 10)->get('/inbox', ['after' => $after, 'wait' => $wait])->throw()->json());
     }
 
+    /**
+     * Удалить у всех своё сообщение по ключу (`POST /revoke`; служба после этого ключ забывает — тот же ключ уйдёт снова).
+     * false — такого не отправлялось (404); сбой связи — исключение, повторит следующий отзыв.
+     */
+    public function revoke(string $key, ?string $to = null): bool
+    {
+        return $this->over(function (PendingRequest $http) use ($key, $to) {
+            $response = $http->timeout(70)->asForm()->post('/revoke', ['key' => $key, 'to' => $to ?? '']);
+            if ($response->status() === 404) {
+                return false;
+            }
+            $response->throw();
+
+            return true;
+        });
+    }
+
     private function http(string $via): PendingRequest
     {
         return Http::baseUrl(rtrim($via, '/'))->withToken((string) config('xcar.whatsapp.token'))
