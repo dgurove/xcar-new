@@ -169,8 +169,10 @@ final class SyncDealInvoices
         if ($deal->forGarageBuyer()) {
             $price = $deal->garageCar()->value('buyer_price');
 
-            // Платит покупатель по договору (его клиент, 24.11.2026), не выбран — сам держатель.
-            return $price ? ['party' => $deal->payerParty(sale: true),
+            // Платит покупатель по договору (его клиент, 24.11.2026), не выбран — сам держатель. НДС — ставка договора (24.11.2026,
+            // владелец: «почему НДС в счёте, если Совком без НДС»): ПРАЙМ продаёт по комиссии, налог с машины — по режиму
+            // собственника (ст. 156 НК РФ), а не 5 % ПРАЙМ.
+            return $price ? ['party' => $deal->payerParty(sale: true), 'vat' => DealContract::for($deal)->vatRate(),
                 'lines' => [['title' => $deal->offer->invoiceTitle(), 'qty' => 1, 'unit' => 'pc', 'price' => (float) $price, 'kind' => ChargeKind::Sale->value]]] : null;
         }
         if (! $deal->isPrime() || $deal->cost === null || ! $deal->buyer) {
