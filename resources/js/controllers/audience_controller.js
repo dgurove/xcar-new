@@ -1,5 +1,6 @@
 import { Controller } from '@hotwired/stimulus';
 import { confirmSheet } from '../confirm';
+import { onMorphElement } from '../lib/morph-guard';
 
 // «Кому показывать» лентой волн (`x-audience.editor`, 15.11.2026, владелец: «невозможно одному менеджеру 5 дней, потом
 // остальным», «сначала выбранным 5 дней, потом всем, кроме — 3 дня, потом всем до такого-то числа»). Волна — срок от
@@ -40,6 +41,9 @@ export default class extends Controller {
         // несохранённое: возвращаем его в поле.
         this.onMorph = () => {
             if (!this.element.isConnected || !this.hasBodyTarget) return;
+            // Лента на месте — морф её не тронул (обошёл, см. ниже) или её уже нарисовали после него: морф страницы шлёт и
+            // `turbo:morph-element`, и `turbo:morph` — второй раз сбросил бы `edited`, и следующий морф терял несохранённое.
+            if (this.bodyTarget.childElementCount) return;
             const mine = JSON.stringify(this.encode());
             const server = JSON.stringify(this.clean(this.parse(this.rulesTarget.value) ?? this.effectiveValue ?? []));
             if (this.edited && server !== mine) {
@@ -56,6 +60,16 @@ export default class extends Controller {
             this.morphing = true;
             queueMicrotask(() => { this.morphing = false; this.onMorph(); });
         });
+        // Человек посреди выбора (открыт список людей, фокус в поиске или в «Через N дней») — живой морф ленту не трогает:
+        // иначе список закрывался, набранное в поиске стиралось прямо под пальцами. Шторка закрыта — морфится как обычно.
+        this.offGuard = onMorphElement((e) => {
+            if (e.target !== this.element) return;
+            // Шторка вокруг (лента в шторке «Показ») или своя (поле-строка со шторкой внутри).
+            const dialog = this.element.closest('dialog') ?? this.element.querySelector('dialog');
+            if (dialog && !dialog.open) return;
+            const typing = document.activeElement?.matches('input, select, textarea') && this.element.contains(document.activeElement);
+            if (this.picking || typing) e.preventDefault();
+        });
         // Конец приёма сменили — волны позже него краснеют.
         this.onEnd = () => this.render();
         if (this.hasEndTarget) this.endTarget.addEventListener('change', this.onEnd);
@@ -64,6 +78,7 @@ export default class extends Controller {
     disconnect() {
         document.removeEventListener('turbo:morph', this.onMorph);
         this.element.removeEventListener('turbo:morph-element', this.onPartMorph);
+        this.offGuard?.();
         if (this.hasEndTarget) this.endTarget.removeEventListener('change', this.onEnd);
     }
 
