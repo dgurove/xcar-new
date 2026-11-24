@@ -39,4 +39,14 @@
         </select>
         @if ($why = $contract->vatSource())<span class="text-sm text-ink-muted">{{ $why }}</span>@endif
     </form>
+    {{-- Подбор в счёте за ТС по умолчанию, отдельной ссылкой — выбором (24.11.2026, владелец; `SetSelectionApart`). --}}
+    @if ($deal->canSplitSelection() && $deal->moneyEditable())
+        <form method="post" action="/work/deals/{{ $deal->id }}/selection-apart" data-controller="autosubmit" data-sheet-clean class="mt-4">
+            @csrf @method('put')
+            <label class="flex items-center justify-between gap-3">
+                <span>Подбор отдельной ссылкой</span>
+                <input type="checkbox" switch class="switch" name="apart" value="1" @checked($deal->selection_apart) data-action="change->autosubmit#submit">
+            </label>
+        </form>
+    @endif
 @endif

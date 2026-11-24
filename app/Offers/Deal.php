@@ -57,7 +57,7 @@ use Spatie\MediaLibrary\InteractsWithMedia;
  * остальное — услуги подбора (`ours`). Выплат менеджеру, режима «выплачиваем» и зачёта «удержано» в системе нет.
  */
 #[Fillable(['offer_id', 'bid_id', 'buyer_id', 'amount', 'cost', 'supplier_cost', 'owner_price', 'share', 'commission', 'scheme', 'garage_payer', 'parallel', 'notes', 'closed_at', 'cancelled_at', 'close_reason', 'close_note', 'agreed_at', 'buyer_asked_at', 'signing_slots', 'signing_address', 'signing_at', 'signing_asked_at', 'signing_wish', 'prepaid_at', 'supplier_paid_at', 'contract_signed_at', 'contract_signed_by', 'paid_in_at', 'dates_by_hand',
-    'receiver_user_id', 'receiver_name', 'receiver_phone', 'receiver_at', 'auction_at', 'buyer_party_id', 'payer_party_id', 'fee_seller', 'shadow_stage_id', 'shadow_at', 'reissue_at'])]
+    'receiver_user_id', 'receiver_name', 'receiver_phone', 'receiver_at', 'auction_at', 'buyer_party_id', 'payer_party_id', 'fee_seller', 'selection_apart', 'shadow_stage_id', 'shadow_at', 'reissue_at'])]
 class Deal extends Model implements HasMedia
 {
     use FastAttributes;
@@ -79,7 +79,7 @@ class Deal extends Model implements HasMedia
 
     protected function casts(): array
     {
-        return ['scheme_at' => 'datetime', 'parallel' => 'bool', 'amount' => 'int', 'cost' => 'int', 'supplier_cost' => 'int', 'owner_price' => 'int', 'share' => 'int', 'commission' => 'int', 'scheme' => DealScheme::class, 'garage_payer' => GaragePayer::class, 'closed_at' => 'datetime', 'cancelled_at' => 'datetime', 'agreed_at' => 'datetime', 'buyer_asked_at' => 'datetime', 'signing_slots' => 'array', 'signing_at' => 'datetime', 'signing_asked_at' => 'datetime', 'signing_wish' => 'array', 'prepaid_at' => 'datetime', 'supplier_paid_at' => 'datetime', 'contract_signed_at' => 'datetime', 'paid_in_at' => 'datetime', 'dates_by_hand' => 'array', 'receiver_at' => 'datetime', 'auction_at' => 'datetime', 'shadow_at' => 'datetime', 'reissue_at' => 'datetime'];
+        return ['scheme_at' => 'datetime', 'parallel' => 'bool', 'selection_apart' => 'bool', 'amount' => 'int', 'cost' => 'int', 'supplier_cost' => 'int', 'owner_price' => 'int', 'share' => 'int', 'commission' => 'int', 'scheme' => DealScheme::class, 'garage_payer' => GaragePayer::class, 'closed_at' => 'datetime', 'cancelled_at' => 'datetime', 'agreed_at' => 'datetime', 'buyer_asked_at' => 'datetime', 'signing_slots' => 'array', 'signing_at' => 'datetime', 'signing_asked_at' => 'datetime', 'signing_wish' => 'array', 'prepaid_at' => 'datetime', 'supplier_paid_at' => 'datetime', 'contract_signed_at' => 'datetime', 'paid_in_at' => 'datetime', 'dates_by_hand' => 'array', 'receiver_at' => 'datetime', 'auction_at' => 'datetime', 'shadow_at' => 'datetime', 'reissue_at' => 'datetime'];
     }
 
     public function offer(): BelongsTo
@@ -603,15 +603,21 @@ class Deal extends Model implements HasMedia
     }
 
     /**
-     * Счёт ПРАЙМ за ТС не по ставке ПРАЙМ (20.11.2026, владелец: «если ставка НДС отличается — не склеивать услугу подбора в
-     * одном счёте, отдельно её по ссылке как обычно, чтобы мозги не выносили в бухгалтерии»): договор комиссии с НДС
-     * поставщика, отличным от 5 %, — счёт за ТС на закупочную по его ставке, подбор (цена − вознаграждение − закупочная) —
-     * своим счётом ПРАЙМ по ссылке, 5 %. Ставки совпали — одна строка, как было.
+     * Подбор отдельной ссылкой, а не в счёте за ТС (`deals.selection_apart`, переключатель в шторке «Цена и вознаграждение»).
+     * 20.11.2026 подбор отделялся сам, когда НДС поставщика не 5 % ПРАЙМ (владелец: «чтобы мозги не выносили в бухгалтерии»), и у
+     * Совкомбанка без НДС — всегда; 24.11.2026 владелец по BMW X6 2611164186: «если через ПРАЙМ, должно быть в стоимость ТС в счёте
+     * включено; можно функцию, чтобы отдельно ссылкой, но по умолчанию счёт единый». Тогда счёт за ТС и ДКП — на закупочную, подбор
+     * (цена − вознаграждение − наличные − закупочная) — своим счётом ПРАЙМ по ссылке, 5 %.
      */
     public function splitsSelection(): bool
     {
-        return $this->isPrime() && ! $this->isGarage() && $this->seller() === Seller::Prime && $this->cost !== null && $this->amount !== null
-            && ($contract = $this->contract) !== null && $contract->vatRate() !== Seller::Prime->vatRate();
+        return $this->selection_apart && $this->canSplitSelection();
+    }
+
+    /** Подбор можно вынести из счёта за ТС: ПРАЙМ продаёт, не гараж, деньги сделки известны. */
+    public function canSplitSelection(): bool
+    {
+        return $this->isPrime() && ! $this->isGarage() && $this->seller() === Seller::Prime && $this->cost !== null && $this->amount !== null && $this->contract !== null;
     }
 
     /**

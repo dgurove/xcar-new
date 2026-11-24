@@ -155,26 +155,36 @@ class SupplierVatTest extends TestCase
         return $deal->fresh()->issuedInvoices()->where('kind', $kind)->where('state', '!=', InvoiceState::Void)->get();
     }
 
-    public function test_commission_with_supplier_vat_splits_selection(): void
+    /** Подбор в счёте за ТС по умолчанию при любой ставке; отдельной ссылкой — выбором (24.11.2026, `SetSelectionApart`). */
+    public function test_selection_in_car_invoice_by_default_and_apart_by_choice(): void
     {
         $deal = $this->deal(22);
         $this->assertSame(22, $deal->contract->vatRate());
         $sale = $this->live($deal, ChargeKind::Sale)->sole();
         $this->assertSame(22, $sale->vat_rate);
-        $this->assertEquals(944000, $sale->total, 'счёт за ТС — на закупочную');
+        $this->assertEquals(1050000 - 30000, $sale->total, 'по умолчанию — одна сумма');
+        $this->assertCount(0, $this->live($deal, ChargeKind::Selection));
+
+        $admin = User::where('phone', '79000000001')->firstOrFail();
+        app(\App\Offers\Actions\SetSelectionApart::class)($deal->fresh(), true, $admin);
+        $this->assertEquals(944000, $this->live($deal, ChargeKind::Sale)->sole()->total, 'счёт за ТС — на закупочную');
         $this->assertSame(944000, $deal->fresh()->contract->price);
         $fee = $this->live($deal, ChargeKind::Selection)->sole();
         $this->assertEquals(1050000 - 30000 - 944000, $fee->total, 'подбор — остаток, своим счётом');
         $this->assertSame(5, $fee->vatRate());
+
+        app(\App\Offers\Actions\SetSelectionApart::class)($deal->fresh(), false, $admin);
+        $this->assertEquals(1050000 - 30000, $this->live($deal, ChargeKind::Sale)->sole()->total);
+        $this->assertCount(0, $this->live($deal, ChargeKind::Selection), 'ссылка подбора погашена');
     }
 
-    public function test_unknown_supplier_vat_is_without_vat_and_split(): void
+    public function test_unknown_supplier_vat_is_without_vat_and_one_invoice(): void
     {
         $deal = $this->deal(null);
         $this->assertSame(0, $deal->contract->vatRate());
         $this->assertSame('НДС поставщика не указан', $deal->contract->vatSource());
         $this->assertNull($this->live($deal, ChargeKind::Sale)->sole()->vat_rate);
-        $this->assertCount(1, $this->live($deal, ChargeKind::Selection));
+        $this->assertCount(0, $this->live($deal, ChargeKind::Selection));
     }
 
     public function test_same_rate_keeps_one_line(): void

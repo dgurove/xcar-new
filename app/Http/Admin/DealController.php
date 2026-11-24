@@ -14,6 +14,7 @@ use App\Offers\Actions\MarkSoldDeal;
 use App\Offers\Actions\ReopenDeal;
 use App\Offers\Actions\SetDealDate;
 use App\Offers\Actions\SetReceiver;
+use App\Offers\Actions\SetSelectionApart;
 use App\Offers\Actions\UpdateDealMoney;
 use App\Offers\Binding;
 use App\Offers\CarWindow;
@@ -473,6 +474,16 @@ class DealController
             note: 'Закупочная в сделке '.($deal->cost !== null ? Money::rub((int) $deal->cost).' → ' : '').Money::rub($cost));
 
         return back()->with('toast', 'Сохранено');
+    }
+
+    /** Подбор отдельной ссылкой или в счёте за ТС — переключатель шторки «Цена и вознаграждение» (`SetSelectionApart`, 24.11.2026). */
+    public function selectionApart(Request $request, Deal $deal, SetSelectionApart $set)
+    {
+        abort_unless($deal->moneyOpen(), 404);
+        $apart = $request->boolean('apart');
+        $set($deal, $apart, $request->user());
+
+        return back()->with('toast', $apart ? 'Подбор отдельной ссылкой' : 'Подбор в счёте за ТС');
     }
 
     /** «Схема» строкой в окошке и в сделке (03.11.2026): сменить — деньги, счета и шаг реквизитов встают по новой. */

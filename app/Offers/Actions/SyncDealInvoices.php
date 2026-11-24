@@ -146,7 +146,7 @@ final class SyncDealInvoices
         if ($due <= 0 || ! $deal->buyer) {
             return null;
         }
-        // Подбор отдельно от счёта за ТС (ставка ТС не ПРАЙМ, `Deal::splitsSelection`) — вместе с ним, не раньше: иначе счёт
+        // Подбор отдельно от счёта за ТС (выбором, `Deal::splitsSelection`) — вместе с ним, не раньше: иначе счёт
         // подбора закрывал бы ход менеджера «Укажите покупателя».
         if ($deal->splitsSelection() && ! $this->prime($deal)) {
             return null;
