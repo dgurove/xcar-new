@@ -3,6 +3,7 @@
 namespace App\Notifications;
 
 use App\Offers\Deal;
+use App\Telegram\Text;
 
 /**
  * Менеджер взял сделку в работу — теперь письмо поставщику (27.10.2026, владелец: у Альфы сначала согласие менеджера, потом
@@ -72,6 +73,6 @@ final class ConsentGivenNotice extends Notice
 
     public function toTelegram(): ?array
     {
-        return ['title' => $this->title(), 'lines' => [$this->text()], 'button' => 'Открыть сделку'];
+        return ['title' => $this->title(), 'lines' => Text::lines($this->deal->offer, $this->text()), 'button' => 'Открыть сделку'];
     }
 }

@@ -36,7 +36,7 @@ final class TelegramChannel
 
     public function send(User $user, Notice $notice): Sent
     {
-        $message = $notice->toTelegram();
+        $message = $notice->telegramFor($user);
         if (! $user->telegram_chat_id || ! $message || ! $this->bot->configured()) {
             return Sent::skipped('Telegram не привязан');
         }
@@ -46,7 +46,7 @@ final class TelegramChannel
         $text = implode("\n", ['<b>'.e($say($message['title'])).'</b>', ...array_map(fn ($l) => e($say($l)), $lines)]);
         try {
             // Свои кнопки ответа (`keyboard`, контрпредложение: «Согласен» / «Отказаться») — над кнопкой на сайт.
-            $sent = $this->bot->send((int) $user->telegram_chat_id, $text, [...($message['keyboard'] ?? []), [self::button($message['button'], NoticeLink::tracked($notice->telegramUrl(), $notice, 'telegram'))]], $user->quietHours());
+            $sent = $this->bot->send((int) $user->telegram_chat_id, $text, self::keyboard($notice, $user, $message), $user->quietHours());
             // О чём сообщение — чтобы удалить его у всех, когда предмет ушёл (завели цепочку «Из писем»).
             if ($sent && ($subject = $notice->telegramSubject())) {
                 $sent->update(['subject' => $subject]);
@@ -76,6 +76,53 @@ final class TelegramChannel
         }
 
         return $sent ? Sent::ok(retries: RetryDelivery::retries()) : Sent::failed('Telegram не ответил');
+    }
+
+    /**
+     * Кнопки сообщения: свои кнопки ответа уведомления, под ними ссылка на сайт и «Открыть сделку» рядом, если ни одна кнопка
+     * не ведёт в неё (`Notice::dealUrlFor`).
+     */
+    public static function keyboard(Notice $notice, User $user, array $message): array
+    {
+        $keyboard = $message['keyboard'] ?? [];
+        $links = [self::button($message['button'], NoticeLink::tracked($notice->telegramUrl(), $notice, 'telegram'))];
+        if (($deal = $notice->dealUrlFor($user)) && ! self::leadsTo([$notice->telegramUrl(), ...self::urls($keyboard)], $deal)) {
+            $links[] = self::button('Открыть сделку', NoticeLink::tracked($deal, $notice, 'telegram'));
+        }
+
+        return [...$keyboard, $links];
+    }
+
+    /**
+     * Ведёт ли одна из ссылок туда же, что `$deal`: тот же хост и путь; в CRM страница машины `/offers/N` — та же сделка.
+     *
+     * @param  list<string>  $urls
+     */
+    public static function leadsTo(array $urls, string $deal): bool
+    {
+        $place = fn (string $u) => [parse_url($u, PHP_URL_HOST), rtrim((string) parse_url($u, PHP_URL_PATH), '/')];
+        [$host, $path] = $place($deal);
+        foreach ($urls as $url) {
+            [$h, $p] = $place($url);
+            if ($h === $host && ($p === $path || ($host === parse_url(Surface::Crm->url('/'), PHP_URL_HOST) && preg_match('#^/offers/\d+$#', $p)))) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    /** @return list<string> адреса кнопок-ссылок клавиатуры */
+    private static function urls(array $keyboard): array
+    {
+        $urls = [];
+        foreach ($keyboard as $row) {
+            foreach ((array) $row as $b) {
+                ($u = $b['url'] ?? null) && $urls[] = $u;
+            }
+        }
+
+        return $urls;
     }
 
     /** Сбой, после которого сообщение точно не ушло: DNS, соединение, 429, ошибка сервера Telegram. */

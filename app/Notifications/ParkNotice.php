@@ -13,6 +13,7 @@ use App\Support\Ago;
 use App\Support\Money;
 use App\Support\Plural;
 use App\Support\Surface;
+use App\Telegram\Text;
 use App\Users\User;
 use Carbon\CarbonInterface;
 
@@ -159,7 +160,14 @@ final class ParkNotice extends Notice
 
     public function toTelegram(): ?array
     {
-        return $this->telegram ? ['title' => $this->title, 'lines' => [$this->text ?: null], 'button' => 'Открыть'] : null;
+        if (! $this->telegram) {
+            return null;
+        }
+        // Чем ТС узнать (24.11.2026, менеджер: «какой из? их два»): госномер, VIN, убыток — если текст его ещё не назвал.
+        $v = $this->vehicleId ? Vehicle::withoutGlobalScopes()->find($this->vehicleId) : null;
+        $codes = $v ? Text::codes($v->plate, $v->vin, $v->ref && ! str_contains((string) $this->text, $v->ref) ? $v->ref : null) : null;
+
+        return ['title' => $this->title, 'lines' => [$codes, $this->text ?: null], 'button' => 'Открыть'];
     }
 
     /** В Telegram парковка пишет только управляющему (роль «Парковка»); админам хватает ленты, владельцу — `NotifyOwner`. */

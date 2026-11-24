@@ -329,6 +329,30 @@ abstract class Notice extends Notification implements ShouldQueue
         return $this->telegramFromMessage();
     }
 
+    /** Сообщение этому человеку: у вывоза строка машины своя исполнителю и сотруднику (`TransportNotice`). */
+    public function telegramFor(User $user): ?array
+    {
+        return $this->toTelegram();
+    }
+
+    /**
+     * Вторая кнопка — «Открыть сделку» (24.11.2026, владелец: «кнопок не хватает, чтобы сделку открыть, про которую речь»): машина
+     * уведомления в идущей сделке, а первая кнопка ведёт не в неё (чат, вывоз, парковка, «Оплаты»). Сотруднику сделок — CRM,
+     * менеджеру — только своя сделка на сайте; остальным — нет.
+     */
+    public function dealUrlFor(User $user): ?string
+    {
+        $deal = $this->aboutOffer()?->deal;
+        if (! $deal || $deal->is_demo) {
+            return null;
+        }
+        if ($user->canEditDeals()) {
+            return Surface::Crm->url('/work/deals/'.$deal->id);
+        }
+
+        return $deal->buyer_id === $user->id ? $deal->personUrl() : null;
+    }
+
     /**
      * Предмет сообщения в Telegram (`candidate:12`): ушёл предмет — сообщение удаляется у всех (`telegram_messages.subject`).
      * null — сообщение остаётся, как было.

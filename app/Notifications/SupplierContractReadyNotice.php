@@ -3,6 +3,7 @@
 namespace App\Notifications;
 
 use App\Offers\Deal;
+use App\Telegram\Text;
 use App\Offers\Signing;
 
 /**
@@ -57,6 +58,6 @@ final class SupplierContractReadyNotice extends Notice
 
     public function toTelegram(): ?array
     {
-        return ['title' => $this->title(), 'lines' => [$this->text()], 'button' => 'Открыть сделку'];
+        return ['title' => $this->title(), 'lines' => Text::lines($this->deal->offer, $this->text()), 'button' => 'Открыть сделку'];
     }
 }

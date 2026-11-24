@@ -27,6 +27,21 @@ final class Text
         return $offer->vin ? new HtmlString('VIN <code>'.e($offer->vin).'</code>') : null;
     }
 
+    /**
+     * Чем машину узнают в вывозе и на парковке (24.11.2026, менеджер про «Вывоз не нужен: Howo T5G, 2024» — «какой из? их два»):
+     * госномер, VIN, сотруднику ещё номер убытка. Исполнителю вендора и убытка не даём — как в окне вывоза.
+     */
+    public static function codes(?string $plate, ?string $vin, ?string $ref = null): ?HtmlString
+    {
+        $parts = array_filter([
+            $plate ? e($plate) : null,
+            $vin ? 'VIN <code>'.e($vin).'</code>' : null,
+            $ref ? 'убыток <code>'.e($ref).'</code>' : null,
+        ]);
+
+        return $parts ? new HtmlString(implode(', ', $parts)) : null;
+    }
+
     public static function tag(Offer $offer): string
     {
         return '#'.$offer->number;

@@ -7,6 +7,7 @@ use App\Notifications\TelegramChannel;
 use App\Offers\Deal;
 use App\Support\Plural;
 use App\Support\Surface;
+use App\Telegram\Text;
 use App\Users\User;
 use Illuminate\Support\Str;
 
@@ -160,7 +161,7 @@ final class TransportNotice extends Notice
     /** Покупатель аукциона забрал сам (20.10.2026) — логисту и исполнителю, что уже взяли задачу: ехать не нужно. */
     public static function auctionYours(Transport $t): self
     {
-        return (new self(null, 'Вывоз не нужен: '.$t->title(), 'забрал покупатель аукциона', true, true, '/transports'))->variant('auction-yours', 'Вывоз не нужен');
+        return (new self($t, 'Вывоз не нужен: '.$t->title(), 'забрал покупатель аукциона', true, true, '/transports'))->variant('auction-yours', 'Вывоз не нужен');
     }
 
     public static function cancelledYoursMany(int $n, ?string $reason): self
@@ -250,6 +251,28 @@ final class TransportNotice extends Notice
     public function toTelegram(): ?array
     {
         return $this->telegram ? ['title' => $this->title, 'lines' => [$this->text], 'button' => 'Открыть'] : null;
+    }
+
+    /**
+     * Под заголовком — чем машину узнать (24.11.2026, менеджер: «Вывоз не нужен: Howo T5G, 2024» — «какой из? их два»):
+     * госномер и VIN, сотруднику ещё номер убытка (исполнителю вендора и убытка не даём, как в окне вывоза), дальше откуда
+     * забирать, если текст его не говорит, и суть.
+     */
+    public function telegramFor(User $user): ?array
+    {
+        $message = $this->toTelegram();
+        $t = $this->transport;
+        if (! $message || ! $t) {
+            return $message;
+        }
+        $car = $t->car;
+        $where = self::where($t);
+
+        return [...$message, 'lines' => [
+            Text::codes($car?->plate, $car?->vin, $user->isStaff() ? $car?->claim_ref : null),
+            $where && ! str_contains((string) $this->text, $where) ? $where : null,
+            $this->text,
+        ]];
     }
 
     /** Кнопка в Telegram — прямо в логистику. */

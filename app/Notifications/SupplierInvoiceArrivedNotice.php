@@ -3,6 +3,7 @@
 namespace App\Notifications;
 
 use App\Offers\Deal;
+use App\Telegram\Text;
 
 /**
  * Админам: страховая прислала счёт по идущей сделке (10.11.2026, X6 0790/046/09068/26: Альфа выставила счёт 09.11 — «оплата в
@@ -62,6 +63,6 @@ final class SupplierInvoiceArrivedNotice extends Notice
 
     public function toTelegram(): ?array
     {
-        return ['title' => $this->title(), 'lines' => [$this->text()], 'button' => 'Открыть сделку'];
+        return ['title' => $this->title(), 'lines' => Text::lines($this->deal->offer, $this->text()), 'button' => 'Открыть сделку'];
     }
 }

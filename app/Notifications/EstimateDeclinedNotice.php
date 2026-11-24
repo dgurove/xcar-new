@@ -2,6 +2,7 @@
 
 namespace App\Notifications;
 
+use App\Telegram\Text;
 use App\Offers\Estimate;
 use App\Support\Money;
 use App\Support\Surface;
@@ -48,7 +49,7 @@ final class EstimateDeclinedNotice extends Notice
 
     public function toTelegram(): ?array
     {
-        return ['title' => $this->title(), 'lines' => [$this->text()], 'button' => 'Открыть'];
+        return ['title' => $this->title(), 'lines' => [$this->text(), ...Text::lines($this->estimate->offer)], 'button' => 'Открыть'];
     }
 
     public function actor(): ?User

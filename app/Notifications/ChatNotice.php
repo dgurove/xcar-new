@@ -210,6 +210,12 @@ final class ChatNotice extends Notice
         return $this->message->chat->offer?->titleWithYear();
     }
 
+    /** Машина чата — для «Открыть сделку» рядом с «Открыть чат» (`Notice::dealUrlFor`). */
+    protected function aboutOffer(): ?\App\Offers\Offer
+    {
+        return $this->message->chat->offer;
+    }
+
     /** Капсулой: кто пишет и само сообщение. */
     public function brief(?User $user = null): string
     {

@@ -2,6 +2,7 @@
 
 namespace App\Notifications;
 
+use App\Telegram\Text;
 use App\Offers\Offer;
 use App\Support\Ago;
 use App\Support\Money;
@@ -56,7 +57,7 @@ final class GalleryInterestOnSaleNotice extends Notice
 
     public function toTelegram(): ?array
     {
-        return ['title' => $this->title(), 'lines' => array_values(array_filter([$this->text()])), 'button' => 'Посмотреть'];
+        return ['title' => $this->title(), 'lines' => array_values(array_filter([$this->text(), $this->offer->number ? Text::tag($this->offer) : null])), 'button' => 'Посмотреть'];
     }
 
     public function telegramSubject(): ?string
