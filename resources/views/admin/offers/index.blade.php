@@ -17,6 +17,8 @@
         $preset === 'slots' => $offers->getCollection()->groupBy(fn ($o) => $o->slot_at->format('YmdHi')),
         // «Все» — группами по вкладкам в порядке колеса (16.11.2026, `OfferTabs`): строки уже в этом порядке.
         \App\Http\Admin\OfferController::summary($preset) !== null => $offers->getCollection()->groupBy(fn ($o) => 'tab:'.\App\Offers\OfferTabs::of($o)),
+        // «Предложения из закупок» — подгруппами по вкладке, где машина Каркаде стояла бы (24.11.2026).
+        $preset === \App\Http\Admin\OfferController::CARCADE_TAB => $offers->getCollection()->groupBy(fn ($o) => 'tab:'.(\App\Offers\OfferTabs::carcade()[$o->id] ?? \App\Offers\OfferTabs::OTHER)),
         $preset === 'bids' && $admin => $offers->getCollection()->groupBy(fn ($o) => OfferController::pickGroup($o))->sortKeys(),
         $preset === 'estimating' => $offers->getCollection()->groupBy(fn ($o) => 'est'.OfferController::estimateGroup($o))->sortKeys(),
         // На парковке — первыми; группы с подписью, только когда такие есть (`OfferController::PARK_GROUPS`).

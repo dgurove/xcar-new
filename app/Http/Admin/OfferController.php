@@ -99,6 +99,9 @@ class OfferController
         // параллельно, оставаясь черновиками. Строки рисуют `PurchaseController::tab` и `GalleryController::tab`. Галерея —
         // перед черновиками (17.11.2026, владелец); раскладку «Все» порядок не трогает — галереи в `OfferTabs` нет.
         'purchases' => 'Закупки',
+        // Каркаде — своим этапом в закупке, без ответственного (24.11.2026, владелец: «пока что убери из всех этапов предложений,
+        // пусть просто в закупках будут отдельным этапом»): их черновики и предложения до сделки — только здесь (`carcadeApart`).
+        self::CARCADE_TAB => 'Предложения из закупок',
         ...GalleryController::PRESETS,
         // Сводные вкладки разделов (17.11.2026, владелец: подзаголовки колеса «кликабельными — как „Все“, но по всем своим») —
         // первыми в своём разделе, вместо подзаголовка (`SUMMARIES`).
@@ -120,6 +123,26 @@ class OfferController
         'done' => 'Без подтверждений',
         'archive' => 'Архив', 'legacy' => 'Из таблицы Кати', 'auction' => 'На аукцион',
     ];
+
+    /** Вкладка Каркаде в закупке (`PRESETS`). */
+    public const CARCADE_TAB = 'from_purchases';
+
+    /** До сделки и идущая сделка: откуда Каркаде убран в свою вкладку (24.11.2026). Гараж, выданные и архив — как у всех. */
+    private const BEFORE_DEAL = [OfferState::Draft, OfferState::Gallery, OfferState::Open, OfferState::Sold];
+
+    /** Прятать ли Каркаде из вкладок (`carcadeApart`); выключено — на время раскладки его подгрупп (`OfferTabs::carcade`). */
+    private static bool $apart = true;
+
+    /** Условия вкладок без выделения Каркаде — его подгруппы во вкладке «Предложения из закупок». */
+    public static function withoutApart(callable $fn): mixed
+    {
+        self::$apart = false;
+        try {
+            return $fn();
+        } finally {
+            self::$apart = true;
+        }
+    }
 
     /**
      * Сводные вкладки разделов (17.11.2026): «Все» по вкладкам одного раздела — те же группы по вкладкам (`OfferTabs`), чипы
@@ -237,7 +260,7 @@ class OfferController
         }
         // Закупки и галерея — админу (их разделы в CRM у модератора закрыты и прежде).
         $hidden = ['estimating' => true, 'refused' => true, 'bids' => true, 'done' => true, 'all' => true, 'legacy' => true, 'auction' => true, ...array_fill_keys(array_keys(self::SUMMARIES), true),
-            'purchases' => true, 'gallery' => true, 'interest' => true];
+            'purchases' => true, self::CARCADE_TAB => true, 'gallery' => true, 'interest' => true];
 
         // Модератору (`canEditDeals`) — сделки по этапам, «Завершённые» и гараж (17.11.2026, владелец: полный доступ к сделкам и гаражу).
         return array_diff_key(self::PRESETS, $hidden + ($user->canEditDeals() ? [] : ['garage' => true] + self::DEAL_TABS + PickupController::TABS));
@@ -649,7 +672,7 @@ class OfferController
      */
     private static function hidesCarcade(string $preset): bool
     {
-        return ! self::ownTab($preset) && ! in_array($preset, ['refused', 'bids', 'all_deals'], true);
+        return ! self::ownTab($preset) && ! in_array($preset, ['refused', 'bids', 'all_deals', self::CARCADE_TAB], true);
     }
 
     /** Умолчание «Кроме Каркаде» в силе: вендор не выбран или выбран ровно им (`?vendor=!id`). */
@@ -680,6 +703,11 @@ class OfferController
     {
         $bids = fn ($b) => $b->where('state', BidState::Active);
 
+        if ($preset === self::CARCADE_TAB) {
+            return self::carcadeApart($q, true);
+        }
+        self::carcadeApart($q, false);
+
         // Черновики из таблицы Кати — только в своей вкладке, рабочим не мешают (10.10.2026; 12.10.2026 начальник снова:
         // «не отображать»).
         if (in_array($preset, ['nofloor', 'unpriced', 'estimating', 'priced', 'slots', 'done'], true)) {
@@ -699,10 +727,10 @@ class OfferController
         // в список не попал и считался условием «Архива» — 105 в колесе при 2 строках (18.11.2026).
         // «Менеджер должен нам» (24.11.2026) — и машины с открытым счётом подбора на любом этапе (бывшая «Оплата за подбор»).
         if ($preset === 'paying') {
-            return $q->whereIntegerInRaw('offers.id', array_values(array_unique([...DealTabs::ids('paying'), ...SelectionController::ids()])));
+            return $q->whereIntegerInRaw('offers.id', array_values(array_unique([...DealTabs::ids('paying', ! self::$apart), ...SelectionController::ids()])));
         }
         if (isset(DealTabs::TABS[$preset])) {
-            return $q->whereIn('offers.id', DealTabs::ids($preset));
+            return $q->whereIn('offers.id', DealTabs::ids($preset, ! self::$apart));
         }
 
         return match ($preset) {
@@ -751,6 +779,24 @@ class OfferController
                 ->orWhere(fn ($g) => $g->where('offers.state', OfferState::Garage)->whereHas('garageCar', fn ($c) => $c->where('state', CarState::Settled)))),
             default => $q->whereIn('offers.state', [OfferState::Archived, OfferState::Cancelled]),
         };
+    }
+
+    /**
+     * Каркаде до сделки (черновик, галерея, продажа) и в идущей сделке — только во вкладке «Предложения из закупок» (24.11.2026, владелец). in —
+     * условие этой вкладки, иначе — всех остальных: их машины до сделки не Каркаде. Вендора нет — вкладка пустая.
+     */
+    public static function carcadeApart(Builder $q, bool $in): Builder
+    {
+        $id = self::carcadeId();
+        if (! $in && ! self::$apart) {
+            return $q;
+        }
+        $states = array_map(fn (OfferState $s) => $s->value, self::BEFORE_DEAL);
+        if ($in) {
+            return $id ? $q->where('offers.vendor_id', $id)->whereIn('offers.state', $states) : $q->whereRaw('false');
+        }
+
+        return $id ? $q->where(fn ($w) => $w->whereNull('offers.vendor_id')->orWhere('offers.vendor_id', '!=', $id)->orWhereNotIn('offers.state', $states)) : $q;
     }
 
     /** «На оценке у менеджеров»: черновик без цены продажи (закупочная — любая) с открытой просьбой оценить. */
@@ -839,6 +885,9 @@ class OfferController
         if (self::summary($preset) !== null) {
             $q->orderByRaw(OfferTabs::orderSql());
         }
+        if ($preset === self::CARCADE_TAB) {
+            $q->orderByRaw(OfferTabs::orderSql(carcade: true));
+        }
         if ($preset === 'estimating') {
             $q->orderByRaw(self::ESTIMATE_GROUP);
         }
@@ -900,6 +949,7 @@ class OfferController
             $preset === 'estimating' => [self::ESTIMATE_GROUP, 'est'],
             $preset === 'bids' && $admin => [self::PICK_GROUP, ''],
             self::summary($preset) !== null => [OfferTabs::sql(), 'tab:'],
+            $preset === self::CARCADE_TAB => [OfferTabs::sql(carcade: true), 'tab:'],
             default => [null, null],
         };
         // Горящий обязывающий — своей группой поверх групп вкладки (`HOT`); без своих групп остальные — `rest`.
@@ -1016,6 +1066,8 @@ class OfferController
             // Город — сразу за номером убытка (владелец 04.10.2026: «не хватает столбца с городом»). Оценочной в таблице нет
             // (владелец 05.10.2026: «скрой») — она в карточке строки, в «Деньгах».
             'unpriced', 'estimating', 'priced', 'legacy', 'auction' => ['vendor', 'city', 'floor', 'price', 'created'],
+            // «Предложения из закупок» (24.11.2026): этап — подгруппой.
+            self::CARCADE_TAB => ['vendor', 'city', 'floor', 'price', 'created'],
             // «Без подтверждений» — только черновики после приёма: состояние у всех одно, дата — когда кончился приём.
             'done' => ['vendor', 'city', 'floor', 'price', 'created'],
             // Когда выйдет — заголовок группы, слова в строке не нужно.
@@ -1125,7 +1177,7 @@ class OfferController
         // «Менеджер должен нам» (24.11.2026, вместе с «Оплатой за подбор») — красным, сколько ссылок подбора не выставлено на шаге
         // оплаты (тем же кругом машин, что число вкладки); остальное в ней — ожидание.
         if (isset($counts['paying'])) {
-            $counts['paying_our'] = $base()->whereIntegerInRaw('offers.id', SelectionController::unsentIds())->count();
+            $counts['paying_our'] = self::carcadeApart($base(), false)->whereIntegerInRaw('offers.id', SelectionController::unsentIds())->count();
         }
         // «Вывоз» — там, где ход наш, красным всё (`PickupController::OURS`).
         foreach (PickupController::OURS as $tab) {

@@ -104,6 +104,9 @@ class GalleryController
     /** «В галерее» — окно открыто; «Отклики» — побывавшие в галерее, у кого есть интерес (и после окна). */
     public static function scopeFor(string $preset, Builder $q): Builder
     {
+        // Каркаде до сделки — только во вкладке «Предложения из закупок» (24.11.2026, владелец).
+        OfferController::carcadeApart($q, false);
+
         return $preset === 'interest'
             ? $q->whereNotNull('offers.gallery_from')->whereHas('interests')
             : $q->inGallery();

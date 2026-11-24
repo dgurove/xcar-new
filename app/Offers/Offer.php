@@ -1636,6 +1636,11 @@ class Offer extends Model
         $user ??= auth()->user();
         $presets = OfferController::PRESETS;
 
+        // Каркаде до сделки — своя вкладка в закупке (24.11.2026, `OfferController::carcadeApart`).
+        if ($this->vendor_id !== null && in_array($this->state, [OfferState::Draft, OfferState::Gallery, OfferState::Open], true) && $this->vendor_id === OfferController::carcadeId()) {
+            return $presets[OfferController::CARCADE_TAB];
+        }
+
         return match ($this->state) {
             OfferState::Draft, OfferState::Gallery => match (true) {
                 $this->onAuction() => $presets['auction'],

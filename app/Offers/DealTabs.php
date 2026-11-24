@@ -195,19 +195,35 @@ final class DealTabs
     /** Раскладка всех идущих сделок: `offer_id` → [вкладка, наш ход]. @return array<int, array{0: string, 1: bool}> */
     public static function map(): array
     {
+        // Сделки Каркаде — не во вкладках сделки, а в «Предложениях из закупок» (24.11.2026, владелец: «из сделок тоже надо вытащить»).
+        return array_filter(self::raw(), fn (array $v) => ! $v[2]);
+    }
+
+    /** Сделки Каркаде: машина → вкладка, где она стояла бы (подгруппы «Предложений из закупок»). @return array<int, string> */
+    public static function carcade(): array
+    {
+        return array_map(fn (array $v) => $v[0], array_filter(self::raw(), fn (array $v) => $v[2]));
+    }
+
+    /** Вся раскладка: машина → [вкладка, наше ли дело, Каркаде]. @return array<int, array{0: string, 1: bool, 2: bool}> */
+    private static function raw(): array
+    {
+        $carcade = \App\Http\Admin\OfferController::carcadeId();
+
         // Непроданная гаражная «платит менеджер» — только в «Гараже» (17.11.2026, владелец), во вкладках сделки её нет.
         // Раскладке нужны шаг и дело, а не строка: без кадров машин (`offer.media`) — с ними выборка 360 сделок шла
         // полсекунды вместо 0,1 с, и это была главная цена пересчёта после каждого события (17.11.2026).
         return StaffCache::remember(self::CACHE, 30, fn () => self::rows(Deal::active()->whereHas('offer', fn ($o) => $o->where('offers.state', OfferState::Sold))
             ->with(array_values(array_diff(self::WITH, ['offer.media'])))->get())->reject(fn (array $r) => $r['deal']->sellsFromGarage($r['deal']->offer?->position()?->stage))
             // Тихое дело (заявка Каркаде, `Position::todo` `quiet`) — во вкладке, но не в её счётчике.
-            ->mapWithKeys(fn (array $r) => [$r['deal']->offer_id => [$r['tab'], $r['todo'] !== null && empty($r['todo']['quiet'])]])->all());
+            ->mapWithKeys(fn (array $r) => [$r['deal']->offer_id => [$r['tab'], $r['todo'] !== null && empty($r['todo']['quiet']),
+                $carcade !== null && $r['deal']->offer?->vendor_id === $carcade]])->all());
     }
 
-    /** Машины вкладки (`OfferController::scopeFor`). @return list<int> */
-    public static function ids(string $tab): array
+    /** Машины вкладки (`OfferController::scopeFor`); carcade — и сделки Каркаде. @return list<int> */
+    public static function ids(string $tab, bool $carcade = false): array
     {
-        return array_keys(array_filter(self::map(), fn (array $v) => $v[0] === $tab));
+        return array_keys(array_filter($carcade ? self::raw() : self::map(), fn (array $v) => $v[0] === $tab));
     }
 
     /** Сколько ждёт нас по вкладкам. @return array<string, int> */

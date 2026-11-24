@@ -40,23 +40,41 @@ final class OfferTabs
     /** `offer_id` → ключ вкладки. @return array<int, string> */
     public static function map(): array
     {
-        return StaffCache::remember(self::CACHE, 30, function () {
-            // Одним запросом (17.11.2026): номера всех вкладок — `union all` условий самих вкладок с порядком колеса; машина в
-            // нескольких — первая по порядку, как прежде. Было ~24 выборки по одной.
-            $union = null;
-            foreach (self::keys() as $i => $key) {
-                $q = OfferController::scopeFor($key, Offer::query()->notEmptyDraft(), true)->toBase()
-                    ->cloneWithout(['orders', 'columns', 'limit', 'offset'])->cloneWithoutBindings(['order', 'select'])
-                    ->select('offers.id')->selectRaw('cast(? as text) as k, cast(? as int) as o', [$key, $i]);
-                $union = $union ? $union->unionAll($q) : $q;
-            }
-            $out = [];
-            foreach ($union ? DB::query()->fromSub($union, 't')->orderBy('o')->get() : [] as $row) {
-                $out[(int) $row->id] ??= $row->k;
-            }
+        return StaffCache::remember(self::CACHE, 30, fn () => self::layout(fn () => Offer::query()->notEmptyDraft()));
+    }
 
-            return $out;
-        });
+    /**
+     * Подгруппы «Предложений из закупок» (24.11.2026, владелец: Каркаде «туда разными подгруппами»): машина Каркаде → вкладка,
+     * где она стояла бы, не будь своей (условия вкладок без `carcadeApart`).
+     *
+     * @return array<int, string>
+     */
+    public static function carcade(): array
+    {
+        $id = OfferController::carcadeId();
+
+        return $id ? StaffCache::remember(self::CACHE.':carcade', 30, fn () => OfferController::withoutApart(
+            fn () => self::layout(fn () => Offer::query()->notEmptyDraft()->where('offers.vendor_id', $id), [OfferController::CARCADE_TAB]))) : [];
+    }
+
+    /** @param callable(): \Illuminate\Database\Eloquent\Builder $base @param list<string> $skip @return array<int, string> */
+    private static function layout(callable $base, array $skip = []): array
+    {
+        // Одним запросом (17.11.2026): номера всех вкладок — `union all` условий самих вкладок с порядком колеса; машина в
+        // нескольких — первая по порядку, как прежде. Было ~24 выборки по одной.
+        $union = null;
+        foreach (array_diff(self::keys(), $skip) as $i => $key) {
+            $q = OfferController::scopeFor($key, $base(), true)->toBase()
+                ->cloneWithout(['orders', 'columns', 'limit', 'offset'])->cloneWithoutBindings(['order', 'select'])
+                ->select('offers.id')->selectRaw('cast(? as text) as k, cast(? as int) as o', [$key, $i]);
+            $union = $union ? $union->unionAll($q) : $q;
+        }
+        $out = [];
+        foreach ($union ? DB::query()->fromSub($union, 't')->orderBy('o')->get() : [] as $row) {
+            $out[(int) $row->id] ??= $row->k;
+        }
+
+        return $out;
     }
 
     public static function of(Offer $offer): string
@@ -76,8 +94,11 @@ final class OfferTabs
     }
 
     /** Ключ вкладки выражением SQL по номеру предложения (`offers.id`, у гаража — `garage_cars.offer_id`); номера — целые из своей раскладки. */
-    public static function sql(string $column = 'offers.id'): string
+    public static function sql(string $column = 'offers.id', bool $carcade = false): string
     {
+        if ($carcade) {
+            return self::build(self::carcade(), $column);
+        }
         // Выражение одно на раскладку: «Все» зовёт его по нескольку раз на запрос (выборка, порядок, группы, чипы, «Во
         // вкладке»). Octane живёт между запросами — сменилась раскладка (кэш 30 с), строится заново.
         $map = self::map();
@@ -124,11 +145,11 @@ final class OfferTabs
     }
 
     /** Порядок вкладки по колесу выражением SQL: 0, 1, 2… «Прочее» — последним. */
-    public static function orderSql(string $column = 'offers.id'): string
+    public static function orderSql(string $column = 'offers.id', bool $carcade = false): string
     {
         $cases = collect(self::keys())->map(fn ($k, $i) => "when '{$k}' then {$i}")->implode(' ');
 
-        return '(case '.self::sql($column)." {$cases} else 999 end)";
+        return '(case '.self::sql($column, $carcade)." {$cases} else 999 end)";
     }
 
     public static function forget(): void

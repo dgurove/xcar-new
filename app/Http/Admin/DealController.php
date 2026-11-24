@@ -363,7 +363,9 @@ class DealController
             // «Менеджер должен нам» (24.11.2026, вместе с «Оплатой за подбор»): шаг оплаты и любая сделка с открытым счётом подбора.
             'paying' => $q->where(fn ($w) => $w->where(fn ($s) => $s->active()->whereHas('offer', fn ($o) => $o->where('offers.state', OfferState::Sold)
                 ->whereIn('offers.id', DealTabs::ids('paying'))))
-                ->orWhere(fn ($s) => $s->whereNull('deals.cancelled_at')->whereIntegerInRaw('deals.offer_id', SelectionController::ids()))),
+                ->orWhere(fn ($s) => $s->whereNull('deals.cancelled_at')->whereIntegerInRaw('deals.offer_id', SelectionController::ids())))
+                // Каркаде — в «Предложениях из закупок» (24.11.2026).
+                ->whereHas('offer', fn ($o) => OfferController::carcadeApart($o, false)),
             // Этап маршрута — раскладка `DealTabs`.
             default => $q->active()->whereHas('offer', fn ($o) => $o->where('offers.state', OfferState::Sold)->whereIn('offers.id', DealTabs::ids($preset))),
         };

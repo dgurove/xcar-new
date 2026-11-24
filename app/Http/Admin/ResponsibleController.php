@@ -23,6 +23,10 @@ final class ResponsibleController
         $head = null;
         foreach (OfferController::PRESETS as $key => $label) {
             $head = OfferController::SECTIONS[$key] ?? $head;
+            // «Предложения из закупок» — без ответственного (24.11.2026, владелец).
+            if ($key === OfferController::CARCADE_TAB) {
+                continue;
+            }
             $groups[$head ?? ''][$key] = $label;
         }
 
