@@ -32,7 +32,8 @@ final class IssueDealInvoice
             ChargeKind::Selection => 'Подбор ТС '.$car,
             default => $car,
         };
-        $lines = [['title' => $title, 'qty' => 1, 'unit' => 'pc', 'price' => round($amount, 2), 'kind' => $kind->value]];
+        // Подбор — услуга, единица «усл» (24.11.2026, владелец: «услуга разве в штуках измеряется?»).
+        $lines = [['title' => $title, 'qty' => 1, 'unit' => $kind === ChargeKind::Selection ? 'svc' : 'pc', 'price' => round($amount, 2), 'kind' => $kind->value]];
 
         return DB::transaction(function () use ($deal, $by, $party, $kind, $dueAt, $notes, $lines, $offer) {
             // Счёт за машину — от продавца сделки (Альфа с НДС — Р.О.С.), подбор — продавцом услуг подбора сделки.

@@ -162,7 +162,7 @@ final class SeedDemo extends Command
             'vat' => true, 'vat_rate' => Seller::Prime->vatRate(), 'total' => $selection, 'paid' => 0, 'state' => InvoiceState::Issued,
         ]);
         $invoice->forceFill(['is_demo' => true])->save();
-        Charge::create(['party_id' => $party->id, 'deal_id' => $deal->id, 'invoice_id' => $invoice->id, 'kind' => ChargeKind::Selection, 'title' => 'Подбор ТС '.$car, 'qty' => 1, 'unit' => 'pc', 'price' => $selection, 'amount' => $selection]);
+        Charge::create(['party_id' => $party->id, 'deal_id' => $deal->id, 'invoice_id' => $invoice->id, 'kind' => ChargeKind::Selection, 'title' => 'Подбор ТС '.$car, 'qty' => 1, 'unit' => 'svc', 'price' => $selection, 'amount' => $selection]);
 
         return $invoice;
     }
