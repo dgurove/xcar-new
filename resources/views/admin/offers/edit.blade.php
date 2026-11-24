@@ -227,6 +227,11 @@
                     @endif
                 </div>
                 @endif
+                {{-- Оценки менеджеров — последними, как в окне (`price-steps`, корректировка — `admin/car/window`): с 11.10 жили только
+                     в окне, на странице их не было вовсе (24.11.2026, владелец: «где тут вообще оценки менеджеров»). --}}
+                @if (($rate || $correct) && ($offer->openEstimates->isNotEmpty() || $offer->declinedEstimates->isNotEmpty()))
+                    <div @class(['mt-4' => $correct])>@include('admin.offers.estimates', ['correction' => $correct])</div>
+                @endif
             </x-ui.card>
             {{-- Заметка сделки — своим блоком под «Ценами» (23.11.2026, владелец: «заметка отдельным блоком»). --}}
             @php $noteDeal = $garageCar?->deal ?? $deal; @endphp

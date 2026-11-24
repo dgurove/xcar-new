@@ -53,10 +53,8 @@
                         <span class="min-w-0 flex-1">
                             <span class="block truncate">{{ $e->user->shortName() }}</span>
                             {{-- Одна мысль под именем: что делает и сколько осталось; прежняя сумма отклонённого — справа зачёркнутой. --}}
-                            <span class="row-sub">@if ($e->isOverdue())<x-offer.estimate-left :estimate="$e"/>@else<span>{{ $correction ? 'проверяет' : 'оценивает' }}{{ $e->rejected_at ? ' заново' : '' }}, <x-offer.estimate-left :estimate="$e" class="!text-current"/></span>@endif
-                                @unless ($e->showsDeclared())<span>, без заявленной</span>@endunless
-                                @if ($e->exclusive_days)<span>, потом только ему {{ \App\Offers\Estimate::daysWord($e->exclusive_days) }}</span>@endif
-                            </span>
+                            {{-- Одним куском: части `.list .row-sub` разводятся отступом, и «, без заявленной» отъезжало от срока. --}}
+                            <span class="row-sub"><span>@if ($e->isOverdue())<x-offer.estimate-left :estimate="$e"/>@else{{ $correction ? 'проверяет' : 'оценивает' }}{{ $e->rejected_at ? ' заново' : '' }}, <x-offer.estimate-left :estimate="$e" class="!text-current"/>@endif{{ $e->showsDeclared() ? '' : ', без заявленной' }}{{ $e->exclusive_days ? ', потом только ему '.\App\Offers\Estimate::daysWord($e->exclusive_days) : '' }}</span></span>
                         </span>
                         @if ($e->rejected_at && $e->rejected_amount)<span class="nums shrink-0 text-sm text-ink-dim line-through">{{ \App\Support\Money::nums($e->rejected_amount) }}</span>@endif
                     </button>

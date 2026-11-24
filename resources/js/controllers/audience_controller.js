@@ -39,6 +39,7 @@ export default class extends Controller {
         // рисовал он, морф стёр — перечитать пришедшее и нарисовать заново. Морф посреди выбора (живое обновление) не теряет
         // несохранённое: возвращаем его в поле.
         this.onMorph = () => {
+            if (!this.element.isConnected || !this.hasBodyTarget) return;
             const mine = JSON.stringify(this.encode());
             const server = JSON.stringify(this.clean(this.parse(this.rulesTarget.value) ?? this.effectiveValue ?? []));
             if (this.edited && server !== mine) {
@@ -47,6 +48,14 @@ export default class extends Controller {
             } else this.reset();
         };
         document.addEventListener('turbo:morph', this.onMorph);
+        // Морф одного куска (живое обновление строк списка морфит окно машины — `live.js` `Turbo.morphElements`) события
+        // страницы не даёт, а ленту стирает так же (24.11.2026, «Показ» окна № 3919 — «Кому показывать» пустым): ловим морф
+        // своих узлов, пересчёт один на морф.
+        this.element.addEventListener('turbo:morph-element', this.onPartMorph = () => {
+            if (this.morphing) return;
+            this.morphing = true;
+            queueMicrotask(() => { this.morphing = false; this.onMorph(); });
+        });
         // Конец приёма сменили — волны позже него краснеют.
         this.onEnd = () => this.render();
         if (this.hasEndTarget) this.endTarget.addEventListener('change', this.onEnd);
@@ -54,6 +63,7 @@ export default class extends Controller {
 
     disconnect() {
         document.removeEventListener('turbo:morph', this.onMorph);
+        this.element.removeEventListener('turbo:morph-element', this.onPartMorph);
         if (this.hasEndTarget) this.endTarget.removeEventListener('change', this.onEnd);
     }
 

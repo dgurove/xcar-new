@@ -41,6 +41,8 @@ export default class extends Controller {
         // морф ставил в скрытое поле серверное значение, выбранная дата пропадала): выбранное человеком (`mine`) возвращается,
         // исходным для «Не сохранять?» остаётся серверное. Форма ушла — дальше правду говорит сервер.
         this.onMorph = () => {
+            // Морф страницы убрал само поле (после «Взять» оценку шторка с датой уходит): отключение Stimulus — позже события.
+            if (!this.element.isConnected || !this.hasTextTarget || !this.hasValueTarget) return;
             const server = this.valueTarget.value;
             if (this.mine !== undefined && server !== this.mine) {
                 this.valueTarget.value = this.mine;

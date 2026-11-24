@@ -196,7 +196,8 @@ export default class extends Controller {
         // строку ловит наблюдатель: поток из карточки, пришедшей со страницей, рисуется раньше, чем подключится контроллер,
         // и turbo:before-stream-render сюда не доходит — после перезагрузки строка стояла невыделенной.
         this.onMark = () => { this.keepAddress(); this.mark(); };
-        ['turbo:load', 'turbo:morph'].forEach((n) => document.addEventListener(n, this.onMark));
+        // `live:rows` — живое обновление строк морфит и окно (`live.js`), события страницы нет: «2 из 46» иначе пустело.
+        ['turbo:load', 'turbo:morph', 'live:rows'].forEach((n) => document.addEventListener(n, this.onMark));
         // После морфа раскладка — по тому, что в фрейме на самом деле: карточку убрали с сервера (предложение удалили) —
         // data-open снимается, иначе список оставался бледным с отступом под листом, которого нет.
         this.onMorphed = () => {
@@ -231,7 +232,7 @@ export default class extends Controller {
         document.removeEventListener('detail:keep', this.onKeep);
         window.removeEventListener('letters:closed', this.onLetterClosed);
         document.removeEventListener('turbo:before-stream-render', this.onStream);
-        ['turbo:load', 'turbo:morph'].forEach((n) => document.removeEventListener(n, this.onMark));
+        ['turbo:load', 'turbo:morph', 'live:rows'].forEach((n) => document.removeEventListener(n, this.onMark));
         document.removeEventListener('turbo:morph', this.onMorphed);
         this.rowsSeen.disconnect();
         clearTimeout(this.followTimer);

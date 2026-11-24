@@ -7,6 +7,6 @@
     $overdue = $due->isPast();
     $soon = ! $overdue && $due->lte(now()->addHours(\App\Offers\Estimate::REMIND_HOURS));
 @endphp
-@if ($overdue && $short)<span {{ $attributes->merge(['class' => 'whitespace-nowrap text-danger']) }}>просрочено</span>
-@elseif ($overdue)<span {{ $attributes->merge(['class' => 'nums whitespace-nowrap text-danger']) }}>просрочено на <span data-controller="timer" data-timer-since-value="{{ $due->toIso8601String() }}" data-timer-coarse-value="true">{{ \App\Support\Ago::left(now()->addSeconds((int) $due->diffInSeconds(now(), true)), '') }}</span></span>
-@else<span {{ $attributes->merge(['class' => 'nums whitespace-nowrap '.($soon ? 'text-urgent' : 'text-ink-muted')]) }} data-controller="timer" data-timer-until-value="{{ $due->toIso8601String() }}" data-timer-done-value="просрочено" data-timer-coarse-value="true" data-timer-word-value="{{ $word }}">{{ \App\Support\Ago::left($due, $word) }}</span>@endif
+@if ($overdue && $short)<span {{ $attributes->merge(['class' => 'whitespace-nowrap text-danger']) }}>просрочено</span>@elseif ($overdue)
+<span {{ $attributes->merge(['class' => 'nums whitespace-nowrap text-danger']) }}>просрочено на <span data-controller="timer" data-timer-since-value="{{ $due->toIso8601String() }}" data-timer-coarse-value="true">{{ \App\Support\Ago::left(now()->addSeconds((int) $due->diffInSeconds(now(), true)), '') }}</span></span>@else
+<span {{ $attributes->merge(['class' => 'nums whitespace-nowrap '.($soon ? 'text-urgent' : 'text-ink-muted')]) }} data-controller="timer" data-timer-until-value="{{ $due->toIso8601String() }}" data-timer-done-value="просрочено" data-timer-coarse-value="true" data-timer-word-value="{{ $word }}">{{ \App\Support\Ago::left($due, $word) }}</span>@endif
