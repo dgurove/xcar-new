@@ -1452,7 +1452,8 @@ html.kb-open { --home-gap: 0px; }
     font-feature-settings: "ss01" 1; -webkit-font-smoothing: antialiased;
   }
   .tab-wheel.is-open { opacity: 1; transition: opacity var(--dur) var(--ease-out); }
-  .tab-wheel-chev { position: absolute; z-index: 1; left: var(--wheel-chev-x); top: var(--wheel-chev-y); pointer-events: none; }
+  /* «›» у линии фокуса больше не рисуется (24.11.2026): выбранную отмечает её кружок или «›» на месте кружка (`.tab-wheel-mark`). */
+  .tab-wheel-chev { display: none; }
   .tab-wheel.is-leaving { opacity: 0; transition: opacity var(--dur-slow) var(--ease-out); }
   .tab-wheel-scroll { position: absolute; inset: 0; overflow-y: auto; overscroll-behavior: contain; scrollbar-width: none; }
   .tab-wheel-scroll::-webkit-scrollbar { display: none; }
@@ -1486,9 +1487,40 @@ html.kb-open { --home-gap: 0px; }
   .tab-wheel-badge { margin-inline-start: .35em; font-size: .5em; line-height: 1.5; padding-inline: .45em; min-width: 1.5em; vertical-align: .35em; letter-spacing: 0; }
   .table-group.is-ours .table-group-name { color: var(--color-accent-text); }
   .table-group.is-danger .table-group-name { color: var(--color-danger); }
-  /* Наши дела во вкладке — красным счётчиком с белым числом, как у разделов таб-бара CRM (17.11.2026, владелец: «не зелёные,
-     а счётчики как на разделах»). Два класса — `.badge` ниже по файлу. */
-  .tab-wheel-label .tab-wheel-badge { background: var(--color-danger); color: #fff; }
+  /* Кружок состояния слева от названия (24.11.2026, владелец по дорожке шагов): наше дело — красный с белым числом, всё
+     разобрано — зелёный с галкой, ждём — серый; линия дорожки — по разделу, рвётся на подзаголовке (`is-run-start|end`).
+     Число — поверх галки: поток пишет 0 пустым (`StreamActions.count`), пустое прячется, и виден зелёный. Кружок в поле слева
+     от названия: названия стоят там же, где стояли. */
+  .tab-wheel-item { position: relative; --dot: 1.25rem; --dot-x: calc(var(--wheel-left) - 1.875rem); }
+  /* Линия — отрезками между кружками с пропуском у каждого (владелец: «не сплошную, у неё возле кружков пропуски», как дорожки
+     шагов в приложениях): верхний отрезок строки — от её верха до кружка, нижний — от кружка до низа; у соседних строк они
+     сходятся на границе. `--r` — половина кружка строки с ореолом, `--gap` — пропуск. Концы у кружков скруглены. */
+  .tab-wheel-item.has-dot { --r: calc(var(--dot) / 2); --gap: 5px; --halo: 0px; }
+  .tab-wheel-item.has-dot.is-wait { --r: .3125rem; }
+  .tab-wheel-item.has-dot[aria-current] { --halo: 4px; }
+  .tab-wheel-item.has-dot::before, .tab-wheel-item.has-dot::after {
+    content: ""; position: absolute; left: calc(var(--dot-x) + var(--dot) / 2 - .75px); width: 1.5px; background: var(--color-hairline);
+  }
+  .tab-wheel-item.has-dot::before { top: 0; bottom: calc(50% + var(--r) + var(--halo) + var(--gap)); border-radius: 0 0 1px 1px; }
+  .tab-wheel-item.has-dot::after { top: calc(50% + var(--r) + var(--halo) + var(--gap)); bottom: 0; border-radius: 1px 1px 0 0; }
+  .tab-wheel-item.is-run-start::before, .tab-wheel-item.is-run-end::after { display: none; }
+  /* «Только мои» прячет соседей — дорожка рвалась бы обрывками: линии нет, кружки остаются. */
+  .tab-wheel.is-mine .tab-wheel-item.has-dot::before, .tab-wheel.is-mine .tab-wheel-item.has-dot::after { display: none; }
+  .tab-wheel-dot, .tab-wheel-mark { position: absolute; z-index: 1; left: var(--dot-x); top: 50%; translate: 0 -50%; width: var(--dot); height: var(--dot); }
+  .tab-wheel-dot { border-radius: 999px; background: var(--color-wheel); font-size: var(--text-xs); font-weight: 600; letter-spacing: 0; line-height: 1; }
+  /* Ждём — точка меньше (владелец), на той же оси. */
+  .tab-wheel-dot.is-wait { width: .625rem; height: .625rem; left: calc(var(--dot-x) + var(--dot) / 2 - .3125rem); background: color-mix(in srgb, var(--color-ink-dim) 60%, var(--color-wheel)); }
+  .tab-wheel-dot-ok, .tab-wheel-dot-n { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; border-radius: inherit; }
+  .tab-wheel-dot-ok { background: var(--color-accent); color: #fff; font-size: var(--dot); }
+  .tab-wheel-dot-ok svg { stroke-width: 3; }
+  .tab-wheel-dot-n { background: var(--color-danger); color: #fff; }
+  .tab-wheel-dot-n:empty { display: none; }
+  /* Вне сделок и вывоза — только красный с числом: пустой кружок не виден и ореола не даёт. */
+  .tab-wheel-dot.is-count { background: transparent; }
+  .tab-wheel-item[aria-current] .tab-wheel-dot.is-count { box-shadow: none; }
+  /* Выбранная — ореолом, как текущий шаг; без кружка — «›» на его месте. */
+  .tab-wheel-item[aria-current] .tab-wheel-dot { box-shadow: 0 0 0 4px color-mix(in srgb, var(--color-ink-dim) 30%, transparent); }
+  .tab-wheel-mark { padding: .125rem; }
   .tab-wheel-nums { position: relative; margin-inline-start: auto; display: flex; align-items: center; gap: .5rem; font-size: var(--text-sm); color: var(--color-ink-dim); }
   /* Ответственные вкладки (24.11.2026, владелец: «справа от чисел, не смещая их, за пределами») — за краем строки: числа стоят ровно. */
   .tab-wheel-owners { position: absolute; left: 100%; top: 50%; translate: 0 -50%; margin-inline-start: .375rem; display: flex; }
@@ -1501,8 +1533,6 @@ html.kb-open { --home-gap: 0px; }
   .tab-wheel-owners .avatar:nth-child(2) { z-index: 2; }
   /* Чьи «Только мои» (главный администратор): системный выбор мелким шрифтом подписи. */
   .tab-wheel-as { field-sizing: content; max-width: 11rem; border: 0; background: transparent; font: inherit; color: var(--color-ink); cursor: pointer; }
-  /* Вкладка ожидания — на месте красного счётчика серые часы (владелец): «тут ждём»; полупрозрачны вместе с названием. */
-  .tab-wheel-wait { display: inline-block; margin-inline-start: .3em; vertical-align: .15em; color: var(--color-ink-muted); }
   /* «Только мои» включён — аватарок нет (владелец): и так видно, что вкладки свои. */
   .tab-wheel.is-mine .tab-wheel-owners { display: none; }
   /* Вкладка, где мы только ждём (`DealTabs::WAITING`, 17.11.2026, владелец: «regular font полупрозрачный»): обычный вес и
@@ -1536,6 +1566,8 @@ html.kb-open { --home-gap: 0px; }
       height: var(--wheel-row); max-width: calc(var(--wheel-left) + 26rem);
       padding-inline: var(--wheel-left) max(1rem, env(safe-area-inset-right)); scroll-snap-align: start; view-timeline: --wheel-row block;
     }
+    /* Кружок состояния — у края экрана, название правее его (у края своего поля ему места нет). */
+    .tab-wheel-item { --dot-x: max(1rem, env(safe-area-inset-left)); padding-inline-start: max(var(--wheel-left), calc(var(--dot-x) + var(--dot) + .625rem)); }
     /* Аватарки ответственных — за краем строки; у края телефона им место отступом справа, одинаковым у всех строк. */
     .tab-wheel:not(.is-mine) .tab-wheel-item { padding-inline-end: calc(max(1rem, env(safe-area-inset-right)) + 2.75rem); }
     /* Мелкое — масштабом от левого края: текст не прыгает. */
@@ -1588,7 +1620,6 @@ html.kb-open { --home-gap: 0px; }
     .tab-wheel.is-mine .tab-wheel-col { width: min(30rem, 100%); }
     /* Аватарки ответственных — за краем столбца: промежуток шире на три аватарки, иначе они наезжали на соседний столбец. */
     .tab-wheel:not(.is-mine) .tab-wheel-scroll { column-gap: calc(clamp(1rem, 2.5vw, 2.5rem) + 2.75rem); }
-    .tab-wheel-wait { margin-inline-start: .4em; vertical-align: middle; }
     .tab-wheel-item { height: 2.25rem; cursor: pointer; }
     .tab-wheel-label { font-size: var(--text-lg); font-weight: 400; letter-spacing: 0; color: var(--color-ink-muted); transition: color var(--dur-fast); }
     /* Выбранная — шрифтом заголовка, как на телефоне (17.11.2026, владелец: «на телефоне нравится, а тут такой же, как все»). */
@@ -1601,9 +1632,10 @@ html.kb-open { --home-gap: 0px; }
     /* «Все» и сводные разделов («Все черновики»…) — шапки своих вкладок: плотнее и темнее, выбранная всё равно крупнее. */
     .tab-wheel-item.is-head .tab-wheel-label { font-weight: 500; color: var(--color-ink); }
     .tab-wheel-item:focus-visible { outline: 2px solid var(--color-focus); outline-offset: -2px; border-radius: var(--radius-s); }
-    .tab-wheel-mark { position: absolute; left: -.7625em; top: .6em; translate: 0 -50%; }
-    /* Счётчик крупнее: 12 px, как метка (17.11.2026, владелец: кружки 8 px «не читабельны»). */
-    .tab-wheel-label .tab-wheel-badge { font-size: var(--text-xs); line-height: 1.5; min-width: 1.5em; padding-inline: .4em; margin-inline-start: .4em; vertical-align: middle; letter-spacing: 0; }
+    /* Столбцы ПК без своего поля слева: кружок — в промежутке перед столбцом. */
+    .tab-wheel-item { --dot-x: -1.875rem; }
+    /* Строки ПК плотные (36 px): пропуск меньше, иначе между кружками остаётся черточка. */
+    .tab-wheel-item.has-dot { --gap: 3px; }
     .tab-wheel-sec.is-solo .tab-wheel-sec-name { display: none; }
     .tab-wheel-item.is-wait[aria-current] .tab-wheel-label { font-weight: 400; }
   }

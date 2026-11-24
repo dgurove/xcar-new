@@ -27,7 +27,7 @@
      «Только мои» (18.11.2026, владелец выбрал тумблер iOS макета): ['on', 'keys'] — включён ли и за какие вкладки человек отвечает
      (`OfferController::tabMine`); тумблер в правом нижнем углу колеса (модератору его нет — всегда свои), включён — не свои пункты
      и пустые разделы прячутся (`is-mine`, `data-not-mine`), ˄ ˅ ходят только по своим; у вкладки — аватарки ответственных. --}}
-@props(['pills' => [], 'pill' => '', 'pillParam' => 'view', 'pillHome' => null, 'counts' => [], 'badges' => [], 'bumps' => [], 'fallback' => '', 'id' => 'tab-menu', 'sections' => [], 'heads' => [], 'columns' => [], 'skipEmpty' => true, 'drop' => [], 'keep' => null, 'waits' => [], 'mine' => null])
+@props(['pills' => [], 'pill' => '', 'pillParam' => 'view', 'pillHome' => null, 'counts' => [], 'badges' => [], 'bumps' => [], 'fallback' => '', 'id' => 'tab-menu', 'sections' => [], 'heads' => [], 'columns' => [], 'skipEmpty' => true, 'drop' => [], 'keep' => null, 'waits' => [], 'dots' => [], 'mine' => null])
 @php
     $action = '/'.ltrim(request()->path(), '/');
     $query = $keep !== null ? array_intersect_key(request()->query(), array_flip($keep)) : array_diff_key(request()->query(), array_flip($drop));
@@ -111,11 +111,29 @@
                         @unless ($hide($key))
                             @php($seenCol = $seenAll = true)
                         @endunless
-                        <a href="{{ $href($key) }}" @class(['tab-wheel-item text-xl sm:text-2xl', 'is-head' => in_array($key, $heads, true), 'is-wait' => in_array($key, $waits, true)]) data-turbo-prefetch="false" @isset($bumps[$key]) data-pill-bump="{{ $key }}:{{ $counts[$bumps[$key]] ?? 0 }}" @endisset @if ((string) $pill === $key) aria-current="true" @endif @if ($hide($key)) data-not-mine @endif>
+                        {{-- Дорожка кружков слева (24.11.2026, владелец по снимку дорожки шагов): линия идёт по разделу и рвётся на его подзаголовке. --}}
+                        {{-- Кружки — только у вкладок `dots` (сделки и вывоз, владелец): там ход по шагам. --}}
+                        @php($dot = in_array($key, $dots, true))
+                        @php($prevKey = $col['keys'][$loop->index - 1] ?? null)
+                        @php($nextKey = $col['keys'][$loop->index + 1] ?? null)
+                        <a href="{{ $href($key) }}" @class(['tab-wheel-item text-xl sm:text-2xl', 'is-head' => in_array($key, $heads, true), 'is-wait' => in_array($key, $waits, true), 'has-dot' => $dot, 'is-run-start' => $dot && ($prevKey === null || isset($sections[$key]) || ! in_array($prevKey, $dots, true)), 'is-run-end' => $dot && ($nextKey === null || isset($sections[$nextKey]) || ! in_array($nextKey, $dots, true))]) data-turbo-prefetch="false" @isset($bumps[$key]) data-pill-bump="{{ $key }}:{{ $counts[$bumps[$key]] ?? 0 }}" @endisset @if ((string) $pill === $key) aria-current="true" @endif @if ($hide($key)) data-not-mine @endif>
                             {{-- Зелёное число — сразу за названием (16.11.2026, владелец: «зелёные счётчики возле заголовков, а не справа»):
                                  внутри названия, растёт вместе с ним; серое «всего» — справа. «›» у выбранной — на ПК (на телефоне она
                                  одна, на месте заголовка, `.tab-wheel-chev`). --}}
-                            <span class="tab-wheel-label">@if ((string) $pill === $key)<x-ui.icon name="chevron-right" class="tab-wheel-mark size-[.9em]"/>@endif{{ $label }}@if (in_array($key, $waits, true))<x-ui.icon name="clock" class="tab-wheel-wait size-[.7em] lg:size-3.5"/>@endif{{ "" }}@isset($badges[$key])<span class="badge nums tab-wheel-badge" data-pill-count="{{ $badges[$key] }}" @unless ($counts[$badges[$key]] ?? 0) hidden @endunless>{{ ($counts[$badges[$key]] ?? 0) ?: '' }}</span>@endisset</span>
+                            {{-- Кружок состояния (владелец): наше дело — красный с числом, всё разобрано — зелёный с галкой, ждём — серый;
+                                 у прочих кружка нет. Число 0 поток пишет пустым — тогда под ним виден зелёный. Выбранная — с ореолом, без
+                                 кружка — «›» на его месте. --}}
+                            @if ($dot && isset($badges[$key]))
+                                <span class="tab-wheel-dot"><span class="tab-wheel-dot-ok"><x-ui.icon name="check" class="size-[.75em]"/></span><span class="tab-wheel-dot-n nums" data-pill-count="{{ $badges[$key] }}">{{ ($counts[$badges[$key]] ?? 0) ?: '' }}</span></span>
+                            @elseif ($dot && in_array($key, $waits, true))
+                                <span class="tab-wheel-dot is-wait"></span>
+                            @else
+                                {{-- Вне сделок и вывоза — только красный кружок с числом, без зелёного и серого (владелец: «у остальных
+                                     тоже красный счётчик слева»); нет дел — пусто, у выбранной видна «›» под ним. --}}
+                                @if ((string) $pill === $key)<x-ui.icon name="chevron-right" class="tab-wheel-mark"/>@endif
+                                @isset($badges[$key])<span class="tab-wheel-dot is-count"><span class="tab-wheel-dot-n nums" data-pill-count="{{ $badges[$key] }}">{{ ($counts[$badges[$key]] ?? 0) ?: '' }}</span></span>@endisset
+                            @endif
+                            <span class="tab-wheel-label">{{ $label }}</span>
                             <span class="tab-wheel-nums">
                                 @if (array_key_exists($key, $counts))<span class="nums" data-pill-count="{{ $key }}">{{ $counts[$key] ?: '' }}</span>@endif
                                 {{-- Чья вкладка (24.11.2026, владелец: «маленькие аватарки кому она принадлежит, справа от чисел, не смещая их»):
