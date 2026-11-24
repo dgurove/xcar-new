@@ -169,6 +169,8 @@ Route::middleware(['auth', 'wall'])->group(function () {
     Route::get('/account/invoices/{invoice}/pdf', [MoneyController::class, 'pdf']);
     // Документы и файлы с закрытого диска — на любом хосте.
     Route::get('/files/{media}', [FileController::class, 'show']);
+    // Кадр без водяного знака — сотруднику и менеджеру, что уже ответил по машине (`Media\CleanFor`, `MediaUrl`), на любом хосте.
+    Route::get('/clean/{media}/{size?}', [\App\Http\Admin\CleanPhotoController::class, 'show'])->whereNumber('media')->whereIn('size', ['320', '640', '960', 'jpg']);
     // Кадр медиатеки JPEG-ом для «Скачать» в просмотре фото (`/media`, `/hot` — webp с диска мимо PHP).
     Route::get('/jpg/{path}', [JpegController::class, 'show'])->where('path', '(media|hot)/.+\.webp');
 

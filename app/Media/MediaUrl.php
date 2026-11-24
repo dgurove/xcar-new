@@ -97,6 +97,12 @@ final class MediaUrl
 
     private static function url(Media $media, ?string $conversion): string
     {
+        // Кадр без водяного знака — сотруднику и менеджеру, что уже ответил по машине (`CleanFor`): закрытым адресом.
+        if ($media->getCustomProperty('watermarked', false) && CleanFor::allows(auth()->user(), $media)) {
+            $w = $conversion !== null && in_array($conversion, ['w320', 'w640', 'w960'], true) ? '/'.substr($conversion, 1) : '';
+
+            return '/clean/'.$media->id.$w;
+        }
         if ($conversion === null) {
             return $media->getUrl();
         }

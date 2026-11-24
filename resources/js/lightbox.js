@@ -245,6 +245,8 @@ export async function openLightbox({ items, index = 0, actions = [], download = 
                         // Кадр медиатеки — webp: скачивают JPEG того же кадра (`/jpg/media/…`, 15.11.2026, владелец: «всех бесит webp»).
                         const jpeg = (href) => {
                             const u = new URL(href, location.href);
+                            // Чистый кадр сотрудника (`/clean/{id}`, без знака) — тем же адресом с `/jpg`.
+                            if (/^\/clean\/\d+(\/\d+)?$/.test(u.pathname)) return u.pathname.replace(/^(\/clean\/\d+).*$/, '$1/jpg');
                             return /^\/(media|hot)\/.+\.webp$/i.test(u.pathname) ? `/jpg${u.pathname}` : own(href);
                         };
                         const sync = () => { const d = p.currSlide?.data; if (d) el.href = jpeg(d.item.download || d.full); };

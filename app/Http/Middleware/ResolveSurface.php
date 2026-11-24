@@ -11,7 +11,7 @@ use Illuminate\Http\Request;
 /** Поверхность по хосту. На CRM, стоянке и в гараже отвечают только их маршруты и общие пути: вход, кабинет, чаты, live, PWA, редирект со старого /admin. */
 class ResolveSurface
 {
-    private const SHARED = ['login', 'logout', 'lock', 'register', 'password', 'passkey', 'up', 'media', 'live', 'chats', 'account', 'manifest.webmanifest', 'offline', 'push', 'sw.js', 'icons.svg', 'deals', 'admin', 'mail', 'files', 'jpg', 'client'];
+    private const SHARED = ['login', 'logout', 'lock', 'register', 'password', 'passkey', 'up', 'media', 'live', 'chats', 'account', 'manifest.webmanifest', 'offline', 'push', 'sw.js', 'icons.svg', 'deals', 'admin', 'mail', 'files', 'jpg', 'clean', 'client'];
 
     /**
      * Партнёру (07.11.2026) из общих путей — только вход, выход и служебное: ни кабинета, ни чатов, ни сделок, ни почты,
@@ -31,14 +31,14 @@ class ResolveSurface
      * XCAR Mail (20.11.2026) из общих путей — вход, профиль и уведомления (`account`), файлы и медиа писем, служебное; ни чатов,
      * ни сделок сайта. Свои пути — `routes/mail.php`.
      */
-    private const MAIL_SHARED = ['login', 'logout', 'lock', 'password', 'passkey', 'up', 'media', 'live', 'account', 'manifest.webmanifest', 'offline', 'push', 'sw.js', 'icons.svg', 'files', 'jpg', 'client'];
+    private const MAIL_SHARED = ['login', 'logout', 'lock', 'password', 'passkey', 'up', 'media', 'live', 'account', 'manifest.webmanifest', 'offline', 'push', 'sw.js', 'icons.svg', 'files', 'jpg', 'clean', 'client'];
 
     /**
      * XCAR Pay (22.11.2026) из общих путей — вход, `account` (профиль, уведомления и «Оплаты» менеджера `/account/money*`), скан
      * паспорта в его реквизитах (`parties`), файлы
      * и медиа, служебное; ни чатов, ни сделок сайта — сделка открывается шторкой со страницей CRM или сайта. Свои пути — `routes/pay.php`.
      */
-    private const PAY_SHARED = ['login', 'logout', 'lock', 'password', 'passkey', 'up', 'media', 'live', 'account', 'parties', 'manifest.webmanifest', 'offline', 'push', 'sw.js', 'icons.svg', 'files', 'jpg', 'client'];
+    private const PAY_SHARED = ['login', 'logout', 'lock', 'password', 'passkey', 'up', 'media', 'live', 'account', 'parties', 'manifest.webmanifest', 'offline', 'push', 'sw.js', 'icons.svg', 'files', 'jpg', 'clean', 'client'];
 
     /** Что открыто на чужом хосте тому, кому туда нельзя: выйти и служебное. */
     private const ANYONE = ['login', 'logout', 'password', 'passkey', 'up', 'manifest.webmanifest', 'offline', 'sw.js', 'icons.svg', 'admin', 'client'];
