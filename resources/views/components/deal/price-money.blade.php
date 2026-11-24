@@ -12,6 +12,10 @@
     $total = $contract ? DealContract::priceFor($deal) : null;
     $nb = fn (string $s) => str_replace(' ', "\u{00A0}", $s);
     $fid = 'deal-price-'.$deal->id;
+    // Выбор «где подбор» — у счёта ПРАЙМ за ТС, пока по счетам не платили; суммы — по нынешним деньгам сделки.
+    $one = $contract && $deal->amount !== null ? max(0, (int) $deal->amount - (int) $deal->commission - (int) $contract->cash_part) : null;
+    $apart = $contract && $one !== null && $deal->canSplitSelection() && $deal->moneyEditable() && ! $deal->rewardPending()
+        ? ['one' => $one, 'car' => (int) $deal->cost, 'fee' => max(0, $one - (int) $deal->cost)] : null;
 @endphp
 <x-offer.money-form :action="'/work/deals/'.$deal->id.'/money'" method="put" :amount="$deal->amount" priced :cost="$deal->cost" :commission="$deal->commission ?? ($deal->namesBuyer() ? $deal->suggestedCommission() : null)" :stored="$deal->commission" :fee="! $deal->isDirect()"
     :scheme="\App\Offers\DealScheme::choiceFor($deal->offer->vendor?->deal_format, $deal->schemeOf())" scheme-locked :owner-price="$deal->owner_price" :owner-locked="true"
@@ -22,7 +26,16 @@
         @if ($contract)
             {{-- Редкий случай (владелец: «сумма договора меняется в очень редких случаях, когда часть наличными отдали»). --}}
             <x-ui.field name="cash_part" label="Часть наличными мимо счёта, ₽" :value="$contract->cash_part ? Money::nums($contract->cash_part) : null" :id="$fid.'-cash'" placeholder="0"/>
-            @if ($total !== null)<p class="text-sm text-ink-muted">Счёт и договор: <span class="nums">{{ Money::rub($total) }}</span></p>@endif
+            @if ($apart)
+                {{-- Подбор — в счёте за ТС или отдельной ссылкой (24.11.2026, владелец: «по умолчанию счёт единый»; `Deal::splitsSelection`):
+                     выбор сохраняется вместе с ценой (`DealController::money` → `SetSelectionApart`), строка ниже — во что выйдет каждый. --}}
+                <div class="flex flex-col gap-1.5" data-controller="reveal">
+                    <span class="field-label">Услуги подбора</span>
+                    <x-ui.segment name="selection_apart" :options="['0' => 'В счёте за ТС', '1' => 'Отдельной ссылкой']" :value="$deal->selection_apart ? '1' : '0'" pick/>
+                    <p class="text-sm text-ink-muted" data-reveal-target="pane" data-reveal-key="0">Счёт и договор: <span class="nums">{{ Money::rub($apart['one']) }}</span></p>
+                    <p class="text-sm text-ink-muted" data-reveal-target="pane" data-reveal-key="1">Счёт и договор: <span class="nums">{{ Money::rub($apart['car']) }}</span>, подбор ссылкой: <span class="nums">{{ Money::rub($apart['fee']) }}</span></p>
+                </div>
+            @elseif ($total !== null)<p class="text-sm text-ink-muted">Счёт и договор: <span class="nums">{{ Money::rub($total) }}</span></p>@endif
         @endif
     </div>
 </x-offer.money-form>
@@ -39,14 +52,4 @@
         </select>
         @if ($why = $contract->vatSource())<span class="text-sm text-ink-muted">{{ $why }}</span>@endif
     </form>
-    {{-- Подбор в счёте за ТС по умолчанию, отдельной ссылкой — выбором (24.11.2026, владелец; `SetSelectionApart`). --}}
-    @if ($deal->canSplitSelection() && $deal->moneyEditable())
-        <form method="post" action="/work/deals/{{ $deal->id }}/selection-apart" data-controller="autosubmit" data-sheet-clean class="mt-4">
-            @csrf @method('put')
-            <label class="flex items-center justify-between gap-3">
-                <span>Подбор отдельной ссылкой</span>
-                <input type="checkbox" switch class="switch" name="apart" value="1" @checked($deal->selection_apart) data-action="change->autosubmit#submit">
-            </label>
-        </form>
-    @endif
 @endif

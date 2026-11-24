@@ -110,9 +110,9 @@ class ContractPriceTest extends TestCase
         // Наличные стёрли — снова цена минус вознаграждение.
         $this->actingAs($this->admin)->put($crm.'/work/deals/'.$deal->id.'/money', ['amount' => '1 050 000', 'commission' => 30000, 'cash_part' => ''])->assertRedirect();
         $this->assertNull($deal->fresh()->contract->cash_part);
-        // Ставка 22 % — подбор всё равно в счёте за ТС (24.11.2026); отдельной ссылкой — переключателем, и модератору.
+        // Ставка 22 % — подбор всё равно в счёте за ТС (24.11.2026); отдельной ссылкой — выбором в той же шторке, и модератору.
         $this->assertEqualsWithDelta(1020000, (float) $this->invoice($deal)->total, 0.01);
-        $this->actingAs($moderator)->put($crm.'/work/deals/'.$deal->id.'/selection-apart', ['apart' => 1])->assertRedirect();
+        $this->actingAs($moderator)->put($crm.'/work/deals/'.$deal->id.'/money', ['amount' => '1 050 000', 'commission' => 30000, 'selection_apart' => '1'])->assertRedirect();
         $this->assertEqualsWithDelta(944000, (float) $this->invoice($deal)->total, 0.01);
         $this->assertEqualsWithDelta(76000, (float) $deal->fresh()->issuedInvoices()->where('kind', \App\Billing\ChargeKind::Selection)->where('state', '!=', InvoiceState::Void)->sole()->total, 0.01);
     }

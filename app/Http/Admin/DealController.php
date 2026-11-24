@@ -435,8 +435,15 @@ class DealController
 
             return back()->with('toast', 'Цена продажи '.Money::rub($amount));
         }
-        $update($deal, $request->user(), $commission, $scheme, isset($data['share']) ? (int) $data['share'] : null, amount: $amount,
-            cash: $data['cash_part'] ?? null, setCash: $request->has('cash_part'));
+        // «Услуги подбора: в счёте за ТС | отдельной ссылкой» (24.11.2026, `SetSelectionApart`) — вместе с ценой, счета ставит `UpdateDealMoney`.
+        DB::transaction(function () use ($request, $deal, $update, $commission, $scheme, $data, $amount) {
+            if ($request->has('selection_apart') && $deal->canSplitSelection() && $request->boolean('selection_apart') !== $deal->selection_apart) {
+                app(SetSelectionApart::class)($deal, $request->boolean('selection_apart'), $request->user(), sync: false);
+                $deal = $deal->fresh();
+            }
+            $update($deal, $request->user(), $commission, $scheme, isset($data['share']) ? (int) $data['share'] : null, amount: $amount,
+                cash: $data['cash_part'] ?? null, setCash: $request->has('cash_part'));
+        });
 
         return back()->with('toast', 'Сохранено');
     }
@@ -474,16 +481,6 @@ class DealController
             note: 'Закупочная в сделке '.($deal->cost !== null ? Money::rub((int) $deal->cost).' → ' : '').Money::rub($cost));
 
         return back()->with('toast', 'Сохранено');
-    }
-
-    /** Подбор отдельной ссылкой или в счёте за ТС — переключатель шторки «Цена и вознаграждение» (`SetSelectionApart`, 24.11.2026). */
-    public function selectionApart(Request $request, Deal $deal, SetSelectionApart $set)
-    {
-        abort_unless($deal->moneyOpen(), 404);
-        $apart = $request->boolean('apart');
-        $set($deal, $apart, $request->user());
-
-        return back()->with('toast', $apart ? 'Подбор отдельной ссылкой' : 'Подбор в счёте за ТС');
     }
 
     /** «Схема» строкой в окошке и в сделке (03.11.2026): сменить — деньги, счета и шаг реквизитов встают по новой. */
