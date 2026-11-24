@@ -366,6 +366,92 @@ class HeavyEstimateTest extends TestCase
         $this->assertTrue(\App\Offers\Exclusive::undecided($howo)->isEmpty());
     }
 
+    public function test_exclusive_decided_in_showing_and_in_pack(): void
+    {
+        // 24.11.2026, владелец выбрал А1 и В3: решить в шторке «Показ» и в шторке пачки «Оцененных», без тоста.
+        $make = function (string $brand, string $ref) {
+            $offer = $this->draft($brand, $ref);
+            $asked = app(AskEstimates::class)($offer, [$this->roma, $this->other], $this->admin);
+            $asked->each(fn (Estimate $e) => app(GiveEstimate::class)($e, $e->user_id === $this->roma->id ? 1200000 : 1150000, $e->user));
+            $offer->fresh()->update(['asking_price' => 1250000]);
+
+            return [$offer->fresh(), $asked->firstWhere('user_id', $this->roma->id)];
+        };
+
+        // «Показ»: «Сохранить» без касания блока — не решение; с `apply` и Ромой — решено.
+        [$show, $roma] = $make('Shacman', '5691/046/00916/26');
+        $url = 'http://crm.xcar.localhost/offers/'.$show->number;
+        $this->actingAs($this->admin)->put($url, ['_fields' => ['recommended'], 'recommended' => 1, "exclusive[{$show->id}][to]" => [$roma->id],
+            "exclusive[{$show->id}][apply]" => '0'])->assertSessionHasNoErrors();
+        $this->assertCount(2, \App\Offers\Exclusive::undecided($show->fresh()));
+        $this->actingAs($this->admin)->put($url, ['_fields' => ['recommended'], 'recommended' => 1,
+            'exclusive' => [$show->id => ['to' => [$roma->id], 'days' => 7, 'apply' => '1']]])->assertSessionHasNoErrors();
+        $this->assertSame([7, 0], Estimate::where('offer_id', $show->id)->orderByDesc('amount')->pluck('exclusive_days')->all());
+
+        // Пачка: у одной Рома, у другой «никому» — обе вышли.
+        [$a, $romaA] = $make('Sitrak', '5691/046/00917/26');
+        [$b] = $make('Faw', '5691/046/00918/26');
+        $this->actingAs($this->admin)->post('http://crm.xcar.localhost/offers/schedule', ['offers' => [$a->number, $b->number], 'when' => 'now', 'price_ok' => 1,
+            'exclusive' => [$a->id => ['to' => [$romaA->id], 'days' => 5], $b->id => ['none' => 1]]])->assertSessionHasNoErrors()->assertSessionMissing('toast-danger');
+        $this->assertSame(OfferState::Open, $a->fresh()->state);
+        $this->assertSame(OfferState::Open, $b->fresh()->state);
+        $this->assertSame([$this->roma->id], $a->fresh()->viewers()->where('opens_at', '<=', now())->pluck('user_id')->all());
+        $this->assertContains($this->other->id, $b->fresh()->viewers()->where('opens_at', '<=', now())->pluck('user_id')->all());
+    }
+
+    public function test_decision_can_be_changed_until_publish_and_respects_waves(): void
+    {
+        // 24.11.2026, владелец: «сначала в «Показе» одного, при публикации другого или никого — не конфликтует ли с волнами,
+        // корректно ли перезапишет». Своя волна: Тужиков сразу, остальные через сутки.
+        $third = User::create(['name' => 'Тужиков', 'phone' => '79000000053', 'roles' => [Role::Manager], 'approved_at' => now()]);
+        $make = function (string $brand, string $ref) use ($third) {
+            $offer = $this->draft($brand, $ref);
+            $asked = app(AskEstimates::class)($offer, [$this->roma, $this->other], $this->admin);
+            $asked->each(fn (Estimate $e) => app(GiveEstimate::class)($e, $e->user_id === $this->roma->id ? 1200000 : 1150000, $e->user));
+            $offer->fresh()->update(['asking_price' => 1250000, 'audience_rules' => [
+                ['type' => 'user', 'id' => $third->id, 'delay' => 0], ['type' => 'rest', 'id' => null, 'delay' => AudienceRules::DAY]]]);
+
+            return [$offer->fresh(), $asked->firstWhere('user_id', $this->roma->id), $asked->firstWhere('user_id', $this->other->id)];
+        };
+        $show = fn (Offer $o, array $to, int $days = 5) => $this->actingAs($this->admin)->put('http://crm.xcar.localhost/offers/'.$o->number,
+            ['_fields' => ['recommended'], 'recommended' => 1, 'exclusive' => [$o->id => ['to' => $to, 'days' => $days, 'apply' => '1']]])->assertSessionHasNoErrors();
+        $publish = fn (Offer $o, array $choice) => $this->actingAs($this->admin)->post('http://crm.xcar.localhost/offers/'.$o->number.'/state',
+            ['state' => 'open', 'when' => 'now', 'price_ok' => 1, 'exclusive' => [$o->id => $choice]])->assertSessionHasNoErrors();
+        $seesNow = fn (Offer $o) => $o->fresh()->viewers()->where('opens_at', '<=', now())->pluck('user_id')->sort()->values()->all();
+
+        // В «Показе» — Рома, при выставлении — Иван на 3 дня: эксклюзив у Ивана, свои волны не раньше его конца.
+        [$a, $romaA, $ivanA] = $make('Scania', '5691/046/00919/26');
+        $show($a, [$romaA->id]);
+        $this->assertSame([$romaA->id => 5, $ivanA->id => 0], Estimate::whereIn('id', [$romaA->id, $ivanA->id])->pluck('exclusive_days', 'id')->all());
+        $publish($a, ['to' => [$ivanA->id], 'days' => 3]);
+        $this->assertSame([$romaA->id => 0, $ivanA->id => 3], Estimate::whereIn('id', [$romaA->id, $ivanA->id])->pluck('exclusive_days', 'id')->all());
+        $this->assertSame([$this->other->id], $seesNow($a));
+        $rules = collect($a->fresh()->audience_rules)->keyBy(fn ($r) => $r['type'].':'.$r['id']);
+        $this->assertSame(0, $rules['user:'.$this->other->id]['delay']);
+        $this->assertSame(3 * AudienceRules::DAY, $rules['user:'.$third->id]['delay'], 'своя волна «сразу» — не раньше конца эксклюзива');
+        $this->assertSame(3 * AudienceRules::DAY, $rules['rest:']['delay']);
+
+        // В «Показе» — Рома, при выставлении — «никому»: эксклюзива нет, волны как были (Тужиков сразу, остальные через сутки).
+        [$b, $romaB] = $make('Volvo', '5691/046/00921/26');
+        $show($b, [$romaB->id]);
+        $publish($b, ['none' => 1]);
+        $this->assertSame([0, 0], Estimate::where('offer_id', $b->id)->pluck('exclusive_days')->all());
+        $this->assertSame([$third->id], $seesNow($b));
+        $this->assertSame([['type' => 'user', 'id' => $third->id, 'delay' => 0], ['type' => 'rest', 'id' => null, 'delay' => AudienceRules::DAY]],
+            AudienceRules::normalize($b->fresh()->audience_rules));
+
+        // Пачка: решено в «Показе» (Роме), в пачке поменяли на «никому» — перезаписалось; без ответа решённое остаётся.
+        [$c, $romaC] = $make('Daf', '5691/046/00922/26');
+        [$d, $romaD] = $make('Man', '5691/046/00923/26');
+        $show($c, [$romaC->id]);
+        $show($d, [$romaD->id], 7);
+        $this->actingAs($this->admin)->post('http://crm.xcar.localhost/offers/schedule', ['offers' => [$c->number, $d->number], 'when' => 'now', 'price_ok' => 1,
+            'exclusive' => [$c->id => ['none' => 1]]])->assertSessionHasNoErrors()->assertSessionMissing('toast-danger');
+        $this->assertSame([$third->id], $seesNow($c));
+        $this->assertSame([$this->roma->id], $seesNow($d), 'без ответа в пачке — как решили в «Показе»');
+        $this->assertSame(7, $romaD->fresh()->exclusive_days);
+    }
+
     private function giveAndTake(Offer $truck): void
     {
         $estimate = app(GiveEstimate::class)(Estimate::where('offer_id', $truck->id)->sole(), 1200000, $this->roma);

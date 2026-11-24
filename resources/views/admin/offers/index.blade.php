@@ -169,7 +169,7 @@
                 <x-ui.action-bar class="action-bar--pick" data-pick-target="bar" hidden>
                     <div class="contents" data-controller="sheet">
                         <x-ui.button type="button" class="min-w-0 flex-1" data-action="sheet#open">Выставить в продажу <span class="nums" data-pick-target="count"></span></x-ui.button>
-                        <x-offer.publish-sheet id="offers-send" form="offers-pick"/>
+                        <x-offer.publish-sheet id="offers-send" form="offers-pick" :pack="$exclusivePack ?? null"/>
                     </div>
                 </x-ui.action-bar>
             @elseif ($pick && $preset === 'done')

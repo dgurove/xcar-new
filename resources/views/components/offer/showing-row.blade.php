@@ -20,6 +20,9 @@
     $owed = in_array($offer->state, [\App\Offers\OfferState::Draft, \App\Offers\OfferState::Gallery], true) ? \App\Offers\Exclusive::due($offer) : collect();
     $rules = $owed->isNotEmpty() ? \App\Offers\Exclusive::rules(AudienceRules::of($offer), $owed, $offer) : AudienceRules::of($offer);
     $who = AudienceRules::summary($rules).($marks ? ', '.implode(', ', $marks) : '');
+    // Оценивали, эксклюзив не решён — вместо сводки «кому» оранжевым (24.11.2026, владелец: макет Б1); решают в шторке.
+    $undecided = in_array($offer->state, [\App\Offers\OfferState::Draft, \App\Offers\OfferState::Gallery], true)
+        && ! $offer->isScheduled() && \App\Offers\Exclusive::undecided($offer)->isNotEmpty();
     // Срок обязывающего — чипом в шапке окна и страницы (`x-offer.binding aside`, 12.11.2026), здесь второй раз нет; поле — в шторке.
     $id = 'showing-'.$offer->number.'-'.$form;
 @endphp
@@ -29,7 +32,11 @@
         <x-ui.icon name="users" class="size-5 shrink-0 text-ink-muted"/>
         <span class="min-w-0 flex-1">
             @if ($when !== false)<span class="block nums">{{ $when }}</span>@endif
-            <span @class(['block', 'text-sm text-ink-muted' => $when !== false])>{{ $who }}</span>
+            @if ($undecided)
+                <span @class(['block text-urgent', 'text-sm' => $when !== false])>Эксклюзив за оценку не решён</span>
+            @else
+                <span @class(['block', 'text-sm text-ink-muted' => $when !== false])>{{ $who }}</span>
+            @endif
         </span>
         <x-ui.icon name="chevron-right" class="size-4 shrink-0 text-ink-dim"/>
     </button>

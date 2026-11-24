@@ -76,26 +76,47 @@ final class Exclusive
      */
     public static function undecided(Offer $offer): Collection
     {
-        return $offer->estimates()->with('user')
-            ->whereNull('exclusive_days')->whereNull('withdrawn_at')->whereNull('base_price')->whereNotNull('amount')
-            ->whereIn('state', [EstimateState::Given, EstimateState::Taken, EstimateState::Closed])
-            ->when($offer->published_at, fn ($q, $at) => $q->where('estimated_at', '>', $at))
-            ->get()->filter(fn (Estimate $e) => $e->user?->hasRole(Role::Manager))->sortByDesc('amount')->values();
+        return self::candidates($offer)->filter(fn (Estimate $e) => $e->exclusive_days === null)->values();
     }
 
-    /** Решили: выбранным — эксклюзив на N дней (`owed` подхватит при выходе), остальным нерешённым — «нет» (0). */
+    /**
+     * О ком решают эксклюзив до выхода (24.11.2026, владелец: «сначала в «Показе» одного, при публикации другого или никого —
+     * перепроверь, что корректно перезапишет»): оценки менеджеров этого цикла — с суммой, не корректировка, не сняты, эксклюзив
+     * ещё не идёт (`exclusive_until` пуст), даны после последнего выхода. Решённые (`exclusive_days` > 0 — ему, 0 — нет) тоже
+     * здесь: выбор переписывается целиком (`decide`) в «Показе», шторке выставления и пачке.
+     *
+     * @return Collection<int, Estimate>
+     */
+    public static function candidates(Offer $offer): Collection
+    {
+        return self::cycle($offer->estimates()->getQuery(), $offer->published_at)->values();
+    }
+
+    /** Оценки цикла из запроса (одна машина или много) — правило `candidates`. */
+    private static function cycle(\Illuminate\Database\Eloquent\Builder $q, mixed $publishedAt = false): Collection
+    {
+        return $q->with('user')->whereNull('withdrawn_at')->whereNull('exclusive_until')->whereNull('base_price')->whereNotNull('amount')
+            ->whereIn('state', [EstimateState::Given, EstimateState::Taken, EstimateState::Closed])
+            ->when($publishedAt !== false && $publishedAt, fn ($w) => $w->where('estimated_at', '>', $publishedAt))
+            ->get()->filter(fn (Estimate $e) => $e->user?->hasRole(Role::Manager))->sortByDesc('amount');
+    }
+
+    /**
+     * Решили (переписывает прежнее решение целиком): выбранным оценщикам цикла — эксклюзив на N дней (`owed` подхватит при выходе),
+     * остальным — «нет» (0). «Никому» — пустой выбор. В «Историю» — только если что-то поменялось.
+     */
     public static function decide(Offer $offer, array $estimateIds, int $days, User $by): Collection
     {
-        $undecided = self::undecided($offer);
-        $chosen = $undecided->whereIn('id', array_map('intval', $estimateIds))->values();
+        $all = self::candidates($offer);
+        $ids = array_map('intval', $estimateIds);
+        $chosen = $all->whereIn('id', $ids)->values();
         $days = in_array($days, array_filter(Estimate::EXCLUSIVE), true) ? $days : 5;
-        if ($chosen->isNotEmpty()) {
-            Estimate::whereIn('id', $chosen->pluck('id'))->update(['exclusive_days' => $days]);
+        $want = $all->mapWithKeys(fn (Estimate $e) => [$e->id => in_array($e->id, $ids, true) ? $days : 0]);
+        $changed = $all->filter(fn (Estimate $e) => $e->exclusive_days !== $want[$e->id]);
+        foreach ($changed->groupBy(fn (Estimate $e) => $want[$e->id]) as $value => $group) {
+            Estimate::whereIn('id', $group->pluck('id'))->update(['exclusive_days' => (int) $value]);
         }
-        if (($rest = $undecided->diff($chosen))->isNotEmpty()) {
-            Estimate::whereIn('id', $rest->pluck('id'))->update(['exclusive_days' => 0]);
-        }
-        if ($undecided->isNotEmpty()) {
+        if ($changed->isNotEmpty()) {
             $offer->log(OfferEventType::Note, $by, ['text' => 'Эксклюзив за оценку: '.($chosen->isEmpty() ? 'никому' : self::who($chosen).', '.Estimate::daysWord($days))]);
         }
 
@@ -103,20 +124,49 @@ final class Exclusive
     }
 
     /**
-     * Решение из формы публикации (`x-offer.publish-sheet`: `exclusive_to[]`, `exclusive_none`, `exclusive_days`). Нерешённых нет —
-     * ничего; есть, а выбора нет — ошибка поля, как у остальных полей шторки.
+     * Решение из формы (`x-offer.exclusive-pick`: `exclusive[{id}][to][]`, `[none]`, `[days]`; прежние плоские `exclusive_to[]`,
+     * `exclusive_none`, `exclusive_days` — тоже). Нерешённых нет или стоит в слоте — ничего; есть, а выбора нет — ошибка
+     * (`unanswered`), если `$required`, иначе ничего (шторка «Показ»: «Сохранить» без выбора оставляет решение на потом).
      */
-    public static function decideFrom(\Illuminate\Http\Request $request, Offer $offer): void
+    public static function decideFrom(\Illuminate\Http\Request $request, Offer $offer, bool $required = true): void
     {
         // Стоящей в слоте — перенос, не выход: решать в шторке «Перенести» негде (`ScheduleOffer` так же).
-        if ($offer->isScheduled() || self::undecided($offer)->isEmpty()) {
+        if ($offer->isScheduled() || self::candidates($offer)->isEmpty()) {
             return;
         }
-        $to = array_filter((array) $request->input('exclusive_to', []), 'is_numeric');
-        if ($to === [] && ! $request->boolean('exclusive_none')) {
-            throw self::unanswered();
+        $own = $request->input('exclusive.'.$offer->id);
+        $field = fn (string $key, string $flat) => is_array($own) ? ($own[$key] ?? null) : $request->input($flat);
+        $to = array_values(array_filter((array) $field('to', 'exclusive_to'), 'is_numeric'));
+        $none = filter_var($field('none', 'exclusive_none'), FILTER_VALIDATE_BOOL);
+        if ($to === [] && ! $none) {
+            // Ответа нет: решённое остаётся, нерешённое — ошибка там, где без решения нельзя (выставление).
+            if ($required && self::undecided($offer)->isNotEmpty()) {
+                throw self::unanswered();
+            }
+
+            return;
         }
-        self::decide($offer, $to, (int) $request->input('exclusive_days', 5), $request->user());
+        self::decide($offer, $to, (int) ($field('days', 'exclusive_days') ?: 5), $request->user());
+    }
+
+    /**
+     * Оценщики цикла по многим машинам разом (шторка пачки «Оцененных», `x-offer.publish-sheet pack`): offer_id → оценки, только
+     * у кого есть. Машины — с `car`, для названия в шторке.
+     *
+     * @param  iterable<int>  $offerIds
+     * @return Collection<int, array{offer: Offer, estimates: Collection<int, Estimate>}>
+     */
+    public static function candidatesMany(iterable $offerIds): Collection
+    {
+        $offers = Offer::whereIn('id', collect($offerIds)->all())->whereIn('state', [OfferState::Draft, OfferState::Gallery])->whereNull('slot_at')
+            ->with('car')->get()->keyBy('id');
+        if ($offers->isEmpty()) {
+            return collect();
+        }
+
+        return self::cycle(Estimate::query()->whereIn('offer_id', $offers->keys()))
+            ->filter(fn (Estimate $e) => ! ($at = $offers[$e->offer_id]->published_at) || ($e->estimated_at && $e->estimated_at->gt($at)))
+            ->groupBy('offer_id')->map(fn ($group, $id) => ['offer' => $offers[$id], 'estimates' => $group->values()]);
     }
 
     public const ASK = 'Выберите, кому эксклюзив за оценку';
@@ -128,17 +178,36 @@ final class Exclusive
     }
 
     /**
-     * Кого отметить сразу (24.11.2026, владелец: «чаще всего эксклюзив у Ромы — пусть у него в первую очередь будет выбран галочкой,
-     * с возможностью убрать»): оценщик грузовых (`xcar.heavy_estimator`), если он среди нерешённых.
+     * Кого отметить в выборе: уже решено — кому решили (`exclusive_days` > 0); никто не решал — Рома (24.11.2026, владелец: «чаще
+     * всего эксклюзив у Ромы — выбран галочкой, с возможностью убрать», `xcar.heavy_estimator`); решили «никому» — никого.
      *
-     * @param  Collection<int, Estimate>  $undecided
+     * @param  Collection<int, Estimate>  $estimates  оценщики цикла (`candidates`)
      * @return list<int> id оценок
      */
-    public static function preferred(Collection $undecided): array
+    public static function preferred(Collection $estimates): array
     {
+        $chosen = $estimates->filter(fn (Estimate $e) => $e->exclusive_days > 0);
+        if ($chosen->isNotEmpty()) {
+            return $chosen->pluck('id')->map(fn ($id) => (int) $id)->values()->all();
+        }
+        if ($estimates->contains(fn (Estimate $e) => $e->exclusive_days !== null)) {
+            return [];
+        }
         $roma = (int) config('xcar.heavy_estimator');
 
-        return $roma ? $undecided->where('user_id', $roma)->pluck('id')->map(fn ($id) => (int) $id)->values()->all() : [];
+        return $roma ? $estimates->where('user_id', $roma)->pluck('id')->map(fn ($id) => (int) $id)->values()->all() : [];
+    }
+
+    /** Решили «никому»: оценщики есть, все — 0. */
+    public static function nobody(Collection $estimates): bool
+    {
+        return $estimates->isNotEmpty() && $estimates->every(fn (Estimate $e) => $e->exclusive_days === 0);
+    }
+
+    /** Срок выбора: решённый или 5 дней. */
+    public static function chosenDays(Collection $estimates): int
+    {
+        return (int) ($estimates->max('exclusive_days') ?: 5);
     }
 
     /** «Роман Корабельников» — именами как есть: склонение фамилий не угадываем. */

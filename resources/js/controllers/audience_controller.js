@@ -386,7 +386,8 @@ export default class extends Controller {
         const pick = this.pickTarget;
         this.bodyTarget.parentElement.append(pick);
         const parts = this.waves.map((w, i) => this.wave(w, i));
-        if (this.excl) parts.unshift(this.exclusiveWave());
+        // Выбор эксклюзива стоит узлом над лентой (`x-offer.exclusive-pick`, `silent`) — своей волной его не повторяем, сроки — с ним.
+        if (this.excl && !this.excl.silent) parts.unshift(this.exclusiveWave());
         if (this.waves.every((w) => w.kind) && !this.picking) {
             const item = el('div', 'wave wave-add');
             const b = el('button', 'wave-add-btn');

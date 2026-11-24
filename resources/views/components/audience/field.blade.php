@@ -24,7 +24,7 @@
     <input type="hidden" name="{{ $name }}" value="{{ $value }}" @if ($form) form="{{ $form }}" @endif data-audience-target="rules">
     @if ($exclusive)<input type="hidden" name="exclusive_off" value="0" @if ($form) form="{{ $form }}" @endif data-audience-target="exclusiveOff">@endif
     @if ($inline)
-        <x-audience.editor :deal="$deal" :end="$end ?? null"/>
+        <x-audience.editor :deal="$deal" :end="$end ?? null" :start="$start ?? null"/>
     @else
         <button type="button" class="field-input flex w-full items-center gap-3 text-left" data-action="sheet#open">
             <x-ui.icon name="users" class="size-5 shrink-0 text-ink-muted"/>

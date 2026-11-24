@@ -4,7 +4,7 @@
      кнопками у новой, «Добавить волну»), список групп и менеджеров с поиском — здесь, его ставят под волну. Конец ленты — слот
      `end` (конец приёма или публикации). Одно на предложение, публикацию сделки, «Вернуть в продажу», переоценку и вендора;
      deal — публикация машины в сделке: супер-покупателей в выборе нет. --}}
-@props(['deal' => false, 'end' => null])
+@props(['deal' => false, 'end' => null, 'start' => null])
 @php
     $groups = \App\Offers\AudienceRules::groups();
     $people = \App\Offers\AudienceRules::people();
@@ -13,6 +13,10 @@
     $key = fn ($name) => str_replace('ё', 'е', mb_strtolower($name));
 @endphp
 <div @class(["audience", "audience--bare" => ! $end])>
+    {{-- Начало ленты — эксклюзив за оценку, пока не решён (слот `start`, `x-offer.showing`, 24.11.2026, владелец: макет А1). --}}
+    @if ($start)
+        <div class="wave wave-start"><span class="wave-dot"></span>{{ $start }}</div>
+    @endif
     <div class="waves" data-audience-target="body"></div>
     @if ($end)
         <div class="wave wave-end" data-audience-target="end"><span class="wave-dot"></span>{{ $end }}</div>

@@ -506,6 +506,10 @@ class OfferController
             // `arrive_controller`), как заявка на парковке.
             'arrive' => AutoScan::states($offers->getCollection()->filter(fn (Offer $o) => $o->state === OfferState::Draft && ! $o->moderator_id)),
             'ghosts' => $preset === 'legacy' && ! $searching && self::ghostsShown($facets) ? LegacyClaim::ghosts()->get() : collect(),
+            // Эксклюзив за оценку не решён — выбор в шторке пачки «Выставить в продажу» по машине (24.11.2026, владелец: В3 видом А1).
+            // По всему списку вкладки, а не по порции: галку могут поставить и на странице плиток дальше.
+            'exclusivePack' => $preset === 'priced' && self::pickable($request->user(), $preset, $searching)
+                ? Exclusive::candidatesMany((clone $q)->reorder()->pluck('offers.id')) : collect(),
         ]);
     }
 
@@ -1316,6 +1320,11 @@ class OfferController
             PriceGuard::assert($offer, $payload, $request->boolean('price_ok'));
         }
         $update($offer, $payload, $request->user());
+        // Эксклюзив за оценку решили в шторке «Показ» (узел «За оценку», `x-offer.exclusive-pick mode=show`): только когда блок
+        // тронули или нажали «Сохранить» шторки (`apply`), иначе любое сохранение окна решало бы за человека.
+        if ($request->user()->canManageCrm() && $request->input('exclusive.'.$offer->id.'.apply') === '1') {
+            Exclusive::decideFrom($request, $offer->refresh(), required: false);
+        }
         session()->forget(["mail-draft.{$offer->id}", "legacy-draft.{$offer->id}"]);
         // Нажали знак Мигторга в поле номера убытка: несохранённые правки формы (вендор, цены) легли вместе с номером.
         if ($request->input('then') === 'migtorg') {
@@ -1542,10 +1551,14 @@ class OfferController
         $failed = [];
         foreach ($offers as $offer) {
             try {
-                $schedule($offer, $when, $request->user(), batch: $offers->count() > 1, until: Slots::urgentUntil($request->input('urgent_until')));
+                // Эксклюзив за оценку — из блока машины в шторке пачки (`x-offer.exclusive-pick pack`), одной транзакцией с выходом.
+                DB::transaction(function () use ($request, $offer, $schedule, $when, $offers) {
+                    Exclusive::decideFrom($request, $offer);
+                    $schedule($offer, $when, $request->user(), batch: $offers->count() > 1, until: Slots::urgentUntil($request->input('urgent_until')));
+                });
                 $done++;
             } catch (ValidationException $e) {
-                $failed[] = $offer->titleWithYear().', '.(isset($e->errors()['exclusive']) ? 'оценивали несколько — выставьте отдельно, выбрав, кому эксклюзив'
+                $failed[] = $offer->titleWithYear().', '.(isset($e->errors()['exclusive']) ? 'не выбрано, кому эксклюзив за оценку: откройте «Выставить в продажу» заново'
                     : 'нет '.str_replace(['Для публикации не хватает: ', 'фотографии'], ['', 'фото'], (string) collect($e->errors())->flatten()->first()));
             }
         }

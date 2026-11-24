@@ -4,14 +4,17 @@
      (`action`: выход маршрута) или полями чужой (`form`: редактор, `submit` — then=open). Срок страховой раньше слота —
      дата красным: таймер черновика уведёт предложение раньше. Без offer — пачкой (галочки «Оцененных» и «Публикации»,
      `form` — их форма); move — перенос стоящих в слоте: «Перенести на завтра в 16:00». «Другой день» — календарь (`Slots::DAY`). --}}
-@props(['offer' => null, 'id', 'action' => null, 'form' => null, 'submit' => [], 'title' => 'Выставить в продажу', 'move' => false, 'state' => null])
+@props(['offer' => null, 'id', 'action' => null, 'form' => null, 'submit' => [], 'title' => 'Выставить в продажу', 'move' => false, 'state' => null, 'pack' => null])
 @php
     $choices = \App\Offers\Slots::choices();
-    // Оценили менеджеры, эксклюзив не решён (`Exclusive::undecided`, 24.11.2026) — выбор здесь, без него кнопка неактивна.
-    $undecided = $offer && ! $move ? \App\Offers\Exclusive::undecided($offer) : collect();
-    $pickAttrs = $undecided->isNotEmpty() ? 'data-controller=exclusive-pick' : '';
-    // Рома отмечен сразу (владелец: «чаще всего эксклюзив у него — выбран галочкой, с возможностью убрать»).
-    $preferred = \App\Offers\Exclusive::preferred($undecided);
+    // Эксклюзив за оценку (`Exclusive::candidates`, 24.11.2026): кому — выбор здесь, решённое отмечено и меняется; не решено — кнопка
+    // ждёт выбора. Пачка «Оцененных» (`pack`: offer_id → машина и оценщики, `Exclusive::candidatesMany`) — блок на машину, виден у
+    // отмеченной.
+    $estimates = $offer && ! $move ? \App\Offers\Exclusive::candidates($offer) : collect();
+    $pack = $pack && ! $move && ! $offer ? collect($pack) : collect();
+    $gate = $estimates->isNotEmpty() || $pack->isNotEmpty();
+    $pickAttrs = $gate ? 'data-exclusive-gate' : '';
+    $waits = $estimates->isNotEmpty() && \App\Offers\Exclusive::preferred($estimates) === [] && ! \App\Offers\Exclusive::nobody($estimates);
     $late = fn ($at) => $offer && $at && $offer->insurer_deadline_at && $offer->insurer_deadline_at->copy()->endOfDay()->lt($at);
 @endphp
 <x-ui.sheet :id="$id" :title="$title">
@@ -59,34 +62,23 @@
         @if ($offer && ! $move && $action)<x-offer.sale-city :offer="$offer" :id="$id.'-sale-city'"/>@endif
         {{-- Эксклюзив за оценку (24.11.2026, Рома: Krone и Howo оценивали трое, эксклюзива при оценке нескольким не было — машины
              ушли всем): кому из оценивших сразу и на сколько, или «Никому» — тогда как в «Кому показывать». --}}
-        @if ($undecided->isNotEmpty())
+        @if ($estimates->isNotEmpty())
             <div>
                 <p class="list-cap !px-1">Эксклюзив за оценку</p>
-                <div class="list">
-                    @foreach ($undecided as $e)
-                        <label class="row row-check">
-                            <x-ui.avatar :user="$e->user" :size="32"/>
-                            <span class="min-w-0 flex-1">
-                                <span class="block truncate">{{ $e->user->shortName() }}</span>
-                                <span class="row-sub">оценил {{ \App\Support\Money::rub($e->amount) }}</span>
-                            </span>
-                            <span class="check"><input type="checkbox" name="exclusive_to[]" value="{{ $e->id }}" @if ($form) form="{{ $form }}" @endif data-exclusive-pick-target="person" data-action="exclusive-pick#person" @checked(in_array($e->id, $preferred, true))></span>
-                        </label>
-                    @endforeach
-                    <label class="row row-check">
-                        <span class="min-w-0 flex-1 text-danger">Никому, всем сразу</span>
-                        <span class="check"><input type="checkbox" name="exclusive_none" value="1" @if ($form) form="{{ $form }}" @endif data-exclusive-pick-target="none" data-action="exclusive-pick#none"></span>
-                    </label>
-                </div>
-                <div class="segment mt-2" data-exclusive-pick-target="days" @if ($preferred === []) hidden @endif>
-                    @foreach (array_filter(\App\Offers\Estimate::EXCLUSIVE) as $d)
-                        <label><input type="radio" name="exclusive_days" value="{{ $d }}" @if ($form) form="{{ $form }}" @endif @checked($d === 5)>{{ \App\Offers\Estimate::daysWord($d) }}</label>
+                <x-offer.exclusive-pick :offer="$offer" :estimates="$estimates" :form="$form"/>
+            </div>
+        @elseif ($pack->isNotEmpty())
+            <div class="exclusive-pack">
+                <p class="list-cap !px-1">Эксклюзив за оценку</p>
+                <div class="flex flex-col gap-4">
+                    @foreach ($pack as $item)
+                        <x-offer.exclusive-pick :offer="$item['offer']" :estimates="$item['estimates']" :form="$form" pack/>
                     @endforeach
                 </div>
             </div>
         @endif
         {{-- Шторка закрывается сразу: ошибка поля (номер убытка, фото) должна быть видна, а не под шторкой. --}}
-        <x-ui.button block :form="$form" :name="array_key_first($submit)" :value="$submit ? reset($submit) : null" data-action="sheet#close" :data-exclusive-pick-target="$undecided->isNotEmpty() ? 'submit' : null" :disabled="$undecided->isNotEmpty() && $preferred === []">
+        <x-ui.button block :form="$form" :name="array_key_first($submit)" :value="$submit ? reset($submit) : null" data-action="sheet#close" :data-exclusive-submit="$gate ? '' : null" :disabled="$waits">
             @foreach ($choices as $c)<span data-when="{{ $c['when'] }}">{{ $c['at'] ? ($move ? 'Перенести на ' : 'Выставить ').\App\Offers\Slots::phrase($c['at']) : 'Выставить сейчас' }}</span>@endforeach
             <span data-when="{{ \App\Offers\Slots::DAY }}">{{ $move ? 'Перенести' : 'Выставить в продажу' }}</span>
             <span data-when="{{ \App\Offers\Slots::URGENT }}">Выставить срочно</span>

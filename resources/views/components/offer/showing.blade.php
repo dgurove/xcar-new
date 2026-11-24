@@ -35,6 +35,12 @@
             $owed = $running->isEmpty() && in_array($offer->state, [OfferState::Draft, OfferState::Gallery], true) ? \App\Offers\Exclusive::due($offer) : collect();
             $excl = $running->isNotEmpty() ? $running : $owed;
             $exclusive = $excl->isNotEmpty() ? \App\Offers\Exclusive::wave($excl, $offer) : null;
+            // Оценщики цикла (черновик, галерея, не в слоте): выбор — узлом ленты, волна эксклюзива — без своей строки.
+            $cycle = in_array($offer->state, [OfferState::Draft, OfferState::Gallery], true) && ! $offer->isScheduled()
+                ? \App\Offers\Exclusive::candidates($offer) : collect();
+            if ($exclusive && $cycle->isNotEmpty()) {
+                $exclusive['silent'] = true;
+            }
             $own = $offer->audience_rules;
             $effective = AudienceRules::of($offer);
             if ($running->isNotEmpty()) {
@@ -46,6 +52,13 @@
         @if ($as === 'sheet')
             <x-audience.field :value="$ownValue" :rules="$effective" :form="$form" :exclusive="$exclusive"
                 inline :base="$base" :fresh="$offer->state !== OfferState::Open" :sheet="'audience-'.$n.'-'.$as" class="col-span-2">
+                {{-- Эксклюзив за оценку до выхода (`Exclusive::candidates`) — первым узлом ленты: решить или поменять (24.11.2026, владелец:
+                     макет А1). Волну эксклюзива лента тогда не рисует (`silent`), но сроки своих волн считает с ним. --}}
+                @if ($cycle->isNotEmpty())
+                    <x-slot:start>
+                        <x-offer.exclusive-pick :offer="$offer" :estimates="$cycle" :form="$form" mode="show" class="w-full"/>
+                    </x-slot:start>
+                @endif
                 <x-slot:end>
                     <x-offer.close-field :offer="$offer" :id="'f-bids_close_at-'.$n.'-'.$as" :value="$offer->bids_close_at?->format('Y-m-d\TH:i') ?? ''" :required="false" :form="$form" label="Конец приёма"/>
                 </x-slot:end>

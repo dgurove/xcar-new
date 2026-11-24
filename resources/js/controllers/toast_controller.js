@@ -91,6 +91,12 @@ export default class extends Controller {
 
     show(text, options = '') {
         const kind = typeof options === 'string' ? options : options?.kind || '';
+        // Тот же текст второй раз за пару секунд — один тост (24.11.2026: после пачки «Оцененных» с открытым окном машины flash
+        // выводили и страница, `#flash`, и поток окна, `x-ui.flash-stream`, — два одинаковых красных тоста друг под другом).
+        const now = Date.now();
+        if (this.lastText === text && now - (this.lastAt || 0) < 2000) return null;
+        this.lastText = text;
+        this.lastAt = now;
         const href = typeof options === 'object' ? options?.href : null;
         const action = typeof options === 'object' ? options?.action : null;
         const el = document.createElement(href ? 'a' : 'div');
