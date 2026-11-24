@@ -29,11 +29,10 @@ final class IssueDealInvoice
         $car = $offer->titleWithYear();
         $title ??= match ($kind) {
             ChargeKind::Sale => $offer->invoiceTitle(),
-            ChargeKind::Selection => 'Подбор ТС '.$car,
+            ChargeKind::Selection => 'Услуги подбора ТС',
             default => $car,
         };
-        // Подбор — услуга, единица «усл» (24.11.2026, владелец: «услуга разве в штуках измеряется?»).
-        $lines = [['title' => $title, 'qty' => 1, 'unit' => $kind === ChargeKind::Selection ? 'svc' : 'pc', 'price' => round($amount, 2), 'kind' => $kind->value]];
+        $lines = [['title' => $title, 'qty' => 1, 'unit' => 'pc', 'price' => round($amount, 2), 'kind' => $kind->value]];
 
         return DB::transaction(function () use ($deal, $by, $party, $kind, $dueAt, $notes, $lines, $offer) {
             // Счёт за машину — от продавца сделки (Альфа с НДС — Р.О.С.), подбор — продавцом услуг подбора сделки.

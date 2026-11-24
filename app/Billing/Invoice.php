@@ -504,8 +504,7 @@ class Invoice extends Model implements HasMedia
 
     /**
      * Наименование строки при печати (19.11.2026, владелец: «не должна храниться, должна формироваться из данных системы в момент,
-     * когда счёт скачивают»): за ТС — `Offer::invoiceTitle` («ТС Exeed LX 2024 г.в. VIN …»), подбор — «Подбор ТС марка модель, год»
-     * по машине сейчас; остальное (парковка, вывоз, услуги) — как записано строкой. Хранятся номер, дата и суммы.
+     * когда счёт скачивают»): за ТС — `Offer::invoiceTitle` («ТС Exeed LX 2024 г.в. VIN …»), подбор — «Услуги подбора ТС»; остальное (парковка, вывоз, услуги) — как записано строкой. Хранятся номер, дата и суммы.
      */
     public function lineTitle(Charge $charge): string
     {
@@ -513,7 +512,8 @@ class Invoice extends Model implements HasMedia
 
         return match (true) {
             $offer && $charge->kind === ChargeKind::Sale => $offer->invoiceTitle(),
-            $offer !== null => 'Подбор ТС '.$offer->titleWithYear(),
+            // Подбор — «Услуги подбора ТС» без машины (24.11.2026, владелец): машина — в основании счёта.
+            $offer !== null => 'Услуги подбора ТС',
             default => (string) $charge->title,
         };
     }

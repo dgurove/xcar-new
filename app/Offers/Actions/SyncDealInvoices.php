@@ -159,7 +159,7 @@ final class SyncDealInvoices
         // Плательщика у комиссии нет (18.11.2026, владелец: «плательщик указывается только для выставления договора счёта (ДКП),
         // для комиссий нет»): сторона счёта — менеджер, внутри, нигде не показывается; платит по ссылке кто угодно, на `/pay` — почта.
         return ['party' => Party::forUser($deal->buyer),
-            'lines' => [['title' => 'Подбор ТС '.$deal->offer->titleWithYear(), 'qty' => 1, 'unit' => 'svc', 'price' => (float) $due, 'kind' => ChargeKind::Selection->value]]];
+            'lines' => [['title' => 'Услуги подбора ТС', 'qty' => 1, 'unit' => 'pc', 'price' => (float) $due, 'kind' => ChargeKind::Selection->value]]];
     }
 
     /** @return array{party: Party, lines: list<array>, vat?: ?int}|null */
