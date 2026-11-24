@@ -25,12 +25,13 @@
         $r->gap !== null => [$r->gap, $r->gap === R::gap('commission') ? 'text-accent-text' : 'text-ink-muted'],
         $unsent => [null, ''],
         // Подбор внутри счёта за ТС ПРАЙМ (раздел «Комиссии», 23.11.2026): ссылка и её состояние — у машины в «ДКП».
-        $r->inCarInvoice() => ['в счёте за ТС', 'text-ink-muted'],
+        // 24.11.2026, начальник: «как-то помечать» сумму, что не своей ссылкой, а частью счёта, — «в счёте 882 000 ₽».
+        $r->inCarInvoice() => ['в счёте '.Money::rub($r->invoices->sum(fn ($i) => (float) $i->total)), 'text-ink-muted'],
         $first !== null => ($tried && $tried->has($first->id) && ($l = R::linkWord($first))) ? $l : R::state($first),
         default => [null, ''],
     };
     // Тревога оплаты на телефоне — вместо этапа: «сообщил», «не прошла», «открыл, не оплатил».
-    $alarm = $word && in_array($tone, ['text-urgent', 'text-danger'], true);
+    $alarm = $word && (in_array($tone, ['text-urgent', 'text-danger'], true) || $r->inCarInvoice());
     $amount = $r->amount();
     $since = $r->since();
     // Дата выставления, а не сколько прошло (22.11.2026, начальник): «вчера», «07.10»; у оплаченной — день оплаты. Срок прошёл — красным.
