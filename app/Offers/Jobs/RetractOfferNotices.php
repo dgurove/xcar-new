@@ -37,8 +37,10 @@ final class RetractOfferNotices implements ShouldQueue
     use Queueable;
 
     /** Уведомления «о предложении целиком»: их смысл — «вот машина, смотрите». */
+    // `NewOffersNotice` об одной машине тоже несёт `offer` (24.11.2026: Krone 2611244522 закрыли до эксклюзива Ромы — строка
+    // «Новое предложение» у менеджера осталась).
     private const TYPES = [OfferPublishedNotice::class, UrgentOfferNotice::class,
-        GalleryInterestOnSaleNotice::class, DealOpenedNotice::class, OffersShownNotice::class];
+        GalleryInterestOnSaleNotice::class, DealOpenedNotice::class, OffersShownNotice::class, \App\Notifications\NewOffersNotice::class];
 
     public function __construct(public int $offerId)
     {

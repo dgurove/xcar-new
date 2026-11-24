@@ -48,6 +48,10 @@ final class Exclusive
         if (($due = self::due($offer))->isNotEmpty()) {
             throw ValidationException::withMessages(['state' => 'Эксклюзив за оценку — '.self::who($due).': в галерею нельзя, сначала «Выставить всем…»']);
         }
+        // Оценивали несколько, эксклюзив не решён (24.11.2026): галерея показала бы машину всем, решить можно только при выставлении.
+        if (($open = self::undecided($offer))->isNotEmpty()) {
+            throw ValidationException::withMessages(['state' => 'Оценили '.self::who($open).', эксклюзив за оценку не решён: в галерею нельзя, выставьте в продажу с выбором']);
+        }
     }
 
     /** Снять осознанно (крестик с подтверждением, «Выставить всем…»): больше не положен и не идёт. */
@@ -60,6 +64,81 @@ final class Exclusive
         }
 
         return $due;
+    }
+
+    /**
+     * Оценили, а эксклюзив никто не решал (24.11.2026, Рома: Krone и Howo отдали на оценку троим, эксклюзив бывает только при
+     * оценке одному — и машины ушли «Всем сразу»; владелец: «при публикации делать выбор, кому из них эксклюзив»). Оценки
+     * менеджеров с суммой, не корректировка, `exclusive_days` пуст, не сняты; даны после последнего выхода — прежние при
+     * возврате в продажу не спрашиваются. Пока такие есть, выставить нельзя — решают в шторке «Выставить в продажу» (`decide`).
+     *
+     * @return Collection<int, Estimate>
+     */
+    public static function undecided(Offer $offer): Collection
+    {
+        return $offer->estimates()->with('user')
+            ->whereNull('exclusive_days')->whereNull('withdrawn_at')->whereNull('base_price')->whereNotNull('amount')
+            ->whereIn('state', [EstimateState::Given, EstimateState::Taken, EstimateState::Closed])
+            ->when($offer->published_at, fn ($q, $at) => $q->where('estimated_at', '>', $at))
+            ->get()->filter(fn (Estimate $e) => $e->user?->hasRole(Role::Manager))->sortByDesc('amount')->values();
+    }
+
+    /** Решили: выбранным — эксклюзив на N дней (`owed` подхватит при выходе), остальным нерешённым — «нет» (0). */
+    public static function decide(Offer $offer, array $estimateIds, int $days, User $by): Collection
+    {
+        $undecided = self::undecided($offer);
+        $chosen = $undecided->whereIn('id', array_map('intval', $estimateIds))->values();
+        $days = in_array($days, array_filter(Estimate::EXCLUSIVE), true) ? $days : 5;
+        if ($chosen->isNotEmpty()) {
+            Estimate::whereIn('id', $chosen->pluck('id'))->update(['exclusive_days' => $days]);
+        }
+        if (($rest = $undecided->diff($chosen))->isNotEmpty()) {
+            Estimate::whereIn('id', $rest->pluck('id'))->update(['exclusive_days' => 0]);
+        }
+        if ($undecided->isNotEmpty()) {
+            $offer->log(OfferEventType::Note, $by, ['text' => 'Эксклюзив за оценку: '.($chosen->isEmpty() ? 'никому' : self::who($chosen).', '.Estimate::daysWord($days))]);
+        }
+
+        return $chosen;
+    }
+
+    /**
+     * Решение из формы публикации (`x-offer.publish-sheet`: `exclusive_to[]`, `exclusive_none`, `exclusive_days`). Нерешённых нет —
+     * ничего; есть, а выбора нет — ошибка поля, как у остальных полей шторки.
+     */
+    public static function decideFrom(\Illuminate\Http\Request $request, Offer $offer): void
+    {
+        // Стоящей в слоте — перенос, не выход: решать в шторке «Перенести» негде (`ScheduleOffer` так же).
+        if ($offer->isScheduled() || self::undecided($offer)->isEmpty()) {
+            return;
+        }
+        $to = array_filter((array) $request->input('exclusive_to', []), 'is_numeric');
+        if ($to === [] && ! $request->boolean('exclusive_none')) {
+            throw self::unanswered();
+        }
+        self::decide($offer, $to, (int) $request->input('exclusive_days', 5), $request->user());
+    }
+
+    public const ASK = 'Выберите, кому эксклюзив за оценку';
+
+    /** Ошибка «не решили»: `exclusive` — пачке (своя строка тоста), `state` — красной плашкой окна и страницы, иначе её не видно. */
+    public static function unanswered(): ValidationException
+    {
+        return ValidationException::withMessages(['exclusive' => self::ASK, 'state' => self::ASK]);
+    }
+
+    /**
+     * Кого отметить сразу (24.11.2026, владелец: «чаще всего эксклюзив у Ромы — пусть у него в первую очередь будет выбран галочкой,
+     * с возможностью убрать»): оценщик грузовых (`xcar.heavy_estimator`), если он среди нерешённых.
+     *
+     * @param  Collection<int, Estimate>  $undecided
+     * @return list<int> id оценок
+     */
+    public static function preferred(Collection $undecided): array
+    {
+        $roma = (int) config('xcar.heavy_estimator');
+
+        return $roma ? $undecided->where('user_id', $roma)->pluck('id')->map(fn ($id) => (int) $id)->values()->all() : [];
     }
 
     /** «Роман Корабельников» — именами как есть: склонение фамилий не угадываем. */

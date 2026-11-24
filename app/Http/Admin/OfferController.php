@@ -1332,7 +1332,11 @@ class OfferController
         }
         if ($request->input('then') === 'open' && $offer->state === OfferState::Draft && $request->user()->canManageCrm()) {
             PriceGuard::assertPublish([$offer->refresh()], $request->boolean('price_ok'));
-            $offer = $schedule($offer->refresh(), $this->when($request, Slots::NEAREST), $request->user(), until: Slots::urgentUntil($request->input('urgent_until')));
+            $offer = DB::transaction(function () use ($request, $offer, $schedule) {
+                Exclusive::decideFrom($request, $offer);
+
+                return $schedule($offer->refresh(), $this->when($request, Slots::NEAREST), $request->user(), until: Slots::urgentUntil($request->input('urgent_until')));
+            });
 
             return redirect("/offers/{$offer->number}")->with('toast', $this->published($offer));
         }
@@ -1541,7 +1545,8 @@ class OfferController
                 $schedule($offer, $when, $request->user(), batch: $offers->count() > 1, until: Slots::urgentUntil($request->input('urgent_until')));
                 $done++;
             } catch (ValidationException $e) {
-                $failed[] = $offer->titleWithYear().', нет '.str_replace(['Для публикации не хватает: ', 'фотографии'], ['', 'фото'], (string) collect($e->errors())->flatten()->first());
+                $failed[] = $offer->titleWithYear().', '.(isset($e->errors()['exclusive']) ? 'решите эксклюзив за оценку'
+                    : 'нет '.str_replace(['Для публикации не хватает: ', 'фотографии'], ['', 'фото'], (string) collect($e->errors())->flatten()->first()));
             }
         }
         $at = Slots::at($when);
@@ -1682,6 +1687,7 @@ class OfferController
                 if ($request->boolean('all')) {
                     Exclusive::waive($offer, $request->user());
                 }
+                Exclusive::decideFrom($request, $offer);
 
                 return $schedule($offer, $this->when($request, Slots::NOW), $request->user(), until: Slots::urgentUntil($request->input('urgent_until')));
             });

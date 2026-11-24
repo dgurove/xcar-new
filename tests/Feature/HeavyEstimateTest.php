@@ -319,6 +319,46 @@ class HeavyEstimateTest extends TestCase
     }
 
     /** Рома оценил, админ взял: с эксклюзивом — продажа только ему. */
+    public function test_several_estimators_publish_asks_whom_exclusive(): void
+    {
+        // 24.11.2026, Рома: Krone оценивали трое, эксклюзива при оценке нескольким нет — машина ушла «Всем сразу».
+        $krone = $this->draft('Krone', '5691/046/00913/26');
+        $asked = app(AskEstimates::class)($krone, [$this->roma, $this->other], $this->admin);
+        $roma = app(GiveEstimate::class)($asked->firstWhere('user_id', $this->roma->id), 2200000, $this->roma);
+        app(GiveEstimate::class)($asked->firstWhere('user_id', $this->other->id), 2180000, $this->other);
+        $krone->fresh()->update(['asking_price' => 2250000]);
+        $url = 'http://crm.xcar.localhost/offers/'.$krone->number.'/state';
+
+        // Рома отмечен сразу (владелец: «чаще всего эксклюзив у него»); в галерею без решения нельзя — показала бы всем.
+        $this->assertSame([$roma->id], \App\Offers\Exclusive::preferred(\App\Offers\Exclusive::undecided($krone->fresh())));
+        $this->actingAs($this->admin)->post($url, ['state' => 'gallery'])->assertSessionHasErrors('state');
+        $this->assertFalse($krone->fresh()->isGallery());
+
+        // Без выбора не выходит — и ошибка видна плашкой (`state`).
+        $this->actingAs($this->admin)->post($url, ['state' => 'open', 'when' => 'now', 'price_ok' => 1])->assertSessionHasErrors(['exclusive', 'state']);
+        $this->assertSame(OfferState::Draft, $krone->fresh()->state);
+
+        // Рома — сразу, остальные через 5 дней; второму оценщику — «нет».
+        $this->actingAs($this->admin)->post($url, ['state' => 'open', 'when' => 'now', 'price_ok' => 1, 'exclusive_to' => [$roma->id], 'exclusive_days' => 5])
+            ->assertSessionHasNoErrors();
+        $krone = $krone->fresh();
+        $this->assertSame(OfferState::Open, $krone->state);
+        $this->assertSame([$this->roma->id], $krone->viewers()->where('opens_at', '<=', now())->pluck('user_id')->all());
+        $this->assertSame([5, 0], Estimate::where('offer_id', $krone->id)->orderBy('amount', 'desc')->pluck('exclusive_days')->all());
+
+        // «Никому» — всем сразу, и больше не спрашивает.
+        $howo = $this->draft('Howo', '5691/046/00914/26');
+        $asked = app(AskEstimates::class)($howo, [$this->roma, $this->other], $this->admin);
+        $asked->each(fn (Estimate $e) => app(GiveEstimate::class)($e, 1000000, $e->user));
+        $howo->fresh()->update(['asking_price' => 1050000]);
+        $this->actingAs($this->admin)->post('http://crm.xcar.localhost/offers/'.$howo->number.'/state', ['state' => 'open', 'when' => 'now', 'price_ok' => 1, 'exclusive_none' => 1])
+            ->assertSessionHasNoErrors();
+        $howo = $howo->fresh();
+        $this->assertSame(OfferState::Open, $howo->state);
+        $this->assertContains($this->other->id, $howo->viewers()->where('opens_at', '<=', now())->pluck('user_id')->all());
+        $this->assertTrue(\App\Offers\Exclusive::undecided($howo)->isEmpty());
+    }
+
     private function giveAndTake(Offer $truck): void
     {
         $estimate = app(GiveEstimate::class)(Estimate::where('offer_id', $truck->id)->sole(), 1200000, $this->roma);

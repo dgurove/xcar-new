@@ -25,6 +25,12 @@ final class ScheduleOffer
         if (! in_array($offer->state, [OfferState::Draft, OfferState::Gallery], true)) {
             throw ValidationException::withMessages(['state' => 'Выставить в продажу можно черновик или галерею']);
         }
+        // Оценили менеджеры, а эксклюзив за оценку не решён (24.11.2026, `Exclusive::undecided`): решают в шторке, до этой двери
+        // (`Exclusive::decideFrom`); пачка без шторки такую машину не выставляет. Перенос стоящей в слоте — не публикация: решать
+        // там негде (шторка «Перенести» без выбора), поставленные до 24.11 иначе не сдвинуть.
+        if (! $offer->isScheduled() && \App\Offers\Exclusive::undecided($offer)->isNotEmpty()) {
+            throw \App\Offers\Exclusive::unanswered();
+        }
         // «Срочно» (12.10.2026): сейчас, свой срок приёма, всем сразу (`SyncViewers`), громкое уведомление
         // (`NotifyViewers` → `UrgentOfferNotice`). Срок и метка — записью до перехода: публикация будущий срок не трогает,
         // волны и рассылка читают метку.

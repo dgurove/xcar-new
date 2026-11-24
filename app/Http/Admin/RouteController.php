@@ -54,9 +54,15 @@ class RouteController
         abort_if(! $request->user()->canManageCrm() && ($exit->loadMissing('to.block')->publishes()
             || (! $offer->deal?->isActive() && $exit->to?->block?->isDeadEnd())), 403);
         $when = Slots::when($request->input('when'), $request->input('day'), Slots::NOW);
-        if ($when !== Slots::NOW && $exit->to?->offer_state === OfferState::Open
-            && in_array($offer->state, [OfferState::Draft, OfferState::Gallery], true)) {
-            $offer = $schedule($offer, $when, $request->user(), until: Slots::urgentUntil($request->input('urgent_until')));
+        // Выход в продажу из черновика — с решением об эксклюзиве за оценку (`Exclusive::undecided`), и сейчас, и слотом; решение —
+        // одной транзакцией с выходом: не вышло (нет фото) — и решения нет, шторка спросит снова.
+        $publishes = $exit->to?->offer_state === OfferState::Open && in_array($offer->state, [OfferState::Draft, OfferState::Gallery], true);
+        if ($when !== Slots::NOW && $publishes) {
+            $offer = DB::transaction(function () use ($request, $offer, $when, $schedule) {
+                \App\Offers\Exclusive::decideFrom($request, $offer);
+
+                return $schedule($offer, $when, $request->user(), until: Slots::urgentUntil($request->input('urgent_until')));
+            });
 
             return back(fallback: "/offers/{$offer->number}")->with('toast', $offer->isUrgent()
                 ? 'Срочно в продаже, приём до '.Ago::day($offer->bids_close_at, true)
@@ -115,7 +121,10 @@ class RouteController
         if (count($contacts ?? []) > 1) {
             $payload['contacts'] = $contacts;
         }
-        $offer = DB::transaction(function () use ($request, $offer, $exit, $take, $payload, $contacts) {
+        $offer = DB::transaction(function () use ($request, $offer, $exit, $take, $payload, $contacts, $publishes) {
+            if ($publishes) {
+                \App\Offers\Exclusive::decideFrom($request, $offer);
+            }
             if ($request->input('for') === 'manager') {
                 return $this->forManager($offer, $exit, $take, $request->user());
             }

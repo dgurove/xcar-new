@@ -7,6 +7,11 @@
 @props(['offer' => null, 'id', 'action' => null, 'form' => null, 'submit' => [], 'title' => 'Выставить в продажу', 'move' => false, 'state' => null])
 @php
     $choices = \App\Offers\Slots::choices();
+    // Оценили менеджеры, эксклюзив не решён (`Exclusive::undecided`, 24.11.2026) — выбор здесь, без него кнопка неактивна.
+    $undecided = $offer && ! $move ? \App\Offers\Exclusive::undecided($offer) : collect();
+    $pickAttrs = $undecided->isNotEmpty() ? 'data-controller=exclusive-pick' : '';
+    // Рома отмечен сразу (владелец: «чаще всего эксклюзив у него — выбран галочкой, с возможностью убрать»).
+    $preferred = \App\Offers\Exclusive::preferred($undecided);
     $late = fn ($at) => $offer && $at && $offer->insurer_deadline_at && $offer->insurer_deadline_at->copy()->endOfDay()->lt($at);
 @endphp
 <x-ui.sheet :id="$id" :title="$title">
@@ -18,7 +23,7 @@
             <div class="text-sm text-ink-muted">@if ($offer->claim_ref)<span class="nums">{{ $offer->claim_ref }}</span>, @endif цена продажи <span class="nums text-ink">{{ $offer->asking_price ? \App\Support\Money::rub($offer->asking_price) : 'не вписана' }}</span></div>
         </div>
     @endif
-    @if ($action)<form method="post" action="{{ $action }}" class="publish-choice flex flex-col gap-4" data-price-guard="publish" @if ($offer) data-price-guard-offer="{{ $offer->number }}" @endif>@csrf @if ($state)<input type="hidden" name="state" value="{{ $state }}">@endif @else<div class="publish-choice flex flex-col gap-4">@endif
+    @if ($action)<form method="post" action="{{ $action }}" class="publish-choice flex flex-col gap-4" data-price-guard="publish" @if ($offer) data-price-guard-offer="{{ $offer->number }}" @endif {!! $pickAttrs !!}>@csrf @if ($state)<input type="hidden" name="state" value="{{ $state }}">@endif @else<div class="publish-choice flex flex-col gap-4" {!! $pickAttrs !!}>@endif
         <div class="list">
             @foreach ($choices as $c)
                 <label class="row row-check">
@@ -52,8 +57,36 @@
         @endif
         {{-- Где продаём (14.11.2026): своей формой — здесь; у редактора поле уже в его форме, у «Города факт». --}}
         @if ($offer && ! $move && $action)<x-offer.sale-city :offer="$offer" :id="$id.'-sale-city'"/>@endif
+        {{-- Эксклюзив за оценку (24.11.2026, Рома: Krone и Howo оценивали трое, эксклюзива при оценке нескольким не было — машины
+             ушли всем): кому из оценивших сразу и на сколько, или «Никому» — тогда как в «Кому показывать». --}}
+        @if ($undecided->isNotEmpty())
+            <div>
+                <p class="list-cap !px-1">Эксклюзив за оценку</p>
+                <div class="list">
+                    @foreach ($undecided as $e)
+                        <label class="row row-check">
+                            <x-ui.avatar :user="$e->user" :size="32"/>
+                            <span class="min-w-0 flex-1">
+                                <span class="block truncate">{{ $e->user->shortName() }}</span>
+                                <span class="row-sub">оценил {{ \App\Support\Money::rub($e->amount) }}</span>
+                            </span>
+                            <span class="check"><input type="checkbox" name="exclusive_to[]" value="{{ $e->id }}" @if ($form) form="{{ $form }}" @endif data-exclusive-pick-target="person" data-action="exclusive-pick#person" @checked(in_array($e->id, $preferred, true))></span>
+                        </label>
+                    @endforeach
+                    <label class="row row-check">
+                        <span class="min-w-0 flex-1 text-danger">Никому, всем сразу</span>
+                        <span class="check"><input type="checkbox" name="exclusive_none" value="1" @if ($form) form="{{ $form }}" @endif data-exclusive-pick-target="none" data-action="exclusive-pick#none"></span>
+                    </label>
+                </div>
+                <div class="segment mt-2" data-exclusive-pick-target="days" @if ($preferred === []) hidden @endif>
+                    @foreach (array_filter(\App\Offers\Estimate::EXCLUSIVE) as $d)
+                        <label><input type="radio" name="exclusive_days" value="{{ $d }}" @if ($form) form="{{ $form }}" @endif @checked($d === 5)>{{ \App\Offers\Estimate::daysWord($d) }}</label>
+                    @endforeach
+                </div>
+            </div>
+        @endif
         {{-- Шторка закрывается сразу: ошибка поля (номер убытка, фото) должна быть видна, а не под шторкой. --}}
-        <x-ui.button block :form="$form" :name="array_key_first($submit)" :value="$submit ? reset($submit) : null" data-action="sheet#close">
+        <x-ui.button block :form="$form" :name="array_key_first($submit)" :value="$submit ? reset($submit) : null" data-action="sheet#close" :data-exclusive-pick-target="$undecided->isNotEmpty() ? 'submit' : null" :disabled="$undecided->isNotEmpty() && $preferred === []">
             @foreach ($choices as $c)<span data-when="{{ $c['when'] }}">{{ $c['at'] ? ($move ? 'Перенести на ' : 'Выставить ').\App\Offers\Slots::phrase($c['at']) : 'Выставить сейчас' }}</span>@endforeach
             <span data-when="{{ \App\Offers\Slots::DAY }}">{{ $move ? 'Перенести' : 'Выставить в продажу' }}</span>
             <span data-when="{{ \App\Offers\Slots::URGENT }}">Выставить срочно</span>
