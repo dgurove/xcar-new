@@ -103,7 +103,10 @@ final class MarkSupplierLetter
             return null;
         }
         $since = $to->isRequisitesStep() ? $deal->created_at : null;
-        $fits = fn (?Message $m) => $m && (! $since || ($m->sent_at ?? $m->date_at ?? now())->gte($since)) ? $m : null;
+        // ПРАЙМ / Р.О.С. платят поставщику сами — в письме реквизиты нашего юрлица, а не покупателя (25.11.2026, Sitrak C7H
+        // 7806/046/03674/26: подтверждение переприняли другим менеджером, письмо Альфе от 18.11 перестало считаться). Годится и письмо
+        // прежней сделки, если тогда продавал тот же (`fromOurSeller`).
+        $fits = fn (?Message $m) => $m && (! $since || ($at = $m->sent_at ?? $m->date_at ?? now())->gte($since) || self::fromOurSeller($offer, $deal, $at)) ? $m : null;
         // Позиция до входа уже знала письмо этого шаблона (повторный вход на тот же этап; у старых сделок события письма нет).
         if ($before && ($id = $before->payload['letter_id'] ?? null) && $before->stage?->template_id === $to->template_id
             && ($at = $before->payload['letter_at'] ?? null)) {
@@ -127,6 +130,18 @@ final class MarkSupplierLetter
 
         return $fits(Message::whereKey($event->payload['letter'] ?? 0)->where('direction', Direction::Out->value)
             ->where(fn ($q) => $q->whereNull('send_state')->orWhere('send_state', '!=', 'failed'))->first());
+    }
+
+    /** Письмо реквизитов ушло при прежней сделке машины, и тогда, как и сейчас, поставщику платило то же наше юрлицо. */
+    private static function fromOurSeller(Offer $offer, \App\Offers\Deal $deal, \Carbon\CarbonInterface $at): bool
+    {
+        if (! $deal->isPrime()) {
+            return false;
+        }
+        $then = \App\Offers\Deal::where('offer_id', $offer->id)->whereKeyNot($deal->id)->where('created_at', '<=', $at)
+            ->where(fn ($q) => $q->whereNull('cancelled_at')->orWhere('cancelled_at', '>=', $at))->latest('id')->first();
+
+        return $then && $then->isPrime() && $then->seller() === $deal->seller();
     }
 
     /**

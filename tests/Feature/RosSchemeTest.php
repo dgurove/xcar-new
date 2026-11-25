@@ -137,4 +137,35 @@ class RosSchemeTest extends TestCase
         $this->assertFalse($prime->splitsSelection(), 'ПРАЙМ по умолчанию — в счёте за ТС');
         $this->assertTrue($prime->canSplitSelection());
     }
+
+    /**
+     * Письмо с реквизитами при Р.О.С. — реквизиты нашего юрлица (25.11.2026, Sitrak C7H 7806/046/03674/26): подтверждение переприняли
+     * другим менеджером — новой сделке письмо прежней засчитывается; при «страховой напрямую» (реквизиты покупателя) — нет.
+     */
+    public function test_requisites_letter_survives_reaccept_when_we_pay_supplier(): void
+    {
+        $deal = $this->deal(true);
+        app(ChangeDealScheme::class)($deal->fresh(), DealScheme::Ros, $this->admin);
+        $deal->fresh()->forceFill(['created_at' => now()->subHour()])->save();
+        $offer = $deal->offer->fresh();
+        $stage = Stage::where('workflow_id', $offer->vendor->workflow(Track::Sale)->id)->where('name', 'Письмо с реквизитами')->firstOrFail();
+        $this->assertTrue($stage->isRequisitesStep());
+        $account = \Illuminate\Support\Facades\DB::table('mail_accounts')->insertGetId(['slug' => 'deal', 'title' => 'deal', 'email' => 'deal@xcar.ru', 'scope' => 'crm',
+            'imap_host' => 'x', 'imap_username' => 'x', 'imap_password' => 'x', 'smtp_host' => 'x', 'smtp_username' => 'x', 'smtp_password' => 'x']);
+        $thread = \App\Mail\Thread::create(['account_id' => $account, 'subject' => '5491/046/00861/26', 'offer_id' => $offer->id]);
+        $letter = \App\Mail\Message::create(['account_id' => $account, 'thread_id' => $thread->id, 'direction' => 'out', 'from_email' => 'deal@xcar.ru',
+            'subject' => 'Реквизиты для счёта', 'text_body' => 'Реквизиты Р.О.С.', 'date_at' => now()->subMinutes(10), 'sent_at' => now()->subMinutes(10)]);
+        $offer->log(\App\Offers\OfferEventType::SupplierLetter, $this->admin, ['letter' => $letter->id, 'template_id' => $stage->template_id]);
+
+        // Переприняли: прежняя сделка отменена, новая — через Р.О.С. же.
+        $deal->fresh()->forceFill(['cancelled_at' => now(), 'closed_at' => now()])->save();
+        $new = Deal::create(['offer_id' => $offer->id, 'buyer_id' => $deal->buyer_id, 'amount' => 1150000, 'cost' => $deal->cost, 'scheme' => DealScheme::Ros]);
+        $offer->forceFill(['deal_id' => $new->id])->save();
+        $this->assertTrue($new->created_at->gt($letter->sent_at));
+        $this->assertSame($letter->id, \App\Offers\Listeners\MarkSupplierLetter::already($offer->fresh(), $stage)?->id);
+
+        // «Страховой напрямую» — в письме реквизиты прежнего покупателя: новой сделке не годится.
+        $new->update(['scheme' => DealScheme::Insurer]);
+        $this->assertNull(\App\Offers\Listeners\MarkSupplierLetter::already($offer->fresh(), $stage));
+    }
 }
