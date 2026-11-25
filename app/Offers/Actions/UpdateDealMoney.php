@@ -81,7 +81,7 @@ final class UpdateDealMoney
             $deal->offer->log(OfferEventType::Note, $by, ['text' => $note ?? match (true) {
                 // Гаражная «платит менеджер» — словами вознаграждения (16.11.2026): от разницы цены продажи и закупочной.
                 $garage => ($deal->share && $deal->offer->asking_price && $deal->cost !== null
-                    ? 'Вознаграждение менеджеру '.Money::rub((int) $deal->offer->asking_price - (int) $deal->cost - (int) $deal->share).', ' : '')
+                    ? 'Вознаграждение '.Money::rub((int) $deal->offer->asking_price - (int) $deal->cost - (int) $deal->share).', ' : '')
                     .'нам по ссылке '.($deal->share ? Money::rub($deal->share) : 'нет'),
                 $selection => $scheme->payeeLabel().' '.Money::rub((int) $deal->ownerPrice()).', вознаграждение '.($commission ? Money::rub($commission) : 'нет'),
                 default => $scheme->label().', вознаграждение '.($commission ? Money::rub($commission) : 'нет'),

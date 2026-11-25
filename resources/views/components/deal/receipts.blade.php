@@ -42,7 +42,7 @@
     $from = fn ($p) => implode(', ', array_filter([match ($real($p)->source) {
         PaymentSource::Acquiring, PaymentSource::Credit => 'по ссылке',
         PaymentSource::Cash => 'наличными',
-        PaymentSource::Offset => 'вознаграждением менеджера',
+        PaymentSource::Offset => 'вознаграждением',
         default => $seller['name'] ?? null,
     }, in_array($real($p)->source, [PaymentSource::Cash, PaymentSource::Offset], true) ? null : $bank,
         $p->source === PaymentSource::Credit && ($linkParts[$p->credit_invoice_id] ?? 1) > 1 ? 'частями' : null]));

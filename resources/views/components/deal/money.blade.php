@@ -79,7 +79,7 @@
                     @endif
                     @if ($editMoney || $withContract)
                         <div class="menu-group">
-                            @if ($editMoney)<button type="button" class="menu-item w-full" data-controller="emit" data-action="emit#send" data-emit-event-param="deal-money-{{ $deal->id }}:open">{{ $deal->isGarageManager() ? 'Вознаграждение менеджера…' : 'Цена и вознаграждение…' }}</button>@endif
+                            @if ($editMoney)<button type="button" class="menu-item w-full" data-controller="emit" data-action="emit#send" data-emit-event-param="deal-money-{{ $deal->id }}:open">{{ $deal->isGarageManager() ? 'Вознаграждение…' : 'Цена и вознаграждение…' }}</button>@endif
                             @if ($withContract)<button type="button" class="menu-item w-full" data-controller="emit" data-action="emit#send" data-emit-event-param="dkp-{{ $deal->id }}:open">Данные договора…</button>@endif
                             @if ($offsetEdit && ! $deal->offset())<button type="button" class="menu-item w-full" data-controller="emit" data-action="emit#send" data-emit-event-param="offset-{{ $deal->id }}:open">Взаимозачёт со страховой…</button>@endif
                         </div>
@@ -287,7 +287,7 @@
                 {{-- Нажимается — «Цена и вознаграждение»; не назначено — лаймовым «Назначить» (и у закрытой сделки, `Deal::moneyOpen`). --}}
                 @php $rewardTag = $editMoney ? 'button' : 'div'; @endphp
                 <{{ $rewardTag }} @if ($editMoney) type="button" data-controller="emit" data-action="emit#send" data-emit-event-param="deal-money-{{ $deal->id }}:open" @endif class="row sale-row">
-                    <span class="sale-row-label">Вознаграждение менеджера</span>
+                    <span class="sale-row-label">Вознаграждение</span>
                     @if ($deal->commission !== null)<span class="sale-row-value nums">{{ Money::rub((int) $deal->commission) }}</span>@elseif ($editMoney)<span class="sale-row-value text-accent-text">Назначить</span>@else<span class="sale-row-value text-ink-muted">назначим</span>@endif
                     @if ($editMoney)<x-ui.chevron/>@else<x-ui.chevron-space/>@endif
                 </{{ $rewardTag }}>

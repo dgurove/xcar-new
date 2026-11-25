@@ -73,7 +73,7 @@ final class MoneyRows
             PaymentSource::Acquiring => 'оплатил '.$day.' по ссылке '.PayMethod::label($attempts->get($p->id)?->method),
             PaymentSource::Cash => 'оплатил '.$day.' наличными',
             // Зачёт вознаграждения в старых счетах (до 18.11.2026) — история.
-            PaymentSource::Offset => 'вознаграждение менеджера '.$day,
+            PaymentSource::Offset => 'вознаграждение '.$day,
             PaymentSource::Credit => 'засчитана оплата по ссылке '.$day,
             default => 'оплатил '.$day.' переводом'.($p->refNumber() ? ', п/п '.$p->refNumber() : ''),
         };
@@ -153,7 +153,7 @@ final class MoneyRows
             null => null,
             PaymentSource::Acquiring => trim('по ссылке '.PayMethod::label($attempts->get($p->id)?->method)),
             PaymentSource::Cash => 'наличными',
-            PaymentSource::Offset => 'вознаграждением менеджера',
+            PaymentSource::Offset => 'вознаграждением',
             PaymentSource::Credit => 'оплатой по ссылке',
             default => 'переводом',
         };
@@ -169,7 +169,7 @@ final class MoneyRows
         $ways = $payments->map(fn ($p) => match ($p->source) {
             PaymentSource::Acquiring, PaymentSource::Credit => 'по ссылке',
             PaymentSource::Cash => 'наличными',
-            PaymentSource::Offset => 'вознаграждением менеджера',
+            PaymentSource::Offset => 'вознаграждением',
             default => 'переводом',
         })->unique()->values();
         if ($ways->count() === 1 && ($last = $payments->last())?->source === PaymentSource::Acquiring) {

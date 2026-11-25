@@ -1205,7 +1205,7 @@ class Deal extends Model implements HasMedia
             'buyer' => ['buyer' => 'Покупатель'],
             'price' => ['price' => 'Цена продажи'],
             'share' => ['share' => 'Наша доля'],
-            'commission' => ['commission' => 'Вознаграждение менеджера'],
+            'commission' => ['commission' => 'Вознаграждение'],
             'ros_requisites' => ['ros_requisites' => 'Реквизиты Р.О.С.'],
             'invoice' => $this->amount === null ? ['amount' => 'Цена сделки'] : [],
             default => [],

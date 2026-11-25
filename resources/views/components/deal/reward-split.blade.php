@@ -9,7 +9,7 @@
      `input`. Разница меняется на лету — хозяин ставит `data-reward-margin-value` (`commission_controller#shareMargin`).
      `follow` — поле идёт за разницей процентом (предзаполнено долей менеджера `users.deal_share`), пока сумму не вписали
      руками; `share` — доля по умолчанию, когда суммы ещё нет; `showMargin` false — разница уже строкой выше (`money-form`). `hidden` — атрибуты скрытого поля (у `money-form` его цель `amount`). --}}
-@props(['name', 'value' => null, 'margin' => null, 'mode' => 'reward', 'label' => 'Вознаграждение менеджера', 'id' => null,
+@props(['name', 'value' => null, 'margin' => null, 'mode' => 'reward', 'label' => 'Вознаграждение', 'id' => null,
     'hidden' => [], 'follow' => false, 'share' => null, 'showMargin' => true, 'placeholder' => '0', 'error' => null])
 @php
     use App\Support\Money;
