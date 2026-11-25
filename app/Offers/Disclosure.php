@@ -73,7 +73,7 @@ class Disclosure extends Model
             ->where('author_kind', \App\Chats\AuthorKind::Staff)
             ->whereHas('chat', fn ($q) => $q->where('offer_id', $deal->offer_id)->where('user_id', $deal->buyer_id))
             ->whereBetween('created_at', [$this->created_at->copy()->subMinute(), $this->created_at->copy()->addMinutes(2)])
-            ->when($first, fn ($q) => $q->where('text', 'like', '%'.str_replace(['%', '_'], ['\\%', '\\_'], mb_substr(trim((string) $first), 0, 60)).'%'),
+            ->when($first, fn ($q) => $q->where('text', 'like', '%'.str_replace(['%', '_'], ['\\%', '\\_'], mb_substr(trim((string) strtok(trim((string) $first), "\r\n")), 0, 60)).'%'),
                 fn ($q) => $q->where('text', 'Документы по сделке'))
             ->orderBy('id')->first();
     }
