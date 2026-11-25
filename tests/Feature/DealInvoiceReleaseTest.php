@@ -107,7 +107,12 @@ class DealInvoiceReleaseTest extends TestCase
         $this->assertTrue($invoice->fresh()->isVisibleToManager($manager));
         $this->assertStringContainsString('№ 1 у менеджера', $row());
         $this->assertStringNotContainsString('Менеджер не видит', $row());
-        Notification::assertSentTo($manager, MoneyNotice::class);
+        // Счёт — сообщением в чат с PDF (25.11.2026), уведомление «Счёт» его не дублирует.
+        Notification::assertNotSentTo($manager, MoneyNotice::class);
+        $said = \App\Chats\Message::whereHas('chat', fn ($q) => $q->where('offer_id', $deal->offer_id))->latest('id')->first();
+        $this->assertStringContainsString('№ 1', (string) $said?->text);
+        $this->assertSame(1, $said->files()->count());
+        $this->assertStringEndsWith('.pdf', $said->files()->first()->name);
         $this->assertNull($position->fresh()->waits_for);
 
         // Договор: готов (ПТС и собственник есть) — тоже только кнопкой.

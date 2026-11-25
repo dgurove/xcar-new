@@ -48,18 +48,41 @@ final class ShowToManager
     }
 
     /**
-     * Комиссия выставлена — ссылкой в чат с менеджером (18.11.2026, владелец: «„Выставить“ — тогда она отправляется в чат
-     * менеджеру, отображается в сделке и копируется в буфер обмена»). Уведомление «Ссылка на оплату» тогда не шлём — его
-     * заменяет сообщение чата (`Notify::invoiceIssued`).
+     * Отправленный счёт — сообщением в чат с менеджером. Комиссия — ссылкой (18.11.2026, владелец: «„Выставить“ — тогда она
+     * отправляется в чат менеджеру, отображается в сделке и копируется в буфер обмена»); счёт-документ — с PDF вложением и
+     * ссылкой, если она есть (25.11.2026, 7806/046/03674/26: ссылка на подбор ушла в чат, а счёт за ТС — нет; владелец: «должно
+     * и то и то отправляться»). Уведомление «Счёт» тогда не шлём — его заменяет сообщение чата (`Notify::invoiceIssued`).
      */
     private function toChat(Deal $deal, Invoice $invoice): void
     {
-        if ($invoice->isDocument() || ! $deal->buyer) {
+        if (! self::chats($invoice)) {
             return;
         }
         $link = $invoice->openLink();
         $text = \App\Billing\PayOffer::line($invoice).($link ? "\nОплата картой, СБП или SberPay по ссылке:\n".$link->url() : '');
-        rescue(fn () => app(\App\Chats\Actions\PlatformMessage::class)(app(\App\Chats\Actions\OpenChat::class)($deal->offer, $deal->buyer, greet: false), $text), report: true);
+        rescue(function () use ($deal, $invoice, $text) {
+            $files = $invoice->isDocument()
+                ? [['name' => \App\Billing\Documents\InvoicePdf::fileName($invoice), 'body' => app(\App\Billing\Documents\InvoicePdf::class)->render($invoice)]]
+                : [];
+            app(\App\Chats\Actions\PlatformMessage::class)(app(\App\Chats\Actions\OpenChat::class)($deal->offer, $deal->buyer, greet: false), $text, media: $files);
+        }, report: true);
+    }
+
+    /**
+     * Уходит ли отправленный счёт сообщением в чат (тогда уведомление «Счёт» не нужно): у сделки есть менеджер, покупателю с гаражом
+     * без галки цены счёт не показываем (`User::seesGaragePrice`), деньги уже пришли (зачёт по VIN) — «оплатить» не пишем.
+     */
+    public static function chats(Invoice $invoice): bool
+    {
+        $deal = $invoice->deal;
+        if (! $deal?->buyer) {
+            return false;
+        }
+        if (! $invoice->isDocument()) {
+            return true;
+        }
+
+        return ! ($deal->isGarage() && ! $deal->buyer->seesGaragePrice()) && $deal->credited() <= 0;
     }
 
     /** Отозвать можно отправленный и ещё не оплаченный: ни денег, ни заявленной менеджером оплаты. */

@@ -21,7 +21,7 @@ use Spatie\MediaLibrary\MediaCollections\Models\Media;
 final class PlatformMessage
 {
     /**
-     * @param  iterable<Media>  $media  документы сделки вложением (счёт страховой к «Пришёл счёт от страховой», 11.11.2026,
+     * @param  iterable<Media|array{name: string, body: string, mime?: string}>  $media  документы сделки вложением (счёт страховой к «Пришёл счёт от страховой», 11.11.2026,
      *                                  владелец: «просим оплатить, а счёт, который надо оплатить, не отправляем — бред»)
      */
     public function __invoke(Chat $chat, string $text, ?Requirement $requirement = null, ?string $ask = null, iterable $media = []): Message
@@ -31,6 +31,14 @@ final class PlatformMessage
             $seq = $chat->messages_count + 1;
             $message = $chat->messages()->create(['seq' => $seq, 'author_kind' => AuthorKind::Staff, 'text' => $text, 'requirement_id' => $requirement?->id, 'ask' => $ask]);
             foreach ($media as $m) {
+                // Файл, собранный на лету (PDF нашего счёта, 25.11.2026): `['name' => …, 'body' => …]`.
+                if (is_array($m)) {
+                    $path = 'chats/'.$chat->id.'/'.Str::uuid().'.'.(pathinfo($m['name'], PATHINFO_EXTENSION) ?: 'pdf');
+                    Storage::disk('private')->put($path, $m['body']);
+                    $message->files()->create(['name' => mb_substr($m['name'], 0, 255), 'mime' => $m['mime'] ?? 'application/pdf', 'size' => strlen($m['body']), 'path' => $path]);
+
+                    continue;
+                }
                 if (! is_file($m->getPath())) {
                     continue;
                 }

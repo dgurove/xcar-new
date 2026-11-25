@@ -522,8 +522,9 @@ final class Notify
             return;
         }
         $i->load(['party', 'deal.offer', 'deal.buyer']);
-        // Комиссия без счёта уходит ссылкой в чат (`ShowToManager::toChat`, 18.11.2026): уведомление чата и есть это.
-        if (! $i->isDocument() && $i->deal?->buyer) {
+        // Счёт уходит в чат (`ShowToManager::toChat`: комиссия ссылкой с 18.11.2026, счёт-документ с PDF с 25.11.2026): уведомление
+        // чата и есть это.
+        if (\App\Offers\Actions\ShowToManager::chats($i)) {
             return;
         }
         // Покупателю с гаражом без галки цены счёт не показываем (`User::seesGaragePrice`).
