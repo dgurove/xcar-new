@@ -35,7 +35,12 @@ class LetterImagesCommand extends Command
             $letters = Message::with('attachments')->whereHas('thread', fn ($q) => $q->where('offer_id', $offer->id))->where('direction', 'in')
                 ->where('created_at', '>=', max($deal->created_at, now()->subDays((int) $this->option('days'))))->get();
             foreach ($letters as $m) {
-                foreach ($m->attachments->filter(fn ($a) => ! $a->is_inline && $a->isImage()) as $a) {
+                $images = $m->attachments->filter(fn ($a) => ! $a->is_inline && $a->isImage());
+                // Пачка картинок — фото машины (`ShareReplyFiles::PHOTO_BATCH`), их не трогаем.
+                if ($images->count() >= ShareReplyFiles::PHOTO_BATCH) {
+                    continue;
+                }
+                foreach ($images as $a) {
                     $contents = $a->contents();
                     $sha = $contents !== null ? hash('sha256', $contents) : null;
                     if (! $sha || ! $hidden->has($sha)) {
