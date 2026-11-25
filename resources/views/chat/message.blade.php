@@ -13,7 +13,6 @@
     $docs = $deleted ? $m->files : $m->files->reject->isImage();
     // Мета (время, галочки) сидит на последней строке текста; в пузыре из одних фото — поверх фото.
     $photoOnly = !$deleted && !$m->text && $images->isNotEmpty() && $docs->isEmpty();
-    $kb = fn (int $b) => $b >= 1048576 ? round($b / 1048576, 1).' МБ' : max(1, (int) round($b / 1024)).' КБ';
     // Под пузырём — кнопки шага (сообщение площадки с просьбой) или «Это чек об оплате» (файлы менеджера, шаг ждёт документ).
     // `ask` — вопрос площадки без просьбы шага (11.11.2026: «Когда покупатель сможет подписать?» — `x-chat.signing-keys`).
     $stepKeys = !$deleted && !$system && ($m->requirement_id || $m->ask);
@@ -22,7 +21,7 @@
     $author = $system || $cont ? null : $m->authorName($chat, $user);
     $authorShown = $author !== null && ($readonly || (!$mine && !$chat->isBuyerChat() && $author !== $chat->counterpartName($user)));
 @endphp
-<div class="msg {{ $system ? 'is-system' : ($mine ? 'is-mine' : 'is-their') }} {{ $cont ? 'is-cont' : '' }} {{ $mine && !$system && $m->seq <= $readSeq ? 'is-read' : '' }} {{ $m->edited_at && !$deleted ? 'is-edited' : '' }} {{ $photoOnly ? 'is-photo' : '' }} {{ $stepKeys || $docPick ? 'has-step' : '' }}" data-seq="{{ $m->seq }}" data-day="{{ $day }}" data-author="{{ $m->author_id ?? $m->author_kind->value }}" @if ($own) data-own @endif @if ($del) data-del @endif @if ($deleted) data-deleted @endif @if (!$system && !$readonly && !$deleted) data-action="contextmenu->chat#menu:prevent pointerdown->chat#press pointerup->chat#release pointercancel->chat#release pointermove->chat#drag" @endif>
+<div class="msg {{ $system ? 'is-system' : ($mine ? 'is-mine' : 'is-their') }} {{ $cont ? 'is-cont' : '' }} {{ $mine && !$system && $m->seq <= $readSeq ? 'is-read' : '' }} {{ $m->edited_at && !$deleted ? 'is-edited' : '' }} {{ $photoOnly ? 'is-photo' : '' }} {{ $docs->isNotEmpty() ? 'has-file' : '' }} {{ $stepKeys || $docPick ? 'has-step' : '' }}" data-seq="{{ $m->seq }}" data-day="{{ $day }}" data-author="{{ $m->author_id ?? $m->author_kind->value }}" @if ($own) data-own @endif @if ($del) data-del @endif @if ($deleted) data-deleted @endif @if (!$system && !$readonly && !$deleted) data-action="contextmenu->chat#menu:prevent pointerdown->chat#press pointerup->chat#release pointercancel->chat#release pointermove->chat#drag" @endif>
     @if ($system)
         <div class="msg-system">{{ $m->text }}</div>
     @else
@@ -42,8 +41,17 @@
                     @foreach ($images as $f)<a href="/chats/{{ $m->chat_id }}/files/{{ $f->id }}" data-action="chat#view:prevent"><img src="/chats/{{ $m->chat_id }}/files/{{ $f->id }}" data-thumb="/chats/{{ $m->chat_id }}/files/{{ $f->id }}?thumb=1" alt="" loading="lazy" decoding="async"></a>@endforeach
                 </div>
             @endif
+            {{-- Файл — как в Telegram (25.11.2026, владелец прислал снимок): значок слева, имя, под ним вес и «Скачать»; значок и имя
+                 открывают шторку документов, «Скачать» (`download`, шторка такие не ловит) — сам файл, и PDF тоже. --}}
             @foreach ($docs as $f)
-                <a href="/chats/{{ $m->chat_id }}/files/{{ $f->id }}" target="_blank" data-doc="{{ \App\Support\Docs::type($f->mime, $f->name) }}" data-doc-name="{{ \App\Support\Docs::label($f->name) }}" title="{{ $f->name }}" class="msg-file"><x-ui.file-icon :name="$f->name" :mime="$f->mime" :bytes="$f->size"/><span class="min-w-0 truncate text-sm">{{ $f->name }}</span></a>
+                @php $href = '/chats/'.$m->chat_id.'/files/'.$f->id; @endphp
+                <div class="msg-file">
+                    <a href="{{ $href }}" target="_blank" data-doc="{{ \App\Support\Docs::type($f->mime, $f->name) }}" data-doc-name="{{ \App\Support\Docs::label($f->name) }}" title="{{ $f->name }}" class="msg-file-open">
+                        <x-ui.file-icon :name="$f->name" :mime="$f->mime"/>
+                        <span class="msg-file-name"><x-ui.file-name :name="$f->name"/></span>
+                    </a>
+                    <div class="msg-file-sub"><span class="nums">{{ \App\Support\FileSize::short($f->size) }}</span>@if (!$deleted)<a href="{{ $href }}" download="{{ $f->name }}" class="msg-file-get">Скачать</a>@endif</div>
+                </div>
             @endforeach
             @if ($deleted)
                 {{-- Сюда доходят только сотрудники (собеседнику удалённого нет, `Message::hiddenFor`): что было — серым, кто и когда удалил. --}}
