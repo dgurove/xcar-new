@@ -24,7 +24,8 @@ final class ResendContact
     public function __invoke(Offer $offer, User $by): void
     {
         $deal = $offer->deal()->first();
-        if (! $deal || ! $deal->isActive() || ! $deal->buyerPicksUp() || $offer->pickedUp() || ! ContactDue::shownAt($deal)) {
+        // Контакт менеджеру показан (`ManagerView`, живой) — правка уходит ему сообщением, кто бы ни забирал (25.11.2026).
+        if (! $deal || ! $deal->isActive() || $offer->pickedUp() || ! ContactDue::shownAt($deal)) {
             return;
         }
         $items = [];

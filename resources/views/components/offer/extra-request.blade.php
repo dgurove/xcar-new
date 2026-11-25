@@ -33,6 +33,11 @@
                                 @endif
                                 @if ($phase === ExtraAsk::SUPPLIER)
                                     <span>ждём ответа {{ Ago::since($ask->since_at, hours: true) }}</span>
+                                @elseif ($phase === ExtraAsk::SHOW && $ask->deal && auth()->user()?->canEditDeals())
+                                    {{-- Нажимается (25.11.2026, владелец: «надпись не кликабельная, чё он хочет от меня»): окно «Что видит менеджер» из ответа. --}}
+                                    <x-deal.manager-view :deal="$ask->deal" :id="'extra-show-'.$ask->id" :letter="$ask->answer_message_id ? \App\Mail\Message::find($ask->answer_message_id) : null">
+                                        <button type="button" class="text-left text-accent-text" data-action="sheet#open">показать менеджеру ›</button>
+                                    </x-deal.manager-view>
                                 @elseif ($phase === ExtraAsk::SHOW)
                                     <span class="text-accent-text">показать менеджеру</span>
                                 @elseif ($phase === ExtraAsk::MANAGER)
@@ -58,6 +63,11 @@
     <div class="flex flex-wrap gap-2">
         @if ($compose)<x-mail.window-button :url="'/work/mail/new?offer='.$offer->number.'&extra=1'" label="Сделать доп. просьбу" icon="mail" class="btn-s"/>@endif
         @if ($reopen)
+            @if ($last->phase() === ExtraAsk::SHOW && $last->deal)
+                <x-deal.manager-view :deal="$last->deal" :id="'extra-solved-block-'.$last->id" :letter="$last->answer_message_id ? \App\Mail\Message::find($last->answer_message_id) : null">
+                    <x-ui.button size="sm" type="button" data-action="sheet#open">Вопрос решён</x-ui.button>
+                </x-deal.manager-view>
+            @endif
             <form method="post" action="/offers/{{ $n }}/extra-asks/{{ $last->id }}/reopen" class="contents">@csrf<x-ui.button size="sm" variant="secondary">Вопрос не решён</x-ui.button></form>
         @endif
     </div>

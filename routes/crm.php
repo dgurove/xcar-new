@@ -264,6 +264,8 @@ Route::domain(config('xcar.crm_host'))->middleware(['auth', 'ability:isStaff'])-
         Route::post('/work/deals/{deal}/contract-signed', [DealController::class, 'contractSigned']);
         Route::post('/work/deals/{deal}/dates', [DealController::class, 'dates']);
         Route::post('/work/deals/{deal}/disclose', [DisclosureController::class, 'store']);
+        // Что видит менеджер (25.11.2026, `x-deal.manager-view`): показать и скрыть пункты сделки, письмо — тем же окном.
+        Route::put('/work/deals/{deal}/manager-view', [DisclosureController::class, 'view']);
         Route::put('/work/deals/{deal}/disclosures/{disclosure}', [DisclosureController::class, 'update']);
         Route::delete('/work/deals/{deal}/disclosures/{disclosure}', [DisclosureController::class, 'destroy']);
         Route::post('/work/deals/{deal}/supplier-invoice', [DisclosureController::class, 'invoice']);

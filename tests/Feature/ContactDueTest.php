@@ -50,7 +50,7 @@ class ContactDueTest extends TestCase
         $this->manager = User::create(['name' => 'Макаров Дмитрий', 'phone' => '79000000002', 'roles' => [Role::Manager], 'approved_at' => now()]);
         $vendor = Vendor::create(['name' => 'Совкомбанк тест', 'deal_format' => 'commission']);
         app(ApplyPreset::class)($vendor->workflowOrNew(Track::Sale), Preset::Sovcombank);
-        $offer = Offer::create(['vendor_id' => $vendor->id, 'floor_price' => 944000, 'asking_price' => 1050000, 'bids_close_at' => now()->addDay()]);
+        $offer = Offer::create(['vendor_id' => $vendor->id, 'claim_ref' => '915891/2026', 'floor_price' => 944000, 'asking_price' => 1050000, 'bids_close_at' => now()->addDay()]);
         $offer->forceFill(['state' => OfferState::Open])->save();
         $offer->viewers()->create(['user_id' => $this->manager->id, 'opens_at' => now()]);
         app(EnterStage::class)($offer, Stage::where('workflow_id', $vendor->fresh()->workflow(Track::Sale)->id)->where('name', 'Приём подтверждений')->firstOrFail());
@@ -62,7 +62,8 @@ class ContactDueTest extends TestCase
         $thread = Thread::create(['account_id' => $account, 'subject' => '915891-26 BMW X5 Волгоград', 'offer_id' => $offer->id, 'last_message_at' => now()]);
         $message = Message::create(['account_id' => $account, 'thread_id' => $thread->id, 'direction' => 'in', 'from_email' => 'mikhail.korochkin@sovcomins.ru',
             'from_name' => 'Корочкин Михаил', 'subject' => '915891-26 BMW X5 Волгоград', 'date_at' => now()->subDay(),
-            'text_body' => "1 778 095 руб. Готовы к передаче – 8-988-967-10-40\r\n\r\nКорочкин Михаил Александрович\r\nтел.: 88001002100\r\n"]);
+            'text_body' => "1 778 095 руб. Готовы к передаче – 8-988-967-10-40\r\n\r\nКорочкин Михаил Александрович\r\nтел.: 88001002100\r\n",
+            'parsed' => ['keys' => ['code:'.\App\Mail\Extraction\Code::key('915891/2026')]]]);
         MessageParsed::dispatch($message);
 
         return $offer->fresh();
@@ -76,7 +77,8 @@ class ContactDueTest extends TestCase
         $pickup = $offer->pickup();
         $this->assertSame(Channel::Manager, $pickup?->channel);
         $this->assertSame($this->manager->id, $pickup->executor_id);
-        $this->assertNull($offer->insured_phone);
+        // Телефон из письма — в карточке сам (25.11.2026: «что из письма парсится — в админке встаёт само»), подпись Корочкина — нет.
+        $this->assertSame('79889671040', \App\Support\Phone::normalize($offer->insured_phone));
 
         // Ход наш: дело, вкладка «Показать контакты», то же в SQL.
         $this->assertTrue(ContactDue::due($this->deal));
@@ -86,14 +88,14 @@ class ContactDueTest extends TestCase
         $this->assertSame([$pickup->id], ContactDue::transportIds());
         $this->actingAs($this->admin)->get('http://crm.xcar.localhost/offers?preset=pickup_contacts')->assertOk()->assertSee('Показать контакты');
 
-        // Страница: вместо «Ждём менеджера» — дело и шторка с телефоном из письма, отмеченным.
+        // Страница: вместо «Ждём менеджера» — дело и окно «Что видит менеджер» с контактом, отмеченным к показу.
         $this->get('http://crm.xcar.localhost/offers/'.$offer->number.'?contact=1')->assertOk()
             ->assertSee('Показать контакты менеджеру')->assertDontSee('Ждём менеджера')->assertSee('+7 988 967-10-40')->assertDontSee('+7 800 100-21-00');
+        $this->assertFalse(\App\Offers\ManagerView::sees($this->deal->fresh(), 'contact'));
 
-        // Показали телефон из письма — менеджер видит, в карточке он же, дело ушло.
-        $this->post("http://crm.xcar.localhost/work/deals/{$this->deal->id}/disclose", ['card' => 1, 'on' => ['phone:79889671040'],
-            'edit' => ['phone:79889671040' => '+7 988 967-10-40']])->assertSessionHasNoErrors()->assertSessionHas('toast', 'Показано менеджеру');
-        $this->assertSame('79889671040', $offer->fresh()->insured_phone);
+        // Показали — менеджер видит, дело ушло.
+        $this->put("http://crm.xcar.localhost/work/deals/{$this->deal->id}/manager-view", ['show' => ['contact']])->assertSessionHasNoErrors();
+        $this->deal = $this->deal->fresh();
         $this->assertFalse(ContactDue::due($this->deal));
         $this->assertSame([], ContactDue::transportIds());
         $this->assertNotSame('contact', $offer->fresh()->position(Track::Sale)->todo()['key'] ?? null);
@@ -103,16 +105,20 @@ class ContactDueTest extends TestCase
     public function test_contact_typed_by_hand(): void
     {
         $offer = $this->deal();
-        $url = "http://crm.xcar.localhost/work/deals/{$this->deal->id}/disclose";
-        $this->actingAs($this->admin)->post($url, ['card' => 1, 'contact_phone' => '12345'])->assertSessionHasErrors('contact_phone');
+        // Контакт правят в карточке (карандаш окна — `PUT /offers/{n}`), показывают — окном.
+        $this->actingAs($this->admin)->put('http://crm.xcar.localhost/offers/'.$offer->number, ['_fields' => ['contacts'], 'contacts' => [['name' => 'Иван Сидоров', 'phone' => '8 921 340-06-57']]])->assertSessionHasNoErrors();
         $this->assertTrue(ContactDue::due($this->deal));
-
-        $this->post($url, ['card' => 1, 'contact_name' => 'Иван Сидоров', 'contact_phone' => '8 921 340-06-57'])->assertSessionHasNoErrors();
+        $this->put("http://crm.xcar.localhost/work/deals/{$this->deal->id}/manager-view", ['show' => ['contact']])->assertSessionHasNoErrors();
         $offer = $offer->fresh();
         $this->assertSame('Иван Сидоров', $offer->insured_name);
-        $this->assertSame('79213400657', $offer->insured_phone);
-        $this->assertFalse(ContactDue::due($this->deal));
+        $this->assertSame('79213400657', \App\Support\Phone::normalize($offer->insured_phone));
+        $this->assertFalse(ContactDue::due($this->deal->fresh()));
         $this->actingAs($this->manager)->get("http://xcar.localhost/deals/{$this->deal->id}")->assertOk()->assertSee('+7 921 340-06-57')->assertSee('Иван Сидоров');
+
+        // Скрыли — у менеджера контакта нет, снова наш ход.
+        $this->actingAs($this->admin)->put("http://crm.xcar.localhost/work/deals/{$this->deal->id}/manager-view", ['hide' => ['contact']])->assertSessionHasNoErrors();
+        $this->assertTrue(ContactDue::due($this->deal->fresh()));
+        $this->actingAs($this->manager)->get("http://xcar.localhost/deals/{$this->deal->id}")->assertOk()->assertDontSee('+7 921 340-06-57');
     }
 
     /**
@@ -123,15 +129,16 @@ class ContactDueTest extends TestCase
     {
         $offer = $this->deal();
         $page = 'http://crm.xcar.localhost/offers/'.$offer->number;
-        $url = "http://crm.xcar.localhost/work/deals/{$this->deal->id}/disclose";
+        $url = "http://crm.xcar.localhost/work/deals/{$this->deal->id}/manager-view";
 
         // До показа правка карточки менеджеру не уходит — висит дело.
         $this->actingAs($this->admin)->put($page, ['_fields' => ['insured_name'], 'insured_name' => 'Корочкин Михаил'])->assertSessionHasNoErrors();
         $this->assertSame(0, \App\Offers\Disclosure::where('deal_id', $this->deal->id)->count());
 
-        $this->post($url, ['card' => 1, 'on' => ['phone:79889671040'], 'edit' => ['phone:79889671040' => '+7 988 967-10-40']])->assertSessionHasNoErrors();
+        $this->put($url, ['show' => ['contact']])->assertSessionHasNoErrors();
         $chat = \App\Chats\Chat::where('offer_id', $offer->id)->where('user_id', $this->manager->id)->firstOrFail();
-        $this->assertTrue($chat->messages()->where('text', "Контакт для получения ТС\n+7 988 967-10-40")->exists());
+        $said = $chat->messages()->where('text', 'like', 'Контакт для получения ТС%')->latest('id')->firstOrFail()->text;
+        $this->assertStringContainsString('988 967-10-40', $said);
         $this->get($page)->assertOk()->assertSee('Менеджер видит контакт')->assertSee('+7 988 967-10-40')
             ->assertSee('Ждём менеджера')->assertDontSee('Показать контакты менеджеру');
 

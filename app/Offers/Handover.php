@@ -102,12 +102,12 @@ final class Handover
     public static function for(Deal $deal, bool $staff = false): self
     {
         $offer = $deal->offer->loadMissing(['positions.stage.exits', 'parkVehicle.yard.settlement', 'settlement']);
-        $shown = Disclosures::shown($deal);
-        // Владелец: сотруднику — страхователь машины, менеджеру — показанный контакт (страхователя дописывают письма).
-        $owner = $staff
-            ? ['name' => $offer->insured_name, 'phone' => $offer->insured_phone, 'phone2' => $offer->insured_phone2, 'address' => $offer->inspection_address ?: null]
-            : ['name' => Disclosures::latest($shown, 'name'), 'phone' => Disclosures::latest($shown, 'phone'),
-                'phone2' => Disclosures::latest($shown, 'phone', 1), 'address' => Disclosures::latest($shown, 'address')];
+        // Владелец: сотруднику — страхователь машины, менеджеру — он же, когда контакт ему показан (25.11.2026, `ManagerView`: живые
+        // данные карточки, а не снимок показа — поправили в карточке, у менеджера новое).
+        $seen = $staff || ManagerView::sees($deal, ManagerView::CONTACT);
+        $contacts = $seen ? \App\Cars\OwnerContacts::of($offer) : [];
+        $owner = ['name' => $contacts[0]['name'] ?? null, 'phone' => $contacts[0]['phone'] ?? null,
+            'phone2' => $contacts[1]['phone'] ?? ($staff ? $offer->insured_phone2 : null), 'address' => $seen ? ($offer->inspection_address ?: null) : null];
         $sale = $offer->position(Track::Sale);
         // Вывоз — задача логистики (17.10.2026): дата, место и владелец — из неё.
         $pickup = $offer->pickup();

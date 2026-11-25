@@ -1,121 +1,65 @@
-{{-- «Разобрать ответ» (03.11.2026, владелец: «пришло письмо — менеджеру вообще ничего; админ заходит в сделку, ему чётко видно,
-     что пришёл такой-то ответ, и что система предлагает показать — пунктами с галками, каждый можно поправить карандашиком»).
-     Ждёт разбора — плашка: «Письмо», «Не показывать», «Показать менеджеру…» и шторка (`admin.deals.reply-review-sheet`); ниже — что
-     уже показано, строками. `pill` — «Показать менеджеру» пилюлей в ряду кнопок окошка, когда разбирать нечего (руками: пункты
-     из машины и её документы); пока письмо ждёт — пилюли нет, есть плашка. `compact` — только плашка (окошко предложения).
-     `line` (10.11.2026, начальник по Volvo 01527: лаймовое «Показать менеджеру…» сверху окошка, пока ждём ответа самого менеджера) —
-     строкой в текущем шаге пути (`x-route.path`) с тихими ссылками; плашки сверху у сделки с путём больше нет. --}}
+{{-- Письмо поставщика и что видит менеджер — в ходе сделки и окне машины (25.11.2026, владелец: «„Показать менеджеру“ и заполнение
+     данных из письма не дружат — подружить»; вариант Б). Что из письма распознано — уже в сделке (контакт, документы, собственник,
+     продавец ДКП, подписание), здесь — только что из этого видит менеджер: одно окно `x-deal.manager-view`.
+     - `line` — строками в текущем шаге пути (`x-route.path`): письмо ждёт разбора — «Письмо от … / Показать менеджеру?» (окно из письма:
+       его документы и контакт отмечены, текст — в сообщение, галка шага); ниже всегда — «Менеджер видит: контакт, паспорт…» (окно
+       целиком: «Видит» / «Не видит», скрыть, показать, добавить, сообщения).
+     - `pill` — «Что видит менеджер» пилюлей в ряду кнопок окна машины.
+     - иначе (`compact`, плашка окна без пути) — письмо ждёт разбора: «Письмо», «Не показывать», «Показать менеджеру…». --}}
 @props(['deal', 'compact' => false, 'pill' => false, 'line' => false, 'manual' => false])
 @php
-    use App\Offers\Actions\Disclose;
-    use App\Offers\Disclosures;
+    use App\Offers\ManagerView;
     use App\Support\Ago;
-    $reviews = \App\Offers\ReplyReview::pending()->where('deal_id', $deal->id)->with('message.attachments')->orderByDesc('id')->get();
-    $letters = $reviews->pluck('message')->filter()->values();
-    $id = 'disclose-'.$deal->id;
+    $live = $deal->buyer_id && $deal->isActive() && auth()->user()?->canEditDeals();
+    $letters = $live ? \App\Offers\ReplyReview::pending()->where('deal_id', $deal->id)->with('message.attachments')->orderByDesc('id')->get()->pluck('message')->filter()->values() : collect();
     $offer = $deal->offer;
-    $live = $deal->buyer_id && $deal->isActive();
-    $shows = $live && ($pill ? $letters->isEmpty() : $letters->isNotEmpty() || ! $compact);
-    $vendor = $offer->vendor?->name;
+    $id = 'disclose-'.$deal->id;
+    $view = 'manager-view-'.$deal->id;
+    $step = $letters->isNotEmpty() ? \App\Offers\Actions\Disclose::stepExit($deal, $letters) : null;
+    $what = $step && \App\Offers\SupplierInvoice::needs($deal, $step) ? 'Счёт' : 'Письмо';
 @endphp
-@if ($shows)
-    @php
-        $proposals = Disclosures::proposals($deal, $letters);
-        $step = Disclose::stepExit($deal, $letters);
-        $picked = old('_sheet') === $id ? (array) old('on', []) : [];
-        $shown = $compact || $pill ? collect() : Disclosures::shown($deal);
-        $since = $line ? $offer->position()?->entered_at : null;
-        $shown = $since ? $shown->where('created_at', '>=', $since) : $shown;
-        // Показ одного контакта, пока менеджер забирает сам, — строкой «Менеджер видит контакт» (`x-deal.contact-shown`); второй строкой
-        // «Показано менеджеру» о том же не пишем (25.11.2026).
-        if ($deal->buyerPicksUp() && ! $offer->pickedUp()) {
-            $shown = $shown->reject(fn ($d) => collect($d->items ?? [])->every(fn ($i) => in_array($i['kind'] ?? null, ['name', 'phone', 'address'], true)));
-        }
-        $sheet = ['id' => $id, 'deal' => $deal, 'letters' => $letters, 'proposals' => $proposals, 'step' => $step, 'picked' => $picked];
-    @endphp
+@if ($live)
     @if ($pill)
-        <span class="contents" data-controller="sheet">
-            <button type="button" {{ $attributes->class('pill pill-plain gap-1.5') }} data-action="sheet#open" aria-controls="{{ $id }}"><x-ui.icon name="users" class="size-4"/>Показать менеджеру</button>
-            @include('admin.deals.reply-review-sheet', $sheet)
-        </span>
+        <x-deal.manager-view :deal="$deal" :id="$view.'-pill'">
+            <button type="button" {{ $attributes->class('pill pill-plain gap-1.5') }} data-action="sheet#open"><x-ui.icon name="users" class="size-4"/>Что видит менеджер</button>
+        </x-deal.manager-view>
     @elseif ($line)
-        {{-- Строкой дела (10.11.2026, владелец: «лютое месиво»): одна строка «Совкомбанк · 3 письма, 09.11», нажатие — шторка разбора
-             с письмом, «Показать менеджеру» и «Не нужно». Показанное раньше — строкой дела под ней. --}}
         @if ($letters->isNotEmpty())
-            <div class="contents" data-controller="sheet">
-                {{-- Без логотипа и числа писем (16.11.2026, владелец: «зачем в ходе показано, сколько писем от страховой, и её логотип —
-                     очень странно выглядит»; поставщик — в шапке окна): что пришло и когда, нажатие — шторка разбора. --}}
-                <x-route.task-row icon="mail" urgent aria-controls="{{ $id }}">
-                    {{-- Двумя строками помельче (16.11.2026, владелец): «Письмо от 16.11 10:26» и ниже приглушённо, что с ним сделать. --}}
-                    @php $what = $step && \App\Offers\SupplierInvoice::needs($deal, $step) ? 'Счёт' : 'Письмо'; @endphp
+            {{-- Что пришло и когда; нажатие — окно из письма (16.11.2026: без логотипа и числа писем). --}}
+            <x-deal.manager-view :deal="$deal" :id="$id" :letters="$letters" reviews>
+                <x-route.task-row icon="mail" urgent>
                     {{ $what }} от <span class="nums whitespace-nowrap">{!! Ago::html($letters->first()->date_at, true, words: false) !!}</span>
                     <x-slot:sub>Показать менеджеру?</x-slot:sub>
                 </x-route.task-row>
-                {{-- Письмо не для менеджера (16.11.2026, владелец: «нас в копию поставили») — «Пропустить письмо» в подвале шторки, а не
-                     кнопкой в шаге (17.11.2026, владелец: «самая большая кнопка — пропустить письмо, максимально нелогично», «перенёс бы
-                     внутрь окна, которое открывается по „Показать менеджеру?“»): главное в шаге — его кнопки ниже. --}}
-                @include('admin.deals.reply-review-sheet', $sheet + ['line' => true])
-            </div>
-        @elseif ($manual)
-            {{-- Писем на разбор нет — «Показать менеджеру» руками тихой кнопкой в шаге (16.11.2026, владелец: «не в шапке, она в ходе
-                 сделки»); на странице — `manual`, в окне то же — «Что показываем» в плашке менеджера. --}}
-            <div class="contents" data-controller="sheet">
-                <div class="step-acts mt-2"><button type="button" class="btn btn-s btn-quiet" data-action="sheet#open" aria-controls="{{ $id }}"><x-ui.icon name="file" class="size-4"/>Показать менеджеру</button></div>
-                @include('admin.deals.reply-review-sheet', $sheet)
-            </div>
+            </x-deal.manager-view>
         @endif
-        @if ($shown->isNotEmpty())
-            {{-- Строкой дела: «Показано менеджеру» и когда (17.11.2026, владелец: «куча текста, который ещё и весь сдвигается из-за
-                 иконки»; было «Показано менеджеру: 20261116102357ЭПТС, ЭПТС во вложении…»). Что именно — нажатием, шторкой тем же
-                 видом, каким это видит менеджер (`cabinet.deals.disclosure`), каждый показ этапа, свежий сверху. --}}
-            <div class="contents" data-controller="sheet">
-                <x-route.task-row icon="check" aria-controls="{{ $id }}-shown">
-                    Показано менеджеру
-                    <x-slot:sub>{!! Ago::html($shown->first()->created_at, true, words: false) !!}</x-slot:sub>
-                </x-route.task-row>
-                <x-ui.sheet :id="$id.'-shown'" title="Показано менеджеру">
-                    <div class="flex flex-col gap-4">
-                        {{-- Показанное правится и удаляется (25.11.2026, `admin.deals.disclosure-edit`). --}}
-                        @foreach ($shown as $disclosure)
-                            @if (auth()->user()?->canEditDeals())
-                                @include('admin.deals.disclosure-edit', ['disclosure' => $disclosure, 'deal' => $deal])
-                            @else
-                                @include('cabinet.deals.disclosure', ['disclosure' => $disclosure])
-                            @endif
-                        @endforeach
+        {{-- Что менеджер видит сейчас — всегда строкой: нажатие — окно целиком. --}}
+        @php $summary = ManagerView::summary($deal); @endphp
+        <x-deal.manager-view :deal="$deal" :id="$view">
+            <x-route.task-row :icon="$summary !== '' ? 'eye' : 'eye-off'">
+                {{ $summary !== '' ? 'Менеджер видит' : 'Менеджер ничего не видит' }}
+                @if ($summary !== '')
+                    <x-slot:sub>{{ $summary }}</x-slot:sub>
+                @endif
+            </x-route.task-row>
+        </x-deal.manager-view>
+    @elseif ($letters->isNotEmpty())
+        <div {{ $attributes }}>
+            <x-deal.manager-view :deal="$deal" :id="$id" :letters="$letters" reviews>
+                <div class="proposal">
+                    <div class="proposal-body">
+                        <span class="proposal-mark" aria-hidden="true"><x-ui.icon name="mail" class="size-4"/></span>
+                        <div class="min-w-0 flex-1">
+                            <p class="text-ink">{{ $what === 'Счёт' ? 'Счёт от поставщика' : 'Письмо от поставщика' }}{{ $letters->count() > 1 ? ', писем: '.$letters->count() : '' }}</p>
+                            <p class="text-sm text-ink-muted">{!! Ago::html($letters->first()->date_at, true) !!}, менеджер о нём не знает</p>
+                        </div>
                     </div>
-                </x-ui.sheet>
-            </div>
-        @endif
-    @elseif ($letters->isNotEmpty() || $shown->isNotEmpty())
-    <div {{ $attributes }} data-controller="sheet">
-        @if ($letters->isNotEmpty())
-            <div class="proposal">
-                <div class="proposal-body">
-                    <span class="proposal-mark" aria-hidden="true"><x-ui.icon name="mail" class="size-4"/></span>
-                    <div class="min-w-0 flex-1">
-                        <p class="text-ink">{{ $step && \App\Offers\SupplierInvoice::needs($deal, $step) ? 'Счёт от страховой' : 'Ответ страховой' }}{{ $letters->count() > 1 ? ', писем: '.$letters->count() : '' }}</p>
-                        <p class="text-sm text-ink-muted">{{ Ago::html($letters->first()->date_at, true) }}, менеджер о нём не знает</p>
+                    <div class="proposal-acts flex-wrap">
+                        <x-mail.window-button :url="'/offers/'.$offer->number.'/letters?at='.$letters->first()->id" label="Письмо" class="btn-s"/>
+                        <button type="button" class="btn btn-s btn-accent" data-action="sheet#open">Показать менеджеру…</button>
                     </div>
                 </div>
-                <div class="proposal-acts flex-wrap">
-                    <x-mail.window-button :url="'/offers/'.$offer->number.'/letters?at='.$letters->first()->id" label="Письмо" class="btn-s"/>
-                    <form method="post" action="/work/deals/{{ $deal->id }}/reviews/done" data-turbo-confirm="Менеджер не узнает об этом ответе" data-turbo-confirm-label="Ничего не показывать">
-                        @csrf
-                        <button class="btn btn-s btn-quiet">Не показывать</button>
-                    </form>
-                    <button type="button" class="btn btn-s btn-accent" data-action="sheet#open" aria-controls="{{ $id }}">Показать менеджеру…</button>
-                </div>
-            </div>
-            @include('admin.deals.reply-review-sheet', $sheet)
-        @endif
-        @if ($shown->isNotEmpty())
-            <div @class(['flex flex-col gap-1', 'mt-3' => $letters->isNotEmpty()])>
-                @foreach ($shown->take(3) as $d)
-                    <p class="text-sm"><span class="text-ink-muted">Менеджеру показано {{ Ago::html($d->created_at, true, words: false) }}:</span> {{ $d->summary() }}</p>
-                @endforeach
-            </div>
-        @endif
-    </div>
+            </x-deal.manager-view>
+        </div>
     @endif
 @endif

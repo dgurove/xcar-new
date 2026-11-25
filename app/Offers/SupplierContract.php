@@ -40,7 +40,8 @@ final class SupplierContract
         $offer->getMedia('papers')
             ->filter(fn (Media $m) => (int) $m->getCustomProperty('letter') === $messageId && ! $m->getCustomProperty(SupplierInvoice::PROP)
                 && preg_match(self::NAME, $m->file_name.' '.$m->name))
-            ->each(fn (Media $m) => self::mark($m));
+            // Из письма — помечен, но менеджеру не открыт: что он видит, решают сотрудники (`ManagerView`, 25.11.2026).
+            ->each(fn (Media $m) => self::mark($m, open: false));
     }
 
     public static function attach(Offer $offer, UploadedFile $file): Media
@@ -53,8 +54,11 @@ final class SupplierContract
         return $media;
     }
 
-    public static function mark(Media $m): void
+    /** `open` — открыть менеджеру сразу (приложил сотрудник); из письма — нет. */
+    public static function mark(Media $m, bool $open = true): void
     {
-        $m->setCustomProperty(self::PROP, true)->setCustomProperty('managers', true)->save();
+        $m->setCustomProperty(self::PROP, true);
+        $open && $m->setCustomProperty('managers', true);
+        $m->save();
     }
 }

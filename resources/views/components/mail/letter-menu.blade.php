@@ -19,7 +19,7 @@
     $noReply = ($thread?->needs_reply_at || $replied || $dismiss) && \App\Mail\Threads::canAnswer(auth()->user());
     $declined = $deal && ! $deal->prepaid_at && auth()->user()->canEditDeals();
     $said = $declined ? trim(\Illuminate\Support\Str::limit(preg_replace('/\s+/u', ' ', (string) $m->shownText()), 60, '…')) : '';
-    $disclose = $deal?->buyer_id ? 'disclose-letter-'.$m->id : null;
+    $disclose = $deal?->buyer_id && $deal->isActive() && auth()->user()?->canEditDeals() ? 'disclose-letter-'.$m->id : null;
 @endphp
 @if ($thread)
 <x-ui.more :id="'letter-menu-'.$m->id">
@@ -55,11 +55,7 @@
     @endif
 </x-ui.more>
 @if ($disclose)
-    {{-- «Показать менеджеру» это письмо — та же шторка, что у строки письма в шаге, с отмеченным текстом письма. --}}
-    @php $shown = collect([$m]); @endphp
-    <div class="contents" data-controller="sheet" data-action="{{ $disclose }}:open@window->sheet#open">
-        @include('admin.deals.reply-review-sheet', ['id' => $disclose, 'deal' => $deal, 'letters' => $shown, 'proposals' => \App\Offers\Disclosures::proposals($deal, $shown, $m->id),
-            'step' => \App\Offers\Actions\Disclose::stepExit($deal, $shown), 'picked' => [], 'message' => $m, 'top' => true])
-    </div>
+    {{-- «Показать менеджеру» это письмо — окно «Что видит менеджер» из письма (`x-deal.manager-view`, 25.11.2026). --}}
+    <x-deal.manager-view :deal="$deal" :id="$disclose" :letter="$m" top/>
 @endif
 @endif

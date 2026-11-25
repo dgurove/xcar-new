@@ -30,19 +30,12 @@
         @endphp
         <div class="reply-acts">
             <a href="{{ $editor }}" class="btn btn-quiet"><x-ui.icon :name="$bounce ? 'mail' : 'reply'" class="size-4"/>{{ $bounce ? 'Переслать' : 'Ответить' }}</a>
-            {{-- «Показать менеджеру» это письмо — та же шторка, что у строки письма в шаге, с отмеченным текстом письма. --}}
-            @if ($deal?->buyer_id)
-                @php
-                    $shown = collect([$message]);
-                    $sheetId = 'disclose-letter-'.$message->id;
-                    $proposals = \App\Offers\Disclosures::proposals($deal, $shown, $message->id);
-                @endphp
-                {{-- Справа вместе с «⋯» (16.11.2026, владелец): слева — ответ, справа — что ещё сделать с письмом. --}}
-                <div class="contents" data-controller="sheet">
-                    <button type="button" class="btn btn-quiet reply-acts-end" data-action="sheet#open" aria-controls="{{ $sheetId }}"><x-ui.icon name="user" class="size-4"/>Показать менеджеру</button>
-                    @include('admin.deals.reply-review-sheet', ['id' => $sheetId, 'deal' => $deal, 'letters' => $shown, 'proposals' => $proposals,
-                        'step' => \App\Offers\Actions\Disclose::stepExit($deal, $shown), 'picked' => [], 'message' => $message, 'top' => true])
-                </div>
+            {{-- «Показать менеджеру» это письмо — окно «Что видит менеджер» из письма (`x-deal.manager-view`, 25.11.2026): его документы и
+                 контакт отмечены, текст — в сообщение. Справа вместе с «⋯» (16.11.2026): слева — ответ, справа — что ещё сделать. --}}
+            @if ($deal?->buyer_id && $deal->isActive() && auth()->user()?->canEditDeals())
+                <x-deal.manager-view :deal="$deal" :id="'disclose-letter-'.$message->id" :letter="$message" top>
+                    <button type="button" class="btn btn-quiet reply-acts-end" data-action="sheet#open"><x-ui.icon name="user" class="size-4"/>Показать менеджеру</button>
+                </x-deal.manager-view>
             @endif
             @if ($noReply || $declined)
                 <x-ui.more :id="'reply-more-'.$message->id" :class="$deal?->buyer_id ? 'reply-more' : 'reply-more reply-acts-end'">

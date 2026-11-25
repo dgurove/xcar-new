@@ -21,6 +21,45 @@ use Illuminate\Validation\ValidationException;
  */
 class DisclosureController
 {
+    /**
+     * Окно «Что видит менеджер» (25.11.2026, `x-deal.manager-view`, `ManagerView`): показать и скрыть пункты сделки одним нажатием;
+     * из письма (`message` — одно письмо окна писем, `reviews` — ждущие разбора) — с его строками подписания (`line[]` — ключи
+     * `Disclosures::proposals`, значения считает сервер), своим сообщением и галкой шага.
+     */
+    public function view(Request $request, Deal $deal, \App\Offers\Actions\SetManagerView $set)
+    {
+        abort_unless($request->user()->canEditDeals() && $deal->buyer_id && $deal->isActive(), 404);
+        $data = $request->validate([
+            'show' => ['array'], 'show.*' => ['string', 'max:40'],
+            'hide' => ['array'], 'hide.*' => ['string', 'max:40'],
+            'line' => ['array'], 'line.*' => ['string', 'max:80'],
+            'text' => ['nullable', 'string', 'max:5000'],
+            'step' => ['nullable', 'integer'],
+            'message' => ['nullable', 'integer'],
+            'reviews' => ['nullable', 'boolean'],
+        ]);
+        $message = isset($data['message']) ? Message::with('thread')->find($data['message']) : null;
+        abort_if(isset($data['message']) && $message?->thread?->offer_id !== $deal->offer_id, 404);
+        $reviews = ! $message && $request->boolean('reviews');
+        $letters = $message ? collect([$message]) : ($reviews ? ReplyReview::pending()->where('deal_id', $deal->id)->with('message')->get()->pluck('message')->filter()->values() : collect());
+        $proposals = $letters->isNotEmpty() ? Disclosures::proposals($deal, $letters, $message?->id) : [];
+        $lines = array_values(array_map(fn ($k) => $proposals[$k]['value'], array_filter($data['line'] ?? [], fn ($k) => ($proposals[$k]['kind'] ?? null) === 'text')));
+        $step = isset($data['step']) ? Outcome::find($data['step']) : null;
+        \App\Offers\Actions\SetManagerView::guard($data['show'] ?? [], $data['hide'] ?? [], $data['text'] ?? null, $message ?? ($reviews ? $letters->first() : null));
+        $done = $set($deal, $request->user(), $data['show'] ?? [], $data['hide'] ?? [], $data['text'] ?? null, $message, $step, $lines, $reviews);
+        $offer = $deal->offer->fresh();
+        if ($done['moved'] && $offer->position()?->letterStatus() === 'unsent' && ($url = $offer->vendorLetterUrl())) {
+            LetterPrompt::ask($request->user(), $offer, $url.'&then=close');
+        }
+        $said = array_filter([
+            $done['shown'] ? 'Менеджер видит: '.mb_strtolower(implode(', ', $done['shown'])) : null,
+            $done['hidden'] ? 'Скрыто: '.mb_strtolower(implode(', ', $done['hidden'])) : null,
+            $done['moved'] ? 'шаг пройден' : null,
+        ]);
+
+        return back(fallback: '/work/deals/'.$deal->id)->with('toast', $said ? implode(', ', $said) : 'Письмо разобрано');
+    }
+
     public function store(Request $request, Deal $deal, Disclose $disclose)
     {
         abort_unless($deal->buyer_id && $deal->isActive(), 404);

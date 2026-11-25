@@ -59,7 +59,9 @@ final class ShareReplyFiles implements ShouldQueue
             // Идёт сделка — картинки ответа это документы, а не кадры машины: фото паспорта, СТС (10.10.2026, Т-Страхование
             // прислало паспорт картинкой, и он лёг скрытым кадром — менеджер его не видел).
             if ($dealing) {
-                [$images, $attachments] = $attachments->partition(fn ($a) => ! $a->is_inline && str_starts_with(mb_strtolower((string) $a->mime), 'image/'));
+                // Картинка — и фото с айфона: HEIC почта шлёт `application/octet-stream` (25.11.2026, Альфа прислала ПТС двумя .heic, они
+                // легли скрытыми кадрами, и показать менеджеру было нечего) — `Attachment::isImage` узнаёт его по расширению.
+                [$images, $attachments] = $attachments->partition(fn ($a) => ! $a->is_inline && $a->isImage());
                 // Пачка картинок — фото машины, как у писем до сделки (17.11.2026, владелец: «почему в 638141/2026 все фотки в документы
                 // ушли» — Совкомбанк в сделке переслал 20 кадров лота, они легли документами и утащили за собой кадры с Мигторга).
                 if ($images->count() >= self::PHOTO_BATCH) {
@@ -104,11 +106,12 @@ final class ShareReplyFiles implements ShouldQueue
      * Та же картинка уже легла скрытым кадром — разбор всей ветки (`ImportThreadFiles`) успел раньше: переносим её в
      * документы, а не пропускаем как «уже есть» (иначе паспорт оставался кадром, который он не видит).
      */
-    private static function photoToDocument(Model $model, string $sha, array $properties): void
+    public static function photoToDocument(Model $model, string $sha, array $properties): void
     {
         // Только скрытый кадр из письма — тот самый обгон разбора ветки. Кадры машины (Мигторг, наши, видимые) не трогаются никогда.
         $model->media()->where('collection_name', 'photos')->where('custom_properties->sha', $sha)->get()
-            ->filter(fn (Media $m) => $m->getCustomProperty('hidden') && $m->getCustomProperty('letter') && ! $m->getCustomProperty('migtorg'))
+            // Без `letter` тоже (25.11.2026): разбор ветки (`ImportThreadFiles`) кладёт кадры письма скрытыми, но без него.
+            ->filter(fn (Media $m) => $m->getCustomProperty('hidden') && ! $m->getCustomProperty('migtorg'))
             ->each(function (Media $m) use ($model, $properties) {
                 // Файл кадра — на публичном диске, документы — на закрытом: переносом (копия в «papers» и удаление кадра).
                 $moved = $m->move(method_exists($model, 'carRecord') ? $model->carRecord() : $model, 'papers');

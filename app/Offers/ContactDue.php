@@ -14,7 +14,7 @@ use Illuminate\Support\Facades\DB;
  *
  * Ждёт, когда: сделка идёт, её менеджер — исполнитель последнего вывоза продажи машины (`channel = manager`), машину ещё не
  * забрали, шаг продажи — получение или связь перед ним (`Stage::handsStep`), и по сделке не показан ни один телефон
- * (`deal_disclosures`, пункт `phone`). Контакта в карточке может не быть вовсе — тогда его ищут в письме или вписывают.
+ * (`deals.manager_sees.contact`, `ManagerView`). Контакта в карточке может не быть вовсе — тогда его ищут в письме или вписывают.
  */
 final class ContactDue
 {
@@ -26,7 +26,7 @@ final class ContactDue
     /** Сделка `d` (идёт) с вывозом `pt` у своего менеджера, телефон не показан. */
     private const CORE_SQL = "d.buyer_id is not null and ".Deal::ACTIVE_D." and d.garage_payer is distinct from 'us'
         and pt.channel = 'manager' and pt.executor_id = d.buyer_id and pt.picked_at is null
-        and not exists (select 1 from deal_disclosures dd where dd.deal_id = d.id and dd.items @> '[{\"kind\":\"phone\"}]')";
+        and (d.manager_sees->>'contact') is null";
 
     /** Над `offer_positions`: позиция продажи, чьей сделке нужно показать контакт (`Position::NEEDS_US_SQL`). */
     public const DUE_SQL = "exists (select 1 from offers co join deals d on d.offer_id = co.id
@@ -68,8 +68,6 @@ final class ContactDue
     /** Когда менеджеру показали телефон (последний показ), null — не показывали. */
     public static function shownAt(Deal $deal): ?Carbon
     {
-        $at = DB::table('deal_disclosures')->where('deal_id', $deal->id)->whereRaw("items @> '[{\"kind\":\"phone\"}]'")->max('created_at');
-
-        return $at ? Carbon::parse($at) : null;
+        return ManagerView::since($deal, ManagerView::CONTACT);
     }
 }

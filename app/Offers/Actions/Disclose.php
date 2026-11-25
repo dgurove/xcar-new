@@ -80,6 +80,10 @@ final class Disclose
             }
             $disclosure = $items ? Disclosure::create(['deal_id' => $deal->id, 'items' => $items, 'message_ids' => $letters->pluck('id')->values()->all() ?: null, 'created_by' => $by->id, 'lead' => $lead]) : null;
             Media::whereIn('id', $files)->get()->each(fn (Media $m) => $m->setCustomProperty('managers', true)->save());
+            // Показали телефон — контакт для получения у менеджера живой, из карточки (`ManagerView`, 25.11.2026).
+            if (collect($items)->contains(fn ($i) => ($i['kind'] ?? null) === 'phone') && ! \App\Offers\ManagerView::sees($deal, \App\Offers\ManagerView::CONTACT)) {
+                $deal->forceFill(['manager_sees' => [\App\Offers\ManagerView::CONTACT => now()->toDateTimeString()] + ($deal->manager_sees ?? [])])->save();
+            }
             $this->done($reviews, $by);
             $letter = $letters->max('id');
             $fits = $invoice ? $step?->stage_id === $deal->offer->position(Track::Sale)?->stage_id : $step?->is(self::stepExit($deal, $letters));
@@ -231,7 +235,7 @@ final class Disclose
     }
 
     /** @param  Collection<int, Message>  $letters */
-    private static function keepOffice(Deal $deal, Collection $letters): void
+    public static function keepOffice(Deal $deal, Collection $letters): void
     {
         $office = $letters->filter(fn (Message $m) => SigningLetter::ready($m))->map(fn (Message $m) => SigningLetter::office($m))->filter()->last();
         if (! $office) {

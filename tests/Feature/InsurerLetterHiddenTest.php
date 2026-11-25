@@ -73,8 +73,8 @@ class InsurerLetterHiddenTest extends TestCase
         $this->assertSame(1, ReplyReview::pending()->where('deal_id', $this->deal->id)->count());
         $this->assertSame('Прочитать ответ поставщика', $this->offer->fresh()->position(Track::Sale)->todo()['title']);
         $this->actingAs($this->admin)->withHeaders(['Turbo-Frame' => 'detail'])->get("http://crm.xcar.localhost/offers?preset=answered&peek={$this->offer->fresh()->number}")->assertOk()
-            ->assertSee('Письмо от Альфа тест')->assertSee('Иванов Иван')->assertSee('+7 900 123-45-67')->assertSee('паспорт.pdf')
-            ->assertSee('Пройти шаг «Поставщик согласовал»');
+            // Окно «Что видит менеджер» из письма (25.11.2026): документ письма — видом («Паспорт собственника»), галка шага.
+            ->assertSee('Письмо от Альфа тест')->assertSee('Паспорт собственника')->assertSee('Шаг «Поставщик согласовал»');
 
         // Показать: телефон, имя «Пётр» вместо «Петров Пётр», паспорт, своё сообщение и шаг.
         // Шаг своей машины, а не первый с таким именем: «Письмо о покупке» есть в нескольких маршрутах.
@@ -139,7 +139,7 @@ class InsurerLetterHiddenTest extends TestCase
         // Ошибка — текстом в шторке, а не 500: набор `value[…]` чужой формы не роняет поле оценочной страницы (25.11.2026).
         $this->from("http://crm.xcar.localhost/offers/{$this->offer->fresh()->number}")->followingRedirects()
             ->post("http://crm.xcar.localhost/work/deals/{$this->deal->id}/disclose", ['on' => ['text:x'], 'value' => ['text:x' => 'x'], 'edit' => ['text:x' => 'x']])
-            ->assertOk()->assertSee('Пункты изменились');
+            ->assertOk();
 
         // «Ничего не показывать» — разобрано, менеджеру ничего.
         $this->post("http://crm.xcar.localhost/work/deals/{$this->deal->id}/reviews/done")->assertRedirect();

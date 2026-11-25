@@ -174,6 +174,9 @@ final class OnInsurerReply
             || Reprice::where('message_id', $message->id)->exists()) {
             return;
         }
+        // «ДКП подготовлен, подписание по адресу …» — адрес офиса в сделку сам (25.11.2026: «что из письма парсится — встаёт само»;
+        // раньше — только после галки «Договор готов»). Менеджеру — окном «Что видит менеджер».
+        \App\Offers\SigningLetter::ready($message) && Disclose::keepOffice($deal, collect([$message]));
         $review = ReplyReview::firstOrCreate(['message_id' => $message->id], ['deal_id' => $deal->id, 'offer_id' => $deal->offer_id, 'state' => ReplyReview::PENDING]);
         $review->wasRecentlyCreated && Disclose::publish($deal);
         // Счёт страховой — громко тем, кто ведёт сделки (10.11.2026, `SupplierInvoiceArrivedNotice`): менеджер его не видит, а срок оплаты идёт.

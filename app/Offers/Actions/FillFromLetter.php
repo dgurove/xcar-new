@@ -55,6 +55,21 @@ final class FillFromLetter
             $data['insured_contacts'] = OwnerContacts::clean([...OwnerContacts::of($offer), ...$contacts]);
             unset($data['insured_name'], $data['insured_phone']);
         }
+        // Идущая сделка (25.11.2026, владелец: «что из письма парсится — в админке встаёт само»): новый телефон владельца из письма
+        // («Готовы к передаче – 8-988-…», `OwnerPhones`) при заполненной карточке — следующим контактом, а не мимо неё.
+        if ($offer->state !== OfferState::Draft && ! isset($data['insured_phone'], $data['insured_contacts'])) {
+            $known = collect(OwnerContacts::of($offer))->pluck('phone')->map(fn ($p) => \App\Support\Phone::normalize((string) $p))->filter()->all();
+            $fresh = collect([$message->field('insured_phone'), ...\App\Offers\OwnerPhones::for($message)])->filter()
+                ->map(fn ($p) => \App\Support\Phone::normalize((string) $p))->filter()->unique()->reject(fn ($p) => in_array($p, $known, true))->values();
+            // Карточка без телефона, а он есть только строкой письма («Готовы к передаче – 8-988-967-10-40», BMW X5 915891/2026) — первым.
+            if (! $known && $fresh->isNotEmpty() && ! isset($data['insured_phone']) && blank($offer->insured_phone)) {
+                $data['insured_phone'] = \App\Support\Phone::format($fresh->first());
+            } elseif ($known && $fresh->isNotEmpty()) {
+                $name = trim((string) $message->field('insured_name')) ?: null;
+                $data['insured_contacts'] = OwnerContacts::clean([...OwnerContacts::of($offer), ...$fresh->map(fn ($p) => ['name' => $name, 'phone' => $p])->all()]);
+                unset($data['insured_name'], $data['insured_phone']);
+            }
+        }
         $log = ['letter' => $message->id];
         // VIN из письма поставщика об этой машине — в пустое поле сразу, в любом состоянии и из ответа «RE:» (15.11.2026,
         // владелец: «в письме от Т-Страхования VIN сообщается, его надо парсить и в машину добавлять автоматически»; у сделки и

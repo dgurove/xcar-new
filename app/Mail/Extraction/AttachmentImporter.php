@@ -46,7 +46,9 @@ final class AttachmentImporter
 
                 continue;
             }
-            $added['documents'] += (int) $this->addDocument($model, $documentsCollection, $document, $documentProperties);
+            // Из какого письма документ (`letter`, 25.11.2026): и на offer@, и пересылкой — его покажут из окна этого письма
+            // (`x-deal.manager-view`); раньше `letter` ставил только `ShareReplyFiles` писем на deal@.
+            $added['documents'] += (int) $this->addDocument($model, $documentsCollection, $document, $documentProperties + array_filter(['letter' => $document->message_id ?? null]));
         }
         foreach ($classified['photos'] as $photo) {
             if (($contents = $photo->contents()) !== null) {

@@ -81,8 +81,13 @@
             @elseif (! $ask->answer_message_id)
                 <p class="reprice-done nums">Ответили не письмом, {{ Ago::html($ask->answered_at, words: false) }}</p>
             @endif
+            {{-- «Вопрос решён» (25.11.2026, владелец: «прислали ПТС — где „Вопрос решён“, а не только „не решён“»): окно «Что видит
+                 менеджер» из ответа — его файлы отмечены, текст в сообщении; показали — решает менеджер (`SettleExtraAsk::shown`). --}}
             <div class="reprice-acts">
-                @unless ($pending)<x-deal.reply-review :deal="$deal" pill/>@endunless
+                @php $answer = $ask->answer_message_id ? \App\Mail\Message::find($ask->answer_message_id) : null; @endphp
+                <x-deal.manager-view :deal="$deal" :id="'extra-solved-'.$ask->id" :letter="$answer">
+                    <x-ui.button size="sm" type="button" data-action="sheet#open">Вопрос решён</x-ui.button>
+                </x-deal.manager-view>
                 <form method="post" action="/offers/{{ $n }}/extra-asks/{{ $ask->id }}/reopen" class="contents">@csrf<x-ui.button size="sm" variant="secondary">Вопрос не решён</x-ui.button></form>
             </div>
         @elseif ($phase === ExtraAsk::MANAGER && $buyer)

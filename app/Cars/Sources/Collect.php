@@ -59,6 +59,8 @@ final class Collect
             // Паспорт собственника в документах — продавец ДКП собственника (25.11.2026, `FillOwnerFromPassport`).
             $deal = $car->refresh()->offer?->deal;
             $deal && app(\App\Offers\Actions\FillOwnerFromPassport::class)($deal);
+            // Договор комиссии в документах — собственник и платёж поставщику (письма с любого ящика, не только deal@).
+            $deal && app(\App\Offers\Actions\FillCommissionOwner::class)($deal);
         }
         Variants::recount($car->refresh());
     }
