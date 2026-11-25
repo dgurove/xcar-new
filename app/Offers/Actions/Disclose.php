@@ -207,6 +207,11 @@ final class Disclose
         if ($letters->isEmpty() || $offer->vendor?->deal_format === DealFormat::Wholesale || $stage?->waits_for !== WaitsFor::Supplier) {
             return null;
         }
+        // Ответ на доп. просьбу уже у менеджера, он решает (25.11.2026): новое письмо поставщика показываем, а этап под просьбой
+        // не двигаем — ход сделки стоит до его решения.
+        if (\App\Offers\ExtraAsk::holding($deal)?->phase() === \App\Offers\ExtraAsk::MANAGER) {
+            return null;
+        }
         $find = fn (array $labels) => $stage->exitsFor(Actor::Staff, $deal)->first(fn (Outcome $x) => in_array(mb_strtolower(trim($x->label)), $labels, true));
 
         // Ждём счёт, а письмо с файлом — «Счёт от поставщика получен» (10.11.2026, 0790/046/11079/26: счёт пришёл, а шаг жали

@@ -161,7 +161,7 @@
                 <button class="btn btn-quiet btn-block">Не показывать</button>
             </form>
             <button type="button" class="row mt-3 w-full text-left text-sm" data-controller="emit" data-action="sheet#close emit#send" data-emit-event-param="manager-view-{{ $deal->id }}:open">
-                <span class="flex-1 text-ink-muted">Менеджер уже видит {{ $seen->count() }}</span><span class="text-accent-text">Что видит</span><x-ui.chevron/>
+                <span class="flex-1 text-ink-muted">{{ $seen->isEmpty() ? 'Менеджер ничего не видит' : 'Менеджер уже видит '.$seen->count() }}</span><span class="text-accent-text">Что видит</span><x-ui.chevron/>
             </button>
         @elseif ($shown->isNotEmpty())
             <div class="mt-5">

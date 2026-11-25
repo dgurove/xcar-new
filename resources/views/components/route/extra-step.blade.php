@@ -15,7 +15,7 @@
     $labels = ExtraAsk::labels($deal);
     $menu = 'extra-more-'.$ask->id;
     $letters = fn (?int $id) => '/offers/'.$n.'/letters'.($id ? '?at='.$id : '');
-    $pending = $phase === ExtraAsk::SHOW && \App\Offers\ReplyReview::pending()->where('deal_id', $deal->id)->exists();
+    $pending = \App\Offers\ReplyReview::pending()->where('deal_id', $deal->id)->exists();
     $later = array_values(array_filter([
         $ask->asks_manager && $phase === ExtraAsk::SUPPLIER ? 'показать ответ менеджеру' : null,
         $ask->asks_manager && $phase !== ExtraAsk::MANAGER ? ($phase === ExtraAsk::SUPPLIER ? 'его решение' : 'решение менеджера') : null,
@@ -90,7 +90,14 @@
                 </x-deal.manager-view>
                 <form method="post" action="/offers/{{ $n }}/extra-asks/{{ $ask->id }}/reopen" class="contents">@csrf<x-ui.button size="sm" variant="secondary">Вопрос не решён</x-ui.button></form>
             </div>
-        @elseif ($phase === ExtraAsk::MANAGER && $buyer)
+        @endif
+        {{-- Решает менеджер или ждём поставщика, а пришло ещё письмо (25.11.2026, Wielton 2610152180: ПТС показан, потом Альфа прислала
+             счёт — в «Сделках» «Прочитать ответ поставщика», а в шаге нажать было некуда): «Счёт от … / Показать менеджеру?» и «Менеджер
+             видит …» — те же строки, что в шаге пути (`x-deal.reply-review line`). Пока решает менеджер — «Менеджер видит» всегда. --}}
+        @if ($phase === ExtraAsk::MANAGER || ($phase === ExtraAsk::SUPPLIER && $pending))
+            <x-deal.reply-review :deal="$deal" line :manual="false"/>
+        @endif
+        @if ($phase === ExtraAsk::MANAGER && $buyer)
             <div class="step-who">
                 <x-ui.avatar :user="$buyer" :size="32"/>
                 <div class="min-w-0">
