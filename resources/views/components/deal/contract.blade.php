@@ -19,8 +19,9 @@
     $pdf = ['url' => '/work/deals/'.$deal->id.'/dkp.pdf', 'type' => 'pdf', 'name' => $doc->fileName(), 'label' => 'ДКП'];
     $prime = $contract->form() === 'prime';
     $owner = $contract->seller;
-    // Собственник-организация (из договора комиссии) полями паспорта не правится.
-    $ownerFields = $deal->isDkp() || ($prime && (! $owner || $owner->kind === \App\Billing\PartyKind::Person));
+    // Собственник по договору комиссии — своей строкой и шторкой «Собственник» (`x-deal.owner`, 25.11.2026: физлицо, ИП, организация);
+    // здесь — только продавец ДКП и ПРАЙМ без договора комиссии (вписали собственника — договор станет комиссионным).
+    $ownerFields = $deal->isDkp() || ($prime && ! $contract->commissioned());
 @endphp
 @php ob_start(); @endphp
     {{-- Договор — файлом (`x-deal.contract-doc`); в «Продаже» его ставит `x-deal.money` над «Подписанным договором». --}}

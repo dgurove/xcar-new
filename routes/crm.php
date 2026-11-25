@@ -181,6 +181,8 @@ Route::domain(config('xcar.crm_host'))->middleware(['auth', 'ability:isStaff'])-
         Route::put('/work/deals/{deal}/contract', [DealContractController::class, 'update']);
         Route::put('/work/deals/{deal}/invoice-data', [DealContractController::class, 'invoiceData']);
         Route::put('/work/deals/{deal}/payer', [DealContractController::class, 'payer']);
+        // Собственник по договору комиссии ПРАЙМ (25.11.2026): поставщик, из договора комиссии, физлицо, ИП или организация.
+        Route::put('/work/deals/{deal}/owner', [DealContractController::class, 'owner']);
         // Схема сделки («Кому платит покупатель», через Р.О.С.) — и модератору (17.11.2026, владелец).
         Route::post('/work/deals/{deal}/scheme', [DealController::class, 'scheme']);
         Route::put('/work/deals/{deal}/fee-seller', [DealContractController::class, 'feeSeller']);

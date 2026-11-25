@@ -8,7 +8,9 @@
      scan — id формы: плитки скана внутри группы (OCR вписывает в её поля); fallback — ФИО, когда в имени уже название
      организации (покупатель был организацией). Только в шторках и на экране «Данные для договора». Поля — подпись сверху,
      значение в своей плашке (18.11.2026, владелец: «в CRM и в xcar одинаково», прежде строками `.fields-stack`). --}}
-@props(['party' => null, 'prefix' => 'buyer', 'key' => null, 'scan' => null, 'fallback' => null])
+{{-- owner — собственник по договору комиссии (`x-deal.owner`, 25.11.2026): ему по его реквизитам не платим — без банка, ОГРНИП,
+     адрес и руководитель не обязательны (в договорах комиссии Совкомбанка их бывает нет; `PartyRules::passport(owner: true)`). --}}
+@props(['party' => null, 'prefix' => 'buyer', 'key' => null, 'scan' => null, 'fallback' => null, 'owner' => false])
 @php
     use App\Billing\PartyKind;
     $key ??= $prefix;
@@ -38,8 +40,8 @@
         {{-- Реквизиты целиком (18.11.2026, владелец: «парсер ворда не надо — удобный ввод: копирует, вставляет»): блок раскладывается по полям. --}}
         <x-ui.field name="_paste" :id="$id('ip', 'paste')" label="Реквизиты целиком" type="textarea" rows="2" placeholder="Скопируйте карточку ИП из Word и вставьте сюда"/>
         <x-ui.field :name="$n('inn')" :id="$id('ip', 'inn')" label="ИНН" :value="$mine('inn', $ip)" placeholder="12 цифр" required/>
-        <x-ui.field :name="$n('ogrn')" :id="$id('ip', 'ogrn')" label="ОГРНИП" :value="$mine('ogrn', $ip)" placeholder="15 цифр" required/>
-        <x-ui.field :name="$n('legal_address')" :id="$id('ip', 'legal_address')" label="Адрес" type="textarea" rows="1" :value="$ip ? ($party->legal_address ?: $party->reg_address) : $party?->reg_address" required/>
+        <x-ui.field :name="$n('ogrn')" :id="$id('ip', 'ogrn')" label="ОГРНИП" :value="$mine('ogrn', $ip)" placeholder="15 цифр" :required="! $owner"/>
+        <x-ui.field :name="$n('legal_address')" :id="$id('ip', 'legal_address')" label="Адрес" type="textarea" rows="1" :value="$ip ? ($party->legal_address ?: $party->reg_address) : $party?->reg_address" :required="! $owner"/>
     </div>
     <div class="flex flex-col gap-3" data-reveal-target="pane" data-reveal-key="company" data-requisites-paste-target="group" @if ($kind !== 'company') hidden @endif>
         <x-ui.field name="_paste" :id="$id('org', 'paste')" label="Реквизиты целиком" type="textarea" rows="2" placeholder="Скопируйте карточку организации из Word и вставьте сюда"/>
@@ -47,10 +49,11 @@
         <x-ui.field :name="$n('inn')" :id="$id('org', 'inn')" label="ИНН" :value="$mine('inn', $company)" required/>
         <x-ui.field :name="$n('kpp')" :id="$id('org', 'kpp')" label="КПП" :value="$mine('kpp', $company)"/>
         <x-ui.field :name="$n('ogrn')" :id="$id('org', 'ogrn')" label="ОГРН" :value="$mine('ogrn', $company)"/>
-        <x-ui.field :name="$n('director')" :id="$id('org', 'director')" label="Руководитель" :value="$mine('director', $company)" required/>
-        <x-ui.field :name="$n('legal_address')" :id="$id('org', 'legal_address')" label="Юр. адрес" type="textarea" rows="1" :value="$mine('legal_address', $company)" required/>
+        <x-ui.field :name="$n('director')" :id="$id('org', 'director')" label="Руководитель" :value="$mine('director', $company)" :required="! $owner"/>
+        <x-ui.field :name="$n('legal_address')" :id="$id('org', 'legal_address')" label="Юр. адрес" type="textarea" rows="1" :value="$mine('legal_address', $company)" :required="! $owner"/>
     </div>
     {{-- Банк — один на ИП и организацию: сменили вид между ними — счёт на месте. ИП без банка сервер не сохранит. --}}
+    @unless ($owner)
     <div class="flex flex-col" data-reveal-target="pane" data-reveal-key="ip company" data-requisites-paste-target="group" @if ($kind === 'person') hidden @endif>
         <h3 class="list-head">Банк</h3>
         <div class="flex flex-col gap-3">
@@ -60,4 +63,5 @@
             <x-ui.field :name="$n('corr_account')" :id="$id('bank', 'corr_account')" label="Корр. счёт" :value="$party?->corr_account" placeholder="20 цифр"/>
         </div>
     </div>
+    @endunless
 </div>

@@ -16,6 +16,8 @@ use Illuminate\Support\Carbon;
  * назначенная цена (п. 2.4 «КОМИТЕНТ назначает цену … 431 428,00»), получатель и его реквизиты («перечислить на расчетный
  * счет Совкомбанк страхование (АО) по указанным реквизитам: ИНН … р/счет … БИК …») и назначение платежа («в назначении
  * платежа указывать: «…»»).
+ * 25.11.2026 (владелец: «может быть физлицо, юрлицо, ИП»): ИП — своим видом с ОГРНИП; у организации «в лице … действующего на
+ * основании …» — не в имени, а подписантом (`signed_by`, `director_basis`).
  */
 final class CommitentFields
 {
@@ -28,21 +30,39 @@ final class CommitentFields
         }
         $number = preg_match('/ДОГОВОР\s+КОМИССИИ\s*№\s*([0-9A-ZА-ЯЁ][0-9A-ZА-ЯЁ\/\-]*)/iu', $text, $m) ? $m[1] : null;
         $flat = preg_replace('/\s+/u', ' ', $text);
-        if (! preg_match('/с\s+одной\s+стороны\s*,?\s+и\s+(.+?)\s*,\s+(?:в\s+лице|именуем)/u', $flat, $m)) {
+        // Имя — до «в лице» (с запятой перед ним или без: «ООО «АВТОЛАЙФ ЛОГИСТИК» в лице директора …») или до «, именуем…».
+        if (! preg_match('/с\s+одной\s+стороны\s*,?\s+и\s+(.+?)(?:\s*,?\s+в\s+лице\s+(.+?)(?:\s*,?\s+действующ\S*\s+на\s+основании\s+(.+?))?)?\s*,\s+именуем/u', $flat, $m)) {
             return null;
         }
         $name = trim($m[1], ' ,');
+        $signer = isset($m[2]) && $m[2] !== '' ? trim($m[2], ' ,') : null;
+        $basis = isset($m[3]) && $m[3] !== '' ? trim($m[3], ' ,') : null;
         // Колонка комитента в реквизитах: после «| КОМИТЕНТ» до его подписи или конца ячейки.
         $block = preg_match('/\|\s*КОМИТЕНТ\s*:?\s*(.+?)(?:\s+КОМИТЕНТ\s*_|\s*\|)/u', $flat, $b) ? $b[1] : '';
-        $company = preg_match('/[«"]|\b(?:ООО|АО|ПАО|ЗАО|ОАО|ИП)\b/u', $name) || ! preg_match('/Паспорт/u', $block);
+        // ИП (25.11.2026, сделка 476 «ИП Токарев Иван Николаевич» была организацией): «ИП» / «Индивидуальный предприниматель»
+        // в имени или ОГРНИП в реквизитах — ФИО без приставки, ИНН, ОГРНИП, адрес.
+        if (preg_match('/^(?:ИП|Индивидуальн\S*\s+предпринимател\S*)\s+(.+)$/u', $name, $ip) || preg_match('/ОГРНИП/u', $block)) {
+            $party = array_filter([
+                'name' => trim($ip[1] ?? $name),
+                'inn' => preg_match('/ИНН\s*:?\s*(\d{12})/u', $block, $a) ? $a[1] : null,
+                'ogrn' => preg_match('/ОГРНИП\s*:?\s*(\d{15})/u', $block, $a) ? $a[1] : null,
+                'legal_address' => preg_match('/(?:Юридический\s+адрес|Адрес(?:\s+регистрации)?)\s*:?\s*(.*?)\s*(?:Реквизиты|ИНН|ОГРНИП)/u', $block, $a) && trim($a[1], ' ,:') !== '' ? trim($a[1], ' ,') : null,
+            ]);
+
+            return ['number' => $number, 'kind' => PartyKind::Entrepreneur, 'party' => $party, 'payment' => self::payment($flat)];
+        }
+        $company = preg_match('/[«"]|\b(?:ООО|АО|ПАО|ЗАО|ОАО)\b/u', $name) || ! preg_match('/Паспорт/u', $block);
 
         if ($company) {
             $party = array_filter([
                 'name' => $name, 'full_name' => $name,
-                'legal_address' => preg_match('/Юридический\s+адрес\s*:?\s*(.+?)\s+Реквизиты/u', $block, $a) ? trim($a[1], ' ,') : null,
+                'legal_address' => preg_match('/Юридический\s+адрес\s*:?\s*(.*?)\s*(?:Реквизиты|Фактический\s+адрес|ИНН)/u', $block, $a) && trim($a[1], ' ,:') !== '' ? trim($a[1], ' ,') : null,
                 'inn' => preg_match('/ИНН\s*:?\s*(\d{10,12})/u', $block, $a) ? $a[1] : null,
                 'kpp' => preg_match('/КПП\s*:?\s*(\d{9})/u', $block, $a) ? $a[1] : null,
                 'ogrn' => preg_match('/ОГРН\s*:?\s*(\d{13,15})/u', $block, $a) ? $a[1] : null,
+                // «в лице директора Баширова Ришата Ильфатовича, действующего на основании Устава»
+                'signed_by' => $signer,
+                'director_basis' => $basis,
             ]);
 
             return ['number' => $number, 'kind' => PartyKind::Company, 'party' => $party, 'payment' => self::payment($flat)];

@@ -28,7 +28,7 @@
     $rows = array_filter([
         in_array('покупатель', $missing, true) ? ['Покупатель', 'не выбран', 'deal-buyer-pick-'.$deal->id.':open', null] : null,
         array_intersect($missing, ['данные продавца', 'данные собственника']) && $contract->form() !== 'ros'
-            ? [$deal->isDkp() ? 'Продавец' : 'Собственник', 'нет данных', 'dkp-'.$deal->id.':open', null] : null,
+            ? [$deal->isDkp() ? 'Продавец' : 'Собственник', 'нет данных', (\App\Offers\Actions\SetDealOwner::allows($deal) ? 'deal-owner-' : 'dkp-').$deal->id.':open', null] : null,
         in_array('данные продавца', $missing, true) && $contract->form() === 'ros' ? ['Реквизиты Р.О.С.', 'нет', null, null] : null,
         in_array('(Э)ПТС', $missing, true) ? ['ПТС', 'не внесён', null, $page.'#car-docs'] : null,
         in_array('цена', $missing, true) ? ['Цена продажи', 'не указана', 'deal-money-'.$deal->id.':open', null] : null,

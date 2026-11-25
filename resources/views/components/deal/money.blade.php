@@ -382,6 +382,8 @@
                 <x-deal.invoice-gaps :deal="$deal"/>
             @endif
         @php $billGroup = trim(ob_get_clean()); ob_start(); @endphp
+            {{-- Собственник по договору комиссии — всегда строкой (25.11.2026, `x-deal.owner`). --}}
+            @if (\App\Offers\Actions\SetDealOwner::allows($deal))<x-deal.owner :deal="$deal" :editable="$canEdit"/>@endif
             {{-- Чего не хватает договору, говорит его строка-заготовка — отдельными строками только без неё. --}}
             @unless ($withContract && $canEdit && $deal->isActive() && ! $ready && ! $signed)<x-deal.contract-gaps :deal="$deal" :price-row="(bool) $contract"/>@endunless
             {!! $contractLine !!}

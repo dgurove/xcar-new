@@ -12,9 +12,12 @@ final class PartyRules
      * Паспорт для договора (`x-billing.passport-fields`) набором `$prefix[...]`: ФИО, рождение, паспорт, регистрация. С `kind`
      * — покупатель (`x-billing.buyer-fields`, `SaveBuyerData`): физлицо, ИП или организация.
      */
-    public static function passport(string $prefix): array
+    public static function passport(string $prefix, bool $owner = false): array
     {
         $kind = fn (string $k) => fn ($input) => data_get($input, $prefix.'.kind') === $k;
+        // Собственник по договору комиссии (`owner`, 25.11.2026): ему по его реквизитам не платим (платим Совкомбанку по
+        // `supplier_requisites`) — банк ИП и руководитель с адресом организации не обязательны.
+        $must = fn (string $rule) => $owner ? [] : [$rule];
 
         return [
             $prefix => ['required', 'array'],
@@ -35,12 +38,12 @@ final class PartyRules
                     ($seller = Party::ours((string) $value)) && $fail(Party::oursMessage($seller));
                 }],
             $prefix.'.kpp' => ['nullable', 'digits:9'],
-            $prefix.'.ogrn' => ['required_if:'.$prefix.'.kind,ip', 'nullable', 'digits_between:13,15', Rule::when($kind('ip'), 'digits:15')],
-            $prefix.'.legal_address' => ['required_if:'.$prefix.'.kind,company', 'nullable', 'string', 'max:255'],
-            $prefix.'.director' => ['required_if:'.$prefix.'.kind,company', 'nullable', 'string', 'max:120'],
-            $prefix.'.bank_name' => ['required_if:'.$prefix.'.kind,ip', 'nullable', 'string', 'max:120'],
-            $prefix.'.bik' => ['required_if:'.$prefix.'.kind,ip', 'nullable', 'digits:9'],
-            $prefix.'.account' => ['required_if:'.$prefix.'.kind,ip', 'nullable', 'digits:20'],
+            $prefix.'.ogrn' => [...$must('required_if:'.$prefix.'.kind,ip'), 'nullable', 'digits_between:13,15', Rule::when($kind('ip'), 'digits:15')],
+            $prefix.'.legal_address' => [...$must('required_if:'.$prefix.'.kind,company'), 'nullable', 'string', 'max:255'],
+            $prefix.'.director' => [...$must('required_if:'.$prefix.'.kind,company'), 'nullable', 'string', 'max:120'],
+            $prefix.'.bank_name' => [...$must('required_if:'.$prefix.'.kind,ip'), 'nullable', 'string', 'max:120'],
+            $prefix.'.bik' => [...$must('required_if:'.$prefix.'.kind,ip'), 'nullable', 'digits:9'],
+            $prefix.'.account' => [...$must('required_if:'.$prefix.'.kind,ip'), 'nullable', 'digits:20'],
             $prefix.'.corr_account' => ['nullable', 'digits:20'],
         ];
     }

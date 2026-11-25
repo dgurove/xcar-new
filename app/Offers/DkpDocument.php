@@ -200,15 +200,24 @@ final class DkpDocument
         return $this->contract->commissionNo();
     }
 
-    /** Собственник (комитент): «Избицкий Александр Николаевич (Паспорт 71 19 № 505765)», организация — «… (ИНН 5250056647)». */
+    /**
+     * Собственник (комитент): «Избицкий Александр Николаевич (Паспорт 71 19 № 505765)», ИП — «Индивидуальный предприниматель
+     * Токарев Иван Николаевич (ОГРНИП …, ИНН …)», организация — «ООО «ИТЕКО Россия» (ОГРН …, ИНН …)».
+     */
     public function owner(): HtmlString
     {
         $o = $this->contract->seller;
         if (! $o) {
             return new HtmlString($this->v(null, 60).' (Паспорт '.$this->v(null, 15).' № '.$this->v(null, 22).')');
         }
+        // ИП и организация — с ОГРН и ИНН (25.11.2026, владелец выбрал); ОГРН(ИП) в договоре комиссии бывает не указан
+        // (ИП Токарев, сам Совкомбанк) — тогда его нет и в ДКП, без линии.
         if ($o->kind !== PartyKind::Person) {
-            return new HtmlString(e($o->full_name ?: $o->name).' (ИНН '.$this->v($o->inn, 30).')');
+            $ip = $o->kind === PartyKind::Entrepreneur;
+            $name = $ip ? 'Индивидуальный предприниматель '.preg_replace('/^(?:ИП|Индивидуальн\S*\s+предпринимател\S*)\s+/u', '', (string) $o->name) : ($o->full_name ?: $o->name);
+            $codes = ($o->ogrn ? ($ip ? 'ОГРНИП ' : 'ОГРН ').e($o->ogrn).', ' : '').'ИНН '.$this->v($o->inn, 30);
+
+            return new HtmlString(e($name).' ('.$codes.')');
         }
         [$series, $number] = $o->passportParts();
         $series = $series && preg_match('/^\d{4}$/', $series) ? substr($series, 0, 2).' '.substr($series, 2) : $series;

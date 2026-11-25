@@ -6,7 +6,8 @@
     $missing = $deal->isActive() && $deal->hasContract() ? \App\Offers\DealContract::for($deal)->missing() : [];
     $page = '/offers/'.$deal->offer->number;
 @endphp
-@if (in_array('данные продавца', $missing, true) || in_array('данные собственника', $missing, true))
+{{-- Собственник по договору комиссии — своей строкой «Собственник» (`x-deal.owner`, 25.11.2026). --}}
+@if (in_array('данные продавца', $missing, true) || (in_array('данные собственника', $missing, true) && ! \App\Offers\Actions\SetDealOwner::allows($deal)))
     <x-deal.sale-row label="Владелец" value="нет данных" tone="danger" :href="$page.'?dkp=1#dkp'"/>
 @endif
 @if (in_array('(Э)ПТС', $missing, true))

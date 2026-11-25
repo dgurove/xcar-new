@@ -28,14 +28,15 @@ final class FillCommissionOwner
 {
     public function __construct(private SettleContract $settle) {}
 
-    public function __invoke(Deal $deal, bool $apply = true): ?array
+    /** @param  bool  $force  искать и там, где всё уже заполнено (шторка «Собственник»: «Из договора комиссии») */
+    public function __invoke(Deal $deal, bool $apply = true, bool $force = false): ?array
     {
         if (! $deal->isLive() || ! $deal->hasContract() || $deal->seller() !== Seller::Prime || $deal->isDkp()) {
             return null;
         }
         $contract = DealContract::for($deal);
         // Платёж поставщику (сумма, реквизиты, назначение) дозаполняется и там, где собственник уже есть (14.11.2026).
-        if ($contract->seller_party_id && $contract->supplier_price !== null) {
+        if (! $force && $contract->seller_party_id && $contract->supplier_price !== null) {
             return null;
         }
         $found = $this->find($deal);
@@ -48,7 +49,7 @@ final class FillCommissionOwner
             'supplier_purpose' => $contract->supplier_purpose ?: ($pay['purpose'] ?? null),
             'supplier_requisites' => $contract->supplier_requisites ?: (($pay['payee'] ?? []) ?: null)];
         if (! $contract->seller_party_id) {
-            $party = Party::create(['kind' => $found['kind']] + $found['party']);
+            $party = self::partyFor($deal, $found);
             $fill['seller_party_id'] = $party->id;
             $deal->offer->log(OfferEventType::Note, null, ['text' => 'ДКП: собственник из договора комиссии — '.$party->name]);
         }
@@ -56,6 +57,23 @@ final class FillCommissionOwner
         ($this->settle)($contract->fresh(['seller', 'buyer.party', 'deal.offer', 'deal.buyer']));
 
         return $found;
+    }
+
+    /**
+     * Сторона собственника из разобранного: сам поставщик (тот же ИНН, что у его реквизитов) — его сторона, одна на все сделки
+     * (25.11.2026: у 40 сделок было 40 копий «Совкомбанк страхование»), иначе новая.
+     *
+     * @param  array{kind: PartyKind, party: array<string, mixed>}  $found
+     */
+    public static function partyFor(Deal $deal, array $found): Party
+    {
+        $vendor = $deal->offer?->vendor?->party;
+        $inn = $found['party']['inn'] ?? null;
+        if ($vendor && $inn && $vendor->inn === $inn && $found['kind'] === PartyKind::Company) {
+            return $vendor;
+        }
+
+        return Party::create(['kind' => $found['kind']] + $found['party']);
     }
 
     /** @return array{number: ?string, kind: PartyKind, party: array<string, mixed>}|null */

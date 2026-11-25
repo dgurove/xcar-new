@@ -9,7 +9,7 @@
     $hue = null;
     if (! $user) {
         $label = trim((string) ($name ?: $email));
-        $parts = array_slice(preg_split('/[\s,]+/u', preg_replace('/\(.*?\)|"|<.*?>/u', '', $label)) ?: [], 0, 2);
+        $parts = array_slice(preg_split('/[\s,]+/u', preg_replace('/\(.*?\)|["«»„“”]|<.*?>/u', '', $label)) ?: [], 0, 2);
         $text = mb_strtoupper(implode('', array_map(fn ($p) => mb_substr($p, 0, 1), array_filter($parts)))) ?: mb_strtoupper(mb_substr((string) $email, 0, 1)) ?: '·';
         $hue = (crc32(mb_strtolower((string) ($email ?: $name))) % 8) + 1;
     }

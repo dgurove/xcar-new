@@ -31,6 +31,25 @@ class DealContractController
         return back()->with('toast', 'Платит '.$party->name);
     }
 
+    /**
+     * Собственник по договору комиссии — шторка «Собственник» (`x-deal.owner`, 25.11.2026): сам поставщик, распознанный из
+     * договора комиссии, поправить нынешнего или другой — физлицо, ИП или организация (`SetDealOwner`).
+     */
+    public function owner(Request $request, Deal $deal, \App\Offers\Actions\SetDealOwner $set)
+    {
+        abort_unless($request->user()->canEditDeals() && \App\Offers\Actions\SetDealOwner::allows($deal), 404);
+        $mode = $request->validate(['mode' => ['required', Rule::in(\App\Offers\Actions\SetDealOwner::MODES)]])['mode'];
+        $rules = ['commission_no' => ['nullable', 'string', 'max:40']];
+        if (in_array($mode, ['edit', 'new'], true)) {
+            PartyRules::squeeze($request, 'owner');
+            $rules += PartyRules::passport('owner', owner: true);
+        }
+        $data = $request->validate($rules, [], ['owner.name' => 'ФИО'] + PartyRules::buyerLabels('owner'));
+        $party = $set($deal, $request->user(), $mode, $data);
+
+        return back()->with('toast', 'Собственник: '.\App\Offers\Actions\SetDealOwner::label($party));
+    }
+
     /** Кому платят услуги подбора — ПРАЙМ или Р.О.С. (`SetFeeSeller`, строка «Плательщик платит» в «Продаже», 16.11.2026). */
     public function feeSeller(Request $request, Deal $deal, \App\Offers\Actions\SetFeeSeller $set)
     {
