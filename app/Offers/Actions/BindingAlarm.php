@@ -28,7 +28,8 @@ final class BindingAlarm
         }
         $q = Offer::query()->where('offers.binding_until', '>=', now()->subDay())
             ->where(fn ($w) => $w->whereNull('offers.binding_alerted_for')->orWhereColumn('offers.binding_alerted_for', '!=', 'offers.binding_until'));
-        Binding::scope($q, 'panic');
+        // Только без покупателя: «поставщику не заплачено» не шлём никому (26.11.2026, владелец: «на мозги капать не надо»).
+        Binding::scope($q, 'buyerless');
         $admins = null;
         $sent = 0;
         foreach ($q->lazyById() as $offer) {

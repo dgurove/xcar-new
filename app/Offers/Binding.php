@@ -99,10 +99,14 @@ final class Binding
         return self::hasBuyer($offer) ? 'set' : ($until->lte(self::burnt()) ? 'over' : 'panic');
     }
 
-    /** Горит всерьёз: нет покупателя или поставщику не заплачено — красная полоса, тревога, звонок. */
+    /**
+     * Горит всерьёз: нет покупателя — красная полоса, тревога, звонок. «Поставщику не заплачено» (`deal`) с 26.11.2026 не тревожит
+     * (владелец: «на счёте постоянно бабок нету, это только нервирует; когда будет возможность — зайдут во вкладку «Оплатить
+     * поставщику» и посмотрят, кому заплатить»): уровень остаётся для чипа и сроков шагов, но ни тревоги, ни уведомлений.
+     */
     public static function panics(Offer $offer): bool
     {
-        return in_array(self::of($offer), ['panic', 'over', 'deal'], true);
+        return in_array(self::of($offer), ['panic', 'over'], true);
     }
 
     /** Срок ещё что-то значит: продажа ищет покупателя или сделка не заплатила поставщику. */
@@ -165,6 +169,8 @@ final class Binding
             'none' => $query->whereNull($col),
             'set' => $query->whereNotNull($col),
             'panic' => $query->whereRaw(self::panicSql($table)),
+            // Горит без покупателя — тревога и уведомления (`alarmQuery`, `BindingAlarm`); неоплата поставщику — нет (26.11.2026).
+            'buyerless' => $query->whereRaw(self::buyerlessSql($table)),
             'over' => $query->whereRaw(self::panicSql($table))->whereRaw('not '.$sql(self::UNPAID_SQL))->where($col, '<=', self::burnt()),
             'deal' => $query->whereNotNull($col)->where($col, '<=', self::edge())->whereRaw($sql(self::UNPAID_SQL)),
             'undecided' => $query->whereNotNull($col)->where($col, '<=', self::edge())->whereIn("{$table}.state", self::liveValues())->whereRaw($sql(self::UNDECIDED_SQL)),
@@ -185,6 +191,16 @@ final class Binding
 
         return "({$table}.binding_until is not null and {$table}.vendor_id in (".implode(',', array_map('intval', $vendors)).')'
             ." and ({$table}.state in ({$states}) or ".str_replace('offers.', "{$table}.", self::UNPAID_SQL).'))';
+    }
+
+    /** Горит и покупателя нет — без «поставщику не заплачено» (26.11.2026, `panics`). */
+    public static function buyerlessSql(string $table = 'offers'): string
+    {
+        $sql = fn (string $s) => str_replace('offers.', "{$table}.", $s);
+        $states = implode(',', array_map(fn ($v) => "'{$v}'", self::liveValues()));
+
+        return "({$table}.binding_until is not null and {$table}.binding_until <= '".self::edge()->toDateTimeString()."'"
+            ." and {$table}.state in ({$states}) and not ".$sql(self::BUYER_SQL).')';
     }
 
     /** Горит всерьёз одним SQL — колонка списков, сортировка и подзапрос логистики. */
@@ -398,11 +414,11 @@ final class Binding
         };
     }
 
-    /** Выборка тревог: горит или вышел недавно — нет покупателя или поставщику не заплачено. Только сотрудникам XCAR. */
+    /** Выборка тревог: горит или вышел недавно, а покупателя нет (неоплата поставщику не тревожит, 26.11.2026). Только сотрудникам XCAR. */
     public static function alarmQuery(User $user)
     {
         $q = Offer::query()->where('offers.binding_until', '>=', now()->subDays(self::ALARM_DAYS));
-        self::scope($q, 'panic');
+        self::scope($q, 'buyerless');
         // «Из таблицы Кати» — старые, что ещё актуализируют: в тревоге не шумят (19.10.2026, владелец).
         LegacyClaim::offList($q);
 

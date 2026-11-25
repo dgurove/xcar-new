@@ -92,4 +92,11 @@ class ResponsibilityTest extends TestCase
         $this->assertTrue($notice->mutedFor($katya));
         $this->assertContains(WebPushChannel::class, $this->notice(['pickup_assign'])->via($katya));
     }
+
+    /** «Поставщику не заплачено» не тревожит (26.11.2026): тревога и горящее — только когда покупателя нет. */
+    public function test_supplier_unpaid_raises_no_alarm(): void
+    {
+        $this->assertStringNotContainsString('supplier_paid_at', \App\Offers\Binding::buyerlessSql());
+        $this->assertSame(\App\Offers\Binding::buyerlessSql(), Responsibility::hotSql());
+    }
 }
