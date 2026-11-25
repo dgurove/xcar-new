@@ -800,7 +800,7 @@ final class UpdateHandler
             default => null,
         };
         if ($text === null && $file === null) {
-            $this->reply($chatId, 'В чат уходят текст, фото и PDF', null);
+            $this->reply($chatId, 'В чат уходят текст и файлы', null);
 
             return;
         }

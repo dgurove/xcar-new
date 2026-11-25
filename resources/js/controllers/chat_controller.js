@@ -437,7 +437,7 @@ export default class extends Controller {
     }
 
     paste(event) {
-        const files = [...(event.clipboardData?.files || [])].filter((f) => f.type.startsWith('image/') || f.type === 'application/pdf');
+        const files = [...(event.clipboardData?.files || [])];
         if (files.length) { event.preventDefault(); this.add(files); }
     }
 
@@ -507,7 +507,8 @@ export default class extends Controller {
         el.className = 'msg is-mine is-pending';
         el.dataset.pending = '1';
         el.innerHTML = '<div class="msg-bubble"><div class="msg-text"></div><div class="msg-meta"><span class="nums"></span></div></div>';
-        el.querySelector('.msg-text').textContent = text || (files.length ? `Фото: ${files.length}` : '');
+        const photos = files.every((f) => f.type.startsWith('image/'));
+        el.querySelector('.msg-text').textContent = text || (files.length ? `${photos ? 'Фото' : 'Файлов'}: ${files.length}` : '');
         el.querySelector('.msg-meta span').textContent = new Date().toLocaleTimeString('ru', { hour: '2-digit', minute: '2-digit' });
         this.listTarget.append(el);
         this.scroll();

@@ -29,7 +29,8 @@ class File extends Model
 
     public function isImage(): bool
     {
-        return str_starts_with($this->mime, 'image/');
+        // SVG — файл, а не фото: на странице он исполнил бы свой скрипт (25.11.2026, в чат — любой файл).
+        return str_starts_with($this->mime, 'image/') && $this->mime !== 'image/svg+xml';
     }
 
     public function contents(): ?string

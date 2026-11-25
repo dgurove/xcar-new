@@ -13,11 +13,20 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
+use Symfony\Component\Mime\MimeTypes;
 
 /** Сообщение в чат: номер под блокировкой строки чата, файлы на закрытом диске под своим именем. */
 final class PostMessage
 {
-    private const MIMES = ['image/jpeg', 'image/png', 'image/webp', 'image/gif', 'image/heic', 'application/pdf'];
+    /**
+     * Фото ленты — ужимаются в webp. Остальное — любым файлом как есть (25.11.2026: доверенность Word не прикладывалась, «Сюда
+     * не грузит», ушла в WhatsApp; владелец: «зачем вообще ограничивать, в мессенджерах перечень гораздо шире»). Отдаёт
+     * `ChatController::file`: не фото и не PDF — только скачать (`attachment`, `nosniff`), SVG — не фото (`File::isImage`).
+     */
+    private const PHOTOS = ['image/jpeg', 'image/png', 'image/webp', 'image/gif', 'image/heic', 'image/heif'];
+
+    /** Предел на файл, МБ: 40 — как у документов ТС; запрос целиком держит `post_max_size` 64M. */
+    public const MAX_MB = 40;
 
     /** @param  list<UploadedFile>  $files */
     public function __invoke(Chat $chat, ?User $by, ?string $text, array $files = [], ?int $replyTo = null, ?int $requirementId = null): Message
@@ -27,8 +36,8 @@ final class PostMessage
             throw ValidationException::withMessages(['text' => 'Пустое сообщение']);
         }
         foreach ($files as $file) {
-            if (! in_array($file->getMimeType(), self::MIMES, true)) {
-                throw ValidationException::withMessages(['files' => 'Только фото и PDF']);
+            if (! $file->isValid() || $file->getSize() > self::MAX_MB * 1024 * 1024) {
+                throw ValidationException::withMessages(['files' => 'Файл '.$file->getClientOriginalName().' больше '.self::MAX_MB.' МБ']);
             }
         }
 
@@ -43,19 +52,27 @@ final class PostMessage
                 'requirement_id' => $kind === AuthorKind::Staff ? $requirementId : null]);
             foreach ($files as $file) {
                 $mime = (string) $file->getMimeType();
-                if (str_starts_with($mime, 'image/')) {
-                    // Кадр с телефона — 1600 px webp, как и везде; исходник в чате не нужен.
+                // Кадр с телефона — 1600 px webp, как и везде; исходник в чате не нужен. Не прочёлся как фото — уходит файлом.
+                $webp = null;
+                if (in_array($mime, self::PHOTOS, true)) {
                     try {
                         $webp = app(PhotoIngest::class)->shrink($file->getRealPath());
                     } catch (\RuntimeException) {
-                        throw ValidationException::withMessages(['files' => 'Файл '.$file->getClientOriginalName().' не читается как изображение']);
+                        $webp = null;
                     }
+                }
+                if ($webp) {
                     $path = 'chats/'.$chat->id.'/'.Str::uuid().'.webp';
                     Storage::disk('private')->put($path, file_get_contents($webp));
                     @unlink($webp);
                     $mime = 'image/webp';
                 } else {
-                    $path = 'chats/'.$chat->id.'/'.Str::uuid().'.'.($file->guessExtension() ?: 'bin');
+                    // Расширение — по имени (`guessExtension` у docx дал бы «zip»); общий тип — по расширению.
+                    $ext = strtolower((string) preg_replace('/[^A-Za-z0-9]/', '', $file->getClientOriginalExtension())) ?: 'bin';
+                    if (in_array($mime, ['', 'application/zip', 'application/octet-stream'], true)) {
+                        $mime = MimeTypes::getDefault()->getMimeTypes($ext)[0] ?? ($mime ?: 'application/octet-stream');
+                    }
+                    $path = 'chats/'.$chat->id.'/'.Str::uuid().'.'.mb_substr($ext, 0, 10);
                     Storage::disk('private')->put($path, $file->getContent());
                 }
                 $message->files()->create(['name' => mb_substr($file->getClientOriginalName(), 0, 255), 'mime' => $mime, 'size' => Storage::disk('private')->size($path), 'path' => $path]);
