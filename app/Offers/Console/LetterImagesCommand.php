@@ -43,6 +43,11 @@ class LetterImagesCommand extends Command
                 foreach ($images as $a) {
                     $contents = $a->contents();
                     $sha = $contents !== null ? hash('sha256', $contents) : null;
+                    // HEIC при приёме перекодирован — отпечаток кадра от нового файла: тогда по имени и времени письма.
+                    if ((! $sha || ! $hidden->has($sha)) && $a->isHeic()) {
+                        $same = $hidden->first(fn ($p) => $p->name === pathinfo((string) $a->filename, PATHINFO_FILENAME) && $p->created_at->gte($m->created_at->copy()->subMinute()));
+                        $sha = $same?->getCustomProperty('sha');
+                    }
                     if (! $sha || ! $hidden->has($sha)) {
                         continue;
                     }
