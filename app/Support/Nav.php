@@ -646,7 +646,7 @@ final class Nav
                 '/deals' => match (true) {
                     // Только сделки в работе, как в списке (11.10.2026): подтверждения и закончившееся — строками в конце.
                     // Плюс «Ждут решения» (02.11.2026): срок приёма вышел, его подтверждение ждёт выбора — строки того же экрана.
-                    $user->hasDeals() => Deal::where('buyer_id', $user->id)->live()->count()
+                    $user->hasDeals() => Deal::where('buyer_id', $user->id)->liveForManager()->count()
                         + DealController::pending($user)->count(),
                     $user->isAdmin() => Deal::active()->count(),
                     default => null,
@@ -700,7 +700,7 @@ final class Nav
             // гаража пишет «ваш ход» только по ним (цену продажи Совкомбанка называет «Продаю»).
             // Сделки, а не просьбы (27.10.2026: «Укажите покупателя» — ход без просьбы — в число не входил, бейдж 1 при двух делах).
             // Параллельная (07.11.2026) — его сделка, как идущая: ход по её просьбе (`MANAGER_TURN_SQL`).
-            $asks = Deal::where('buyer_id', $user->id)->live()->whereRaw(Deal::MANAGER_TURN_SQL)
+            $asks = Deal::where('buyer_id', $user->id)->liveForManager()->whereRaw(Deal::MANAGER_TURN_SQL)
                 ->selectRaw('count(*) filter (where garage_payer is null) as deals, count(*) filter (where garage_payer is not null and (exists (select 1 from requirements r
                     where r.deal_id = deals.id and r.done_at is null) or exists (select 1 from reprice_asks a where a.deal_id = deals.id and a.state in (\'pending\', \'countered\')))) as garage')->first();
             $paid = self::paidPayAsks($user);

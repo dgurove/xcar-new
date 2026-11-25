@@ -232,15 +232,17 @@ final class Signing
         return $deal->signing_address ?? self::office($deal)['address'] ?? self::lastAddress($deal);
     }
 
-    /** @return Collection<int, Carbon> ближайшие рабочие дни филиала с завтра — строки сетки времени */
+    /**
+     * @return Collection<int, Carbon> ближайшие рабочие дни филиала — строки сетки времени. С сегодня, если у филиала сегодня
+     * ещё остался час (25.11.2026, владелец: «бесит, что дату подписания сегодняшнюю нельзя выбрать»; до того — с завтра).
+     */
     public static function workdays(Deal $deal, int $count = 5): Collection
     {
-        // С завтра: договор ещё готовят, сегодня подписать не выйдет.
         $office = self::office($deal);
-        $day = now('Europe/Moscow')->startOfDay()->addDay();
+        $day = now('Europe/Moscow')->startOfDay();
         $out = collect();
         for ($i = 0; $out->count() < $count && $i < 21; $i++, $day->addDay()) {
-            if (in_array($day->dayOfWeekIso, $office['days'], true)) {
+            if (in_array($day->dayOfWeekIso, $office['days'], true) && ($i > 0 || self::todayTimes($deal)->isNotEmpty())) {
                 $out->push($day->copy());
             }
         }
@@ -248,13 +250,24 @@ final class Signing
         return $out;
     }
 
-    /** @return Collection<string, Collection<int, Carbon>> сетка выбора: 5 рабочих дней филиала с завтра × часы филиала */
+    /** Часы филиала, что сегодня ещё впереди: начало слота не раньше, чем через час. @return Collection<int, Carbon> */
+    private static function todayTimes(Deal $deal): Collection
+    {
+        $today = now('Europe/Moscow')->toDateString();
+        $edge = now()->addHour();
+
+        return collect(self::times($deal))->map(fn (string $t) => Carbon::createFromFormat('Y-m-d G:i', $today.' '.$t, 'Europe/Moscow'))
+            ->filter(fn (Carbon $c) => $c->gte($edge))->values();
+    }
+
+    /** @return Collection<string, Collection<int, Carbon>> сетка выбора: 5 рабочих дней филиала × часы филиала (сегодня — оставшиеся) */
     public static function grid(Deal $deal): Collection
     {
         $times = self::times($deal);
 
-        return self::workdays($deal)->mapWithKeys(fn (Carbon $d) => [$d->toDateString() => collect($times)
-            ->map(fn (string $t) => Carbon::createFromFormat('Y-m-d G:i', $d->toDateString().' '.$t, 'Europe/Moscow'))]);
+        return self::workdays($deal)->mapWithKeys(fn (Carbon $d) => [$d->toDateString() => $d->isToday()
+            ? self::todayTimes($deal)
+            : collect($times)->map(fn (string $t) => Carbon::createFromFormat('Y-m-d G:i', $d->toDateString().' '.$t, 'Europe/Moscow'))]);
     }
 
     /** Время вне часов филиала — словами, иначе null. */

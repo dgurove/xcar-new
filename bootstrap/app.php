@@ -65,6 +65,7 @@ use App\Offers\Console\SellFromStatementCommand;
 use App\Offers\Console\NoPayoutsCommand;
 use App\Offers\Console\CommissionOwnersCommand;
 use App\Offers\Console\CommissionOwnersTidyCommand;
+use App\Offers\Console\ManagerDoneCommand;
 use App\Offers\Console\OwnerPassportsCommand;
 use App\Offers\Console\LetterImagesCommand;
 use App\Offers\Console\DealAgreementFixCommand;
@@ -146,6 +147,7 @@ return Application::configure(basePath: dirname(__DIR__))
         DealReconcileCommand::class,
         CommissionOwnersCommand::class,
         CommissionOwnersTidyCommand::class,
+        ManagerDoneCommand::class,
         OwnerPassportsCommand::class,
         LetterImagesCommand::class,
         BindingFromDocsCommand::class,

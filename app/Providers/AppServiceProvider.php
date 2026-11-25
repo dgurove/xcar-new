@@ -146,6 +146,8 @@ class AppServiceProvider extends ServiceProvider
         Event::subscribe(ApplySigningWish::class);
         // До `Notify`: подписание не в Москве — «Время подписания» и запись проходятся сразу (25.11.2026).
         Event::subscribe(\App\Offers\Listeners\SkipSigningBooking::class);
+        // Для менеджера сделка закрыта, когда впереди только наши шаги (25.11.2026, `deals.manager_done_at`).
+        Event::subscribe(\App\Offers\Listeners\SyncManagerDone::class);
         // «Ждём письмо поставщика», а письмо уже есть — ход наш, «Спросить менеджера» (`SupplierLetterWait`).
         Event::subscribe(MarkSupplierLetterWait::class);
         Event::subscribe(Notify::class);

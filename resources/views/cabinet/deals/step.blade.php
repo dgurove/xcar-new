@@ -47,7 +47,14 @@
     // сбивали с толку, будто ждём поставщика (10.10.2026, владелец). Шапка — что случилось и вопрос, рядом только часы.
     $consent = $deal->isLive() && $requirement && $position?->stage->asksConsent();
 @endphp
+@php
+    // Для менеджера закрыта (25.11.2026, `Deal::doneForManager`): впереди только наши шаги — «Завершена», шага и кнопок нет.
+    $doneForMe = $deal->isLive() && $deal->manager_done_at && $deal->buyer_id === auth()->id();
+@endphp
 <div class="flex flex-col gap-4">
+    @if ($doneForMe)
+        <p><span class="font-medium text-open">Завершена</span> <span class="nums text-sm text-ink-muted">{{ $deal->manager_done_at->timezone('Europe/Moscow')->format('d.m.Y H:i') }}</span></p>
+    @endif
     @if (! $deal->isLive() && ! $deal->isGarage())
         {{-- Закончилась — состояние словом с датой, без своей плашки, и на телефоне тоже (11.10.2026: там закрытая сделка
              выглядела идущей). Гаражной его пишет своя карточка суммы. --}}
@@ -56,7 +63,7 @@
         @if ($deal->declinedBySupplier() && $deal->close_note)<p class="text-ink-muted">{{ \App\Support\VendorNames::strip($deal->close_note) }}</p>@endif
     @endif
 
-    @if ($deal->isLive() && $position)
+    @if ($deal->isLive() && $position && ! $doneForMe)
         {{-- Просрочено — красным временем в шапке, без оранжевого «!» у заголовка (`.box-urgent`): «!» шапки — его ход. --}}
         <div id="step" class="box scroll-mt-4">
             {{-- Шапка — чей ход одной строкой (18.11.2026, владелец: «им должно быть всё равно, что мы там внутри делаем»): его ход —
@@ -107,12 +114,12 @@
             @endif
             @unless ($carCard ?? false)@include('cabinet.deals.pickup-request')@endunless
         </div>
-    @elseif ($deal->isLive())
+    @elseif ($deal->isLive() && ! $doneForMe)
         <x-ui.empty>Сделка ещё не началась</x-ui.empty>
     @endif
 
     {{-- Нет текущего шага (сделка закрыта или ещё не в работе) — показанное своей карточкой. --}}
-    @if ($disclosures->isNotEmpty() && ! ($deal->isLive() && $position))
+    @if ($disclosures->isNotEmpty() && ! ($deal->isLive() && $position && ! $doneForMe))
         <div class="box">@include('cabinet.deals.disclosures', ['bare' => true])</div>
     @endif
 </div>

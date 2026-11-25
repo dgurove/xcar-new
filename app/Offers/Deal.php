@@ -56,7 +56,7 @@ use Spatie\MediaLibrary\InteractsWithMedia;
  * вознаграждения менеджерам никогда не выплачиваем»): наши счёт и ДКП — цена минус вознаграждение, из них закупочная — за ТС,
  * остальное — услуги подбора (`ours`). Выплат менеджеру, режима «выплачиваем» и зачёта «удержано» в системе нет.
  */
-#[Fillable(['manager_sees', 'offer_id', 'bid_id', 'buyer_id', 'amount', 'cost', 'supplier_cost', 'owner_price', 'share', 'commission', 'scheme', 'garage_payer', 'parallel', 'notes', 'closed_at', 'cancelled_at', 'close_reason', 'close_note', 'agreed_at', 'buyer_asked_at', 'signing_slots', 'signing_address', 'signing_at', 'signing_asked_at', 'signing_wish', 'signing_settlement_id', 'prepaid_at', 'supplier_paid_at', 'contract_signed_at', 'contract_signed_by', 'paid_in_at', 'dates_by_hand',
+#[Fillable(['manager_sees', 'offer_id', 'bid_id', 'buyer_id', 'amount', 'cost', 'supplier_cost', 'owner_price', 'share', 'commission', 'scheme', 'garage_payer', 'parallel', 'notes', 'closed_at', 'cancelled_at', 'close_reason', 'close_note', 'agreed_at', 'buyer_asked_at', 'signing_slots', 'signing_address', 'signing_at', 'signing_asked_at', 'signing_wish', 'signing_settlement_id', 'manager_done_at', 'prepaid_at', 'supplier_paid_at', 'contract_signed_at', 'contract_signed_by', 'paid_in_at', 'dates_by_hand',
     'receiver_user_id', 'receiver_name', 'receiver_phone', 'receiver_at', 'auction_at', 'buyer_party_id', 'payer_party_id', 'fee_seller', 'shadow_stage_id', 'shadow_at', 'reissue_at'])]
 class Deal extends Model implements HasMedia
 {
@@ -79,7 +79,7 @@ class Deal extends Model implements HasMedia
 
     protected function casts(): array
     {
-        return ['scheme_at' => 'datetime', 'parallel' => 'bool', 'amount' => 'int', 'cost' => 'int', 'supplier_cost' => 'int', 'owner_price' => 'int', 'share' => 'int', 'commission' => 'int', 'scheme' => DealScheme::class, 'garage_payer' => GaragePayer::class, 'closed_at' => 'datetime', 'cancelled_at' => 'datetime', 'agreed_at' => 'datetime', 'buyer_asked_at' => 'datetime', 'signing_slots' => 'array', 'signing_at' => 'datetime', 'signing_asked_at' => 'datetime', 'signing_wish' => 'array', 'prepaid_at' => 'datetime', 'supplier_paid_at' => 'datetime', 'contract_signed_at' => 'datetime', 'paid_in_at' => 'datetime', 'dates_by_hand' => 'array', 'receiver_at' => 'datetime', 'auction_at' => 'datetime', 'shadow_at' => 'datetime', 'reissue_at' => 'datetime', 'manager_sees' => 'array'];
+        return ['scheme_at' => 'datetime', 'parallel' => 'bool', 'amount' => 'int', 'cost' => 'int', 'supplier_cost' => 'int', 'owner_price' => 'int', 'share' => 'int', 'commission' => 'int', 'scheme' => DealScheme::class, 'garage_payer' => GaragePayer::class, 'closed_at' => 'datetime', 'cancelled_at' => 'datetime', 'agreed_at' => 'datetime', 'buyer_asked_at' => 'datetime', 'signing_slots' => 'array', 'signing_at' => 'datetime', 'signing_asked_at' => 'datetime', 'signing_wish' => 'array', 'prepaid_at' => 'datetime', 'supplier_paid_at' => 'datetime', 'contract_signed_at' => 'datetime', 'paid_in_at' => 'datetime', 'dates_by_hand' => 'array', 'receiver_at' => 'datetime', 'auction_at' => 'datetime', 'shadow_at' => 'datetime', 'reissue_at' => 'datetime', 'manager_sees' => 'array', 'manager_done_at' => 'datetime'];
     }
 
     public function offer(): BelongsTo
@@ -768,6 +768,58 @@ class Deal extends Model implements HasMedia
         $proof = PaymentProofPdf::requirement($this);
 
         return $stage && $proof?->stage?->isPayStep() && $proof->stage->exits->contains(fn (Outcome $e) => $e->to_stage_id === $stage->id) ? $proof : null;
+    }
+
+    /**
+     * Для менеджера сделка закрыта (25.11.2026, владелец по 891799/2026: «для Армена всё, сделка закрыта считай; оплата поставщику —
+     * наша задача»): идёт, а у менеджера в ней ничего не осталось — ни текущий шаг, ни один шаг впереди до закрытия (`FastForward`
+     * главной дорогой) не ждёт его, нет его дела и просьбы, наши счета оплачены, машину забрал или её ему не везут. На сайте — как
+     * закрытая; у нас идёт, пока не пройдём свои шаги.
+     */
+    public function doneForManager(): bool
+    {
+        if (! $this->isActive() || ! $this->buyer_id || $this->isParallel() || $this->isAuction()) {
+            return false;
+        }
+        $stage = $this->offer?->unsetRelation('positions')->position(\App\Workflow\Track::Sale)?->stage;
+        if (! $stage || $stage->awaitsManager($this) || $this->openRequirement()->exists() || $this->managerTask() !== null) {
+            return false;
+        }
+        $run = FastForward::from($this, $stage, fn () => false);
+        if (! $run->closes() || collect($run->passed)->contains(fn (Stage $s) => $s->awaitsManager($this))) {
+            return false;
+        }
+
+        // Договор с ним есть, а подписанного нет — приложить его тоже он.
+        if ($this->hasContract() && ! $this->contractSigned() && \App\Offers\Documents\SignedContractPdf::files($this)->isEmpty()) {
+            return false;
+        }
+        // Машину забирает он сам и ещё не забрал — его дело, и у гаражной тоже (`closeBlocker` гаражную не держит).
+        $pickup = $this->offer?->pickup();
+        if ($pickup && ! $pickup->taken() && $pickup->channel === Channel::Manager) {
+            return false;
+        }
+
+        return \App\Offers\Actions\MarkSoldDeal::unpaid($this)->isEmpty() && $this->closeBlocker() === null;
+    }
+
+    /** Отметка `manager_done_at` по `doneForManager`: ставится и снимается. Да — изменилась. */
+    public function syncManagerDone(): bool
+    {
+        $done = $this->doneForManager();
+        if ($done === ($this->manager_done_at !== null)) {
+            return false;
+        }
+        \Illuminate\Support\Facades\DB::table('deals')->where('id', $this->id)->update(['manager_done_at' => $done ? now() : null]);
+        $this->manager_done_at = $done ? now() : null;
+
+        return true;
+    }
+
+    /** Идёт и для менеджера тоже: сайт («Сделки», счётчик) — без закрытых для него (`manager_done_at`). */
+    public function scopeLiveForManager(Builder $q): Builder
+    {
+        return $q->whereNull('deals.closed_at')->whereNull('deals.manager_done_at');
     }
 
     /** Город подписания договора у поставщика (25.11.2026, `signing_settlement_id`). */

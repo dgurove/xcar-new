@@ -5,7 +5,8 @@
     use App\Offers\DealState;
     $offer = $deal->offer;
     $position = $offer->position();
-    $active = $deal->isLive();
+    // Для менеджера закрыта, когда впереди только наши шаги (25.11.2026, `Deal::doneForManager`): у него — как закончившаяся.
+    $active = $deal->isLive() && ! ($deal->manager_done_at && $deal->buyer_id === auth()->id());
     $req = $active ? $deal->openRequirement : null;
     // Просьба «Оплатите счёт», а счета уже оплачены (маршрут не догнал) — не просим, пишем как есть.
     $paidUp = $req && $position?->stage->isPayStep() && $deal->fullyPaid();
@@ -47,7 +48,7 @@
             <span class="mt-0.5 flex items-baseline gap-x-2 text-sm text-ink-muted">@if ($garageTag)<span class="tag tag-accent shrink-0">Гараж</span>@endif @if ($staff)<span class="min-w-0 truncate">{{ $deal->buyer?->shortName() }}</span>@endif</span>
         @endif
         @if ($deal->declinedBySupplier())<span class="mt-1 block text-sm text-danger">Поставщик отказал в продаже</span>@endif
-        @unless ($active)<span class="nums mt-1 block text-sm text-ink-muted sm:hidden">{{ \App\Support\Ago::html(($deal->closed_at ?? $deal->updated_at), words: false) }}</span>@endunless
+        @unless ($active)<span class="nums mt-1 block text-sm text-ink-muted sm:hidden">{{ \App\Support\Ago::html(($deal->closed_at ?? $deal->manager_done_at ?? $deal->updated_at), words: false) }}</span>@endunless
         @if ($task)
             @php $late = $task['due']?->isPast(); @endphp
             <span class="mt-1 block text-sm"><span class="font-medium">{{ ($turn ?? null)?->mine ? $turn->title : \App\Users\Wording::mine($task['title']) }}</span>@if ($late)<span class="text-danger">, просрочено на <span class="nums whitespace-nowrap" data-controller="timer" data-timer-since-value="{{ $task['due']->toIso8601String() }}" data-timer-coarse-value="true"></span></span>@elseif ($task['due'])<span class="text-ink-muted">, <span class="nums whitespace-nowrap" data-controller="timer" data-timer-until-value="{{ $task['due']->toIso8601String() }}" data-timer-coarse-value="true">{{ \App\Support\Ago::left($task['due']) }}</span></span>@endif</span>
@@ -72,7 +73,7 @@
         <span class="nums font-medium">{{ $price }}</span>
         @if ($sectioned)
         @elseif (! $active)
-            <span class="nums text-sm text-ink-muted">{{ \App\Support\Ago::html(($deal->closed_at ?? $deal->updated_at), words: false) }}</span>
+            <span class="nums text-sm text-ink-muted">{{ \App\Support\Ago::html(($deal->closed_at ?? $deal->manager_done_at ?? $deal->updated_at), words: false) }}</span>
         @else
             {{-- Этап в покое серый: лайм — глагол. Оранжевым становится просрочка. --}}
             <x-ui.state :tone="$alarm ? 'urgent' : 'plain'" class="max-w-full"><span class="min-w-0">{{ \App\Users\Wording::mine($position?->stage->block?->name) ?? 'Идёт работа' }}</span></x-ui.state>

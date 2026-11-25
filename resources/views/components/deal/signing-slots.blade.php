@@ -16,7 +16,7 @@
         @php $day = $slots->first(); @endphp
         <div class="slot-day-row">
             <div class="slot-day-head">
-                <span class="min-w-0 flex-1"><span class="font-medium">{{ $day->locale('ru')->isoFormat('D MMMM') }}</span> <span class="text-ink-muted">{{ $day->isTomorrow() ? 'завтра' : $day->locale('ru')->isoFormat('dd') }}</span></span>
+                <span class="min-w-0 flex-1"><span class="font-medium">{{ $day->locale('ru')->isoFormat('D MMMM') }}</span> <span class="text-ink-muted">{{ $day->isToday() ? 'сегодня' : ($day->isTomorrow() ? 'завтра' : $day->locale('ru')->isoFormat('dd')) }}</span></span>
             </div>
             <div class="slot-row" data-slots-pick-target="row" data-action="scroll->slots-pick#edge">
                 @foreach ($slots as $slot)

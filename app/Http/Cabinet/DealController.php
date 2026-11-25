@@ -90,7 +90,8 @@ class DealController
         $view = $staff || ListView::fromRequest($request) !== ListView::LIST ? ListView::TABLE : ListView::LIST;
         // Параллельная (07.11.2026) — его сделка, как идущая: со своим теневым шагом (`Parallels::dress`).
         // Строке таблицы кадры не нужны.
-        $deals = self::deals($me)->when($view === ListView::TABLE, fn ($d) => $d->without('offer.media'))->live()
+        // Менеджеру — без закрытых для него (впереди только наши шаги, `manager_done_at`, 25.11.2026): они в архиве.
+        $deals = self::deals($me)->when($view === ListView::TABLE, fn ($d) => $d->without('offer.media'))->when($staff, fn ($d) => $d->live(), fn ($d) => $d->liveForManager())
             ->orderByRaw("case when {$turn} then 0 else 1 end")
             ->orderByRaw('(select min(r.due_at) from requirements r where r.deal_id = deals.id and r.done_at is null) asc nulls last')
             ->when($sort->key === 'amount', fn ($d) => $d->orderByRaw("coalesce(amount, cost) {$sort->dir()} nulls last"))->orderBy('created_at', $sort->key === 'fresh' ? $sort->dir() : 'desc')->orderByDesc('id');
@@ -108,7 +109,7 @@ class DealController
         // Админ подтверждения решает в CRM — строки «Мои подтверждения» и «Ждут решения» у него нет.
         $bids = $me->hasDeals() ? self::waiting($me)->count() : 0;
         $pending = $me->hasDeals() ? self::pending($me)->get()->sortByDesc(fn (Bid $b) => $b->offer->bids_close_at?->getTimestamp())->values() : collect();
-        $archived = self::deals($me)->whereNotNull('deals.closed_at')->notSuperseded()->count();
+        $archived = self::deals($me)->where(fn ($q) => $q->whereNotNull('deals.closed_at')->orWhereNotNull('deals.manager_done_at'))->notSuperseded()->count();
 
         return view('cabinet.deals.index', ['deals' => $deals, 'sections' => $sections, 'tasks' => $tasks, 'turns' => $turns, 'pending' => $pending, 'bids' => $bids, 'archived' => $archived,
             'sort' => $sort, 'view' => $view, 'table' => self::table($staff)]);
@@ -172,13 +173,14 @@ class DealController
     private function archive(Request $request)
     {
         $me = $request->user();
-        $closed = self::deals($me)->whereNotNull('deals.closed_at')->notSuperseded()
-            ->orderByRaw('coalesce(closed_at, updated_at) desc')->orderByDesc('id')->limit(self::ARCHIVE)->get();
+        // И закрытые для менеджера (впереди только наши шаги, 25.11.2026) — в «Закончены».
+        $closed = self::deals($me)->where(fn ($q) => $q->whereNotNull('deals.closed_at')->orWhereNotNull('deals.manager_done_at'))->notSuperseded()
+            ->orderByRaw('coalesce(closed_at, manager_done_at, updated_at) desc')->orderByDesc('id')->limit(self::ARCHIVE)->get();
 
         // Закрытая параллельная — без шага машины (`Parallels::dress`).
         $closed->each(fn (Deal $d) => Parallels::dress($d));
 
-        return view('cabinet.deals.archive', ['done' => $closed->filter(fn (Deal $d) => $d->state === DealState::Done)->values(), 'failed' => $closed->filter(fn (Deal $d) => $d->state === DealState::Cancelled)->values()]);
+        return view('cabinet.deals.archive', ['done' => $closed->filter(fn (Deal $d) => $d->state === DealState::Done || ($d->isLive() && $d->manager_done_at))->values(), 'failed' => $closed->filter(fn (Deal $d) => $d->state === DealState::Cancelled)->values()]);
     }
 
     /** Сделки экрана с тем, что нужно строке; гаражные тоже (02.11.2026) — машина гаража нужна ссылке строки. */
