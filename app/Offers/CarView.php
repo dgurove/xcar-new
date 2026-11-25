@@ -609,7 +609,7 @@ final class CarView
             $sold[] = $emit('deal-sold', 'Уже продана…', 'check');
         }
         if ($dealing && $state === OfferState::Sold && MarkContractSigned::allows($o->deal) && ! $step->signs) {
-            $sold[] = $post('/work/deals/'.$o->deal->id.'/contract-signed', 'Договор уже подписан', 'file', [], confirm: 'Договор с покупателем уже подписан?', text: 'Данные покупателя больше не нужны, шаги договора отметятся', confirmLabel: 'Подписан');
+            $sold[] = $post('/work/deals/'.$o->deal->id.'/contract-signed', 'Договор уже подписан', 'file', [], confirm: 'Договор с покупателем уже подписан?', text: 'Данные покупателя больше не нужны, шаги договора и подписания отметятся', confirmLabel: 'Подписан');
         }
         if (($closed = $o->lastDeal) && ReopenDeal::allows($closed, $this->user)) {
             $sold[] = $emit('reopen', 'Вернуть сделку в работу…', 'undo');

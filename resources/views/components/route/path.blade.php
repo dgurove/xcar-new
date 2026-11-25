@@ -675,6 +675,17 @@
                         {{-- Что будет после кнопки (03.11.2026, «сотрудникам страшно нажимать») — в переспросе кнопки, а не строкой «Дальше:»
                              под ней (10.11.2026, владелец: «месиво»). --}}
                     @endif
+                    {{-- «Договор уже подписан» прямо в шаге договора или подписания (25.11.2026, владелец: «эту кнопку бы в ход сделки, а не только в
+                         доп. меню»): та же отметка, что в «⋯» (`MarkContractSigned`) — у Альфы подписание и закрывает сделку. У шага со своей
+                         кнопкой «Договор подписан» и у шага, что просит сам подписанный договор файлом («Подписанный договор»: там его
+                         прикладывают), её нет. --}}
+                    @if ($deal && $position->track === \App\Workflow\Track::Sale && auth()->user()?->canEditDeals() && $stage->aboutContract()
+                        && $stage->asks !== \App\Workflow\Asks::Document && \App\Offers\Actions\MarkContractSigned::allows($deal) && ! $stage->loadedExits()->contains(fn ($x) => str_contains(mb_strtolower($x->label), 'подписан')))
+                        <div class="step-acts mt-2"><form method="post" action="/work/deals/{{ $deal->id }}/contract-signed" data-turbo-confirm="Договор с покупателем уже подписан?"
+                            data-turbo-confirm-text="Данные покупателя больше не нужны, шаги договора и подписания отметятся" data-turbo-confirm-label="Подписан">
+                            @csrf<x-ui.button size="sm" variant="secondary">Договор уже подписан</x-ui.button>
+                        </form></div>
+                    @endif
                     @if ($subs->where('state', \App\Workflow\Substeps::WAIT)->isNotEmpty())
                         <ol class="substeps substeps--wait">
                             @foreach ($subs->where('state', \App\Workflow\Substeps::WAIT) as $sub)

@@ -547,6 +547,9 @@ class DealController
         abort_unless($request->user()->canEditDeals(), 403);
         $deal = $mark($deal, $request->user());
         $stage = $deal->offer->stage();
+        if (! $deal->isActive()) {
+            return back()->with('toast', 'Договор подписан, сделка закрыта');
+        }
 
         return back()->with('toast', $stage?->aboutContract() || $stage?->asks === Asks::Buyer
             ? 'Договор подписан. Закрыть сделку — «Уже продана…»' : 'Договор подписан, сделка на «'.$stage?->name.'»');

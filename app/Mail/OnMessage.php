@@ -161,6 +161,9 @@ final class OnMessage
                     $deal = $vehicle->offer?->deal;
                     if ($deal?->isActive() && $deal->prepaid_at) {
                         $vehicle->offer->log(OfferEventType::Note, null, ['text' => 'Поставщик: ТС реализовано, выдача по пропуску — '.$pass->name]);
+                        // «Реализовано» — договор у поставщика подписан (25.11.2026: четыре сделки Альфы висели на «Время подписания» и
+                        // «Запись на подписание» после такого письма): шаги подписания проходятся, как «Договор подписан за менеджера».
+                        \App\Offers\Actions\MarkContractSigned::byLetter($deal, $message);
                     } else {
                         Notification::send(
                             app(Notify::class)->parkManagersOf($vehicle->city_id)

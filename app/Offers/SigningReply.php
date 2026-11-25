@@ -18,6 +18,8 @@ use Illuminate\Support\Carbon;
  */
 final class SigningReply
 {
+    private const BOOKED = '/запис(?:али|ал|ан[аы]?|ь\s+подтвержд)/u';
+
     /** @param  list<Carbon>  $slots */
     private function __construct(public readonly string $kind, public readonly Message $message, public readonly ?Carbon $at = null, public readonly array $slots = []) {}
 
@@ -30,7 +32,11 @@ final class SigningReply
         $letters = Message::whereHas('thread', fn ($t) => $t->where('offer_id', $deal->offer_id))
             ->where('date_at', '>=', $position->entered_at?->copy()->subDay() ?? now()->subWeek())
             ->orderBy('date_at')->get();
-        $theirs = $letters->filter(fn (Message $m) => $m->direction === Direction::In && $m->date_at >= $position->entered_at);
+        // Автоответ («я отсутствую на рабочем месте») — не ответ: он не закрывает собой настоящий (25.11.2026, 2610071465). «Записали…»
+        // засчитывается и за сутки до входа в шаг: сотрудник написал поставщику руками раньше письма шага, ответ пришёл до него
+        // (2611134025: «Записали на 23 число в 11:00» в 16:47:16, письмо шага в 16:47:58).
+        $theirs = $letters->filter(fn (Message $m) => $m->direction === Direction::In && ! $m->isAutomatic()
+            && ($m->date_at >= $position->entered_at || preg_match(self::BOOKED, self::own($m))));
         $last = $theirs->last();
         if (! $last) {
             return null;
@@ -40,7 +46,7 @@ final class SigningReply
         if (preg_match('/никто\s+не\s+просил|не\s+записан|записи\s+нет|не\s+смогли\s+записать/u', $text)) {
             return new self('none', $last);
         }
-        if (preg_match('/запис(?:али|ал|ан[аы]?|ь\s+подтвержд)/u', $text)) {
+        if (preg_match(self::BOOKED, $text)) {
             $at = self::when($text, $base);
             if (! $at) {
                 // «записали» без времени — на то, что мы назвали последним ответом, в день из его предложения.
@@ -97,6 +103,19 @@ final class SigningReply
     private static function date(string $text, Carbon $base): ?Carbon
     {
         if (! preg_match('/(?<!\d)(\d{1,2})\.(\d{1,2})(?:\.(\d{2,4}))?(?![\d:])/u', $text, $d) || (int) $d[2] < 1 || (int) $d[2] > 12 || (int) $d[1] < 1 || (int) $d[1] > 31) {
+            // «Записали на 23 число в 11:00» (25.11.2026, 2611134025): день без месяца — ближайшее такое число от письма.
+            if (preg_match('/(?<!\d)([12]?\d|3[01])\s*(?:-?го\s+)?числ/u', $text, $n) && (int) $n[1] >= 1) {
+                $day = $base->copy()->timezone('Europe/Moscow')->startOfDay();
+                $at = $day->copy()->day(min((int) $n[1], $day->daysInMonth));
+
+                if ($at->gte($day)) {
+                    return $at;
+                }
+                $next = $day->copy()->startOfMonth()->addMonth();
+
+                return $next->day(min((int) $n[1], $next->daysInMonth));
+            }
+
             return null;
         }
         $year = isset($d[3]) ? ((int) $d[3] < 100 ? 2000 + (int) $d[3] : (int) $d[3]) : (int) $base->copy()->timezone('Europe/Moscow')->year;
