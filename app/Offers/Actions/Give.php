@@ -163,6 +163,8 @@ final class Give
             }
             // ДКП ПРАЙМ «за счёт собственника» (14.11.2026): комитент — сам из договора комиссии в письмах, после записи сделки.
             DB::afterCommit(fn () => app(FillCommissionOwner::class)($deal->fresh(['offer.vendor', 'contract'])));
+            // Продавец ДКП собственника — из паспорта в письмах страховой (25.11.2026, `FillOwnerFromPassport`).
+            DB::afterCommit(fn () => app(FillOwnerFromPassport::class)($deal->fresh(['offer.vendor', 'contract'])));
 
             return $deal;
         });

@@ -103,7 +103,9 @@ class PassportScanController
      */
     private static function staff(User $me, Party $party): bool
     {
-        return $me->isAdmin() || ($me->canEditDeals() && DealContract::whereHas('buyer', fn ($q) => $q->where('party_id', $party->id))->exists());
+        // И продавец ДКП собственника (25.11.2026: скан паспорта из письма страховой, `FillOwnerFromPassport`).
+        return $me->isAdmin() || ($me->canEditDeals() && (DealContract::whereHas('buyer', fn ($q) => $q->where('party_id', $party->id))->exists()
+            || DealContract::where('seller_party_id', $party->id)->exists()));
     }
 
     private function state(Party $party): array

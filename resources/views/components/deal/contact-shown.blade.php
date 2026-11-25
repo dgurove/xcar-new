@@ -30,7 +30,8 @@
             $letters = Disclosures::contactLetters($deal);
             $proposals = Disclosures::proposals($deal, $letters, contact: true);
             // Ещё не показан — отмечено всё контактное; показан — ничего: шторка для правки и «показать ещё».
-            $picked = $shownAt ? [] : array_values(array_filter(array_keys($proposals), fn ($k) => preg_match('/^(name|phone|address):/', $k)));
+            // Документы собственника из писем (паспорт, СТС — `OwnerDocs`) отмечены тоже: показ — одним нажатием (25.11.2026).
+            $picked = $shownAt ? [] : array_values(array_filter(array_keys($proposals), fn ($k) => preg_match('/^(name|phone|address):/', $k) || ($proposals[$k]['pick'] ?? false)));
             $seen = $shownAt ? Disclosures::shown($deal) : collect();
             $seenLine = $shownAt ? implode(', ', array_filter([Disclosures::latest($seen, 'name'), Disclosures::latest($seen, 'phone')])) : null;
         @endphp

@@ -50,11 +50,42 @@ final class StorePassportScan
         }
     }
 
+    /**
+     * Скан паспорта из файлов машины (25.11.2026: Т-Страхование шлёт паспорт собственника в письме — продавец ДКП, `FillOwnerFromPassport`):
+     * те же плитки по порядку, PDF из двух страниц — на обе. `$by` пусто — система.
+     *
+     * @param  iterable<\Spatie\MediaLibrary\MediaCollections\Models\Media>  $files
+     */
+    public function fromMedia(Party $party, iterable $files, ?User $by = null): void
+    {
+        $pages = array_keys(Party::PASSPORT_PAGES);
+        $at = 0;
+        foreach ($files as $file) {
+            $path = $file->getPath();
+            if ($at >= count($pages) || ! is_file($path)) {
+                continue;
+            }
+            if (str_starts_with((string) $file->mime_type, 'image/')) {
+                $body = (string) file_get_contents($path);
+                $p = $pages[$at++];
+                $this->store($party, $p, fn ($props) => $this->ingest->fromString($party, 'passport', $body, 'passport-'.$p.'.'.(pathinfo($path, PATHINFO_EXTENSION) ?: 'jpg'), $props, self::MAX), $by);
+
+                continue;
+            }
+            $jpegs = self::pdfPages($path, count($pages));
+            count($jpegs) >= count($pages) && $at = 0;
+            foreach (array_slice($jpegs, 0, count($pages) - $at) as $jpeg) {
+                $p = $pages[$at++];
+                $this->store($party, $p, fn ($props) => $this->ingest->fromString($party, 'passport', $jpeg, 'passport-'.$p.'.jpg', $props, self::MAX), $by);
+            }
+        }
+    }
+
     /** Новая страница скана вместо прежней и её чтение. @param  callable(array): \Spatie\MediaLibrary\MediaCollections\Models\Media  $add */
-    private function store(Party $party, string $page, callable $add, User $by): void
+    private function store(Party $party, string $page, callable $add, ?User $by): void
     {
         $old = $party->passportScan($page);
-        $media = $add(['page' => $page, 'read' => 'reading', 'by' => $by->id]);
+        $media = $add(['page' => $page, 'read' => 'reading', 'by' => $by?->id]);
         $old?->delete();
         $party->unsetRelation('media');
         ReadPassport::dispatch($media->id);

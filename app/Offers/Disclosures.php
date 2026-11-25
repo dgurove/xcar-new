@@ -72,11 +72,20 @@ final class Disclosures
             $add('phone', $m->field('insured_phone'), $group);
             $add('name', $m->field('insured_name'), $group);
             $add('address', VendorNames::strip($m->field('location')), $group);
-            // Показ контакта (`contact`, 25.11.2026): из писем — только телефоны, имя и адрес; документы — машины, как при показе руками.
+            $own = $papers->filter(fn (Media $f) => (int) $f->getCustomProperty('letter') === $m->id);
+            // Документы собственника письма — паспорт, СТС, ПТС (`OwnerDocs`, 25.11.2026, владелец: Т-Страхование шлёт их, а сотрудники
+            // скачивали и слали в чат руками): пунктами-файлами письма, отмечены сразу — и в показе контакта, и картинкой («Паспорт1.png»).
+            $owner = OwnerDocs::among($own);
+            $owner->each(function (Media $f) use ($add, $group, &$out) {
+                $add('file', $f->name ?: $f->file_name, $group, $f->id);
+                isset($out['file:'.$f->id]) && $out['file:'.$f->id]['pick'] = true;
+            });
+            // Показ контакта (`contact`, 25.11.2026): из писем — только телефоны, имя, адрес и документы собственника; остальные
+            // документы — машины, как при показе руками.
             if ($contact) {
                 continue;
             }
-            [$pictures, $documents] = $papers->filter(fn (Media $f) => (int) $f->getCustomProperty('letter') === $m->id)
+            [$pictures, $documents] = $own->reject(fn (Media $f) => $owner->contains('id', $f->id))
                 ->partition(fn (Media $f) => str_starts_with((string) $f->mime_type, 'image/'));
             $documents->each(function (Media $f) use ($add, $group, $m, $open, &$out) {
                 $add('file', $f->name ?: $f->file_name, $group, $f->id);

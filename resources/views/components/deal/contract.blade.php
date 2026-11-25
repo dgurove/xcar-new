@@ -35,6 +35,8 @@
                 @csrf @method('put')
                 @if ($ownerFields)
                     <div class="list-cap !px-0">{{ $deal->isDkp() ? 'Продавец, собственник по СТС' : 'Собственник, комитент по договору комиссии' }}</div>
+                    {{-- Скан паспорта продавца — из письма страховой сам (`FillOwnerFromPassport`, 25.11.2026) или руками; прочитанное — в поля. --}}
+                    @if ($deal->isDkp() && $contract->seller)<x-billing.passport-scan :party="$contract->seller" :form="$form" prefix="seller"/>@endif
                     <x-billing.passport-fields :party="$contract->seller" prefix="seller"/>
                 @endif
                 <div class="grid grid-cols-1 gap-3">

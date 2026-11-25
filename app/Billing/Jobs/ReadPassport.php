@@ -91,6 +91,10 @@ final class ReadPassport implements ShouldQueue
         if ($user && $by) {
             PassportScanController::resyncFor($user, $by, app(SyncDealInvoices::class));
         }
+        // Продавец ДКП собственника (скан из письма страховой, 25.11.2026): договор собирается заново — «данные продавца» уходят сами.
+        foreach (\App\Offers\DealContract::with(['seller', 'buyer.party', 'deal.offer', 'deal.buyer'])->where('seller_party_id', $party->id)->get() as $contract) {
+            $contract->deal?->isLive() && app(\App\Offers\Actions\SettleContract::class)($contract);
+        }
     }
 
     /**

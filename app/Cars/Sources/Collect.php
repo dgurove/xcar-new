@@ -56,6 +56,9 @@ final class Collect
             \App\Offers\Valuations::fromDocuments($car->refresh());
             // НДС поставщика из его договора комиссии, счёта или ДКП (`Offers\SupplierVat`, 20.11.2026).
             \App\Offers\SupplierVat::onDocuments($car->refresh());
+            // Паспорт собственника в документах — продавец ДКП собственника (25.11.2026, `FillOwnerFromPassport`).
+            $deal = $car->refresh()->offer?->deal;
+            $deal && app(\App\Offers\Actions\FillOwnerFromPassport::class)($deal);
         }
         Variants::recount($car->refresh());
     }
