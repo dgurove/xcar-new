@@ -518,14 +518,14 @@ class Invoice extends Model implements HasMedia
         };
     }
 
-    /** Наименование позиции в чеке ЮKassa: у разовой оплаты — её услуга, у сделки — «Подбор ТС марка модель». */
+    /** Наименование позиции в чеке ЮKassa: у разовой оплаты — её услуга, у сделки — «Услуги подбора марка модель» (25.11.2026, владелец). */
     public function receiptTitle(): string
     {
         if ($this->isService()) {
             return (string) ($this->relationLoaded('charges') ? $this->charges->first()?->title : $this->charges()->value('title'));
         }
 
-        return trim('Подбор ТС '.($this->offer?->titleWithYear() ?? ''));
+        return trim('Услуги подбора '.($this->offer?->title() ?? 'ТС'));
     }
 
     /**
