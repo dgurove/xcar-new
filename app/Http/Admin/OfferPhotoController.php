@@ -8,15 +8,12 @@ use App\Mail\Scan\OfferSubject;
 use App\Mail\Scan\Paper;
 use App\Mail\Scan\Reader;
 use App\Media\Actions\RotatePhoto;
-use App\Media\Actions\UnmarkPhoto;
 use App\Media\DocName;
 use App\Media\ForManagers;
 use App\Media\Hidden;
 use App\Media\PdfPhotos;
 use App\Media\PhotoBlocks;
 use App\Media\PhotoIngest;
-use App\Media\Unmark;
-use App\Media\Watermarks;
 use App\Offers\Actions\UpdateOffer;
 use App\Offers\Jobs\ImportMigtorgLot;
 use App\Offers\Jobs\ImportOfferArchive;
@@ -178,96 +175,6 @@ class OfferPhotoController
         $rotate($media, RotatePhoto::turns($request));
 
         return $this->gallery($offer->refresh());
-    }
-
-    /** Шторка «Водяной знак» из просмотрщика: снят ли знак, сравнить со знаком, вернуть, заменить своим файлом. */
-    public function mark(Offer $offer, Media $media)
-    {
-        $this->own($offer, $media);
-        $unmarked = $media->getCustomProperty('unmarked');
-
-        return view('admin.offers.mark-sheet', [
-            'offer' => $offer,
-            'media' => $media,
-            'manual' => $unmarked === UnmarkPhoto::MANUAL,
-            'title' => $unmarked === UnmarkPhoto::MANUAL ? null : Watermarks::title($unmarked),
-            'marked' => is_file(UnmarkPhoto::markedPath($media)),
-            'marks' => Watermarks::all(),
-            // «Со всех фото» — кадры предложения, с которых знак ещё не снимали (этот — первым)
-            'rest' => $offer->photos()->reject(fn (Media $m) => $m->getCustomProperty('unmarked'))
-                ->sortBy(fn (Media $m) => $m->id === $media->id ? 0 : 1)->pluck('id')->values()->all(),
-        ]);
-    }
-
-    /** Кадр со знаком площадки — копия на закрытом диске, для сравнения в шторке. */
-    public function marked(Offer $offer, Media $media)
-    {
-        $this->own($offer, $media);
-        $path = UnmarkPhoto::markedPath($media);
-        abort_unless(is_file($path), 404);
-
-        return response()->file($path, ['Cache-Control' => 'private, no-cache']);
-    }
-
-    /**
-     * «Вернуть со знаком» (`act=undo`), снять выбранный знак (`act=mark`, `mark`: не определился сам) или свой файл вместо
-     * кадра (`file`: почистили знак сами). «Со всех фото» шлёт `act=mark` по кадру за запрос: ручной поиск — секунды.
-     */
-    public function unmark(Request $request, Offer $offer, Media $media, UnmarkPhoto $unmark, PhotoIngest $ingest)
-    {
-        $this->own($offer, $media);
-        try {
-            if ($request->hasFile('file')) {
-                $request->validate(['file' => ['file', 'max:65536']]);
-                $file = $request->file('file');
-                if (! $this->isImage($file, $ingest)) {
-                    return response()->json(['message' => 'Это не фото'], 422);
-                }
-                $unmark->replace($media, $file->getRealPath(), $ingest);
-            } elseif ($request->input('act') === 'mark') {
-                $mark = (string) $request->input('mark');
-                abort_unless(array_key_exists($mark, Watermarks::all()), 422);
-                if ($media->getCustomProperty('unmarked')) {
-                    return $this->gallery($offer->refresh());
-                }
-                if (! $unmark($media, $mark)) {
-                    return response()->json(['message' => 'Знак не нашёлся на фото'], 422);
-                }
-            } elseif ($request->input('act') !== 'undo' || ! $unmark->undo($media)) {
-                return response()->json(['message' => 'Кадра со знаком нет'], 422);
-            }
-        } catch (Throwable $e) {
-            return response()->json(['message' => $e->getMessage()], 422);
-        }
-
-        return $this->gallery($offer->refresh());
-    }
-
-    /**
-     * Новый знак рамкой: обвели знак на этом фото, знак собирается по нему и остальным фото предложения (до 12 — хватает
-     * с запасом, а запрос укладывается в лимит Octane). Ответ — название и сколько фото пошло; шторка открывается заново.
-     */
-    public function learn(Request $request, Offer $offer, Media $media, Unmark $unmark)
-    {
-        $this->own($offer, $media);
-        $data = $request->validate([
-            'title' => ['required', 'string', 'max:40'],
-            'x0' => ['required', 'numeric', 'between:0,1'], 'y0' => ['required', 'numeric', 'between:0,1'],
-            'x1' => ['required', 'numeric', 'between:0,1'], 'y1' => ['required', 'numeric', 'between:0,1'],
-        ]);
-        if ($data['x1'] - $data['x0'] < 0.03 || $data['y1'] - $data['y0'] < 0.02) {
-            return response()->json(['message' => 'Обведите знак целиком'], 422);
-        }
-        $photos = collect([$media])->merge($offer->photos()->reject(fn (Media $m) => $m->id === $media->id))
-            ->reject(fn (Media $m) => $m->getCustomProperty('unmarked') === UnmarkPhoto::MANUAL)
-            ->map(fn (Media $m) => UnmarkPhoto::markedSource($m))->filter()->take(12)->values()->all();
-        try {
-            $mark = $unmark->learn(trim($data['title']), [$data['x0'], $data['y0'], $data['x1'], $data['y1']], $photos);
-        } catch (Throwable $e) {
-            return response()->json(['message' => $e->getMessage()], 422);
-        }
-
-        return response()->json(['message' => "Знак «{$data['title']}» собран по {$mark['used']} фото"]);
     }
 
     public function destroy(Offer $offer, Media $media)

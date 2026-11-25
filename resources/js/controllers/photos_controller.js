@@ -7,7 +7,6 @@ import { pool, sha as digest } from '../lib/upload';
 import { refreshCsrf } from '../net';
 import { loadSortable } from '../lib/sortable';
 import { openLightbox, ICONS } from '../lightbox';
-import { openSheet, closeSheet, outside } from '../sheet';
 import { photoMenu } from '../lib/photo-menu';
 
 // Фотографии: загрузка по одному файлу с прогрессом (выбор или drop на карточку), перестановка перетаскиванием,
@@ -23,7 +22,7 @@ let shown = null;
 
 export default class extends Controller {
     static targets = ['input', 'progress', 'grid', 'all', 'count', 'cover', 'failed', 'camera'];
-    static values = { url: String, collection: { type: String, default: 'photos' }, stage: String, readonly: Boolean, reload: Boolean, group: String, any: Boolean, other: String, mark: Boolean };
+    static values = { url: String, collection: { type: String, default: 'photos' }, stage: String, readonly: Boolean, reload: Boolean, group: String, any: Boolean, other: String, viewers: String };
 
     connect() {
         // Морф (живое обновление страницы, фрейма карточки, строки) возвращает кнопке «Скрыть все» и счёту пачки
@@ -683,7 +682,6 @@ export default class extends Controller {
             if (!it?.id) return false;
             // Карточка только для просмотра (дело ТС парковки) — один глаз: показ в продаже.
             if (it.owner.readonlyValue) return act === 'hide' && !!it.owner.element.querySelector(`.photo-cell[data-id="${it.id}"] [data-act="hide"]`);
-            if (act === 'mark') return it.owner.markValue;
             return act !== 'hide' || !!it.owner.element.querySelector(`.photo-cell[data-id="${it.id}"] [data-act="hide"]`);
         };
         const act = (act, confirm) => async (i) => {
@@ -718,7 +716,6 @@ export default class extends Controller {
                 { name: 'eye', icon: 'eye', title: 'Скрыть', bottom: true, iconFor: (i) => (hidden(i) ? 'eye-off' : 'eye'), titleFor: (i) => (hidden(i) ? 'Показать' : 'Скрыть'), shown: (i) => can(i, 'hide'), run: act('hide') },
                 { name: 'rotate', icon: 'rotate', title: 'Повернуть', bottom: true, shown: (i) => can(i, 'rotate'), run: act('rotate') },
                 { name: 'trash', icon: 'trash', title: 'Удалить', shown: (i) => can(i, 'delete'), run: act('delete', 'Удалить фото?') },
-                { name: 'mark', icon: 'mark', title: 'Водяной знак', shown: (i) => can(i, 'mark'), run: (i) => this.markSheet(this.viewer.items[i]) },
                 // Кадр — на самом деле документ (ПТС снят на столе): в документы машины, его прочтут сами (07.11.2026).
                 { name: 'paper', icon: 'paper', title: 'Это документ', shown: (i) => !!this.paperUrl((this.viewer?.items ?? items)[i]), run: (i) => this.toPapers(this.viewer.items[i]) },
             ],
@@ -738,159 +735,22 @@ export default class extends Controller {
         return m ? `${m[1]}/as-document` : null;
     }
 
+    // Есть кому показывать (менеджер сделки, держатель гаража — `Offer::fileViewers`) — сразу и спросить (25.11.2026, владелец):
+    // «видит» ставит только отметку файла, тихо, без сообщения и уведомления, как переключатель в «Документах».
     async toPapers(it) {
         const url = this.paperUrl(it);
-        if (!url || !(await confirmSheet('Перенести кадр в документы?', { label: 'В документы' }))) return;
-        const r = await post(url, { file: `m${it.id}` });
+        if (!url) return;
+        const viewers = it.owner.viewersValue;
+        const answer = viewers
+            ? await confirmSheet('Перенести кадр в документы?', { label: `В документы, видит ${viewers}`, alt: { label: 'В документы, скрыто' } })
+            : await confirmSheet('Перенести кадр в документы?', { label: 'В документы' });
+        if (!answer) return;
+        const r = await post(url, { file: `m${it.id}`, ...(viewers && answer === 'ok' ? { managers: '1' } : {}) });
         const data = await r?.json().catch(() => null);
         if (!data?.ok) return;
         window.toast?.(data.toast);
         this.viewer?.close();
         Turbo.visit(location.href, { action: 'replace' });
-    }
-
-    // ---- шторка «Водяной знак» поверх просмотрщика (только фото предложений CRM, data-photos-mark-value): кадр
-    // «Без знака / Со знаком», «Вернуть со знаком», «Заменить своим файлом». Разметку отдаёт сервер (mark-sheet).
-
-    async markSheet(it) {
-        const owner = it.owner;
-        const r = await request(`${owner.urlValue}/${it.id}/mark`, { accept: 'text/html' });
-        if (!r) return;
-        document.getElementById('mark-sheet')?.remove();
-        const d = document.createElement('dialog');
-        d.id = 'mark-sheet';
-        d.className = 'sheet';
-        d.dataset.turboTemporary = '';
-        d.innerHTML = await r.text();
-        document.body.append(d);
-        d.addEventListener('click', (e) => { if (outside(d, e)) closeSheet(d); });
-        d.addEventListener('close', () => d.remove());
-        d.querySelector('[data-mark-close]')?.addEventListener('click', () => closeSheet(d));
-
-        const img = d.querySelector('.mark-view img');
-        d.querySelectorAll('[data-mark-show]').forEach((b) => b.addEventListener('click', () => {
-            img.src = img.dataset[b.dataset.markShow];
-            d.querySelectorAll('[data-mark-show]').forEach((x) => x.setAttribute('aria-current', String(x === b)));
-        }));
-
-        // 422 — отказ словами сервера, его показывает send; quiet — для «Со всех фото», там итог одним тостом.
-        const post = (id, body, quiet = false) => request(`${owner.urlValue}/${id}/mark`, {
-            method: 'POST',
-            body,
-            quiet,
-            statuses: [422],
-            accept: 'text/vnd.turbo-stream.html',
-            headers: owner.rowId ? { 'X-Photos-Target': owner.rowId } : {},
-        });
-        const form = (fields) => { const f = new FormData(); Object.entries(fields).forEach(([k, v]) => f.append(k, v)); return f; };
-        const finish = (ids) => {
-            ids.forEach((id) => owner.bust(id));
-            closeSheet(d);
-            const next = this.items();
-            this.viewer?.refresh(next, Math.max(0, next.findIndex((n) => n.id === it.id)));
-        };
-        const busy = async (job) => {
-            if (d.getAttribute('aria-busy') === 'true') return;
-            d.setAttribute('aria-busy', 'true');
-            try { await job(); } finally { d.removeAttribute('aria-busy'); }
-        };
-        const send = (body) => busy(async () => {
-            const res = await post(it.id, body);
-            if (!res) return;
-            if (!res.ok) {
-                const message = (await res.json().catch(() => null))?.message;
-                window.toast?.(message || 'Не получилось', 'danger');
-                return;
-            }
-            owner.apply(await res.text());
-            finish([it.id]);
-        });
-        d.querySelectorAll('[data-mark-act="mark"]').forEach((b) => b.addEventListener('click', () => send(form({ act: 'mark', mark: b.dataset.mark }))));
-        // «Со всех фото»: по кадру за запрос (ручной поиск знака — секунды на кадр), ход — в подписи строки.
-        d.querySelectorAll('[data-mark-all]').forEach((b) => b.addEventListener('click', () => busy(async () => {
-            const ids = b.dataset.markAll.split(',');
-            const label = b.querySelector('[data-mark-label]');
-            let done = 0, last = null;
-            for (const [k, id] of ids.entries()) {
-                label.textContent = `Снимаем ${k + 1} из ${ids.length}`;
-                const res = await post(id, form({ act: 'mark', mark: b.dataset.mark }), true);
-                if (res?.ok) { done++; last = await res.text(); }
-            }
-            if (last) owner.apply(last);
-            window.toast?.(done === ids.length ? `Снято со всех ${ids.length}` : `Снято ${done} из ${ids.length}`, done ? undefined : 'danger');
-            finish(ids);
-        })));
-        d.querySelector('[data-mark-act="undo"]')?.addEventListener('click', async (e) => {
-            if (await confirmSheet(e.currentTarget.dataset.confirm)) send(form({ act: 'undo' }));
-        });
-        d.querySelector('[data-mark-file]')?.addEventListener('change', (e) => {
-            const file = e.target.files?.[0];
-            if (file) send(form({ file }));
-        });
-        // «Новый знак»: рамка по кадру (доли кадра), название площадки — знак собирается по фото предложения.
-        const frame = d.querySelector('[data-mark-frame]');
-        const box = d.querySelector('[data-mark-box]');
-        const learn = d.querySelector('[data-mark-learn]');
-        const title = learn?.querySelector('input');
-        const go = learn?.querySelector('[data-mark-learn-go]');
-        let start = null, rect = null;
-        const point = (e) => {
-            const r = img.getBoundingClientRect();
-            const clamp = (v) => Math.min(1, Math.max(0, v));
-            return [clamp((e.clientX - r.left) / r.width), clamp((e.clientY - r.top) / r.height)];
-        };
-        const sync = () => {
-            box.hidden = !rect;
-            if (rect) Object.assign(box.style, { left: `${rect[0] * 100}%`, top: `${rect[1] * 100}%`, width: `${(rect[2] - rect[0]) * 100}%`, height: `${(rect[3] - rect[1]) * 100}%` });
-            if (go) go.disabled = !(rect && rect[2] - rect[0] > 0.03 && rect[3] - rect[1] > 0.02 && title.value.trim());
-        };
-        d.querySelector('[data-mark-learn-open]')?.addEventListener('click', () => {
-            d.querySelectorAll('[data-mark-main]').forEach((el) => { el.hidden = true; });
-            learn.hidden = false;
-            d.querySelector('[data-mark-head]').textContent = 'Обведите знак';
-            frame.classList.add('is-drawing');
-        });
-        frame.addEventListener('pointerdown', (e) => {
-            if (!frame.classList.contains('is-drawing')) return;
-            e.preventDefault();
-            frame.setPointerCapture(e.pointerId);
-            start = point(e);
-            rect = null;
-            sync();
-        });
-        frame.addEventListener('pointermove', (e) => {
-            if (!start) return;
-            const p = point(e);
-            rect = [Math.min(start[0], p[0]), Math.min(start[1], p[1]), Math.max(start[0], p[0]), Math.max(start[1], p[1])];
-            sync();
-        });
-        frame.addEventListener('pointerup', () => { start = null; sync(); });
-        // шторка тянется за палец с любого места: рамку рисуют, а не закрывают шторку
-        ['touchstart', 'touchmove'].forEach((t) => frame.addEventListener(t, (e) => {
-            if (frame.classList.contains('is-drawing')) e.stopPropagation();
-        }, { passive: true }));
-        title?.addEventListener('input', sync);
-        go?.addEventListener('click', () => busy(async () => {
-            const label = go.textContent;
-            go.textContent = 'Собираем знак';
-            try {
-                const res = await request(`${owner.urlValue}/${it.id}/learn`, {
-                    method: 'POST',
-                    statuses: [422],
-                    body: form({ title: title.value.trim(), x0: rect[0], y0: rect[1], x1: rect[2], y1: rect[3] }),
-                });
-                if (!res) return;
-                const answer = await res.json().catch(() => ({}));
-                if (!res.ok) { window.toast?.(answer.message || 'Не получилось', 'danger'); return; }
-                window.toast?.(answer.message);
-                closeSheet(d);
-                this.markSheet(it);
-            } finally {
-                go.textContent = label;
-            }
-        }));
-        // Без своей записи в истории: «Назад» закрывает просмотрщик под шторкой, как у подтверждения.
-        openSheet(d, { history: false });
     }
 
     showProgress(label, ratio) {

@@ -16,6 +16,8 @@
     $always = $vehicle ? array_values(array_filter(\App\Park\PhotoStage::cases(), fn ($s) => $s->addable($vehicle))) : [];
     $blocks = \App\Media\PhotoBlocks::of($offer->photos(), $always);
     $mainId = $offer->mainPhoto()?->id;
+    // Кому показывать кадр, перенесённый в документы («Это документ», 25.11.2026): «видит Иван Петров» в вопросе.
+    $viewers = $offer->fileViewers()->map->shortName()->implode(', ');
     $pending = $detail ? 0 : \App\Offers\Jobs\ImportMigtorgLot::pending($offer) + \App\Mail\Jobs\ImportThreadFiles::pending($offer);
 @endphp
 <div id="{{ $root }}" class="photo-packs">
@@ -23,7 +25,7 @@
         @php $first = $i === 0; $row = $root.'-'.$stage->value; @endphp
         <x-ui.photo-pack :id="$row" :photos="$photos" :title="$stage->label()" :when="$when" :main-id="$mainId"
             data-photos-url-value="/offers/{{ $n }}/media" data-photos-stage-value="{{ $stage->value }}" data-photos-group-value="offer-{{ $offer->id }}"
-            data-photos-order="{{ $i }}" data-photos-mark-value="true" :data-photos-any-value="$first ? 'true' : null">
+            data-photos-order="{{ $i }}" data-photos-viewers-value="{{ $viewers }}" :data-photos-any-value="$first ? 'true' : null">
             @include('admin.offers.photo-upload')
             <x-ui.photos :id="$row" :photos="$photos" :main-id="$mainId" :pending="$first ? $pending : 0" grid
                 :deletable="$detail ? false : fn ($m) => ! \App\Park\Sale::parkOwned($m)"/>

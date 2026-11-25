@@ -61,14 +61,18 @@ final class CarFieldController
      */
     private function document(Request $request, Offer|Vehicle $lane)
     {
-        $id = (string) $request->validate(['file' => ['required', 'string', 'max:40']])['file'];
+        $data = $request->validate(['file' => ['required', 'string', 'max:40'], 'managers' => ['nullable', 'boolean']]);
+        $id = (string) $data['file'];
+        // «В документы, видит …» (25.11.2026, владелец: «только без уведомления и сообщения»): одна отметка файла, как
+        // переключатель в «Документах»; чат, уведомление и шаг — только через «Показать менеджеру».
+        $managers = $lane instanceof Offer && ($data['managers'] ?? false);
         $car = $lane->carRecord();
         if (str_starts_with($id, 'm')) {
             $media = Media::where('model_type', $car::class)->where('model_id', $car->id)->where('collection_name', 'photos')->findOrFail((int) ltrim($id, 'm'));
             DocumentScan::confirm($media->getCustomProperty('sha'));
             $path = $media->getCustomProperty('watermarked', false) ? Watermark::cleanPath($media) : $media->getPath();
             $car->addMedia($path)->preservingOriginal()->usingName($media->name)->usingFileName($media->file_name)
-                ->withCustomProperties(array_filter(['sha' => $media->getCustomProperty('sha'), 'source' => $media->getCustomProperty('source'), 'park' => $media->getCustomProperty('park')]))
+                ->withCustomProperties(array_filter(['sha' => $media->getCustomProperty('sha'), 'source' => $media->getCustomProperty('source'), 'park' => $media->getCustomProperty('park'), 'managers' => $managers]))
                 ->toMediaCollection('papers');
             $media->delete();
         } else {
@@ -78,6 +82,6 @@ final class CarFieldController
         }
         AutoScan::readDocs($lane);
 
-        return response()->json(['ok' => true, 'toast' => 'Читаем как документ']);
+        return response()->json(['ok' => true, 'toast' => $managers ? 'В документах, менеджер видит' : 'Читаем как документ']);
     }
 }
