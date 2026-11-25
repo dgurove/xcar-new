@@ -74,6 +74,14 @@ final class TelegramChannel
                 $this->sendFile($user, $file, (int) $sent->message_id, $notice->telegramSubject());
             }
         }
+        // Удалили, пока шла отправка (25.11.2026): отзыв мог пройти раньше, чем это сообщение легло в журнал, — стереть сразу.
+        if ($sent && method_exists($notice, 'retracted') && $notice->retracted() && ($subject = $notice->telegramSubject())) {
+            try {
+                app(\App\Telegram\Retract::class)->subject($subject, 'сообщение чата');
+            } catch (Throwable) {
+                // Сбой Telegram — второй проход отзыва (`RetractChatMessage` sweep) сотрёт позже.
+            }
+        }
 
         return $sent ? Sent::ok(retries: RetryDelivery::retries()) : Sent::failed('Telegram не ответил');
     }

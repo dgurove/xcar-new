@@ -85,6 +85,21 @@ final class ChatNotice extends Notice
         return Chat::subject($this->message->chat_id);
     }
 
+    /**
+     * Сообщение удалили, пока уведомление ждало отправки (очередь, повтор доставки через 1–15 минут) — не уходит никуда (25.11.2026,
+     * владелец: «удалили — и в Telegram надёжно»): иначе удалённое приходило бы в Telegram уже после отзыва.
+     */
+    public function shouldSend(object $notifiable, string $channel): bool
+    {
+        return ! $this->retracted() && parent::shouldSend($notifiable, $channel);
+    }
+
+    /** Сообщение чата удалено — сейчас, по базе. */
+    public function retracted(): bool
+    {
+        return \App\Chats\Message::whereKey($this->message->id)->whereNotNull('deleted_at')->exists();
+    }
+
     /** Сообщения бота об этом сообщении чата — удалить у всех, когда его удалили (`Chats\Jobs\RetractChatMessage`, 17.11.2026). */
     public function telegramSubject(): ?string
     {

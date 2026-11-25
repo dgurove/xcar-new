@@ -87,6 +87,8 @@ class DisclosureEditTest extends TestCase
 
         $disclosure->refresh();
         $this->assertNotNull($first->fresh()->deleted_at);
+        // Удалённое не уходит уведомлением, даже если оно ещё ждало в очереди.
+        $this->assertFalse((new \App\Notifications\ChatNotice($first, false))->shouldSend($this->manager, \App\Notifications\TelegramChannel::class));
         $second = \App\Chats\Message::findOrFail($disclosure->chat_message_id);
         $this->assertNotSame($first->id, $second->id);
         $this->assertStringContainsString('К передаче готовы', $second->text);
