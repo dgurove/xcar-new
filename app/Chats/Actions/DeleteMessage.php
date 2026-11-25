@@ -20,17 +20,18 @@ use Illuminate\Support\Str;
  */
 final class DeleteMessage
 {
-    public function __invoke(Message $message, User $by): Message
+    public function __invoke(Message $message, User $by, bool $log = true): Message
     {
         abort_unless($message->deletableBy($by), 404);
-        DB::transaction(function () use ($message, $by) {
+        DB::transaction(function () use ($message, $by, $log) {
             $chat = Chat::whereKey($message->chat_id)->lockForUpdate()->firstOrFail();
             $message->update(['deleted_at' => now(), 'deleted_by' => $by->id]);
             $other = $message->author_kind === AuthorKind::Participant ? 'staff' : 'user';
             if ($message->seq > $chat->{"read_seq_{$other}"} && $chat->{"unread_for_{$other}"} > 0) {
                 $chat->decrement("unread_for_{$other}");
             }
-            if ($by->canEditDeals() && $chat->offer) {
+            // `log` false — удаление частью другого действия со своей строкой «Истории» (правка показа, `EditDisclosure`).
+            if ($log && $by->canEditDeals() && $chat->offer) {
                 $chat->offer->log(OfferEventType::Note, $by, ['text' => 'Удалено сообщение в чате, собеседник '.$chat->displayName().': «'
                     .Str::limit((string) ($message->text ?: ($message->files()->exists() ? 'файл' : '')), 80).'»']);
             }

@@ -17,11 +17,11 @@ use Spatie\MediaLibrary\MediaCollections\Models\Media;
 /**
  * Что админ показал менеджеру сделки (03.11.2026, владелец: «админ отмечает, что показать, жмёт „Показать менеджеру“ — и только
  * тогда менеджеру уведомление и ТОЛЬКО то, что выбрано»). Из писем страховой менеджер видит только это — блок «От XCAR» в
- * сделке и гараже, получение автомобиля (`Handover`), сообщение в чате сделки (`Disclose::toChat`). Пишет `Actions\Disclose`, строки только дописываются.
+ * сделке и гараже, получение автомобиля (`Handover`), сообщение в чате сделки (`Disclose::toChat`). Пишет `Actions\Disclose`; правит и удаляет `Actions\EditDisclosure` (25.11.2026): `chat_message_id` — его сообщение в чате, `lead` — заголовок сообщения.
  *
  * `items`: `[{kind: phone|name|address|text|file, value, media?}]` — значения уже правленные админом, у файла — имя и id.
  */
-#[Fillable(['deal_id', 'items', 'message_ids', 'created_by'])]
+#[Fillable(['deal_id', 'items', 'message_ids', 'created_by', 'chat_message_id', 'lead'])]
 class Disclosure extends Model
 {
     use FastAttributes;
@@ -55,6 +55,27 @@ class Disclosure extends Model
         $ids = array_filter(array_map(fn ($i) => ($i['kind'] ?? null) === 'file' ? (int) ($i['media'] ?? 0) : 0, $this->items ?? []));
 
         return $ids ? Media::whereIn('id', $ids)->get()->filter(fn (Media $m) => ForManagers::is($m))->values() : collect();
+    }
+
+    /**
+     * Сообщение этого показа в чате сделки (`Disclose::toChat`). У показов до 25.11.2026 связи нет — служебное сообщение без автора
+     * в чате менеджера сделки в пределах двух минут от показа, где есть его первая строка.
+     */
+    public function chatMessage(): ?\App\Chats\Message
+    {
+        if ($this->chat_message_id) {
+            return \App\Chats\Message::find($this->chat_message_id);
+        }
+        $deal = $this->deal;
+        $first = collect($this->items ?? [])->first(fn ($i) => in_array($i['kind'] ?? null, ['text', 'name', 'phone', 'address'], true))['value'] ?? null;
+
+        return \App\Chats\Message::query()->whereNull('deleted_at')->whereNull('author_id')->whereNull('requirement_id')->whereNull('ask')
+            ->where('author_kind', \App\Chats\AuthorKind::Staff)
+            ->whereHas('chat', fn ($q) => $q->where('offer_id', $deal->offer_id)->where('user_id', $deal->buyer_id))
+            ->whereBetween('created_at', [$this->created_at->copy()->subMinute(), $this->created_at->copy()->addMinutes(2)])
+            ->when($first, fn ($q) => $q->where('text', 'like', '%'.str_replace(['%', '_'], ['\\%', '\\_'], mb_substr(trim((string) $first), 0, 60)).'%'),
+                fn ($q) => $q->where('text', 'Документы по сделке'))
+            ->orderBy('id')->first();
     }
 
     /**

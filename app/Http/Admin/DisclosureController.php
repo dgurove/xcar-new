@@ -134,6 +134,56 @@ class DisclosureController
         return back(fallback: '/work/deals/'.$deal->id)->with('toast', $moved ? 'Счёт показан менеджеру, шаг пройден' : 'Счёт показан менеджеру');
     }
 
+    /**
+     * Исправить показанное (25.11.2026, `EditDisclosure`): своё сообщение, контакты строками (имя, телефон, адрес; пустое — убрано),
+     * документы машины галками. Документ — только этой машины.
+     */
+    public function update(Request $request, Deal $deal, \App\Offers\Disclosure $disclosure, \App\Offers\Actions\EditDisclosure $edit)
+    {
+        abort_unless($disclosure->deal_id === $deal->id && $deal->isActive(), 404);
+        $data = $request->validate([
+            'text' => ['nullable', 'string', 'max:5000'],
+            'name' => ['array'], 'name.*' => ['nullable', 'string', 'max:120'],
+            'phone' => ['array'], 'phone.*' => ['nullable', 'string', 'max:40'],
+            'address' => ['array'], 'address.*' => ['nullable', 'string', 'max:300'],
+            'files' => ['array'], 'files.*' => ['integer'],
+        ]);
+        $items = [];
+        if (($text = trim((string) ($data['text'] ?? ''))) !== '') {
+            $items[] = ['kind' => 'text', 'value' => mb_substr($text, 0, 5000)];
+        }
+        foreach (['name', 'phone', 'address'] as $kind) {
+            foreach ($data[$kind] ?? [] as $i => $value) {
+                $value = trim((string) $value);
+                if ($value === '') {
+                    continue;
+                }
+                if ($kind === 'phone') {
+                    $value = ($n = Phone::normalize($value)) ? Phone::format($n)
+                        : throw ValidationException::withMessages(['phone.'.$i => 'Номер не похож на телефон']);
+                }
+                $items[] = ['kind' => $kind, 'value' => $value];
+            }
+        }
+        $papers = $deal->offer->getMedia('papers')->keyBy('id');
+        foreach (array_unique(array_map('intval', $data['files'] ?? [])) as $id) {
+            $media = $papers->get($id) ?? abort(404);
+            $items[] = ['kind' => 'file', 'value' => $media->name ?: $media->file_name, 'media' => $media->id];
+        }
+        $left = $edit($disclosure, $request->user(), $items);
+
+        return back(fallback: '/work/deals/'.$deal->id)->with('toast', $left ? 'Исправлено, менеджеру ушло заново' : 'Показ удалён');
+    }
+
+    /** Удалить показ целиком: у менеджера его больше нет, сообщение в чате стёрто (`EditDisclosure`). */
+    public function destroy(Request $request, Deal $deal, \App\Offers\Disclosure $disclosure, \App\Offers\Actions\EditDisclosure $edit)
+    {
+        abort_unless($disclosure->deal_id === $deal->id && $deal->isActive(), 404);
+        $edit($disclosure, $request->user(), null);
+
+        return back(fallback: '/work/deals/'.$deal->id)->with('toast', 'Показ удалён');
+    }
+
     public function dismiss(Request $request, Deal $deal, Disclose $disclose)
     {
         $disclose->dismiss($deal, $request->user());

@@ -75,8 +75,13 @@
                 </x-route.task-row>
                 <x-ui.sheet :id="$id.'-shown'" title="Показано менеджеру">
                     <div class="flex flex-col gap-4">
+                        {{-- Показанное правится и удаляется (25.11.2026, `admin.deals.disclosure-edit`). --}}
                         @foreach ($shown as $disclosure)
-                            @include('cabinet.deals.disclosure', ['disclosure' => $disclosure])
+                            @if (auth()->user()?->canEditDeals())
+                                @include('admin.deals.disclosure-edit', ['disclosure' => $disclosure, 'deal' => $deal])
+                            @else
+                                @include('cabinet.deals.disclosure', ['disclosure' => $disclosure])
+                            @endif
                         @endforeach
                     </div>
                 </x-ui.sheet>

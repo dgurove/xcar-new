@@ -4,7 +4,8 @@
 @php $items = collect($disclosure->besides($handover ?? null)); $files = $disclosure->files()->reject(fn ($m) => in_array($m->id, $skipFiles ?? [], true))->values(); @endphp
 @if ($items->where('kind', '!=', 'file')->isNotEmpty() || $files->isNotEmpty())
 <div class="flex flex-col gap-1.5">
-    <p class="nums text-sm text-ink-dim">{{ \App\Support\Ago::html($disclosure->created_at, true, words: false) }}</p>
+    {{-- bare — дату пишет вмещающее (правка показа в CRM, `admin.deals.disclosure-edit`). --}}
+    @unless ($bare ?? false)<p class="nums text-sm text-ink-dim">{{ \App\Support\Ago::html($disclosure->created_at, true, words: false) }}</p>@endunless
     {{-- Сведения значками, как «От XCAR» (11.11.2026): текст, человек с телефонами, адрес с картой. --}}
     <x-ui.info>
         @foreach ($items->where('kind', 'text') as $item)

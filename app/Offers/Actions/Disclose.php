@@ -56,7 +56,7 @@ final class Disclose
      */
     public function __invoke(Deal $deal, User $by, array $items, ?Outcome $step = null, ?int $invoice = null, ?Message $message = null, bool $card = false, ?string $lead = null): array
     {
-        [$disclosure, $moved, $turn] = DB::transaction(function () use ($deal, $by, $items, $step, $invoice, $message, $card) {
+        [$disclosure, $moved, $turn] = DB::transaction(function () use ($deal, $by, $items, $step, $invoice, $message, $card, $lead) {
             $deal = Deal::whereKey($deal->id)->lockForUpdate()->firstOrFail();
             // Показ одного письма из окна писем (16.11.2026) разбирает его и письма не новее него (17.11.2026, владелец по сделке 123:
             // «показано же менеджеру, зачем всё ещё висит „Показать менеджеру?“» — Альфа 14.11 просила коллегу прислать ПТС, а ответ
@@ -78,7 +78,7 @@ final class Disclose
                 $marked = Media::whereIn('id', $billed)->get()->each(fn (Media $m) => SupplierInvoice::mark($m))->keyBy('id');
                 $items = array_map(fn ($i) => isset($i['media'], $marked[$i['media']]) ? ['value' => $marked[$i['media']]->name] + $i : $i, $items);
             }
-            $disclosure = $items ? Disclosure::create(['deal_id' => $deal->id, 'items' => $items, 'message_ids' => $letters->pluck('id')->values()->all() ?: null, 'created_by' => $by->id]) : null;
+            $disclosure = $items ? Disclosure::create(['deal_id' => $deal->id, 'items' => $items, 'message_ids' => $letters->pluck('id')->values()->all() ?: null, 'created_by' => $by->id, 'lead' => $lead]) : null;
             Media::whereIn('id', $files)->get()->each(fn (Media $m) => $m->setCustomProperty('managers', true)->save());
             $this->done($reviews, $by);
             $letter = $letters->max('id');
@@ -97,7 +97,7 @@ final class Disclose
         self::publish($deal);
         if ($buyer = $deal->buyer) {
             // Показанное — сообщением в чат сделки; чата у менеджера нет — уведомлением, как раньше (с его ходом в нём же).
-            $chat = $disclosure && self::toChat($deal->fresh(['offer', 'buyer']), $disclosure, $turn, $lead);
+            $chat = $disclosure && self::toChat($deal->fresh(['offer', 'buyer']), $disclosure, $turn);
             if ($disclosure && ! $chat) {
                 $buyer->notify(new DealInfoNotice($disclosure, $turn));
             } elseif ($turn) {
@@ -136,8 +136,9 @@ final class Disclose
      * вложениями. Сообщение чата само уходит в ленту, пуш и Telegram с файлами (`Notify::chat`), отдельного `DealInfoNotice` нет.
      * Счёт поставщика, что `StepAsk` на шаге оплаты приложит сам, второй раз не прикладывается. Чат менеджеру закрыт — false.
      */
-    private static function toChat(Deal $deal, Disclosure $disclosure, ?Requirement $turn, ?string $lead = null): bool
+    public static function toChat(Deal $deal, Disclosure $disclosure, ?Requirement $turn = null): bool
     {
+        $lead = $disclosure->lead;
         $offer = $deal->offer;
         if (! $offer || ! $offer->chatOpenFor($deal->buyer)) {
             return false;
@@ -155,7 +156,9 @@ final class Disclose
             $lines->prepend($lead);
         }
         if ($lines->isNotEmpty() || $files->isNotEmpty()) {
-            app(PlatformMessage::class)(app(OpenChat::class)($offer, $deal->buyer, greet: false), $lines->implode("\n") ?: 'Документы по сделке', media: $files);
+            $said = app(PlatformMessage::class)(app(OpenChat::class)($offer, $deal->buyer, greet: false), $lines->implode("\n") ?: 'Документы по сделке', media: $files);
+            // Какое сообщение — чтобы правка показа его заменила (`EditDisclosure`).
+            $disclosure->forceFill(['chat_message_id' => $said->id])->save();
         }
 
         return true;
