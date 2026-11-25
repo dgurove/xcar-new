@@ -319,6 +319,14 @@ final class Give
      */
     public function handOver(Offer $offer, Deal $previous, Deal $deal, User $by): Offer
     {
+        // Факты о машине и поставщике переходят к новой сделке (25.11.2026, Sitrak C7H 7806/046/03674/26: после переприёма счёт Альфы
+        // от 23.11 повис неразобранным за отменённой сделкой): ждущие разбора ответы поставщика (`ReplyReview`) и, при той же схеме,
+        // отметки «поставщику оплачено» / «оплата получена» — деньги поставщику ушли при прежней сделке, «вывоз после оплаты» и
+        // тревога обязывающего не возвращаются.
+        \App\Offers\ReplyReview::where('deal_id', $previous->id)->where('state', \App\Offers\ReplyReview::PENDING)->update(['deal_id' => $deal->id]);
+        if ($previous->schemeOf() === $deal->schemeOf() && ($previous->supplier_paid_at || $previous->prepaid_at)) {
+            $deal->forceFill(['supplier_paid_at' => $deal->supplier_paid_at ?? $previous->supplier_paid_at, 'prepaid_at' => $deal->prepaid_at ?? $previous->prepaid_at])->save();
+        }
         $stage = $offer->stage();
         if ($stage && $previous->isGarageUs() !== $deal->isGarageUs()) {
             // Поставщик уже согласовал (маршрут за «Согласием менеджера») — снова на согласие: менеджер жмёт исход своей ветки

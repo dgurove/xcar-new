@@ -146,10 +146,20 @@ final class EnterStage
         $offer->unsetRelation('positions');
         // Письмо этого шага уже ушло — при прежнем входе на этап, на двойнике другой ветки или раньше шага
         // (`MarkSupplierLetter::already`, 19.11.2026) — засчитывается: ход поставщику, срок от того письма.
-        if ($awaitsLetter && ($sent = MarkSupplierLetter::already($offer, $to, $before))) {
-            $at = $sent->sent_at ?? $sent->date_at ?? $now;
-            $position->update(['waits_for' => null, 'deadline_at' => $to->deadlineFor($offer, $at->copy()),
-                'payload' => [...($position->payload ?? []), 'letter_id' => $sent->id, 'letter_at' => $at->toIso8601String()]]);
+        // Поставщик уже ответил на него — сразу «поставщик ответил», ход наш (`MarkSupplierLetter::credit`, 25.11.2026).
+        // Откат («Отменить шаг») на шаг с письмом — тоже (25.11.2026): шаг возвращается, каким был, а не «ничей» (новое письмо и ответ
+        // поставщика тогда не засчитывались вовсе).
+        $letterStep = $track === Track::Sale && $deal?->isActive() && $to->isLetterStep() && ! $ownLetter;
+        if (($awaitsLetter || ($back && $letterStep)) && ($sent = MarkSupplierLetter::already($offer, $to, $before, undo: $back))) {
+            MarkSupplierLetter::credit($position->setRelation('stage', $to), $offer, $sent, $before);
+        } elseif ($awaitsLetter && $before?->stage_id === $to->id && ! empty($before->payload['letter_by_hand'])
+            && (! $to->isRequisitesStep() || $deal->isPrime())) {
+            // «Сообщили не письмом» на этом же шаге (`SkipLetter`) — переприём и «Отдать» его не стирают (25.11.2026): письма в истории
+            // нет, `already` его не найдёт. Реквизиты покупателя (не ПРАЙМ / Р.О.С.) — новой сделке заново.
+            $keep = array_intersect_key($before->payload, array_flip(['letter_at', 'letter_by_hand', 'reply_at']));
+            $position->update(['waits_for' => isset($keep['reply_at']) ? WaitsFor::Us : null,
+                'deadline_at' => isset($keep['reply_at']) ? null : $to->deadlineFor($offer, Carbon::parse($keep['letter_at'] ?? $now)),
+                'payload' => [...($position->payload ?? []), ...$keep]]);
         }
 
         // Оплата за ТС подтверждена (поставщик получил, «платим мы» — оплатили сами): у Альфы только теперь можно забирать

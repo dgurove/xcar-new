@@ -88,10 +88,12 @@ final class MarkSupplierLetter
      * «Отдать» другому менеджеру, смена ветки гаража, «Назад» и снова вперёд. Теперь письмо — факт машины: при входе на этап с
      * письмом ищем последнее наше письмо поставщику того же шаблона (`supplier_letter` в истории; шаблон — в событии, у старых
      * — по этапу, на котором засчитали) и засчитываем, если с тех пор разговор с поставщиком не начинался заново: не было его
-     * ответа, отказа, переоценки, ухода машины из продажи (`OfferEvent::supplierTalkBroken`, то же правило, что у
-     * `Give::agreedBefore`). Письмо не ушло (сбой, удалено) — не засчитывается.
+     * отказа, переоценки, ухода машины из продажи (`OfferEvent::supplierTalkBroken`, то же правило, что у `Give::agreedBefore`).
+     * Письмо не ушло (сбой, удалено) — не засчитывается. Поставщик на него уже ответил — письмо засчитывается, а шаг встаёт сразу
+     * на «поставщик ответил» (`credit`, 25.11.2026, Sitrak C7H: Альфа прислала счёт 23.11, а после переприёма шаг снова просил
+     * реквизиты; до того ответ поставщика отменял письмо).
      */
-    public static function already(Offer $offer, Stage $to, ?Position $before = null): ?Message
+    public static function already(Offer $offer, Stage $to, ?Position $before = null, bool $undo = false): ?Message
     {
         if (! $to->template_id) {
             return null;
@@ -111,14 +113,14 @@ final class MarkSupplierLetter
         if ($before && ($id = $before->payload['letter_id'] ?? null) && $before->stage?->template_id === $to->template_id
             && ($at = $before->payload['letter_at'] ?? null)) {
             $after = (int) OfferEvent::where('offer_id', $offer->id)->where('created_at', '<', $at)->max('id');
-            $message = OfferEvent::supplierTalkBroken($offer->id, $after, replies: true) ? null
+            $message = OfferEvent::supplierTalkBroken($offer->id, $after) || (! $undo && self::leftForward($offer->id, $after, (int) $to->template_id)) ? null
                 : Message::whereKey($id)->where('direction', Direction::Out->value)->first();
             if ($message = $fits($message)) {
                 return $message;
             }
         }
         $event = OfferEvent::where('offer_id', $offer->id)->where('type', OfferEventType::SupplierLetter->value)->latest('id')->first();
-        if (! $event || OfferEvent::supplierTalkBroken($offer->id, $event->id, replies: true)) {
+        if (! $event || OfferEvent::supplierTalkBroken($offer->id, $event->id) || (! $undo && self::leftForward($offer->id, $event->id, (int) $to->template_id))) {
             return null;
         }
         $entered = $event->payload['template_id'] ?? null ? null : OfferEvent::where('offer_id', $offer->id)->where('type', OfferEventType::StageEntered->value)
@@ -130,6 +132,47 @@ final class MarkSupplierLetter
 
         return $fits(Message::whereKey($event->payload['letter'] ?? 0)->where('direction', Direction::Out->value)
             ->where(fn ($q) => $q->whereNull('send_state')->orWhere('send_state', '!=', 'failed'))->first());
+    }
+
+    /**
+     * Шаг с этим письмом после него уже прошли вперёд — выходом, не откатом и не переприёмом (25.11.2026): вернулись на него петлёй
+     * («Поставщик предложил другое время», «Оплата не поступила») — нужно новое письмо, старое не засчитывается. `undo` (откат
+     * «Отменить шаг») — засчитывается: откат возвращает шаг, каким он был.
+     */
+    private static function leftForward(int $offerId, int $afterId, int $templateId): bool
+    {
+        $stages = Stage::where('template_id', $templateId)->pluck('id')->all();
+
+        return OfferEvent::where('offer_id', $offerId)->where('id', '>', $afterId)->where('type', OfferEventType::StageEntered->value)
+            ->get(['payload'])->contains(fn (OfferEvent $e) => in_array((int) ($e->payload['from_id'] ?? 0), $stages, true)
+                && ! empty($e->payload['exit']) && empty($e->payload['back']) && (int) ($e->payload['to_id'] ?? 0) !== (int) ($e->payload['from_id'] ?? 0));
+    }
+
+    /**
+     * Засчитать шагу уже ушедшее письмо (`already`): ход поставщику, срок от письма; ответил он уже после него — сразу ход наш,
+     * «поставщик ответил», как у `OnInsurerReply::mark`. Зовут вход на этап (`EnterStage`) и `offers:letters-recheck`.
+     */
+    public static function credit(Position $position, Offer $offer, Message $sent, ?Position $before = null): void
+    {
+        $at = $sent->sent_at ?? $sent->date_at ?? now();
+        $payload = [...($position->payload ?? []), 'letter_id' => $sent->id, 'letter_at' => $at->toIso8601String()];
+        // Ответ — из истории (`insurer_replied`) или из прежней позиции того же письма (`OnInsurerReply::mark` события не пишет).
+        $replyAt = self::replyAfter($offer, $at)?->date_at
+            ?? (($before?->payload['letter_id'] ?? null) === $sent->id && isset($before->payload['reply_at']) ? \Illuminate\Support\Carbon::parse($before->payload['reply_at']) : null);
+        $position->update($replyAt
+            ? ['waits_for' => WaitsFor::Us, 'deadline_at' => null, 'reminded_at' => null, 'overdue_at' => null,
+                'payload' => $payload + ['reply_at' => $replyAt->toIso8601String()]]
+            : ['waits_for' => null, 'deadline_at' => $position->stage->deadlineFor($offer, $at->copy()), 'reminded_at' => null, 'overdue_at' => null,
+                'payload' => $payload]);
+    }
+
+    /** Последний ответ поставщика по машине позже нашего письма (`insurer_replied` в истории). */
+    public static function replyAfter(Offer $offer, \Carbon\CarbonInterface $at): ?Message
+    {
+        $ids = OfferEvent::where('offer_id', $offer->id)->where('type', OfferEventType::InsurerReplied->value)->latest('id')->limit(20)->get()
+            ->map(fn (OfferEvent $e) => $e->payload['letter'] ?? null)->filter()->values();
+
+        return $ids->isEmpty() ? null : Message::whereIn('id', $ids)->where('direction', Direction::In->value)->where('date_at', '>', $at)->latest('date_at')->first();
     }
 
     /** Письмо реквизитов ушло при прежней сделке машины, и тогда, как и сейчас, поставщику платило то же наше юрлицо. */

@@ -150,12 +150,16 @@ class RosSchemeTest extends TestCase
         $offer = $deal->offer->fresh();
         $stage = Stage::where('workflow_id', $offer->vendor->workflow(Track::Sale)->id)->where('name', 'Письмо с реквизитами')->firstOrFail();
         $this->assertTrue($stage->isRequisitesStep());
-        $account = \Illuminate\Support\Facades\DB::table('mail_accounts')->insertGetId(['slug' => 'deal', 'title' => 'deal', 'email' => 'deal@xcar.ru', 'scope' => 'crm',
+        $account = \Illuminate\Support\Facades\DB::table('mail_accounts')->insertGetId(['slug' => 'deal', 'title' => 'deal', 'email' => 'deal@xcar.ru', 'scope' => 'offers',
             'imap_host' => 'x', 'imap_username' => 'x', 'imap_password' => 'x', 'smtp_host' => 'x', 'smtp_username' => 'x', 'smtp_password' => 'x']);
         $thread = \App\Mail\Thread::create(['account_id' => $account, 'subject' => '5491/046/00861/26', 'offer_id' => $offer->id]);
         $letter = \App\Mail\Message::create(['account_id' => $account, 'thread_id' => $thread->id, 'direction' => 'out', 'from_email' => 'deal@xcar.ru',
             'subject' => 'Реквизиты для счёта', 'text_body' => 'Реквизиты Р.О.С.', 'date_at' => now()->subMinutes(10), 'sent_at' => now()->subMinutes(10)]);
         $offer->log(\App\Offers\OfferEventType::SupplierLetter, $this->admin, ['letter' => $letter->id, 'template_id' => $stage->template_id]);
+        // Альфа ответила на него счётом — письмо всё равно засчитывается, шаг встаёт на «поставщик ответил».
+        $reply = \App\Mail\Message::create(['account_id' => $account, 'thread_id' => $thread->id, 'direction' => 'in', 'from_email' => 'a@alfastrah.ru',
+            'subject' => 'Re: Реквизиты для счёта', 'text_body' => 'Счёт во вложении', 'date_at' => now()->subMinutes(5)]);
+        $offer->log(\App\Offers\OfferEventType::InsurerReplied, null, ['letter' => $reply->id, 'files' => true]);
 
         // Переприняли: прежняя сделка отменена, новая — через Р.О.С. же.
         $deal->fresh()->forceFill(['cancelled_at' => now(), 'closed_at' => now()])->save();
@@ -163,9 +167,54 @@ class RosSchemeTest extends TestCase
         $offer->forceFill(['deal_id' => $new->id])->save();
         $this->assertTrue($new->created_at->gt($letter->sent_at));
         $this->assertSame($letter->id, \App\Offers\Listeners\MarkSupplierLetter::already($offer->fresh(), $stage)?->id);
+        $position = $offer->fresh()->position(Track::Sale);
+        $position->update(['stage_id' => $stage->id, 'waits_for' => \App\Workflow\WaitsFor::Us, 'payload' => null]);
+        \App\Offers\Listeners\MarkSupplierLetter::credit($position->fresh(), $offer->fresh(), $letter);
+        $this->assertSame('replied', $position->fresh()->letterStatus());
 
         // «Страховой напрямую» — в письме реквизиты прежнего покупателя: новой сделке не годится.
         $new->update(['scheme' => DealScheme::Insurer]);
         $this->assertNull(\App\Offers\Listeners\MarkSupplierLetter::already($offer->fresh(), $stage));
+    }
+
+    /**
+     * Петля («Поставщик предложил другое время», «Оплата не поступила»): шаг с письмом уже прошли вперёд — вернулись, нужно новое
+     * письмо; откат «Отменить шаг» — старое засчитывается. Переприём на том же шаге: ждущий разбор ответа поставщика и отметки оплаты
+     * поставщику переходят к новой сделке (25.11.2026).
+     */
+    public function test_letter_loop_needs_new_letter_and_handover_keeps_supplier_facts(): void
+    {
+        $deal = $this->deal(true);
+        app(ChangeDealScheme::class)($deal->fresh(), DealScheme::Ros, $this->admin);
+        $deal->fresh()->forceFill(['created_at' => now()->subHour()])->save();
+        $offer = $deal->offer->fresh();
+        $stage = Stage::where('workflow_id', $offer->vendor->workflow(Track::Sale)->id)->where('name', 'Письмо с реквизитами')->firstOrFail();
+        $next = $stage->exits()->with('to')->get()->firstWhere('to_id', '!=', null)?->to ?? $stage;
+        $account = \Illuminate\Support\Facades\DB::table('mail_accounts')->insertGetId(['slug' => 'deal', 'title' => 'deal', 'email' => 'deal@xcar.ru', 'scope' => 'offers',
+            'imap_host' => 'x', 'imap_username' => 'x', 'imap_password' => 'x', 'smtp_host' => 'x', 'smtp_username' => 'x', 'smtp_password' => 'x']);
+        $thread = \App\Mail\Thread::create(['account_id' => $account, 'subject' => '5491/046/00861/26', 'offer_id' => $offer->id]);
+        $letter = \App\Mail\Message::create(['account_id' => $account, 'thread_id' => $thread->id, 'direction' => 'out', 'from_email' => 'deal@xcar.ru',
+            'subject' => 'Реквизиты для счёта', 'text_body' => 'Реквизиты Р.О.С.', 'date_at' => now()->subMinutes(10), 'sent_at' => now()->subMinutes(10)]);
+        $offer->log(\App\Offers\OfferEventType::SupplierLetter, $this->admin, ['letter' => $letter->id, 'template_id' => $stage->template_id]);
+        $this->assertSame($letter->id, \App\Offers\Listeners\MarkSupplierLetter::already($offer->fresh(), $stage)?->id);
+
+        // Шаг прошли вперёд выходом — петлёй назад письмо не засчитывается, откатом — засчитывается.
+        $offer->log(\App\Offers\OfferEventType::StageEntered, $this->admin, ['from_id' => $stage->id, 'to_id' => $next->id === $stage->id ? 0 : $next->id, 'exit' => 'Счёт от поставщика получен', 'track' => 'sale']);
+        $this->assertNull(\App\Offers\Listeners\MarkSupplierLetter::already($offer->fresh(), $stage));
+        $this->assertSame($letter->id, \App\Offers\Listeners\MarkSupplierLetter::already($offer->fresh(), $stage, undo: true)?->id);
+
+        // Переприём: разбор ответа поставщика и оплата поставщику — новой сделке.
+        $previous = $deal->fresh();
+        $previous->forceFill(['prepaid_at' => now()->subDay(), 'supplier_paid_at' => now()->subDay()])->save();
+        $reply = \App\Mail\Message::create(['account_id' => $account, 'thread_id' => $thread->id, 'direction' => 'in', 'from_email' => 'a@alfastrah.ru',
+            'subject' => 'Re: Реквизиты', 'text_body' => 'Счёт', 'date_at' => now()->subMinutes(5)]);
+        $review = \App\Offers\ReplyReview::create(['deal_id' => $previous->id, 'offer_id' => $offer->id, 'message_id' => $reply->id, 'state' => \App\Offers\ReplyReview::PENDING]);
+        $previous->forceFill(['cancelled_at' => now(), 'closed_at' => now()])->save();
+        $new = Deal::create(['offer_id' => $offer->id, 'buyer_id' => $previous->buyer_id, 'amount' => 1150000, 'cost' => $previous->cost, 'scheme' => DealScheme::Ros]);
+        $offer->forceFill(['deal_id' => $new->id])->save();
+        app(\App\Offers\Actions\Give::class)->handOver($offer->fresh(), $previous, $new, $this->admin);
+        $this->assertSame($new->id, $review->fresh()->deal_id);
+        $this->assertNotNull($new->fresh()->prepaid_at);
+        $this->assertNotNull($new->fresh()->supplier_paid_at);
     }
 }

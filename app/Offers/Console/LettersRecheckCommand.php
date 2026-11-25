@@ -33,10 +33,11 @@ class LettersRecheckCommand extends Command
             }
             $n++;
             $at = $sent->sent_at ?? $sent->date_at ?? now();
-            $this->line("№ {$offer->number} {$offer->title()}: «{$position->stage->name}», письмо {$at->format('d.m H:i')} «{$sent->subject}»");
+            $reply = MarkSupplierLetter::replyAfter($offer, $at);
+            $this->line("№ {$offer->number} {$offer->title()}: «{$position->stage->name}», письмо {$at->format('d.m H:i')} «{$sent->subject}»"
+                .($reply ? ', ответ поставщика '.$reply->date_at?->format('d.m H:i') : ''));
             if ($this->option('apply')) {
-                $position->update(['waits_for' => null, 'deadline_at' => $position->stage->deadlineFor($offer, $at->copy()), 'reminded_at' => null, 'overdue_at' => null,
-                    'payload' => [...($position->payload ?? []), 'letter_id' => $sent->id, 'letter_at' => $at->toIso8601String()]]);
+                MarkSupplierLetter::credit($position, $offer, $sent);
                 RefreshDeal::of($offer->deal);
             }
         }
