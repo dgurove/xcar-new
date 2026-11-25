@@ -3878,6 +3878,8 @@ html.kb-open { --home-gap: 0px; }
   .people-panes > * { grid-row: 1; min-width: 0; overflow-y: auto; overscroll-behavior: contain; padding-bottom: 1rem;
     transition: translate var(--dur-slow) var(--ease-sheet), visibility 0s linear var(--dur-slow); }
   .people-list-pane { grid-column: 1; }
+  /* Нельзя здесь (покупатель у поставщика без гаража, 25.11.2026): строка видна с причиной, не выбирается. */
+  .people-option.is-off { opacity: .45; cursor: default; }
   .people-new-pane { grid-column: 2; visibility: hidden; }
   .people-panes.is-new > * { translate: -100% 0; }
   .people-panes.is-new .people-new-pane, .people-panes:not(.is-new) .people-list-pane { visibility: visible; transition-delay: 0s; }

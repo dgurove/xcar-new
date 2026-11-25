@@ -103,6 +103,26 @@ final class People
         };
     }
 
+    /**
+     * «Кому» в «Отдать» и «Передать» — менеджеры и покупатели с гаражом одним списком, группами (25.11.2026, владелец: «есть
+     * покупатели с включённым гаражом, так что им тоже можно отдавать»; сотрудник искал Ананьева в шторке «Менеджер», а
+     * покупатели жили отдельным сегментом «Покупателю»). `holder` — вид строки, по нему форма ставит `whom` и свои поля.
+     * `$buyers` — причина, по которой покупателю здесь нельзя (строки серым, не выбираются), `true` — можно, `false` — нет групп.
+     *
+     * @return Collection<int, Row>
+     */
+    public static function holders(bool|string $buyers = true, ?string $buyerNote = null): Collection
+    {
+        $managers = self::managers()->map(fn ($r) => $r + ['group' => 'Менеджеры', 'holder' => 'manager']);
+        if ($buyers === false) {
+            return $managers->values();
+        }
+        $rows = self::garageBuyers()->map(fn ($r) => array_merge($r, ['group' => 'Покупатели с гаражом', 'holder' => 'buyer'],
+            is_string($buyers) ? ['sub' => $buyers, 'disabled' => true] : ($buyerNote ? ['sub' => $buyerNote.', '.$r['sub']] : [])));
+
+        return $managers->concat($rows)->values();
+    }
+
     public static function rows(iterable $people): Collection
     {
         return collect($people)->map(fn ($p) => self::row($p))->values();

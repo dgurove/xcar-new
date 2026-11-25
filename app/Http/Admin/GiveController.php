@@ -95,7 +95,7 @@ class GiveController
         $arrivedAt = $already && ! empty($data['arrived_at']) ? Carbon::parse($data['arrived_at']) : null;
         // «Кому → Менеджеру» без менеджера — не «взяли под себя» молча (19.10.2026): под себя — только явным «Себе».
         if ($garage && ! $bid && in_array($request->input('whom'), ['manager', 'buyer'], true) && empty($data['manager_id'])) {
-            throw ValidationException::withMessages(['manager_id' => $request->input('whom') === 'buyer' ? 'Выберите покупателя' : 'Выберите менеджера']);
+            throw ValidationException::withMessages(['manager_id' => 'Кому отдаём']);
         }
         if ($request->input('whom') === 'self') {
             $data['manager_id'] = null;

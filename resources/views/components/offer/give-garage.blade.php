@@ -6,7 +6,10 @@
      него, «Себе» нет. Вкладка «В гараж» листа «Отдать» (`x-offer.give-sheet`). Поля спрятанного сценария reveal
      выключает — в запрос уходит только выбранное. «Покупателю» (20.10.2026) — покупатель или супер-покупатель с гаражом по
      тумблеру: поставщику платим мы, вместо «кто платит» — его цена (по умолчанию цена продажи), закупочной он не видит; так
-     же при принятии гаражного подтверждения супер-покупателя. Есть, пока такие люди есть и поставщику можем платить мы. --}}
+     же при принятии гаражного подтверждения супер-покупателя. Есть, пока такие люди есть и поставщику можем платить мы.
+     С 25.11.2026 «Кому» — один список (`People::holders`: менеджеры, покупатели с гаражом группами, «Себе» первой строкой), а
+     не сегмент «Менеджеру | Покупателю | Себе»: Ананьева искали среди менеджеров. Где покупателю нельзя — строки серым с
+     причиной. Выбор ставит скрытое радио `whom` (`give_to_controller`), оно — поля своего вида. --}}
 @props(['offer', 'bid' => null, 'prefix' => 'give'])
 @php
     $branch = ! $offer->garagePayerFixed();
@@ -14,29 +17,30 @@
     $whom = $bid ? 'manager' : old('whom', 'manager');
     $managerName = $bid?->user?->shortName() ?? 'Менеджер';
     $buyerBid = (bool) $bid?->user?->holdsAsBuyer();
-    $toBuyer = ! $bid && $offer->garageToBuyer() && once(fn () => \App\Users\User::garageBuyers()->exists());
+    $hasBuyers = ! $bid && once(fn () => \App\Users\User::garageBuyers()->exists());
+    $toBuyer = $hasBuyers && $offer->garageToBuyer();
+    // «Кому» одним списком (25.11.2026): менеджеры, покупатели с гаражом и «Себе»; выбор ставит скрытое `whom`.
+    $current = $handOver?->isGarage() ? $handOver->buyer : null;
+    if (! $bid && ! old('whom') && $handOver?->isGarage()) {
+        $whom = $current ? ($current->holdsAsBuyer() ? 'buyer' : 'manager') : 'self';
+    }
+    $holders = \App\Support\People::holders($hasBuyers ? ($toBuyer ? true : 'у этого поставщика нельзя') : false);
 @endphp
-<form method="post" action="{{ $bid ? '/confirmations/'.$bid->id.'/accept' : '/offers/'.$offer->number.'/give' }}" {{ $attributes->class(['give-garage flex flex-col gap-4']) }} data-controller="reveal">
+<form method="post" action="{{ $bid ? '/confirmations/'.$bid->id.'/accept' : '/offers/'.$offer->number.'/give' }}" {{ $attributes->class(['give-garage flex flex-col gap-4']) }} data-controller="reveal give-to" data-action="people:picked->give-to#whom">
     @csrf<input type="hidden" name="to" value="garage">
     @error('give')<x-ui.flash tone="danger">{{ $message }}</x-ui.flash>@enderror
     @unless ($bid)
-        <div class="flex flex-col gap-1.5">
-            <span class="field-label">Кому</span>
-            <x-ui.segment name="whom" :options="$toBuyer ? ['manager' => 'Менеджеру', 'buyer' => 'Покупателю', 'self' => 'Себе'] : ['manager' => 'Менеджеру', 'self' => 'Себе']" :value="$whom" pick/>
-        </div>
+        {{-- Вид выбранного — скрытым радио: по нему `reveal` и CSS (`.give-garage`) показывают свои поля. --}}
+        <div hidden><x-ui.segment name="whom" :options="array_filter(['manager' => 'Менеджеру', 'buyer' => $toBuyer ? 'Покупателю' : null, 'self' => 'Себе'])" :value="$whom" pick/></div>
+        <x-people.pick name="manager_id" label="Кому" kind="manager" :people="$holders" title="Кому" placeholder="Кому отдаём" search
+            none="Себе" none-holder="self" :none-chosen="$whom === 'self'" :value="old('manager_id', $current?->id)"/>
     @endunless
     @if ($toBuyer)
         <div class="flex flex-col gap-3" data-reveal-target="pane" data-reveal-key="buyer" @if ($whom !== 'buyer') hidden @endif>
-            <x-people.pick name="manager_id" label="Покупатель" kind="garage-buyer" :people="\App\Support\People::garageBuyers()" title="Покупатель" placeholder="Кому отдаём"/>
             <x-ui.field name="buyer_price" label="Цена для покупателя, ₽" :value="old('buyer_price', $offer->asking_price)" :id="$prefix.'-garage-buyer-price'" required/>
         </div>
     @endif
     <div class="flex flex-col gap-4" data-reveal-target="pane" data-reveal-key="manager" @if ($whom !== 'manager') hidden @endif>
-        @unless ($bid)
-            <div class="flex flex-col gap-3">
-                <x-people.pick name="manager_id" label="Менеджер" kind="manager" :people="\App\Support\People::managers()" title="Менеджер" placeholder="Кому отдаём" :value="old('manager_id', $handOver?->isGarage() ? $handOver->buyer_id : null)"/>
-            </div>
-        @endunless
         @if ($buyerBid)
             <div class="flex flex-col gap-3">
                 <x-ui.field name="buyer_price" label="Цена для покупателя, ₽" :value="old('buyer_price', $offer->asking_price)" :id="$prefix.'-garage-buyer-price'" required/>

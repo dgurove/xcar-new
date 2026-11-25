@@ -15,7 +15,8 @@
      заголовками, группа без совпадений прячется; выбранный — первым в своей группе. --}}
 @props(['name', 'label' => null, 'value' => null, 'people' => collect(), 'kind', 'title' => null, 'newLabel' => null, 'link' => false,
     'deal' => null, 'autosubmit' => false, 'none' => null, 'variant' => 'field', 'placeholder' => 'Выбрать', 'required' => false, 'finish' => null,
-    'only' => false, 'append' => null, 'reload' => false, 'trigger' => 'row', 'owner' => null, 'open' => false, 'passport' => false, 'search' => null, 'marks' => true])
+    'only' => false, 'append' => null, 'reload' => false, 'trigger' => 'row', 'owner' => null, 'open' => false, 'passport' => false, 'search' => null, 'marks' => true,
+    'noneHolder' => null, 'noneChosen' => true, 'away' => null])
 @php
     $uid = 'pp'.substr(md5($name.$kind.uniqid('', true)), 0, 8);
     $people = collect($people);
@@ -36,6 +37,7 @@
 <div {{ $attributes->class([$variant === 'field' && ! $only ? 'field' : 'contents', 'field-invalid' => $error]) }} data-controller="sheet people-pick"
     data-people-pick-kind-value="{{ $kind }}" data-people-pick-url-value="{{ $create }}" data-people-pick-name-value="{{ $name }}"
     @if ($deal) data-people-pick-deal-value="{{ $deal }}" @endif @if ($owner) data-people-pick-owner-value="{{ $owner }}" @endif @if ($autosubmit) data-people-pick-autosubmit-value="true" @endif
+    @if ($away) data-people-pick-away-value="{{ $away }}" @endif
     data-people-pick-placeholder-value="{{ $placeholder }}"
     @if ($only) data-people-pick-only-value="true" @endif @if ($append) data-people-pick-append-value="{{ $append }}" @endif @if ($reload) data-people-pick-reload-value="true" @endif>
     @if ($only)
@@ -50,7 +52,7 @@
     @elseif ($variant === 'field')
         @if ($label)<span class="field-label">{{ $label }}@if ($required)<x-ui.req/>@endif</span>@endif
         <button type="button" class="field-input people-value" data-action="sheet#open" data-people-pick-target="shown">
-            @if ($chosen)<span class="truncate">{{ $chosen['name'] }}</span>@else<span class="text-accent-text">{{ $none && $value === null ? $none : $placeholder }}</span>@endif
+            @if ($chosen)<span class="truncate">{{ $chosen['name'] }}</span>@elseif ($noneHolder && $value === null && $noneChosen)<span class="truncate">{{ $none }}</span>@else<span class="text-accent-text">{{ $none && $value === null && ! $noneHolder ? $none : $placeholder }}</span>@endif
             <x-ui.chevron/>
         </button>
     @elseif ($variant === 'pill')
@@ -98,6 +100,16 @@
                                 <span class="min-w-0 flex-1 font-medium text-accent-text">{{ $newLabel }}</span>
                                 <x-ui.chevron/>
                             </button>
+                        </div>
+                    @endif
+                    {{-- «Себе» и прочее «никто» — первой строкой над группами («Кому» в «Отдать → В гараж», 25.11.2026). --}}
+                    @if ($none)
+                        <div class="list">
+                            <label class="row row-check people-option" data-people-option data-search-text="{{ str_replace('ё', 'е', mb_strtolower($none)) }}" @if ($noneHolder) data-holder="{{ $noneHolder }}" @endif>
+                                <x-ui.row-icon name="user" size="s" tone="muted"/>
+                                <span class="min-w-0 flex-1" data-people-name>{{ $none }}</span>
+                                <span class="check"><input type="radio" name="_pp_{{ $uid }}" value="" @checked(! $chosen && $noneChosen) data-action="change->people-pick#choose"></span>
+                            </label>
                         </div>
                     @endif
                     @foreach ($grouped as $group => $rows)

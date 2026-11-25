@@ -13,7 +13,7 @@ import { focusField } from '../keyboard';
 export default class extends Controller {
     static targets = ['shown', 'hidden', 'list', 'panes', 'newPane', 'form', 'error', 'submit', 'done', 'doneTitle', 'doneSub', 'doneRows', 'passport', 'passportFiles',
         'shareBtn', 'copyBtn', 'finish', 'finishLabel', 'addRow', 'search'];
-    static values = { kind: String, url: String, name: String, deal: Number, owner: Number, autosubmit: Boolean, placeholder: String, only: Boolean, append: String, reload: Boolean };
+    static values = { kind: String, url: String, name: String, deal: Number, owner: Number, autosubmit: Boolean, placeholder: String, only: Boolean, append: String, reload: Boolean, away: String };
 
     connect() {
         // Системного листа нет (ПК) — «Отправить» прячется, «Скопировать» становится главной, как в `x-ui.share-link`.
@@ -45,22 +45,36 @@ export default class extends Controller {
     }
 
     // Строка списка выбрана: поле формы, подпись в строке-поле, событие соседям; autosubmit — форма уходит.
+    // `away` — виды строк, что выбираются не здесь («В сделку»: покупатель с гаражом — только в гараж, 25.11.2026): поле не
+    // меняется, событие `people:away` уводит выбор туда, где его можно сделать.
     choose(event) {
         const option = event.target.closest('[data-people-option]');
-        this.pick(event.target.value, option?.querySelector('[data-people-name]')?.textContent.trim() ?? '', option?.dataset.address);
+        const name = option?.querySelector('[data-people-name]')?.textContent.trim() ?? '';
+        const holder = option?.dataset.holder;
+        if (holder && this.awayValue.split(' ').includes(holder)) {
+            event.target.checked = false;
+            const was = this.hasHiddenTarget && this.listTarget.querySelector(`input[type=radio][value="${CSS.escape(this.hiddenTarget.value)}"]`);
+            if (was) was.checked = true;
+            closeSheet(this.dialog);
+            this.element.dispatchEvent(new CustomEvent('people:away', { bubbles: true, detail: { id: event.target.value, name, holder } }));
+            return;
+        }
+        this.pick(event.target.value, name, option?.dataset.address, holder);
         closeSheet(this.dialog);
     }
 
-    pick(id, name, address) {
+    pick(id, name, address, holder) {
         if (!this.hasHiddenTarget) return;
         this.hiddenTarget.value = id;
         this.hiddenTarget.dispatchEvent(new Event('change', { bubbles: true }));
         const label = this.hasShownTarget ? this.shownTarget.querySelector('span') : null;
         if (label) {
-            label.textContent = id ? name : this.placeholderValue;
-            label.className = id ? 'min-w-0 truncate' : 'text-accent-text';
+            // «Себе» — выбор, а не пустое поле: его имя обычным текстом.
+            const named = id || holder;
+            label.textContent = named ? name : this.placeholderValue;
+            label.className = named ? 'min-w-0 truncate' : 'text-accent-text';
         }
-        this.element.dispatchEvent(new CustomEvent('people:picked', { bubbles: true, detail: { id, name, address, kind: this.kindValue } }));
+        this.element.dispatchEvent(new CustomEvent('people:picked', { bubbles: true, detail: { id, name, address, kind: this.kindValue, holder } }));
         if (this.autosubmitValue) this.hiddenTarget.form?.requestSubmit();
     }
 

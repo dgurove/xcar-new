@@ -8,15 +8,18 @@
     use App\Support\Money;
     $n = $offer->number;
     $id = 'garage-holder-'.$n;
-    $toBuyer = $offer->garageToBuyer() && once(fn () => \App\Users\User::garageBuyers()->exists());
+    $hasBuyers = once(fn () => \App\Users\User::garageBuyers()->exists());
+    $toBuyer = $hasBuyers && $offer->garageToBuyer();
     $options = array_filter(['buyer' => $toBuyer ? 'Покупателю' : null, 'manager' => 'Менеджеру', 'self' => $car->manager_id ? 'Себе' : null]);
-    $whom = old('whom', $car->forBuyer() && $toBuyer ? 'buyer' : 'manager');
+    // «Кому» — один список (25.11.2026, как «Отдать → В гараж»): менеджеры, покупатели с гаражом, «Себе»; ничего не выбрано — менеджеру.
+    $whom = old('whom', 'manager');
+    $holders = \App\Support\People::holders($hasBuyers ? ($toBuyer ? true : 'у этого поставщика нельзя') : false);
     $dealBlocked = GarageToDeal::blocked($car);
     $cost = GarageToDeal::cost($car);
     $ours = $car->spent(\App\Garage\Payer::Xcar);
     $way = old('to') === 'deal' ? 'deal' : 'garage';
 @endphp
-<div class="contents" data-controller="sheet" data-action="{{ $id }}:open@window->sheet#open">
+<div class="contents" data-controller="sheet give-to" data-action="{{ $id }}:open@window->sheet#open people:away->give-to#garage">
     <x-ui.sheet :id="$id" title="Передать" tall>
         <div class="mb-4 flex flex-wrap items-center gap-1.5">
             <span class="tag">{{ $offer->titleWithYear() }}</span>
@@ -25,22 +28,17 @@
         <div class="flex flex-col gap-4" data-controller="reveal">
             <x-ui.segment name="_way" :options="['garage' => 'В гараж', 'deal' => 'В сделку']" :value="$way" pick/>
             <div data-reveal-target="pane" data-reveal-key="garage" @if ($way !== 'garage') hidden @endif>
-                <form method="post" action="/offers/{{ $n }}/garage-holder" class="flex flex-col gap-4" data-controller="reveal">
+                <form method="post" action="/offers/{{ $n }}/garage-holder" class="flex flex-col gap-4" data-controller="reveal give-to" data-action="people:picked->give-to#whom">
                     @csrf
                     @error('holder')<x-ui.flash tone="danger">{{ $message }}</x-ui.flash>@enderror
-                    <div class="flex flex-col gap-1.5">
-                        <span class="field-label">Кому</span>
-                        <x-ui.segment name="whom" :options="$options" :value="$whom" pick/>
-                    </div>
+                    <div hidden><x-ui.segment name="whom" :options="$options" :value="$whom" pick/></div>
+                    <x-people.pick name="manager_id" label="Кому" kind="manager" :people="$holders" title="Кому" placeholder="Кому передаём" search
+                        :none="$car->manager_id ? 'Себе' : null" none-holder="self" :none-chosen="$whom === 'self'"/>
                     @if ($toBuyer)
                         <div class="flex flex-col gap-3" data-reveal-target="pane" data-reveal-key="buyer" @if ($whom !== 'buyer') hidden @endif>
-                            <x-people.pick name="manager_id" label="Покупатель" kind="garage-buyer" :people="\App\Support\People::garageBuyers()" title="Покупатель" placeholder="Кому передаём"/>
                             <x-ui.field name="buyer_price" label="Цена для покупателя, ₽" :value="old('buyer_price', $car->buyer_price ?? $offer->asking_price)" :id="$id.'-price'" required/>
                         </div>
                     @endif
-                    <div class="flex flex-col gap-3" data-reveal-target="pane" data-reveal-key="manager" @if ($whom !== 'manager') hidden @endif>
-                        <x-people.pick name="manager_id" label="Менеджер" kind="manager" :people="\App\Support\People::managers()" title="Менеджер" placeholder="Кому передаём"/>
-                    </div>
                     <x-ui.sheet-foot type="submit" variant="primary">Передать</x-ui.sheet-foot>
                 </form>
             </div>

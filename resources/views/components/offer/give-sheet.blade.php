@@ -26,7 +26,7 @@
     };
 @endphp
 {{-- С подтверждением — и событием give-bid-{id}:open (главная кнопка шторки строки подтверждения, 19.11.2026). --}}
-<div class="contents" data-controller="sheet" data-action="{{ $bid ? 'give-bid-'.$bid->id : 'give-'.$n }}:open@window->sheet#open">
+<div class="contents" data-controller="sheet give-to" data-action="{{ $bid ? 'give-bid-'.$bid->id : 'give-'.$n }}:open@window->sheet#open people:away->give-to#garage">
     {{ $slot }}
     <x-ui.sheet :id="$id" :title="$title" tall>
         <div class="mb-4 flex flex-wrap items-center gap-1.5">@if ($bid)<x-ui.person :user="$bid->user" full/>@endif<span class="tag">{{ $offer->titleWithYear() }}</span>

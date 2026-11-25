@@ -26,7 +26,10 @@
     @error('give')<x-ui.flash tone="danger">{{ $message }}</x-ui.flash>@enderror
     @unless ($bid)
         <div class="flex flex-col gap-3">
-            <x-people.pick name="manager_id" label="Кому" kind="manager" :people="\App\Support\People::managers()" title="Менеджер" placeholder="Выбрать менеджера" required/>
+            {{-- Покупатели с гаражом — тем же списком (25.11.2026): сделку продажи держит менеджер, выбор покупателя уводит на «В гараж» (`people:away`). --}}
+            @php $hasBuyers = once(fn () => \App\Users\User::garageBuyers()->exists()); @endphp
+            <x-people.pick name="manager_id" label="Кому" kind="manager" title="Кому" placeholder="Выбрать менеджера" required search away="buyer"
+                :people="\App\Support\People::holders($hasBuyers ? ($offer->garageToBuyer() ? true : 'у этого поставщика нельзя') : false, 'только в гараж')"/>
             <x-ui.field name="amount" label="Цена подтверждения, ₽" :value="$amount ? Money::nums($amount) : null" :id="$prefix.'-amount'" required
                 data-commission-target="price" data-action="input->commission#input"/>
         </div>
