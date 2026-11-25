@@ -20,12 +20,16 @@ use Illuminate\Http\Request;
  * строки, а у нас куча тачек от Совкома, которые надо решить, кому на вывоз передать»; ведут Катя, Лиза и Алина). Поперёк
  * этапов, как «Оплата за подбор»: машина остаётся и в своей вкладке черновика или сделки. Строка — вывоз продажи строкой
  * логистики (`x-logistics.row`), нажатие — окно машины, где дорожка «Вывоз» с «Кто вывозит», письмами и «Вывоз не нужен».
- * «Менеджер забирает сам» сюда не входит — это «Менеджер забирает ТС» сделок.
+ * «Менеджер забирает сам» сюда не входит — это «Менеджер забирает ТС» сделок; кроме «Показать контакты» — там как раз он, пока
+ * телефона владельца не видел.
  */
 class PickupController
 {
     /** Вкладка → вкладка логистики, чьи столбцы у строки (`TransportController::columns`). */
     public const TABS = [
+        // «Показать контакты» (25.11.2026, владелец по BMW X5 915891/2026: «самая первая перед „Назначить исполнителя“, ответственные
+        // Катя, Лиза, Алина»): менеджер забирает сам, а телефона владельца не видел (`Offers\ContactDue`).
+        'pickup_contacts' => 'work',
         'pickup_assign' => 'new',
         'pickup_docs' => 'work',
         'pickup_letters' => 'all',
@@ -33,7 +37,7 @@ class PickupController
     ];
 
     /** Вкладки, где ход наш: красный счётчик — все строки. «Везём» — ждём исполнителя. */
-    public const OURS = ['pickup_assign', 'pickup_docs', 'pickup_letters'];
+    public const OURS = ['pickup_contacts', 'pickup_assign', 'pickup_docs', 'pickup_letters'];
 
     /** Текущие вывозы продажи у машин, что ещё продаются или в сделке (не архив). */
     private static function base(): Builder
@@ -50,6 +54,7 @@ class PickupController
         $q = self::base();
 
         return match ($tab) {
+            'pickup_contacts' => $q->whereIn('transports.id', \App\Offers\ContactDue::transportIds()),
             // «Не решили, кто вывозит» (`undecided`) — решает менеджер сделки, это не наш ход.
             'pickup_assign' => $q->where('transports.state', TransportState::New)->where('transports.undecided', false),
             'pickup_docs' => $q->awaitingDocs(),

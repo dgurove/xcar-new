@@ -35,7 +35,7 @@ final class Disclosures
      *                     документы отмечены сразу
      * @return array<string, array{kind: string, value: string, media: int|list<int>|null, group: string, label?: string, pick?: bool}> ключ пункта → пункт
      */
-    public static function proposals(Deal $deal, Collection $letters, ?int $open = null): array
+    public static function proposals(Deal $deal, Collection $letters, ?int $open = null, bool $contact = false): array
     {
         $out = [];
         $add = function (string $kind, ?string $value, string $group, ?int $media = null) use (&$out) {
@@ -72,6 +72,10 @@ final class Disclosures
             $add('phone', $m->field('insured_phone'), $group);
             $add('name', $m->field('insured_name'), $group);
             $add('address', VendorNames::strip($m->field('location')), $group);
+            // Показ контакта (`contact`, 25.11.2026): из писем — только телефоны, имя и адрес; документы — машины, как при показе руками.
+            if ($contact) {
+                continue;
+            }
             [$pictures, $documents] = $papers->filter(fn (Media $f) => (int) $f->getCustomProperty('letter') === $m->id)
                 ->partition(fn (Media $f) => str_starts_with((string) $f->mime_type, 'image/'));
             $documents->each(function (Media $f) use ($add, $group, $m, $open, &$out) {
@@ -92,11 +96,26 @@ final class Disclosures
         }
         // Без писем (показ руками) — все документы машины; с письмами — только письма, остальное в «Из карточки» не тянем:
         // там 20 кадров с Мигторга строками и были «безобразием».
-        if ($letters->isEmpty()) {
+        if ($letters->isEmpty() || $contact) {
             $papers->each(fn (Media $f) => $add('file', $f->name ?: $f->file_name, self::CARD, $f->id));
         }
 
         return $out;
+    }
+
+    /**
+     * Письма с контактом для шторки «Показать контакты менеджеру» (`x-deal.contact-shown`, 25.11.2026, BMW X5 915891/2026: телефон —
+     * только строкой «Готовы к передаче – 8-988-…» письма Совкомбанка, в карточке пусто): входящие письма поставщика по машине,
+     * где есть телефон до подписи или поля страхователя, три свежих. Шторка и сервер (`DisclosureController`, `card`) берут их здесь.
+     *
+     * @return Collection<int, Message>
+     */
+    public static function contactLetters(Deal $deal): Collection
+    {
+        return Message::query()->whereHas('thread', fn ($q) => $q->where('offer_id', $deal->offer_id))
+            ->where('direction', \App\Mail\Direction::In)->latest('date_at')->limit(20)->get()
+            ->filter(fn (Message $m) => $m->isFromVendor() && (OwnerPhones::for($m) !== [] || $m->field('insured_phone') || $m->field('insured_name') || $m->field('location')))
+            ->take(3)->values();
     }
 
     /**

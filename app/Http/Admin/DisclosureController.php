@@ -5,10 +5,12 @@ namespace App\Http\Admin;
 use App\Mail\LetterPrompt;
 use App\Mail\Message;
 use App\Offers\Actions\Disclose;
+use App\Offers\Actions\UpdateOffer;
 use App\Offers\Deal;
 use App\Offers\Disclosures;
 use App\Offers\ReplyReview;
 use App\Offers\SupplierInvoice;
+use App\Support\Phone;
 use App\Workflow\Outcome;
 use Illuminate\Http\Request;
 use Illuminate\Validation\ValidationException;
@@ -28,6 +30,8 @@ class DisclosureController
             // оценочной на странице машины — 500 вместо текста ошибки.
             'edit' => ['array'], 'edit.*' => ['nullable', 'string', 'max:300'],
             'card' => ['nullable', 'boolean'],
+            'contact_name' => ['nullable', 'string', 'max:120'],
+            'contact_phone' => ['nullable', 'string', 'max:40'],
             'text' => ['nullable', 'string', 'max:5000'],
             'step' => ['nullable', 'integer'],
             'message' => ['nullable', 'integer'],
@@ -35,12 +39,18 @@ class DisclosureController
         // Из окна писем (16.11.2026) — одно письмо, любое из веток этой машины, а не только стоящие на разборе.
         $message = isset($data['message']) ? Message::with('thread')->find($data['message']) : null;
         abort_if(isset($data['message']) && $message?->thread?->offer_id !== $deal->offer_id, 404);
+        // card — «Показать контакты менеджеру» (`x-deal.contact-shown`): пункты — карточка и письма с контактом, как в шторке
+        // (`Disclosures::contactLetters`); письмо на разборе он не разбирает.
         $card = ! $message && $request->boolean('card');
-        $letters = $message ? collect([$message]) : ($card ? collect() : ReplyReview::pending()->where('deal_id', $deal->id)->with('message')->get()->pluck('message')->filter()->values());
+        $letters = $message ? collect([$message]) : ($card ? Disclosures::contactLetters($deal) : ReplyReview::pending()->where('deal_id', $deal->id)->with('message')->get()->pluck('message')->filter()->values());
         $pick = collect($data['on'] ?? [])->mapWithKeys(fn ($key) => [$key => $data['edit'][$key] ?? null])->all();
-        $items = Disclosures::picked(Disclosures::proposals($deal, $letters, $message?->id), $pick, $data['text'] ?? null);
+        $items = Disclosures::picked(Disclosures::proposals($deal, $letters, $message?->id, contact: $card), $pick, $data['text'] ?? null);
+        if ($card) {
+            $items = $this->ownContact($deal, $request, $items, $data);
+        }
         $step = isset($data['step']) ? Outcome::find($data['step']) : null;
-        ['moved' => $moved] = $disclose($deal, $request->user(), $items, $step, message: $message, card: $card);
+        ['moved' => $moved] = $disclose($deal, $request->user(), $items, $step, message: $message, card: $card,
+            lead: $card && collect($items)->whereIn('kind', ['name', 'phone', 'address'])->isNotEmpty() ? 'Контакт для получения ТС' : null);
         // Шаг ушёл на этап с нашим письмом («Договор готов» → «Свободное время для подписания», 11.11.2026) — сразу вопрос про
         // письмо (`LetterPrompt`), как после «Принять»: черновик уже с днями покупателя.
         $offer = $deal->offer->fresh();
@@ -53,6 +63,41 @@ class DisclosureController
             $moved => 'Шаг пройден',
             default => 'Ответ разобран',
         });
+    }
+
+    /**
+     * Шторка контакта (25.11.2026, владелец: «нужно здесь тоже сделать ввод контактов»): вписанные «Имя» и «Телефон» — пунктами
+     * менеджеру (перед своим сообщением); в карточке ТС пусто — показанные имя и телефон (из письма или вписанные) встают туда
+     * (`UpdateOffer`, «История»), чтобы контакт был и в «Вывозе», и в сводке ТС.
+     *
+     * @param  list<array{kind: string, value: string}>  $items
+     * @return list<array{kind: string, value: string}>
+     */
+    private function ownContact(Deal $deal, Request $request, array $items, array $data): array
+    {
+        $own = [];
+        if ($name = trim((string) ($data['contact_name'] ?? ''))) {
+            $own[] = ['kind' => 'name', 'value' => $name];
+        }
+        if (($raw = trim((string) ($data['contact_phone'] ?? ''))) !== '') {
+            $phone = Phone::normalize($raw) ?? throw ValidationException::withMessages(['contact_phone' => 'Номер не похож на телефон']);
+            $own[] = ['kind' => 'phone', 'value' => Phone::format($phone)];
+        }
+        if ($own) {
+            $tail = array_values(array_filter($items, fn ($i) => $i['kind'] === 'text'));
+            $items = [...array_values(array_filter($items, fn ($i) => $i['kind'] !== 'text')), ...$own, ...$tail];
+        }
+        $offer = $deal->offer;
+        $first = fn (string $kind) => collect($items)->firstWhere('kind', $kind)['value'] ?? null;
+        $fill = array_filter([
+            'insured_name' => $offer->insured_name ? null : $first('name'),
+            'insured_phone' => $offer->insured_phone ? null : Phone::normalize($first('phone')),
+        ]);
+        if ($fill) {
+            app(UpdateOffer::class)($offer, $fill, $request->user(), ['why' => 'Показали менеджеру контакт', 'contact_shown' => true]);
+        }
+
+        return $items;
     }
 
     /**

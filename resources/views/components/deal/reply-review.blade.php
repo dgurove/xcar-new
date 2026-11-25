@@ -26,6 +26,11 @@
         $shown = $compact || $pill ? collect() : Disclosures::shown($deal);
         $since = $line ? $offer->position()?->entered_at : null;
         $shown = $since ? $shown->where('created_at', '>=', $since) : $shown;
+        // Показ одного контакта, пока менеджер забирает сам, — строкой «Менеджер видит контакт» (`x-deal.contact-shown`); второй строкой
+        // «Показано менеджеру» о том же не пишем (25.11.2026).
+        if ($deal->buyerPicksUp() && ! $offer->pickedUp()) {
+            $shown = $shown->reject(fn ($d) => collect($d->items ?? [])->every(fn ($i) => in_array($i['kind'] ?? null, ['name', 'phone', 'address'], true)));
+        }
         $sheet = ['id' => $id, 'deal' => $deal, 'letters' => $letters, 'proposals' => $proposals, 'step' => $step, 'picked' => $picked];
     @endphp
     @if ($pill)

@@ -22,6 +22,12 @@
         default => null,
     };
     $manager = $side === 'manager' ? $deal?->buyer : null;
+    // Менеджер забирает сам, а контакта не видел — ход наш (25.11.2026, `ContactDue`): вместо «Ждём менеджера» — дело «Показать
+    // контакты менеджеру» со шторкой (`x-deal.contact-shown`), кнопки за менеджера — под ним, как были.
+    $contact = $side === 'manager' && $deal && auth()->user()?->canEditDeals() && \App\Offers\ContactDue::due($deal);
+    // Менеджер забирает сам и уже видит контакт — строкой под ходом, над кнопками за него (25.11.2026): поправить и показать ещё.
+    $contactSeen = ! $contact && $deal?->isActive() && $position->track === \App\Workflow\Track::Sale && auth()->user()?->canEditDeals()
+        && $deal->buyerPicksUp() && ! $offer->pickedUp();
     $timer = fn (string $mode, $at) => '<span class="nums" data-controller="timer" data-timer-'.$mode.'-value="'.$at->toIso8601String().'" data-timer-coarse-value="true"'.($mode === 'until' ? ' data-timer-done-value="-" data-timer-word-value=""' : '').'></span>';
     $overdue = $position->isOverdue();
     $since = $position->block_entered_at ?? $position->entered_at;
@@ -86,7 +92,9 @@
 @endphp
 @unless (! $named && $trip && $trip->state !== \App\Logistics\TransportState::Delivered)
     {{-- Окно: шаг везёт наша логистика — рейс со всем, что о нём, в дорожке «Вывоз» рядом; второй раз не пишем (12.11.2026). --}}
-    @if (($side || $what) && ($replied || $letter !== 'replied'))
+    @if ($contact)
+        <x-deal.contact-shown :deal="$deal" as="task" :sub="$sinceHtml($since)" :danger="$overdue" {{ $attributes }}/>
+    @elseif (($side || $what) && ($replied || $letter !== 'replied'))
         <x-route.task-row :icon="$icon" :avatar="$face" :danger="$danger" :emit="$open" :static="! $open" {{ $attributes }}>
             {{ $title }}
             @if ($sub)
@@ -95,6 +103,9 @@
         </x-route.task-row>
     @endif
 @endunless
+@if ($contactSeen)
+    <x-deal.contact-shown :deal="$deal" as="task"/>
+@endif
 @if ($hasActs)
     <div class="step-acts step-who-acts--bare">{{ $acts }}</div>
 @endif

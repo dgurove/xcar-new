@@ -54,6 +54,9 @@ final class UpdateOffer
         if ($asOf) {
             $log['as_of'] = $asOf->toDateTimeString();
         }
+        // Запись из шторки показа контакта (`DisclosureController::ownContact`): показ идёт следом — второй раз не шлём.
+        $contactShown = (bool) ($log['contact_shown'] ?? false);
+        unset($log['contact_shown']);
         // «Только ему до …» сняли в шторке «Показ» (`exclusive_off`, 20.11.2026): лента волн встаёт как выбрали.
         $waive = (bool) ($data['exclusive_off'] ?? false);
         unset($data['exclusive_off']);
@@ -161,6 +164,10 @@ final class UpdateOffer
         // Вендора поставили руками письму, отправителя которого разбор не знал, — запомнить его адрес у вендора.
         if (in_array('vendor_id', $changed, true) && $offer->vendor_id) {
             app(LearnSenders::class)($offer);
+        }
+        // Контакт владельца поправил человек, ведущий сделки, — менеджеру, что забирает сам и уже видел контакт, новое (25.11.2026).
+        if (! $contactShown && $by?->canEditDeals() && array_intersect(ResendContact::FIELDS, $changed)) {
+            app(ResendContact::class)($offer, $by);
         }
         if ($changed) {
             // Было → стало (`Changes`): ключ номера убытка — производная колонка, в истории это тот же «номер убытка».

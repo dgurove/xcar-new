@@ -140,12 +140,22 @@ class Position extends Model
     {
         if ($ask = $this->extraAsk()) {
             return $ask->phase() === ExtraAsk::SHOW || $this->repricePending() || $this->priceAskLate() !== null || $this->priceOffered() !== null
-                || $this->replyPending() !== null || $this->repriceUnanswered() !== null || $this->moneyArrived() !== null || $this->pickupLetter() !== null;
+                || $this->replyPending() !== null || $this->repriceUnanswered() !== null || $this->moneyArrived() !== null || $this->pickupLetter() !== null
+                || $this->contactDue() !== null;
         }
 
         return ($this->waitsFor() === WaitsFor::Us && ! $this->carried()) || in_array($this->letterStatus(), ['unsent', 'failed', 'bounced', 'replied'], true)
             || $this->consentLate() || $this->repricePending() || $this->priceAskLate() !== null || $this->priceOffered() !== null || $this->replyPending() !== null
-            || $this->repriceUnanswered() !== null || $this->moneyArrived() !== null || $this->pickupLetter() !== null;
+            || $this->repriceUnanswered() !== null || $this->moneyArrived() !== null || $this->pickupLetter() !== null || $this->contactDue() !== null;
+    }
+
+    /**
+     * Менеджер забирает сам, а телефона владельца не видел (25.11.2026, `Offers\ContactDue`): ход наш — показать контакт. С какого
+     * момента ждёт; одним запросом на все сделки списка.
+     */
+    public function contactDue(): ?Carbon
+    {
+        return $this->track === Track::Sale ? \App\Offers\ContactDue::waiting()->get($this->offer_id) : null;
     }
 
     /**
@@ -378,6 +388,11 @@ class Position extends Model
             return $todo('reply', 'Прочитать ответ поставщика', 0, $at, ['label' => 'Открыть', 'href' => '/offers/'.$offer->number]);
         }
 
+        // Менеджер забирает сам, а контакта не видел — показать (25.11.2026, `ContactDue`): без него он не знает, кому звонить.
+        if ($at = $this->contactDue()) {
+            return $todo('contact', 'Показать контакты менеджеру', 0, $at, ['label' => 'Показать', 'href' => '/offers/'.$offer->number.'?contact=1']);
+        }
+
         // Письмо поставщику о вывозе (Совкомбанк) — группой «Написать поставщику».
         if ($pickup = $this->pickupLetter()) {
             $url = \App\Logistics\PickupLetters::due($offer)['url'] ?? null;
@@ -591,7 +606,7 @@ class Position extends Model
     // связи перед ним (`Stage::handsStep`).
     // Метки письма — только на этапе письма (`Stage::isLetterStep`), «менеджер не ответил» — только пока ход его
     // (`consentLate`): без этого число пилюли «Ваш ход» расходилось со строками (27.10.2026). Ждущая переоценка — `repricePending`,
-    // письмо на разбор — `replyPending`, ответ поставщику на переоценку — `repriceUnanswered`, письмо о вывозе — `pickupLetter`.
+    // письмо на разбор — `replyPending`, ответ поставщику на переоценку — `repriceUnanswered`, письмо о вывозе — `pickupLetter`, контакт менеджеру — `contactDue`.
     public const NEEDS_US_SQL = "coalesce(((not ".ExtraAsk::HOLDS_SQL.") and ((coalesce(offer_positions.waits_for, (select s.waits_for from workflow_stages s where s.id = offer_positions.stage_id)) = 'us'
             and not exists (select 1 from workflow_exits x where x.stage_id = offer_positions.stage_id and lower(x.label) = 'заявка отправлена')
             and not (coalesce(offer_positions.waits_for, '') = 'us' and exists (select 1 from workflow_exits x where x.stage_id = offer_positions.stage_id
@@ -610,6 +625,7 @@ class Position extends Model
             where rr.offer_id = offer_positions.offer_id and rr.state = 'pending' and ".Deal::ACTIVE_D."))
         or (offer_positions.track = 'sale' and exists (select 1 from deals d where d.offer_id = offer_positions.offer_id and ".Deal::ACTIVE_D.")
             and ".\App\Logistics\PickupLetters::DUE_SQL.")
+        or (offer_positions.track = 'sale' and ".\App\Offers\ContactDue::DUE_SQL.")
         or (offer_positions.track = 'sale' and exists (select 1 from reprice_asks a join deals d on d.id = a.deal_id
             where a.offer_id = offer_positions.offer_id and a.state in ('pending', 'countered') and a.due_at < now() and ".Deal::ACTIVE_D."))
         or (offer_positions.track = 'sale' and exists (select 1 from reprice_asks a join deals d on d.id = a.deal_id

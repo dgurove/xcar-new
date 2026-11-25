@@ -54,7 +54,7 @@ final class Disclose
      * @param  list<array{kind: string, value: string, media?: int}>  $items  сверенные `Disclosures::picked`
      * @return array{disclosure: ?Disclosure, moved: bool} показали и сдвинули ли шаг (галка шага устарела — не сдвигаем)
      */
-    public function __invoke(Deal $deal, User $by, array $items, ?Outcome $step = null, ?int $invoice = null, ?Message $message = null, bool $card = false): array
+    public function __invoke(Deal $deal, User $by, array $items, ?Outcome $step = null, ?int $invoice = null, ?Message $message = null, bool $card = false, ?string $lead = null): array
     {
         [$disclosure, $moved, $turn] = DB::transaction(function () use ($deal, $by, $items, $step, $invoice, $message, $card) {
             $deal = Deal::whereKey($deal->id)->lockForUpdate()->firstOrFail();
@@ -97,7 +97,7 @@ final class Disclose
         self::publish($deal);
         if ($buyer = $deal->buyer) {
             // Показанное — сообщением в чат сделки; чата у менеджера нет — уведомлением, как раньше (с его ходом в нём же).
-            $chat = $disclosure && self::toChat($deal->fresh(['offer', 'buyer']), $disclosure, $turn);
+            $chat = $disclosure && self::toChat($deal->fresh(['offer', 'buyer']), $disclosure, $turn, $lead);
             if ($disclosure && ! $chat) {
                 $buyer->notify(new DealInfoNotice($disclosure, $turn));
             } elseif ($turn) {
@@ -136,7 +136,7 @@ final class Disclose
      * вложениями. Сообщение чата само уходит в ленту, пуш и Telegram с файлами (`Notify::chat`), отдельного `DealInfoNotice` нет.
      * Счёт поставщика, что `StepAsk` на шаге оплаты приложит сам, второй раз не прикладывается. Чат менеджеру закрыт — false.
      */
-    private static function toChat(Deal $deal, Disclosure $disclosure, ?Requirement $turn): bool
+    private static function toChat(Deal $deal, Disclosure $disclosure, ?Requirement $turn, ?string $lead = null): bool
     {
         $offer = $deal->offer;
         if (! $offer || ! $offer->chatOpenFor($deal->buyer)) {
@@ -149,6 +149,10 @@ final class Disclose
         if ($turn?->stage && $deal->paysSupplierOn($turn->stage)) {
             $bill = SupplierInvoice::shown($offer)->take(1)->pluck('id');
             $files = $files->reject(fn (Media $m) => $bill->contains($m->id))->values();
+        }
+        // Что это (25.11.2026, контакт для получения): голое «+7 988 …» в чате непонятно — первой строкой слово.
+        if ($lead && $lines->isNotEmpty()) {
+            $lines->prepend($lead);
         }
         if ($lines->isNotEmpty() || $files->isNotEmpty()) {
             app(PlatformMessage::class)(app(OpenChat::class)($offer, $deal->buyer, greet: false), $lines->implode("\n") ?: 'Документы по сделке', media: $files);

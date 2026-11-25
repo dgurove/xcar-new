@@ -116,7 +116,8 @@ class OfferController
         'garage' => 'Гараж',
         // «Вывоз» (24.11.2026, владелец: «в третьем столбце над архивом подзаголовок „Вывоз“, назначить исполнителя и т. д.») —
         // поперёк этапов, как «Оплата за подбор»: строки рисует `PickupController::tab`.
-        'pickup_assign' => 'Назначить исполнителя', 'pickup_docs' => 'Документы на вывоз', 'pickup_letters' => 'Сообщить поставщику', 'pickup_moving' => 'Везём',
+        // «Показать контакты» (25.11.2026) — первой: менеджер забирает сам, а кому звонить, не знает (`ContactDue`).
+        'pickup_contacts' => 'Показать контакты', 'pickup_assign' => 'Назначить исполнителя', 'pickup_docs' => 'Документы на вывоз', 'pickup_letters' => 'Сообщить поставщику', 'pickup_moving' => 'Везём',
         // «Все архивы», а не «Архивы» (18.11.2026, владелец: «„Архивы“ и „Архив“ рядом — странно»), как прочие сводные.
         'all_archive' => 'Все архивы',
         // «Без подтверждений» — к архивам (24.11.2026, владелец): решить, снова в продажу или в архив.
@@ -208,14 +209,14 @@ class OfferController
      * пролистываются»): первая вкладка раздела → подпись (`x-ui.tab-title :sections`). «Все» — над разделами. В «Сделке» —
      * линия над «Завершёнными»; вкладки ожидания — в общем ряду по ходу сделки, без подзаголовка (18.11.2026, `DealTabs::TABS`).
      */
-    public const SECTIONS = ['purchases' => 'Закупка', 'gallery' => 'Галерея', 'all_drafts' => 'Черновики', 'all_offers' => 'Предложения', 'all_deals' => 'Сделки', 'finished' => 'Завершённые', 'garage' => 'Гараж', 'pickup_assign' => 'Вывоз', 'all_archive' => 'Архивы'];
+    public const SECTIONS = ['purchases' => 'Закупка', 'gallery' => 'Галерея', 'all_drafts' => 'Черновики', 'all_offers' => 'Предложения', 'all_deals' => 'Сделки', 'finished' => 'Завершённые', 'garage' => 'Гараж', 'pickup_contacts' => 'Вывоз', 'all_archive' => 'Архивы'];
 
     /**
      * Столбцы колеса на ПК (17.11.2026, владелец: «не скролл, а просто клик», «три столбца: предложения — черновики, закупка,
      * галерея, предложение; сделки — сделки и гараж; архивы»; заголовков у столбцов нет — имя только для чтения с экрана):
      * первая вкладка столбца → имя (`x-ui.tab-title :columns`). На телефоне колесо одно.
      */
-    public const WHEEL_COLUMNS = ['all' => 'Предложения', 'all_deals' => 'Сделки', 'pickup_assign' => 'Вывоз и архивы'];
+    public const WHEEL_COLUMNS = ['all' => 'Предложения', 'all_deals' => 'Сделки', 'pickup_contacts' => 'Вывоз и архивы'];
 
     /** Вкладки, машин которых во «Все» нет (17.11.2026, владелец): работа модератора и законченное. */
     public const ALL_HIDDEN = ['nofloor', 'finished'];
@@ -426,7 +427,7 @@ class OfferController
         if (self::ownTab($own) && isset(self::presets($request->user())[$own])) {
             return match ($own) {
                 'garage' => app(GarageController::class)->tab($request),
-                'pickup_assign', 'pickup_docs', 'pickup_letters', 'pickup_moving' => app(PickupController::class)->tab($request, $own),
+                'pickup_contacts', 'pickup_assign', 'pickup_docs', 'pickup_letters', 'pickup_moving' => app(PickupController::class)->tab($request, $own),
                 'purchases' => app(PurchaseController::class)->tab($request),
                 'gallery', 'interest' => app(GalleryController::class)->tab($request),
                 default => app(DealController::class)->tab($request, $own),
@@ -775,7 +776,7 @@ class OfferController
             'all_drafts', 'all_offers', 'all_deals', 'all_archive' => $q->whereIntegerInRaw('offers.id', OfferTabs::ids(self::summary($preset))),
             // «Гараж» — все гаражные машины до расчёта, в любом этапе сделки (16.11.2026); расчёт закрыт — в «Завершённых».
             'garage' => $q->whereHas('garageCar', fn ($c) => $c->where('state', '!=', CarState::Settled)),
-            'pickup_assign', 'pickup_docs', 'pickup_letters', 'pickup_moving' => $q->whereIntegerInRaw('offers.car_id', PickupController::carIds($preset)),
+            'pickup_contacts', 'pickup_assign', 'pickup_docs', 'pickup_letters', 'pickup_moving' => $q->whereIntegerInRaw('offers.car_id', PickupController::carIds($preset)),
             // Галерея — окно показа черновика (`GalleryController::scopeFor`); закупки — не предложения: строк-предложений нет.
             'gallery', 'interest' => GalleryController::scopeFor($preset, $q),
             'purchases' => $q->whereRaw('false'),

@@ -14,7 +14,8 @@
      (17.11.2026: кнопки под строкой в шаге больше нет),
      что уже показано — сверху. --}}
 @php $line = ($line ?? false) && $letters->isNotEmpty(); @endphp
-<x-ui.sheet :id="$id" :title="$line ? ($billed ? 'Счёт' : 'Письмо').' от '.($deal->offer->vendor?->name ?? 'поставщика') : 'Показать менеджеру'" tall>
+@php $card = $card ?? false; @endphp
+<x-ui.sheet :id="$id" :title="$line ? ($billed ? 'Счёт' : 'Письмо').' от '.($deal->offer->vendor?->name ?? 'поставщика') : ($card ? ($cardTitle ?? null ?: 'Показать контакты менеджеру') : 'Показать менеджеру')" :open="$open ?? false" tall>
     @if ($line)
         <form method="post" action="/work/deals/{{ $deal->id }}/reviews/done" id="{{ $id }}-skip" hidden data-turbo-confirm="Пропустить письмо?" data-turbo-confirm-text="Менеджер о нём не узнает" data-turbo-confirm-label="Пропустить">@csrf</form>
     @endif
@@ -25,24 +26,28 @@
         @if ($message ?? null)<input type="hidden" name="message" value="{{ $message->id }}">@endif
         {{-- card — пункты без писем («Показать контакт менеджеру», `x-deal.contact-shown`): сервер сверяет с ними же, а письмо, что ждёт
              разбора, остаётся ждать (25.11.2026: сверял с ждущим письмом — документов машины там нет, «Пункты изменились»). --}}
-        @if ($card ?? false)<input type="hidden" name="card" value="1">@endif
+        @if ($card)<input type="hidden" name="card" value="1">@endif
         {{-- Сначала готовое сообщение (16.11.2026, владелец: «не понимаю, что нажать, чтобы отправить менеджеру полный текст письма
              без приветствия и подписи и отредактировать перед отправкой»): поле заполнено текстом письма (`Disclosures::draft` —
              письмо, с которого открыли, иначе самое новое), уходит то, что в поле. Ниже — что приложить галками и другие письма
              с «В сообщение». --}}
         @php
             $sorted = $letters->sortByDesc(fn ($m) => $m->date_at)->values();
-            $draftLetter = (isset($message) ? $sorted->firstWhere('id', $message->id) : null) ?? $sorted->first();
+            // Показ контакта (`card`): письма — только откуда телефоны, их текст в сообщение не просится.
+            $draftLetter = $card ? null : ((isset($message) ? $sorted->firstWhere('id', $message->id) : null) ?? $sorted->first());
             $draft = $draftLetter ? Disclosures::draft($sorted, $draftLetter->id) : '';
-            $others = $sorted->reject(fn ($m) => $m->is($draftLetter))->map(fn ($m) => ['m' => $m, 'text' => Disclosures::letterText($m)])->filter(fn ($o) => $o['text'] !== '')->values();
+            $others = $card ? collect() : $sorted->reject(fn ($m) => $m->is($draftLetter))->map(fn ($m) => ['m' => $m, 'text' => Disclosures::letterText($m)])->filter(fn ($o) => $o['text'] !== '')->values();
             $groups = array_values(array_filter(Disclosures::groups($proposals, $sorted, $draftLetter?->id), fn ($g) => $g['items']));
         @endphp
+        {{-- Показ контакта (`card`): сначала контакты, своё сообщение — после «Другого контакта». --}}
+        @unless ($card)
         <div>
             <x-ui.field type="textarea" name="text" :label="$draftLetter ? 'Сообщение менеджеру' : 'Своё сообщение менеджеру'" :id="$id.'-text'" :value="old('_sheet') === $id ? old('text') : $draft" rows="7" data-action="input->disclose#update" data-disclose-target="note"/>
             @if ($draftLetter && $draft !== '')
                 <p class="mt-1 text-xs text-ink-muted">Текст письма <span class="nums">{!! Ago::html($draftLetter->date_at, true, words: false) !!}</span> без приветствия и подписи, можно править</p>
             @endif
         </div>
+        @endunless
         @if ($groups)
             <div>
                 <p class="field-label mb-1">Приложить</p>
@@ -82,6 +87,23 @@
                     @endforeach
                 </div>
             </div>
+        @endif
+        @if ($card)
+            {{-- Контакта нет ни в карточке, ни в письмах (или он другой) — вписать: уйдёт менеджеру и встанет в карточку, если там
+                 пусто (25.11.2026, владелец: «нужно здесь тоже сделать ввод контактов»). --}}
+            <div>
+                <p class="field-label mb-1">Другой контакт</p>
+                <div class="grid grid-cols-2 gap-2">
+                    <x-ui.field name="contact_name" label="Имя" :id="$id.'-name'" :value="old('_sheet') === $id ? old('contact_name') : null" autocomplete="off" data-action="input->disclose#update" data-disclose-target="own"/>
+                    <x-ui.field name="contact_phone" type="tel" label="Телефон" :id="$id.'-phone'" :value="old('_sheet') === $id ? old('contact_phone') : null" data-action="input->disclose#update" data-disclose-target="own"/>
+                </div>
+            </div>
+        <div>
+            <x-ui.field type="textarea" name="text" :label="$draftLetter ? 'Сообщение менеджеру' : 'Своё сообщение менеджеру'" :id="$id.'-text'" :value="old('_sheet') === $id ? old('text') : $draft" rows="3" data-action="input->disclose#update" data-disclose-target="note"/>
+            @if ($draftLetter && $draft !== '')
+                <p class="mt-1 text-xs text-ink-muted">Текст письма <span class="nums">{!! Ago::html($draftLetter->date_at, true, words: false) !!}</span> без приветствия и подписи, можно править</p>
+            @endif
+        </div>
         @endif
         @if ($others->isNotEmpty())
             <div>

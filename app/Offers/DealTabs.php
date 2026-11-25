@@ -125,6 +125,9 @@ final class DealTabs
             $repricing || in_array($key, ['reprice', 'reprice-answer', 'price-ask', 'price-offer'], true) => 'reprice',
             in_array($key, ['bounced', 'requisites'], true) || str_starts_with($key, 'letter') || str_starts_with($key, 'request:') => 'letter',
             in_array($key, ['ask-consent', 'consent'], true) => 'ask',
+            // Контакт менеджеру, что забирает сам (25.11.2026, `ContactDue`) — машина в «Менеджер забирает ТС», счётчик — у «Показать
+            // контакты» раздела «Вывоз».
+            $key === 'contact' => 'pickup',
             // Ответ поставщика на разбор — на каком бы шаге ни пришёл.
             $key === 'reply' => 'answered',
             str_starts_with($key, 'stage:Проверка оплаты') => 'check',
