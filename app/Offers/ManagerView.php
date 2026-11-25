@@ -64,7 +64,7 @@ final class ManagerView
     /**
      * Все пункты сделки, что можно показать менеджеру, группами `contact`, `docs`, `ours`.
      *
-     * @return list<array{key: string, group: string, label: string, sub: ?string, visible: bool, can: bool, media: ?Media, letter: ?int, icon: ?string, file: ?string, edit: bool}>
+     * @return list<array{key: string, group: string, label: string, sub: ?string, visible: bool, can: bool, media: ?Media, letter: ?int, icon: ?string, file: ?string, edit: bool, href: ?string}>
      */
     public static function items(Deal $deal): array
     {
@@ -73,7 +73,7 @@ final class ManagerView
         $contacts = OwnerContacts::of($offer);
         $first = $contacts[0] ?? null;
         $phones = implode(', ', array_filter(array_column($contacts, 'phone')));
-        $out[] = ['key' => self::CONTACT, 'group' => 'contact', 'icon' => 'user', 'file' => null, 'media' => null, 'letter' => null, 'edit' => true,
+        $out[] = ['key' => self::CONTACT, 'group' => 'contact', 'icon' => 'user', 'file' => null, 'media' => null, 'letter' => null, 'edit' => true, 'href' => null,
             'label' => $first ? ($first['name'] ?: $first['phone']) : 'Контакт не указан',
             'sub' => $first ? trim('Контакт для получения'.($phones !== '' && $first['name'] ? ', '.$phones : '').(count($contacts) > 1 ? ', ещё '.(count($contacts) - 1) : '').($offer->inspection_address ? ', '.$offer->inspection_address : ''), ', ') : 'впишите, чтобы показать',
             'visible' => self::sees($deal, self::CONTACT), 'can' => $first !== null];
@@ -83,7 +83,7 @@ final class ManagerView
             $name = pathinfo(DocName::of($m), PATHINFO_FILENAME);
             // Вид словом — главной строкой («Паспорт собственника»), имя файла — второй, если оно другое («Паспорт1»).
             $same = $word && mb_strtolower($name) === mb_strtolower($word);
-            $out[] = ['key' => 'file:'.$m->id, 'group' => 'docs', 'icon' => null, 'file' => DocName::of($m), 'media' => $m, 'letter' => $letter, 'edit' => false,
+            $out[] = ['key' => 'file:'.$m->id, 'group' => 'docs', 'icon' => null, 'file' => DocName::of($m), 'media' => $m, 'letter' => $letter, 'edit' => false, 'href' => '/files/'.$m->id,
                 'label' => $word ?? $name,
                 'sub' => implode(', ', array_filter([$word && ! $same ? $name : null, ($letter ? 'из письма ' : 'добавлен ').Ago::day($m->created_at)])),
                 'visible' => ForManagers::is($m), 'can' => true];
@@ -92,13 +92,14 @@ final class ManagerView
             $invoices = Invoice::where('deal_id', $deal->id)->where('direction', 'issued')->where('state', '!=', InvoiceState::Void)->orderBy('id')->get();
             foreach ($invoices as $i) {
                 $out[] = ['key' => 'invoice:'.$i->id, 'group' => 'ours', 'icon' => null, 'file' => 'invoice.pdf', 'media' => null, 'letter' => null, 'edit' => false,
+                    'href' => $i->hasPdf() ? '/work/money/invoices/'.$i->id.'/pdf'.$i->pdfStamp() : null,
                     'label' => ($i->kind === \App\Billing\ChargeKind::Selection ? 'Счёт за подбор' : 'Счёт за ТС').($i->code ? ' № '.$i->code : ''),
                     'sub' => $i->shown_at ? 'отправлен '.Ago::day($i->shown_at) : 'не отправлен',
                     'visible' => $i->shown_at !== null, 'can' => $i->shown_at ? ShowToManager::canRecallInvoice($i) : true];
             }
             if ($deal->hasContract()) {
                 $c = DealContract::for($deal);
-                $out[] = ['key' => 'contract', 'group' => 'ours', 'icon' => null, 'file' => 'dkp.pdf', 'media' => null, 'letter' => null, 'edit' => false,
+                $out[] = ['key' => 'contract', 'group' => 'ours', 'icon' => null, 'file' => 'dkp.pdf', 'media' => null, 'letter' => null, 'edit' => false, 'href' => '/work/deals/'.$deal->id.'/dkp.pdf',
                     'label' => 'Договор купли-продажи', 'sub' => $c->shown_at ? 'отправлен '.Ago::day($c->shown_at) : ($c->sendable() ? 'не отправлен' : 'не готов: '.implode(', ', $c->missing())),
                     'visible' => $c->shown_at !== null, 'can' => $c->shown_at ? ShowToManager::canRecallContract($deal) : $c->sendable()];
             }

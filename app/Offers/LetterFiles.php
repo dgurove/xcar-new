@@ -47,10 +47,15 @@ final class LetterFiles
         }
         $name = trim((string) $a->filename) ?: 'файл';
 
-        return $offer->carRecord()->addMediaFromString($contents)
+        $media = $offer->carRecord()->addMediaFromString($contents)
             ->usingFileName(preg_replace('/[^\p{L}\p{N}._-]+/u', '-', $name) ?: 'file')
             ->usingName(pathinfo($name, PATHINFO_FILENAME))
             ->withCustomProperties(['sha' => $sha, 'letter' => $a->message_id, 'attachment' => $a->id, 'source' => 'mail'])
             ->toMediaCollection('papers');
+        // Новый документ читается, как любой приложенный (25.11.2026: «images.pdf» Т-Страхования остались без вида — «непонятно,
+        // что это»): узнали ПТС, СТС, паспорт — окно «Что видит менеджер» само назовёт строку (`ManagerView::docWord`).
+        \App\Mail\Scan\AutoScan::readDocs($offer);
+
+        return $media;
     }
 }

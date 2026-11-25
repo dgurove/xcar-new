@@ -111,8 +111,19 @@
                                 @foreach ($list as $i)
                                     @php $on = ! $i['visible'] && $focus === $i['key'] && $i['can']; @endphp
                                     <div @class(['row mview-row', 'is-pending' => $on]) data-manager-view-target="row">
+                                        {{-- Файл — ссылкой: шторка документов открывает его поверх окна, вкладками — все файлы окна (25.11.2026,
+                                             владелец: «невозможно открыть посмотреть документы»). --}}
+                                        @if ($i['href'])
+                                            @php $fname = $i['media'] ? \App\Media\DocName::of($i['media']) : $i['label'].'.pdf'; @endphp
+                                            <a href="{{ $i['href'] }}" target="_blank" class="flex min-w-0 flex-1 items-center gap-3" data-doc="{{ \App\Support\Docs::type($i['media']?->mime_type, $fname) }}" data-doc-name="{{ \App\Support\Docs::label($fname) }}" title="{{ $fname }}"
+                                                @if ($i['media'] && preg_match('/\.hei[cf]$/i', $fname)) data-doc-src="{{ $i['href'] }}?jpeg=1" @endif>
+                                                @include('admin.deals.manager-view-icon', ['i' => $i])
+                                                <span class="min-w-0 flex-1"><span class="block truncate">{{ $i['label'] }}</span><span class="block truncate text-sm text-ink-muted">{{ $i['sub'] }}</span></span>
+                                            </a>
+                                        @else
                                         @include('admin.deals.manager-view-icon', ['i' => $i])
                                         <span class="min-w-0 flex-1"><span class="block truncate">{{ $i['label'] }}</span><span class="block truncate text-sm text-ink-muted">{{ $i['sub'] }}</span></span>
+                                        @endif
                                         @if ($i['edit'])
                                             <button type="button" class="btn btn-ghost btn-s shrink-0 px-2 text-ink-muted" data-controller="emit" data-action="emit#send" data-emit-event-param="{{ $id }}-contact:open" aria-label="Изменить контакт"><x-ui.icon name="edit" class="size-5"/></button>
                                         @endif
