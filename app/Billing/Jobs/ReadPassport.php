@@ -174,8 +174,16 @@ final class ReadPassport implements ShouldQueue
         $norm = fn (string $w) => mb_str_split(str_replace('ё', 'е', mb_strtolower($w)));
         $typedWords = array_values(array_filter(preg_split('/\s+/u', trim($typed)) ?: []));
         $out = [];
-        foreach (preg_split('/\s+/u', trim($read)) as $w) {
+        $readWords = preg_split('/\s+/u', trim($read));
+        foreach ($readWords as $i => $w) {
             $a = $norm($w);
+            // Мусор OCR вместо слова («Ффф» вместо «Курочкин», 25.11.2026, паспорт из письма Т-Страхования) — вписанное слово на
+            // том же месте, если ФИО той же длины: короче трёх букв или одна буква подряд — не фамилия.
+            if (count($readWords) === count($typedWords) && (count($a) < 3 || count(array_unique($a)) === 1)) {
+                $out[] = $typedWords[$i];
+
+                continue;
+            }
             foreach ($typedWords as $t) {
                 $b = $norm($t);
                 if (count($a) === count($b) && count(array_diff_assoc($a, $b)) === 1) {
