@@ -3,21 +3,24 @@
      напоминать»). Кнопка серая под счётом рядом с «Оплата получена»; шторка — `NudgeInvoice`. «Через…» — чипы дней, напоминание
      уйдёт в 10:00 по Москве. Запланировано — словом в шторке, «Не напоминать» его снимает. --}}
 {{-- label / small — кнопкой в строке «Оплат» (22.11.2026): «Напомнить», маленькая. --}}
-@props(['deal', 'invoice', 'label' => 'Напомнить', 'small' => false])
+{{-- action / what / icon (25.11.2026, группа «Счёт и подбор»): напомнить про счёт и ссылку одним сообщением (`…/bills/nudge`), слово
+     «про что» и значок перед надписью (колокольчик, владелец). --}}
+@props(['deal', 'invoice', 'label' => 'Напомнить', 'small' => false, 'action' => null, 'what' => null, 'icon' => null])
 @php
     $id = 'nudge-'.$invoice->id;
     $last = \App\Billing\Actions\NudgeInvoice::lastAt($invoice);
     $days = $last ? (int) floor($last->diffInDays(now())) : null;
     // Время — только когда оно есть (отправка, напоминание); у счёта, что сразу оплачивали, — один день выставления.
     $timed = $invoice->shown_at !== null || $invoice->nudged_at !== null;
-    $action = '/work/deals/'.$deal->id.'/invoices/'.$invoice->id.'/nudge';
+    $action ??= '/work/deals/'.$deal->id.'/invoices/'.$invoice->id.'/nudge';
+    $what ??= $invoice->isDocument() ? 'счёт' : 'ссылку на оплату';
 @endphp
 <div class="contents" data-controller="sheet">
-    <button type="button" {{ $attributes->class(['btn btn-quiet gap-2', 'btn-s' => ! $small, 'btn-xs' => $small]) }} data-action="sheet#open" aria-controls="{{ $id }}">{{ $label }}</button>
+    <button type="button" {{ $attributes->class(['btn btn-quiet gap-2', 'btn-s' => ! $small, 'btn-xs' => $small]) }} data-action="sheet#open" aria-controls="{{ $id }}">@if ($icon)<x-ui.icon :name="$icon" class="size-4"/>@endif{{ $label }}</button>
     <x-ui.sheet :id="$id" title="Напомнить менеджеру?">
         <div class="flex flex-col gap-4">
             @if ($last)
-                <p>Последний раз писали менеджеру про {{ $invoice->isDocument() ? 'счёт' : 'ссылку на оплату' }} {!! \App\Support\Ago::html($last, $timed, words: false) !!}@if ($days >= 1), прошло {{ $days }} {{ \App\Support\Plural::of($days, ['день', 'дня', 'дней']) }}@endif</p>
+                <p>Последний раз писали менеджеру про {{ $what }} {!! \App\Support\Ago::html($last, $timed, words: false) !!}@if ($days >= 1), прошло {{ $days }} {{ \App\Support\Plural::of($days, ['день', 'дня', 'дней']) }}@endif</p>
             @endif
             @if ($invoice->nudge_at)<p class="text-ink-muted">Напомним {!! \App\Support\Ago::html($invoice->nudge_at, true, words: false) !!}</p>@endif
             <form method="post" action="{{ $action }}" class="contents">

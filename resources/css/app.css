@@ -2147,6 +2147,8 @@ html.kb-open { --home-gap: 0px; }
   .sale-money-line > :first-child { display: flex; align-items: baseline; flex-wrap: wrap; column-gap: .375rem; min-width: 0; }
   .sale-money-line > :first-child > .share-dot { margin-right: .125rem; align-self: center; }
   .sale-money-line > :last-child { flex-shrink: 0; text-align: right; }
+  /* Ссылка на подбор строкой группы «Счёт и подбор» — плиткой размера значка PDF (36 px, `.file-icon`), как документ рядом со счётом. */
+  .bill-link-icon { display: flex; align-items: center; justify-content: center; width: 2.25rem; height: 2.25rem; flex-shrink: 0; border-radius: var(--radius-s); background: var(--color-surface-3); color: var(--color-ink-muted); }
   .sale-money-chev { display: inline-block; vertical-align: middle; margin-left: .25rem; }
   .money-scale { display: flex; gap: 2px; flex-basis: 100%; height: .75rem; border-radius: var(--radius-s); overflow: hidden; }
   .money-scale-seg { flex: 0 1 0; min-width: 3px; }

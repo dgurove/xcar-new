@@ -2,8 +2,10 @@
      счетов, у которых шапки нет), «Отправить менеджеру», ссылка на оплату, «Деньги пришли?» и заявки менеджера с ответами.
      Комиссия ПРАЙМ без документа (18.11.2026, «счёт на комиссию мы больше не формируем») — только ссылка и отметки; «оплачено» —
      словом шапки (`Billing\PayWord`), строкой не повторяется. --}}
-@php use App\Support\Money; use App\Billing\InvoiceState; @endphp
-@if (! $i->isDocument())
+{{-- `joint` (25.11.2026) — группа «Счёт и подбор» строки и кнопки рисует сама (`x-deal.money`): отсюда — только заявки менеджера. --}}
+@php use App\Support\Money; use App\Billing\InvoiceState; $joint ??= false; @endphp
+@if ($joint)
+@elseif (! $i->isDocument())
     {{-- Ссылка на оплату подбора — строкой, как документ (18.11.2026, владелец выбрал вариант В): серый значок ссылки (не кружком —
          «кажется, что это кнопка»), под названием состояние, справа «Выставить» пилюлей; выставлена — «Скопировать» / «Отправить». --}}
     @if ($i->state !== InvoiceState::Paid)
@@ -58,9 +60,9 @@
         </div>
     @endif
 @endif
-@if (! $i->openLink() && ($i->isDocument() || $i->isShownToManager()))<x-billing.pay-status :invoice="$i" staff/>@endif
+@if (! $joint && ! $i->openLink() && ($i->isDocument() || $i->isShownToManager()))<x-billing.pay-status :invoice="$i" staff/>@endif
 {{-- Что уже пришло — строками (23.11.2026, начальник: «видно поступления и сколько осталось»). --}}
-<x-deal.receipts :invoice="$i"/>
+@unless ($joint)<x-deal.receipts :invoice="$i"/>@endunless
 @foreach ($i->claims as $p)
     <x-money.payment :payment="$p" :slip="'/work/money/invoices/'.$i->id.'/payments/'.$p->id.'/slip'" staff>
         @unless ($inStep)

@@ -179,6 +179,43 @@ class SupplierVatTest extends TestCase
         $this->assertCount(0, $this->live($deal, ChargeKind::Selection), 'ссылка подбора погашена');
     }
 
+    /**
+     * Группа «Счёт и подбор» (25.11.2026): одна «Отправить» — оба у менеджера; «Оплата получена…» — одна оплата за раз, за что и как;
+     * вписанную руками правят (прежняя гаснет, новая встаёт) и удаляют; «Отозвать» — оба.
+     */
+    public function test_bills_pair_send_pay_edit_delete_recall(): void
+    {
+        $deal = $this->deal(22);
+        $admin = User::where('phone', '79000000001')->firstOrFail();
+        app(\App\Offers\Actions\UpdateDealMoney::class)($deal->fresh(), $admin, 30000, carPrice: 944000, setCarPrice: true);
+        $crm = fn (string $p) => \App\Support\Surface::Crm->url('/work/deals/'.$deal->id.$p);
+        $sale = $this->live($deal, ChargeKind::Sale)->sole();
+        $fee = $this->live($deal, ChargeKind::Selection)->sole();
+
+        $this->actingAs($admin)->post($crm('/bills/send'))->assertRedirect();
+        $this->assertNotNull($sale->fresh()->shown_at);
+        $this->assertNotNull($fee->fresh()->shown_at);
+
+        $this->actingAs($admin)->post($crm('/bills/paid'), ['for' => 'sale', 'source' => 'cash', 'amount' => '100 000'])->assertSessionHasNoErrors();
+        $this->actingAs($admin)->post($crm('/bills/paid'), ['for' => 'selection', 'source' => 'cash', 'amount' => '999 999'])->assertSessionHasErrors('amount');
+        $this->assertEquals(100000, $sale->fresh()->paid);
+        $payment = $sale->fresh()->payments->sole();
+        $this->assertSame(\App\Billing\PaymentSource::Cash, $payment->source);
+
+        // Правка: та же оплата — уже за подбор и безналом.
+        $this->actingAs($admin)->put($crm('/payments/'.$payment->id), ['for' => 'selection', 'source' => 'bank', 'amount' => '20 000'])->assertSessionHasNoErrors();
+        $this->assertEquals(0, $sale->fresh()->paid);
+        $this->assertEquals(20000, $fee->fresh()->paid);
+        $moved = $fee->fresh()->payments->sole();
+        $this->assertNotNull($payment->fresh()->voided_at);
+        $this->actingAs($admin)->delete($crm('/payments/'.$moved->id))->assertRedirect();
+        $this->assertEquals(0, $fee->fresh()->paid);
+
+        $this->actingAs($admin)->post($crm('/bills/recall'))->assertRedirect();
+        $this->assertNull($sale->fresh()->shown_at);
+        $this->assertNull($fee->fresh()->shown_at);
+    }
+
     public function test_unknown_supplier_vat_is_without_vat_and_one_invoice(): void
     {
         $deal = $this->deal(null);

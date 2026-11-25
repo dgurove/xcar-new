@@ -188,6 +188,14 @@ Route::domain(config('xcar.crm_host'))->middleware(['auth', 'ability:isStaff'])-
         Route::put('/work/deals/{deal}/fee-seller', [DealContractController::class, 'feeSeller']);
         // «Отправить менеджеру» у счёта и договора (16.11.2026): сотрудник проверил — менеджер видит.
         Route::post('/work/deals/{deal}/invoices/{invoice}/show', [DealContractController::class, 'showInvoice']);
+        // Счёт за ТС и ссылка на подбор — одной кнопкой (25.11.2026, группа «Счёт и подбор» в «Продаже»).
+        Route::post('/work/deals/{deal}/bills/send', [DealContractController::class, 'sendBills']);
+        Route::post('/work/deals/{deal}/bills/recall', [DealContractController::class, 'recallBills']);
+        Route::post('/work/deals/{deal}/bills/nudge', [DealContractController::class, 'nudgeBills']);
+        // «Оплата получена…» и правка вписанной руками оплаты (25.11.2026, `x-deal.payment-sheet`).
+        Route::post('/work/deals/{deal}/bills/paid', [DealContractController::class, 'billsPaid']);
+        Route::put('/work/deals/{deal}/payments/{payment}', [DealContractController::class, 'updatePayment']);
+        Route::delete('/work/deals/{deal}/payments/{payment}', [DealContractController::class, 'deletePayment']);
         // «Запросили счёт…» у комиссии (18.11.2026): обычно только ссылка или наличные.
         Route::post('/work/deals/{deal}/invoices/{invoice}/paper', [DealContractController::class, 'paperInvoice']);
         Route::post('/work/deals/{deal}/contract/show', [DealContractController::class, 'showContract']);

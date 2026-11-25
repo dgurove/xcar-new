@@ -19,6 +19,9 @@
     $credits = $deal->credits()->with(['party', 'offer', 'payments', 'payLinks.attempts', 'payLinks.creator', 'payLinks.payerUser'])->get();
     $extra = $credits->isNotEmpty() ? $deal->creditExtra() : 0;
     $issued = $invoices->reject(fn ($i) => $i->isOwed());
+    // Скопировать ссылку на подбор — пунктом «⋯» (25.11.2026: у строки ссылки в группе «Счёт и подбор» своих кнопок нет).
+    $pairBills = $issued->filter(fn ($i) => in_array($i->kind, [\App\Billing\ChargeKind::Sale, \App\Billing\ChargeKind::Selection], true) && $i->state !== InvoiceState::Void);
+    $pairLink = $pairBills->count() === 2 && $pairBills->contains(fn ($i) => $i->isDocument()) ? $pairBills->first(fn ($i) => ! $i->isDocument())?->openLink() : null;
     // Этап «Проверка оплаты» сам показывает заявку менеджера с «Поступило» — здесь она только строкой, без второй пары кнопок.
     // Шаг оплаты сам несёт «Деньги пришли» (`x-route.path`) — у строки счёта её тогда нет.
     $payStep = $deal->isActive() && $offer->position()?->stage->isPayStep();
@@ -61,7 +64,7 @@
         $payerEdit = $payerRow && auth()->user()?->canEditDeals() && ! \App\Offers\Actions\SetDealPayer::locked($deal);
         $feeSellerEdit = $deal->buyer_id && auth()->user()?->canEditDeals() && $deal->moneyOpen() && ! \App\Offers\Actions\SetFeeSeller::locked($deal)
             && $invoices->contains(fn ($i) => $i->kind === \App\Billing\ChargeKind::Selection && ! $i->isOwed());
-        $moreMoney = $editMoney || $withContract || $schemeEdit || $payerEdit || $feeSellerEdit || $paidBy->contains->isDocument() || ($deal->moneyOpen() && $issued->isNotEmpty());
+        $moreMoney = $editMoney || (bool) $pairLink || $withContract || $schemeEdit || $payerEdit || $feeSellerEdit || $paidBy->contains->isDocument() || ($deal->moneyOpen() && $issued->isNotEmpty());
     @endphp
     {{-- «Изменить» — лаймовым словом в заголовке, как у ТС, цен, ДКП и заметки (07.10.2026), а не чипом среди схемы. --}}
     {{-- Гаражная Совкомбанка (`namesBuyer`): вознаграждение назначаем, когда менеджер назвал цену продажи. --}}
@@ -84,13 +87,14 @@
                             @if ($offsetEdit)<button type="button" class="menu-item w-full" data-controller="emit" data-action="emit#send" data-emit-event-param="offset-{{ $deal->id }}:open">Взаимозачёт со страховой…</button>@endif
                         </div>
                     @endif
-                    @if ($paidBy->contains->isDocument() || ($deal->moneyOpen() && $issued->isNotEmpty()))
+                    @if ($paidBy->contains->isDocument() || $pairLink || ($deal->moneyOpen() && $issued->isNotEmpty()))
                     <div class="menu-group">
                         {{-- Подбор — кнопкой «Оплатил наличными…» под своей ссылкой, в «⋯» его нет. --}}
                         @foreach ($paidBy->filter->isDocument() as $i)
                             <button type="button" class="menu-item w-full" data-controller="emit" data-action="emit#send" data-emit-event-param="paid-{{ $i->id }}:open">Оплатили без ссылки{{ $paidBy->filter->isDocument()->count() > 1 ? ($i->isDocument() ? ' по счёту '.$i->label() : ' за подбор') : '' }}…</button>
                         @endforeach
                         @if ($deal->moneyOpen() && $issued->isNotEmpty())<a href="/work/invoices/new?offer={{ $offer->number }}" class="menu-item w-full">Ещё счёт</a>@endif
+                        @if ($pairLink)<button type="button" class="menu-item w-full" data-controller="copy" data-copy-text-value="{{ $pairLink->url() }}" data-copy-done-value="Ссылка на подбор в буфере" data-action="copy#copy">Скопировать ссылку на подбор</button>@endif
                     </div>
                     @endif
                 </x-ui.more>
@@ -163,6 +167,9 @@
         $sale = $ourBills->first(fn ($i) => $i->kind === \App\Billing\ChargeKind::Sale);
         $selection = $ourBills->first(fn ($i) => $i->kind === \App\Billing\ChargeKind::Selection);
         $otherBills = $ourBills->reject(fn ($i) => $i->is($sale) || $i->is($selection));
+        // Счёт за ТС и ссылка на подбор — одной группой «Счёт и подбор» под «Покупателем», одна кнопка «Отправить менеджеру» (25.11.2026,
+        // владелец: «блоки со ссылкой на подбор и счётом объединить и у них обоих сделать кнопку отправить, которая и то и то отправляет»).
+        $joint = $sale && $selection && $sale->isDocument() && ! $selection->isDocument() && ! in_array($deal->schemeOf(), [\App\Offers\DealScheme::Insurer, \App\Offers\DealScheme::OwnerDkp], true);
         $canEdit = auth()->user()?->canEditDeals();
         $contract = $contractRow ? \App\Offers\DealContract::for($deal) : null;
         // За ТС платят нам (ПРАЙМ, Р.О.С., гараж): наш договор или счёт за машину.
@@ -212,12 +219,12 @@
     @endphp
     {{-- Счёт строкой документа — без суммы (она в шапке), под ним «Отправить», ссылка, «Деньги пришли?», заявки менеджера. --}}
     @php
-        $billRows = function ($i, bool $withSum) use ($deal, $last, $paidBy, $payerRow, $payerId, $inStep) {
+        $billRows = function ($i, bool $withSum, bool $joint = false) use ($deal, $last, $paidBy, $payerRow, $payerId, $inStep) {
             $link = $i->state !== InvoiceState::Paid ? $last($i, true) : null;
             $linkState = $link ? \App\Http\Admin\MoneyLinks::short($link)[0] : null;
             $pdf = $i->hasPdf() ? '/work/money/invoices/'.$i->id.'/pdf'.$i->pdfStamp() : null;
 
-            return view('admin.deals.money-bill', compact('deal', 'i', 'link', 'linkState', 'pdf', 'paidBy', 'payerRow', 'payerId', 'inStep', 'withSum'))->render();
+            return view('admin.deals.money-bill', compact('deal', 'i', 'link', 'linkState', 'pdf', 'paidBy', 'payerRow', 'payerId', 'inStep', 'withSum', 'joint'))->render();
         };
     @endphp
     {{-- «Итог» — первой группой (22.11.2026, владелец по макету: «вёрстка ужасная», «все те же функции, что на странице, по деньгам»):
@@ -278,8 +285,8 @@
                         ? ['car' => $over, 'rest' => $carNow !== null ? $link : max(0, (int) $deal->amount - $base - $cashNow), 'cash' => $cashNow]
                         : ['car' => $over, 'link' => $link, 'mgr' => (int) $deal->commission, 'cash' => $cashNow]"/>
                     @if ($carNow !== null)
-                        <span class="sale-money-line"><span><span class="share-dot share-dot--cost"></span>Закупочная</span><span class="nums">{{ Money::rub($base) }}</span></span>
-                        <span class="sale-money-line"><span><span class="share-dot share-dot--car"></span>На счёт {{ $deal->schemeOf()->short() }}@if ($vat) <span class="text-sm text-ink-muted">{{ $vat }}</span>@endif</span><span class="nums">{{ Money::rub($carNow) }}</span></span>
+                        <span class="sale-money-line"><span><span class="share-dot share-dot--cost"></span>Закупочная@if ($vat) <span class="text-sm text-ink-muted">{{ $vat }}</span>@endif</span><span class="nums">{{ Money::rub($base) }}</span></span>
+                        <span class="sale-money-line"><span><span class="share-dot share-dot--car"></span>По счёту <span class="text-sm text-ink-muted">{{ $deal->seller()->config()['name'] ?? $deal->schemeOf()->short() }}</span></span><span class="nums">{{ Money::rub($carNow) }}</span></span>
                     @else
                         <span class="sale-money-line"><span><span class="share-dot share-dot--cost"></span>{{ $payee }}</span><span class="nums">{{ $supplierSum ?? Money::rub($base) }}</span></span>
                     @endif
@@ -371,7 +378,7 @@
     @endif
     {{-- Услуги подбора (ДКП, «страховой», доля гаража) — своим блоком сразу под «Итогом», над «Покупателем» (23.11.2026, владелец):
          шапка — сумма и слово, ниже ссылка, отметки и поступления. --}}
-    @if ($selection && $selRows !== '')
+    @if ($selection && $selRows !== '' && ! $joint)
         {{-- Юрлицо ссылки, как у менеджера («ООО «ПРАЙМ»»): услуги подбора — ссылкой на оплату, не счётом (18.11.2026); сумма — в «Итоге». --}}
         <div class="mb-3"><x-deal.doc-cap :label="'Подбор — '.($selection->seller ?? \App\Billing\Seller::Prime)->config()['name']" :state="$selWord[0] ?? null" :tone="str_contains($selWord[1] ?? '', 'open') ? 'ok' : (str_contains($selWord[1] ?? '', 'danger') ? 'bad' : (str_contains($selWord[1] ?? '', 'urgent') ? 'due' : 'muted'))" class="mt-4"/>
         @if ($selRows !== '')<div class="list">{!! $selRows !!}</div>@endif</div>
@@ -421,7 +428,8 @@
             {{-- Часть мимо счёта — строкой, когда есть: из-за неё счёт и договор меньше цены продажи. --}}
             @if ($contract?->cash_part && ! $scale)<div class="row sale-row"><span class="sale-row-label">Наличными мимо счёта</span><span class="sale-row-value nums">{{ Money::rub($contract->cash_part) }}</span><x-ui.chevron-space/></div>@endif
             @if ($payerApart)<x-deal.payer :deal="$deal" :action="'/work/deals/'.$deal->id.'/payer'" :editable="$canEdit" pick/>@endif
-            @if ($sale)
+            @if ($joint)
+            @elseif ($sale)
                 {!! $billRows($sale, false) !!}
             @elseif ($deal->isActive())
                 <x-deal.invoice-gaps :deal="$deal"/>
@@ -433,8 +441,12 @@
             @unless ($withContract && $canEdit && $deal->isActive() && ! $ready && ! $signed)<x-deal.contract-gaps :deal="$deal" :price-row="(bool) $contract"/>@endunless
             {!! $contractLine !!}
         @php $dealGroup = trim(ob_get_clean()); @endphp
+        @if ($joint)
+            @include('admin.deals.money-pair')
+        @endif
         @if ($billGroup !== '')
-            <x-deal.doc-cap label="Счёт" :state="$saleWord[0] ?? null" :tone="$saleWord[1] ?? 'muted'"/>
+            {{-- У группы «Счёт и подбор» плательщик (не покупатель) — своей плашкой без подписи. --}}
+            @unless ($joint)<x-deal.doc-cap label="Счёт" :state="$saleWord[0] ?? null" :tone="$saleWord[1] ?? 'muted'"/>@endunless
             <div class="list mb-3 last:mb-0">{!! $billGroup !!}</div>
         @endif
         @if ($dealGroup !== '')

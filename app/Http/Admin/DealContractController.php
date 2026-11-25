@@ -70,6 +70,125 @@ class DealContractController
         return back()->with('toast', \App\Billing\PayOffer::sent($invoice->fresh()));
     }
 
+    /**
+     * «Отправить менеджеру» одной кнопкой счёт за ТС и ссылку на подбор (25.11.2026, владелец: «блоки со ссылкой на подбор и счётом
+     * объединить и у них обоих сделать кнопку «Отправить», которая и то и то отправляет»): каждый, что менеджер ещё не видит, — тем же
+     * `ShowToManager::invoice`, что «Отправить менеджеру» у счёта и «Выставить» у ссылки (ссылка — в чат).
+     */
+    public function sendBills(Request $request, Deal $deal, \App\Offers\Actions\ShowToManager $show)
+    {
+        abort_unless($deal->buyer_id && $request->user()->canEditDeals(), 404);
+        $bills = $deal->issuedInvoices()->whereIn('kind', [\App\Billing\ChargeKind::Sale, \App\Billing\ChargeKind::Selection])
+            ->where('state', \App\Billing\InvoiceState::Issued)->whereNull('shown_at')->get();
+        abort_if($bills->isEmpty(), 404);
+        \Illuminate\Support\Facades\DB::transaction(fn () => $bills->each(fn ($i) => $show->invoice($deal, $i, $request->user())));
+
+        return back()->with('toast', $bills->count() > 1 ? 'Счёт и ссылка на подбор у менеджера' : \App\Billing\PayOffer::sent($bills->first()->fresh()));
+    }
+
+    /** Счёт за ТС и ссылка на подбор сделки (не аннулированные), ключами `sale` и `selection`. @return array<string, \App\Billing\Invoice> */
+    private function pairBills(Deal $deal): array
+    {
+        $bills = $deal->issuedInvoices()->whereIn('kind', [\App\Billing\ChargeKind::Sale, \App\Billing\ChargeKind::Selection])
+            ->where('state', '!=', \App\Billing\InvoiceState::Void)->latest('id')->get();
+
+        return array_filter(['sale' => $bills->firstWhere('kind', \App\Billing\ChargeKind::Sale), 'selection' => $bills->firstWhere('kind', \App\Billing\ChargeKind::Selection)]);
+    }
+
+    /** Поля шторки оплаты (`x-deal.payment-sheet`): за что, как, сколько, когда. @return array{0: \App\Billing\Invoice, 1: float, 2: \App\Billing\PaymentSource, 3: \Illuminate\Support\Carbon} */
+    private function paymentFields(Request $request, Deal $deal): array
+    {
+        $request->merge(['amount' => blank($request->input('amount')) ? null : \App\Support\Money::rubles($request->input('amount'))]);
+        $data = $request->validate(['for' => ['required', 'in:sale,selection'], 'source' => ['required', 'in:bank,cash'], 'amount' => ['required', 'integer', 'min:1'],
+            'paid_at' => ['nullable', 'date']], ['amount.required' => 'Сколько получили', 'for.required' => 'За что оплата']);
+        $invoice = $this->pairBills($deal)[$data['for']] ?? throw \Illuminate\Validation\ValidationException::withMessages(['for' => 'Такого счёта у сделки нет']);
+
+        return [$invoice, (float) $data['amount'], \App\Billing\PaymentSource::from($data['source']),
+            isset($data['paid_at']) ? \Illuminate\Support\Carbon::parse($data['paid_at'], 'Europe/Moscow') : now()];
+    }
+
+    /** Оплату вписали руками в этой сделке (наличные или банк без операции выписки и ЮKassa) — её можно поправить и удалить. */
+    public static function manualPayment(\App\Billing\Payment $p): bool
+    {
+        return ! $p->voided_at && in_array($p->source, [\App\Billing\PaymentSource::Cash, \App\Billing\PaymentSource::Bank], true)
+            && ! \App\Billing\Bank\Transaction::where('payment_id', $p->id)->exists()
+            && ! \App\Billing\Acquiring\AcquiringPayment::where('payment_id', $p->id)->exists();
+    }
+
+    /**
+     * «Оплата получена…» группы «Счёт и подбор» (25.11.2026, владелец: «выбор, за что оплата получена, в какой форме и сколько — счёт
+     * оплатили частью наличными или подбор частью или полностью», «и чтобы редактировать можно было»): одна оплата за раз.
+     */
+    public function billsPaid(Request $request, Deal $deal, \App\Billing\Actions\RecordPayment $record)
+    {
+        abort_unless($request->user()->canEditDeals(), 404);
+        [$invoice, $amount, $source, $at] = $this->paymentFields($request, $deal);
+        $record($invoice, $request->user(), $amount, $at, $source);
+
+        return back()->with('toast', 'Записано: '.\App\Support\Money::rub($amount).' '.($invoice->isDocument() ? 'за счёт за ТС' : 'за подбор'));
+    }
+
+    /** Правка вписанной руками оплаты: прежняя гаснет, новая встаёт с новыми полями (одной транзакцией). */
+    public function updatePayment(Request $request, Deal $deal, \App\Billing\Payment $payment, \App\Billing\Actions\RecordPayment $record, \App\Billing\Actions\VoidPayment $void)
+    {
+        abort_unless($request->user()->canEditDeals() && $payment->invoice?->deal_id === $deal->id && self::manualPayment($payment), 404);
+        \Illuminate\Support\Facades\DB::transaction(function () use ($request, $deal, $payment, $record, $void) {
+            $void($payment, $request->user(), 'Исправлено');
+            [$invoice, $amount, $source, $at] = $this->paymentFields($request, $deal->fresh());
+            $record($invoice, $request->user(), $amount, $at, $source);
+            $deal->offer->log(\App\Offers\OfferEventType::Note, $request->user(), ['text' => 'Оплата исправлена: '.\App\Support\Money::rub((float) $payment->amount).' → '
+                .\App\Support\Money::rub($amount).($source === \App\Billing\PaymentSource::Cash ? ' наличными' : ' безналом').' '.($invoice->isDocument() ? 'за счёт за ТС' : 'за подбор')]);
+        });
+
+        return back()->with('toast', 'Оплата исправлена');
+    }
+
+    public function deletePayment(Request $request, Deal $deal, \App\Billing\Payment $payment, \App\Billing\Actions\VoidPayment $void)
+    {
+        abort_unless($request->user()->canEditDeals() && $payment->invoice?->deal_id === $deal->id && self::manualPayment($payment), 404);
+        $void($payment, $request->user(), 'Удалена в сделке');
+        $deal->offer->log(\App\Offers\OfferEventType::Note, $request->user(), ['text' => 'Оплата удалена: '.\App\Support\Money::rub((float) $payment->amount)]);
+
+        return back()->with('toast', 'Оплата удалена');
+    }
+
+    /** «Напомнить» группы «Счёт и подбор»: про счёт и ссылку — одним сообщением (`NudgeInvoice::nowMany`), позже — обоим по плану. */
+    public function nudgeBills(Request $request, Deal $deal, \App\Billing\Actions\NudgeInvoice $nudge)
+    {
+        abort_unless($request->user()->canEditDeals() && $deal->buyer_id, 404);
+        $data = $request->validate(['when' => ['required', 'in:now,days,cancel'], 'days' => ['nullable', 'integer', 'min:1', 'max:30']]);
+        $bills = collect($this->pairBills($deal))->values();
+        if ($data['when'] === 'cancel') {
+            $bills->each(fn ($i) => $nudge->cancel($i, $request->user()));
+
+            return back()->with('toast', 'Не напоминаем');
+        }
+        $due = $bills->filter(fn ($i) => \App\Billing\Actions\NudgeInvoice::allows($i));
+        if ($due->isEmpty()) {
+            return back()->with('toast', 'Напоминать не о чем: оплачено или менеджер уже приложил платёжное поручение');
+        }
+        if ($data['when'] === 'days') {
+            $due->each(fn ($i) => $nudge->later($i, (int) ($data['days'] ?? 1), $request->user()));
+
+            return back()->with('toast', 'Напомним '.$due->first()->fresh()->nudge_at->timezone('Europe/Moscow')->format('d.m').' в 10:00');
+        }
+        $nudge->nowMany($due, $request->user());
+
+        return back()->with('toast', 'Напомнили менеджеру');
+    }
+
+    /** «Отозвать» счёт за ТС и ссылку на подбор вместе (25.11.2026, пункт «⋯» группы «Счёт и подбор»): что ещё можно отозвать. */
+    public function recallBills(Request $request, Deal $deal, \App\Offers\Actions\ShowToManager $show)
+    {
+        abort_unless($request->user()->canEditDeals(), 404);
+        $bills = $deal->issuedInvoices()->whereIn('kind', [\App\Billing\ChargeKind::Sale, \App\Billing\ChargeKind::Selection])->get()
+            ->filter(fn ($i) => \App\Offers\Actions\ShowToManager::canRecallInvoice($i));
+        abort_if($bills->isEmpty(), 404);
+        \Illuminate\Support\Facades\DB::transaction(fn () => $bills->each(fn ($i) => $show->recallInvoice($deal, $i, $request->user())));
+
+        return back()->with('toast', 'Счёт и ссылка на подбор отозваны у менеджера');
+    }
+
     /** «Отозвать» отправленный счёт (19.11.2026, `ShowToManager::recallInvoice`). */
     public function recallInvoice(Request $request, Deal $deal, \App\Billing\Invoice $invoice, \App\Offers\Actions\ShowToManager $show)
     {

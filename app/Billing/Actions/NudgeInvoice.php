@@ -87,14 +87,38 @@ final class NudgeInvoice
         }
     }
 
-    /** Часы (`billing:nudges`): наступившие напоминания по плану. */
+    /**
+     * Напомнить про несколько счетов сделки одним сообщением (25.11.2026, группа «Счёт и подбор»: счёт за ТС и ссылка на подбор —
+     * одна «Напомнить»): тексты счетов абзацами, одно уведомление и одно сообщение в чат. Один счёт — как `now`.
+     *
+     * @param  iterable<Invoice>  $invoices
+     */
+    public function nowMany(iterable $invoices, User $by): int
+    {
+        $all = collect($invoices)->map(fn (Invoice $i) => $i->fresh(['deal.offer', 'deal.buyer']));
+        [$list, $off] = $all->partition(fn (Invoice $i) => self::allows($i) && $i->deal?->buyer);
+        if ($list->count() < 2) {
+            return $all->sum(fn (Invoice $i) => (int) $this->now($i, $by));
+        }
+        $list = $list->values();
+        // Напоминать уже не о чем (оплачен, заявка) — план снимается, как в `now`.
+        $off->each(fn (Invoice $i) => $i->nudge_at && $i->forceFill(['nudge_at' => null])->save());
+        $deal = $list->first()->deal;
+        $text = $list->map(fn (Invoice $i) => self::text($i))->implode("\n\n");
+        $deal->buyer->notify(new InvoiceNudgeNotice($deal, $list->first(), $text));
+        rescue(fn () => app(PlatformMessage::class)(app(OpenChat::class)($deal->offer, $deal->buyer, greet: false), $text), report: true);
+        $list->each(fn (Invoice $i) => $i->forceFill(['nudged_at' => now(), 'nudge_at' => null])->save());
+        $deal->offer->log(OfferEventType::Note, $by, ['text' => 'Напомнили менеджеру: '.$list->map(fn (Invoice $i) => mb_lcfirst(PayOffer::name($i)))->implode(', ')]);
+        \App\Live\RefreshDeal::of($deal);
+
+        return $list->count();
+    }
+
+    /** Часы (`billing:nudges`): наступившие напоминания по плану — по сделке одним сообщением (`nowMany`). */
     public function due(): int
     {
-        $n = 0;
-        foreach (Invoice::whereNotNull('nudge_at')->where('nudge_at', '<=', now())->get() as $invoice) {
-            $n += (int) $this->now($invoice, \App\Billing\Robot::user());
-        }
-
-        return $n;
+        return Invoice::whereNotNull('nudge_at')->where('nudge_at', '<=', now())->get()
+            ->groupBy(fn (Invoice $i) => $i->deal_id ? 'd'.$i->deal_id : 'i'.$i->id)
+            ->sum(fn ($group) => $this->nowMany($group, \App\Billing\Robot::user()));
     }
 }
