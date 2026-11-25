@@ -81,7 +81,7 @@ class InsurerLetterHiddenTest extends TestCase
         $exit = $this->offer->fresh()->stage()->exits()->where('label', 'Поставщик согласовал')->firstOrFail();
         $this->post("http://crm.xcar.localhost/work/deals/{$this->deal->id}/disclose", [
             'on' => ['phone:79001234567', 'name:'.md5('петров пётр'), 'file:'.$paper->id],
-            'value' => ['phone:79001234567' => '+7 900 123-45-67', 'name:'.md5('петров пётр') => 'Пётр', 'phone:79005556677' => 'не отмечен'],
+            'edit' => ['phone:79001234567' => '+7 900 123-45-67', 'name:'.md5('петров пётр') => 'Пётр', 'phone:79005556677' => 'не отмечен'],
             'text' => 'Звонить после 12', 'step' => $exit->id,
         ])->assertSessionHasNoErrors();
 
@@ -104,6 +104,26 @@ class InsurerLetterHiddenTest extends TestCase
         $this->get("http://xcar.localhost/files/{$paper->id}")->assertOk();
     }
 
+    /**
+     * «Показать контакт менеджеру» (`x-deal.contact-shown`, пункты без писем — с документами машины), пока письмо ждёт разбора
+     * (25.11.2026, сделки 441 и 456: сервер сверял с ждущим письмом, документов там нет — «Пункты изменились», и 500).
+     */
+    public function test_contact_sheet_while_letter_pending(): void
+    {
+        $this->deal();
+        $this->offer->update(['insured_name' => 'Курочкин Роман', 'insured_phone' => '79213400657']);
+        $paper = $this->offer->fresh()->addMediaFromString('%PDF-1.4')->usingFileName('СТС.pdf')->toMediaCollection('papers');
+        $this->letter("Добрый день! Контакт +7 900 765-43-21\r\n");
+        $this->assertSame(1, ReplyReview::pending()->where('deal_id', $this->deal->id)->count());
+
+        $this->actingAs($this->admin)->post("http://crm.xcar.localhost/work/deals/{$this->deal->id}/disclose", [
+            'card' => 1, 'on' => ['phone:79213400657', 'name:'.md5('курочкин роман'), 'file:'.$paper->id],
+        ])->assertSessionHasNoErrors()->assertSessionHas('toast', 'Показано менеджеру');
+
+        $this->assertSame(1, ReplyReview::pending()->where('deal_id', $this->deal->id)->count());
+        $this->actingAs($this->manager)->get("http://xcar.localhost/files/{$paper->id}")->assertOk();
+    }
+
     public function test_nothing_shown_and_no_foreign_items(): void
     {
         $this->deal();
@@ -114,8 +134,12 @@ class InsurerLetterHiddenTest extends TestCase
         $foreign = $other->addMediaFromString('%PDF-1.4')->usingFileName('чужой.pdf')->toMediaCollection('papers');
         $this->actingAs($this->admin)->post("http://crm.xcar.localhost/work/deals/{$this->deal->id}/disclose", ['on' => ['file:'.$foreign->id]])
             ->assertSessionHasErrors('disclose');
-        $this->post("http://crm.xcar.localhost/work/deals/{$this->deal->id}/disclose", ['on' => ['text:x'], 'value' => ['text:x' => 'Закупочная 5189000']])
+        $this->post("http://crm.xcar.localhost/work/deals/{$this->deal->id}/disclose", ['on' => ['text:x'], 'edit' => ['text:x' => 'Закупочная 5189000']])
             ->assertSessionHasErrors('disclose');
+        // Ошибка — текстом в шторке, а не 500: набор `value[…]` чужой формы не роняет поле оценочной страницы (25.11.2026).
+        $this->from("http://crm.xcar.localhost/offers/{$this->offer->fresh()->number}")->followingRedirects()
+            ->post("http://crm.xcar.localhost/work/deals/{$this->deal->id}/disclose", ['on' => ['text:x'], 'value' => ['text:x' => 'x'], 'edit' => ['text:x' => 'x']])
+            ->assertOk()->assertSee('Пункты изменились');
 
         // «Ничего не показывать» — разобрано, менеджеру ничего.
         $this->post("http://crm.xcar.localhost/work/deals/{$this->deal->id}/reviews/done")->assertRedirect();

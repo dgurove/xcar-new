@@ -39,7 +39,7 @@
                 {{-- Делом одной строкой, как в шаге (15.11.2026, владелец: рыжая надпись и большая кнопка — «непонятно, что хотят»). --}}
                 <div {{ $attributes }}><x-route.task-row icon="eye" urgent aria-controls="{{ $id }}">Показать контакт менеджеру</x-route.task-row></div>
             @endif
-            @include('admin.deals.reply-review-sheet', ['id' => $id, 'deal' => $deal, 'letters' => collect(), 'proposals' => $proposals, 'step' => null, 'picked' => $picked])
+            @include('admin.deals.reply-review-sheet', ['id' => $id, 'deal' => $deal, 'letters' => collect(), 'proposals' => $proposals, 'step' => null, 'picked' => $picked, 'card' => true])
         </div>
     @endif
 @endif

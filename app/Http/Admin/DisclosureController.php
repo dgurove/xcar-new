@@ -24,7 +24,10 @@ class DisclosureController
         abort_unless($deal->buyer_id && $deal->isActive(), 404);
         $data = $request->validate([
             'on' => ['array'], 'on.*' => ['string', 'max:80'],
-            'value' => ['array'], 'value.*' => ['nullable', 'string', 'max:300'],
+            // Правленое значение пункта — `edit`, не `value` (25.11.2026): с ошибкой проверки old('value') массивом ронял поле
+            // оценочной на странице машины — 500 вместо текста ошибки.
+            'edit' => ['array'], 'edit.*' => ['nullable', 'string', 'max:300'],
+            'card' => ['nullable', 'boolean'],
             'text' => ['nullable', 'string', 'max:5000'],
             'step' => ['nullable', 'integer'],
             'message' => ['nullable', 'integer'],
@@ -32,11 +35,12 @@ class DisclosureController
         // Из окна писем (16.11.2026) — одно письмо, любое из веток этой машины, а не только стоящие на разборе.
         $message = isset($data['message']) ? Message::with('thread')->find($data['message']) : null;
         abort_if(isset($data['message']) && $message?->thread?->offer_id !== $deal->offer_id, 404);
-        $letters = $message ? collect([$message]) : ReplyReview::pending()->where('deal_id', $deal->id)->with('message')->get()->pluck('message')->filter()->values();
-        $pick = collect($data['on'] ?? [])->mapWithKeys(fn ($key) => [$key => $data['value'][$key] ?? null])->all();
+        $card = ! $message && $request->boolean('card');
+        $letters = $message ? collect([$message]) : ($card ? collect() : ReplyReview::pending()->where('deal_id', $deal->id)->with('message')->get()->pluck('message')->filter()->values());
+        $pick = collect($data['on'] ?? [])->mapWithKeys(fn ($key) => [$key => $data['edit'][$key] ?? null])->all();
         $items = Disclosures::picked(Disclosures::proposals($deal, $letters, $message?->id), $pick, $data['text'] ?? null);
         $step = isset($data['step']) ? Outcome::find($data['step']) : null;
-        ['moved' => $moved] = $disclose($deal, $request->user(), $items, $step, message: $message);
+        ['moved' => $moved] = $disclose($deal, $request->user(), $items, $step, message: $message, card: $card);
         // Шаг ушёл на этап с нашим письмом («Договор готов» → «Свободное время для подписания», 11.11.2026) — сразу вопрос про
         // письмо (`LetterPrompt`), как после «Принять»: черновик уже с днями покупателя.
         $offer = $deal->offer->fresh();

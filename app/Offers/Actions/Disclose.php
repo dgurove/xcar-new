@@ -54,14 +54,15 @@ final class Disclose
      * @param  list<array{kind: string, value: string, media?: int}>  $items  сверенные `Disclosures::picked`
      * @return array{disclosure: ?Disclosure, moved: bool} показали и сдвинули ли шаг (галка шага устарела — не сдвигаем)
      */
-    public function __invoke(Deal $deal, User $by, array $items, ?Outcome $step = null, ?int $invoice = null, ?Message $message = null): array
+    public function __invoke(Deal $deal, User $by, array $items, ?Outcome $step = null, ?int $invoice = null, ?Message $message = null, bool $card = false): array
     {
-        [$disclosure, $moved, $turn] = DB::transaction(function () use ($deal, $by, $items, $step, $invoice, $message) {
+        [$disclosure, $moved, $turn] = DB::transaction(function () use ($deal, $by, $items, $step, $invoice, $message, $card) {
             $deal = Deal::whereKey($deal->id)->lockForUpdate()->firstOrFail();
             // Показ одного письма из окна писем (16.11.2026) разбирает его и письма не новее него (17.11.2026, владелец по сделке 123:
             // «показано же менеджеру, зачем всё ещё висит „Показать менеджеру?“» — Альфа 14.11 просила коллегу прислать ПТС, а ответ
             // коллеги с ЭПТС 16.11 показали из окна); пришедшие после него ждут.
-            $reviews = ReplyReview::pending()->where('deal_id', $deal->id)
+            // `card` — показ из карточки (контакт владельца): письма на разборе он не разбирает.
+            $reviews = $card ? collect() : ReplyReview::pending()->where('deal_id', $deal->id)
                 ->when($message, fn ($q) => $q->where(fn ($w) => $w->where('message_id', $message->id)
                     ->when($message->date_at, fn ($w) => $w->orWhereHas('message', fn ($m) => $m->where('date_at', '<=', $message->date_at)))))
                 ->with('message')->get();

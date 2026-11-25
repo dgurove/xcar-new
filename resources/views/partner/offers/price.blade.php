@@ -14,7 +14,7 @@
             <label for="partner-value" class="field-label">Оценочная, ₽</label>
             <input type="text" id="partner-value" name="value" inputmode="decimal" autocomplete="off" enterkeyhint="done" class="field-input nums"
                 data-controller="digits" data-action="input->digits#format input->value-floor#sync" data-value-floor-target="value"
-                value="{{ old('value', $offer->partner_price_at && $offer->value ? \App\Support\Money::nums((int) $offer->value) : '') }}">
+                value="{{ \App\Support\OldScalar::get('value', $offer->partner_price_at && $offer->value ? \App\Support\Money::nums((int) $offer->value) : '') }}">
             @error('value')<span class="field-error">{{ $message }}</span>@enderror
         </div>
     </div>

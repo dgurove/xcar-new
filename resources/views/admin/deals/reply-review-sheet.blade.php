@@ -23,6 +23,9 @@
         @csrf
         @error('disclose')<x-ui.flash tone="danger">{{ $message }}</x-ui.flash>@enderror
         @if ($message ?? null)<input type="hidden" name="message" value="{{ $message->id }}">@endif
+        {{-- card — пункты без писем («Показать контакт менеджеру», `x-deal.contact-shown`): сервер сверяет с ними же, а письмо, что ждёт
+             разбора, остаётся ждать (25.11.2026: сверял с ждущим письмом — документов машины там нет, «Пункты изменились»). --}}
+        @if ($card ?? false)<input type="hidden" name="card" value="1">@endif
         {{-- Сначала готовое сообщение (16.11.2026, владелец: «не понимаю, что нажать, чтобы отправить менеджеру полный текст письма
              без приветствия и подписи и отредактировать перед отправкой»): поле заполнено текстом письма (`Disclosures::draft` —
              письмо, с которого открыли, иначе самое новое), уходит то, что в поле. Ниже — что приложить галками и другие письма
@@ -69,9 +72,9 @@
                                 @else
                                     <label for="{{ $box }}" class="min-w-0 flex-1 cursor-pointer">
                                         <span class="disclose-kind">{{ $p['label'] ?? Disclosures::KINDS[$p['kind']] }}</span>
-                                        <span class="block break-words" data-disclose-target="text">{{ old('value.'.$key, $p['value']) }}</span>
+                                        <span class="block break-words" data-disclose-target="text">{{ old('edit.'.$key, $p['value']) }}</span>
                                     </label>
-                                    <input type="text" name="value[{{ $key }}]" value="{{ old('value.'.$key, $p['value']) }}" class="field-input mt-1 w-full" hidden data-disclose-target="input" data-action="input->disclose#typed">
+                                    <input type="text" name="edit[{{ $key }}]" value="{{ old('edit.'.$key, $p['value']) }}" class="field-input mt-1 w-full" hidden data-disclose-target="input" data-action="input->disclose#typed">
                                     <button type="button" class="disclose-tool" aria-label="Изменить" data-action="disclose#edit"><x-ui.icon name="edit" class="size-4"/></button>
                                 @endif
                             </div>

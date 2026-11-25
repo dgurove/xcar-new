@@ -29,7 +29,7 @@
         <div class="field" data-controller="by-vendor" data-by-vendor-ids-value="{{ json_encode($byValue) }}" @unless ($valued || (! $admin && $offer->value)) hidden @endunless>
             <label for="{{ $idp }}value" class="field-label">Оценочная, ₽</label>
             <input type="text" id="{{ $idp }}value" name="value" @if ($form) form="{{ $form }}" @endif @if ($now) data-save-own @endif inputmode="decimal" autocomplete="off" enterkeyhint="next" class="{{ $input }}"
-                data-controller="digits" data-action="input->digits#format input->value-floor#sync" data-value-floor-target="value" value="{{ old('value', $offer->value ? \App\Support\Money::nums($offer->value) : '') }}"
+                data-controller="digits" data-action="input->digits#format input->value-floor#sync" data-value-floor-target="value" value="{{ \App\Support\OldScalar::get('value', $offer->value ? \App\Support\Money::nums($offer->value) : '') }}"
                 @if ($now === 'floor' && $valued) data-detail-focus @endif>
         </div>
         {{-- Диапазонов наценки в CRM нет (16.11.2026, владелец: «это только для partner.xcar»): ступени предложения считают
@@ -40,7 +40,7 @@
                 {{-- Поставщик вписал, но не отправил (08.11.2026, `partner_price_at`) — цену у себя он ещё может поправить. --}}
                 <label for="{{ $idp }}floor" class="field-label">Закупочная, ₽@if ($offer->partner_price_at)<span class="text-ink-dim">, у поставщика</span>@endif</label>
                 <input type="text" id="{{ $idp }}floor" name="floor_price" @if ($form) form="{{ $form }}" @endif @if ($now) data-save-own @endif inputmode="decimal" autocomplete="off" enterkeyhint="{{ $admin ? 'next' : 'go' }}" class="{{ $input }} {{ $now === 'floor' ? $ring : '' }}"
-                    data-controller="digits" data-action="input->digits#format" data-value-floor-target="floor" value="{{ old('floor_price', $offer->floor_price ? \App\Support\Money::nums($offer->floor_price) : '') }}"
+                    data-controller="digits" data-action="input->digits#format" data-value-floor-target="floor" value="{{ \App\Support\OldScalar::get('floor_price', $offer->floor_price ? \App\Support\Money::nums($offer->floor_price) : '') }}"
                     @if ($now === 'floor' && ! $valued) data-detail-focus @endif>
                 @error('floor_price')<span class="field-error">{{ $message }}</span>@enderror
             </div>
@@ -48,7 +48,7 @@
                 <div class="field @error('asking_price') field-invalid @enderror">
                     <label for="{{ $idp }}asking" class="field-label">Цена продажи, ₽</label>
                     <input type="text" id="{{ $idp }}asking" name="asking_price" @if ($form) form="{{ $form }}" @endif @if ($now) data-save-own @endif inputmode="decimal" autocomplete="off" enterkeyhint="go" class="{{ $input }} {{ $now === 'asking' ? $ring : '' }}"
-                        data-controller="digits" data-action="input->digits#format" value="{{ old('asking_price', $offer->asking_price ? \App\Support\Money::nums($offer->asking_price) : '') }}"
+                        data-controller="digits" data-action="input->digits#format" value="{{ \App\Support\OldScalar::get('asking_price', $offer->asking_price ? \App\Support\Money::nums($offer->asking_price) : '') }}"
                         @if ($now === 'asking') data-detail-focus @endif>
                     @error('asking_price')<span class="field-error">{{ $message }}</span>@enderror
                 </div>
@@ -59,7 +59,7 @@
         @if (! $admin && ! $garageOnly)
             @php $bindingHot = $offer->binding_until && \App\Offers\Binding::word($offer); @endphp
             <span class="flex flex-wrap items-baseline gap-x-1 text-sm {{ $bindingHot ? 'text-danger' : 'text-ink-muted' }}" data-controller="by-vendor" data-by-vendor-ids-value="{{ json_encode(\App\Offers\Binding::vendorIds()) }}" @unless (\App\Offers\Binding::applies($offer)) hidden @endunless>
-                <x-ui.icon name="timer" class="size-4 shrink-0 self-center" title="Срок обязывающего предложения"/><x-ui.date name="binding_until" :id="$idp.'binding'" chip time default-time="23:59" :value="old('binding_until', $offer->binding_until?->format('Y-m-d\TH:i'))" :placeholder="$bindingDays ? 'по вендору '.$bindingDays.' дн' : 'указать'" :form="$form" class="nums underline decoration-dotted underline-offset-4"/>@if ($bindingHot)<span class="nums">, {{ \App\Offers\Binding::word($offer) }}</span>@endif
+                <x-ui.icon name="timer" class="size-4 shrink-0 self-center" title="Срок обязывающего предложения"/><x-ui.date name="binding_until" :id="$idp.'binding'" chip time default-time="23:59" :value="\App\Support\OldScalar::get('binding_until', $offer->binding_until?->format('Y-m-d\TH:i'))" :placeholder="$bindingDays ? 'по вендору '.$bindingDays.' дн' : 'указать'" :form="$form" class="nums underline decoration-dotted underline-offset-4"/>@if ($bindingHot)<span class="nums">, {{ \App\Offers\Binding::word($offer) }}</span>@endif
             </span>
             @error('binding_until')<span class="field-error">{{ $message }}</span>@enderror
         @endif
