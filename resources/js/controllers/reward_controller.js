@@ -9,7 +9,7 @@ import { nums, rubles } from '../lib/money';
 // раньше; пока шлём мы, `typed` процент не трогает (иначе «33,» превращалось бы в «33» под пальцем).
 export default class extends Controller {
     static targets = ['range', 'rub', 'pct', 'hidden', 'mgr', 'ours', 'bar', 'margin', 'pctBox', 'rubLabel', 'row'];
-    static values = { margin: Number, mode: { type: String, default: 'reward' }, follow: Boolean };
+    static values = { margin: Number, mode: { type: String, default: 'reward' }, follow: Boolean, rest: { type: String, default: 'Подбор' }, lead: { type: String, default: 'Менеджеру' } };
 
     connect() {
         this.byPct = this.followValue;
@@ -110,7 +110,7 @@ export default class extends Controller {
         const rest = this.marginValue - r;
         this.barTarget.style.setProperty('--p', `${Math.max(0, Math.min(100, r / this.marginValue * 100))}%`);
         this.barTarget.classList.toggle('is-over', rest < 0);
-        this.mgrTargets.forEach((el) => { el.textContent = `Менеджеру ${nums(r)}`; });
-        this.oursTargets.forEach((el) => { el.textContent = `Подбор ${rest < 0 ? '−' : ''}${nums(Math.abs(rest))}`; });
+        this.mgrTargets.forEach((el) => { el.textContent = `${this.leadValue} ${nums(r)}`; });
+        this.oursTargets.forEach((el) => { el.textContent = `${this.restValue} ${rest < 0 ? '−' : ''}${nums(Math.abs(rest))}`; });
     }
 }

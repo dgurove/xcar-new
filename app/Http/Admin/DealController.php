@@ -14,7 +14,6 @@ use App\Offers\Actions\MarkSoldDeal;
 use App\Offers\Actions\ReopenDeal;
 use App\Offers\Actions\SetDealDate;
 use App\Offers\Actions\SetReceiver;
-use App\Offers\Actions\SetSelectionApart;
 use App\Offers\Actions\UpdateDealMoney;
 use App\Offers\Binding;
 use App\Offers\CarWindow;
@@ -398,8 +397,11 @@ class DealController
         // (19.11.2026, владелец: «за услуги подбора берём 0 ₽ в этот раз»), пусто — не вписаны.
         $request->merge(['share' => blank($request->input('share')) ? null : Money::signed($request->input('share')),
             'amount' => blank($request->input('amount')) ? null : Money::rubles($request->input('amount')),
-            'cash_part' => blank($request->input('cash_part')) ? null : Money::rubles($request->input('cash_part'))]);
+            'cash_part' => blank($request->input('cash_part')) ? null : Money::rubles($request->input('cash_part')),
+            'car_price' => blank($request->input('car_price')) ? null : Money::rubles($request->input('car_price')),
+            'cost' => blank($request->input('cost')) ? null : Money::rubles($request->input('cost'))]);
         $data = $request->validate(['commission' => ['nullable', 'integer', 'min:0'], 'amount' => ['nullable', 'integer', 'min:1'], 'cash_part' => ['nullable', 'integer', 'min:0'],
+            'car_price' => ['nullable', 'integer', 'min:0'], 'cost' => ['nullable', 'integer', 'min:1'],
             'scheme' => ['nullable', Rule::enum(DealScheme::class)],
             'share' => ['nullable', 'integer', 'min:0']], ['share.min' => Giving::SHARE_LEFT]);
         // Поле вознаграждения пустое — вознаграждения нет; поля нет вовсе (гаражная доля) — прежнее.
@@ -418,8 +420,12 @@ class DealController
         // закупочной — переспрос формы (`loss`). Гаражная Совкомбанка без цены — как «Продаю» менеджера (`MarkGarageSold`: машина
         // «Продана», вознаграждение — вписанное или по доле), иначе — цена сделки.
         $amount = $data['amount'] ?? null;
-        if ($amount !== null && $amount !== $deal->amount && $deal->cost !== null && $amount <= $deal->cost && ! $request->boolean('loss')) {
-            throw ValidationException::withMessages(['amount' => 'Цена продажи не выше закупочной '.Money::rub($deal->cost)]);
+        // Закупочная в сделке ПРАЙМ / Р.О.С. — полем той же шторки (25.11.2026, владелец: «без отдельного окна»; с 24.11.2026 —
+        // своей шторкой): договор и счёт за ТС встают заново, закупочная предложения не трогается.
+        $cost = isset($data['cost']) && $deal->isPrime() && ! $deal->isGarage() && ! $deal->isAuction() && $deal->cost !== null ? (int) $data['cost'] : null;
+        $floor = $cost ?? $deal->cost;
+        if ($amount !== null && ($amount !== $deal->amount || $cost !== null) && $floor !== null && $amount <= $floor && ! $request->boolean('loss')) {
+            throw ValidationException::withMessages(['amount' => 'Цена продажи не выше закупочной '.Money::rub($floor)]);
         }
         if ($amount !== null && $deal->namesBuyer() && $deal->amount === null && ($car = $deal->garageCar) && ! $car->isSold()) {
             try {
@@ -435,15 +441,11 @@ class DealController
 
             return back()->with('toast', 'Цена продажи '.Money::rub($amount));
         }
-        // «Услуги подбора: в счёте за ТС | отдельной ссылкой» (24.11.2026, `SetSelectionApart`) — вместе с ценой, счета ставит `UpdateDealMoney`.
-        DB::transaction(function () use ($request, $deal, $update, $commission, $scheme, $data, $amount) {
-            if ($request->has('selection_apart') && $deal->canSplitSelection() && $request->boolean('selection_apart') !== $deal->selection_apart) {
-                app(SetSelectionApart::class)($deal, $request->boolean('selection_apart'), $request->user(), sync: false);
-                $deal = $deal->fresh();
-            }
-            $update($deal, $request->user(), $commission, $scheme, isset($data['share']) ? (int) $data['share'] : null, amount: $amount,
-                cash: $data['cash_part'] ?? null, setCash: $request->has('cash_part'));
-        });
+        // Сколько на счёт за ТС ПРАЙМ / Р.О.С. (25.11.2026, шкала «в счёт | ссылкой» шторки) — вместе с ценой, счета ставит `UpdateDealMoney`.
+        $update($deal, $request->user(), $commission, $scheme, isset($data['share']) ? (int) $data['share'] : null, amount: $amount,
+            cash: $data['cash_part'] ?? null, setCash: $request->has('cash_part'),
+            carPrice: $data['car_price'] ?? null, setCarPrice: $request->filled('car_price') && $deal->canSplitSelection(),
+            cost: $cost, setCost: $cost !== null && $cost !== $deal->cost);
 
         return back()->with('toast', 'Сохранено');
     }
@@ -464,21 +466,6 @@ class DealController
         $update($deal, $request->user(), $deal->commission, owner: $owner, setOwner: true,
             note: $owner === null || (int) $owner === (int) $deal->cost ? 'Взаимозачёта со страховой нет'
                 : ($dkp ? 'Собственнику по ДКП ' : 'Поставщику ').Money::rub($owner).', взаимозачёт со страховой '.Money::rub((int) $deal->cost - $owner));
-
-        return back()->with('toast', 'Сохранено');
-    }
-
-    /**
-     * Закупочная в сделке ПРАЙМ / Р.О.С. (24.11.2026, владелец: «редактировать можно всё»; шторка `x-deal.cost-sheet`): пока по
-     * счетам не платили (`UpdateDealMoney`), договор и счёт за ТС встают заново. Закупочная предложения не трогается.
-     */
-    public function cost(Request $request, Deal $deal, UpdateDealMoney $update)
-    {
-        abort_unless($deal->moneyOpen() && ! $deal->paysSelection() && ! $deal->isGarage() && ! $deal->isAuction(), 404);
-        $request->merge(['cost' => blank($request->input('cost')) ? null : Money::rubles($request->input('cost'))]);
-        $cost = $request->validate(['cost' => ['required', 'integer', 'min:1']], ['cost.required' => 'Впишите закупочную'])['cost'];
-        $update($deal, $request->user(), $deal->commission, cost: $cost, setCost: true,
-            note: 'Закупочная в сделке '.($deal->cost !== null ? Money::rub((int) $deal->cost).' → ' : '').Money::rub($cost));
 
         return back()->with('toast', 'Сохранено');
     }

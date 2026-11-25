@@ -129,9 +129,7 @@ final class SyncDealInvoices
             return;
         }
         // Сколько система ставила в счёт подбора, пока пустое вознаграждение считалось нулём.
-        $auto = $deal->splitsSelection()
-            ? max(0, (int) $deal->amount - (int) $deal->contract?->cash_part - (int) $deal->cost)
-            : (int) $deal->selectionBase();
+        $auto = $deal->splitsSelection() ? (int) $deal->linkDue() : (int) $deal->selectionBase();
         Invoice::where('deal_id', $deal->id)->where('direction', 'issued')->where('kind', ChargeKind::Selection)->where('state', InvoiceState::Issued)
             ->whereNull('shown_at')->whereNull('requested_at')->where('paid', '<=', 0)->with(['payments', 'claims', 'charges'])->get()
             ->filter(fn (Invoice $i) => $i->claims->isEmpty() && $i->payments->whereNull('voided_at')->isEmpty()

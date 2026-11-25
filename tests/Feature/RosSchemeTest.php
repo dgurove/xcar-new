@@ -90,8 +90,11 @@ class RosSchemeTest extends TestCase
         $this->assertNull(DealContract::for($deal->fresh())->buyer_user_id);
     }
 
-    /** Р.О.С. — подбор всегда отдельной ссылкой (24.11.2026, владелец): счёт и договор Р.О.С. на закупочную, выбора нет. */
-    public function test_ros_selection_always_apart(): void
+    /**
+     * Р.О.С. по умолчанию — счёт и договор на закупочную, подбор ссылкой (24.11.2026); сколько на счёт — вписывается (25.11.2026, владелец
+     * по 7806/046/03674/26: «Р.О.С. 1 700 000, подбор ссылкой 160 000»), ссылка — остаток.
+     */
+    public function test_ros_selection_apart_by_default_and_car_price_by_hand(): void
     {
         $deal = $this->deal(true);
         app(ChangeDealScheme::class)($deal->fresh(), DealScheme::Ros, $this->admin);
@@ -100,9 +103,34 @@ class RosSchemeTest extends TestCase
         DealContract::for($deal);
         $deal = $deal->fresh();
         $this->assertTrue($deal->splitsSelection());
-        $this->assertFalse($deal->canSplitSelection(), 'выбора нет');
+        $this->assertTrue($deal->canSplitSelection());
         $this->assertSame((int) $deal->cost, DealContract::priceFor($deal));
         $this->assertSame(1150000 - 50000 - (int) $deal->cost, $deal->selectionDue());
+
+        // Сверх закупочной в счёт — ссылка меньше на столько же; больше цены минус вознаграждение и меньше закупочной — нельзя.
+        $car = (int) $deal->cost + 20000;
+        app(\App\Offers\Actions\UpdateDealMoney::class)($deal, $this->admin, 50000, carPrice: $car, setCarPrice: true);
+        $deal = $deal->fresh();
+        $this->assertSame($car, $deal->contract->car_price);
+        $this->assertSame($car, DealContract::priceFor($deal));
+        $this->assertSame($car, $deal->contract->price);
+        $this->assertSame(1150000 - 50000 - $car, $deal->selectionDue());
+        foreach ([(int) $deal->cost - 1, 1150000 - 50000 + 1] as $bad) {
+            try {
+                app(\App\Offers\Actions\UpdateDealMoney::class)($deal, $this->admin, 50000, carPrice: $bad, setCarPrice: true);
+                $this->fail('счёт '.$bad.' прошёл');
+            } catch (\Illuminate\Validation\ValidationException $e) {
+                $this->assertArrayHasKey('car_price', $e->errors());
+            }
+        }
+        // Вознаграждение выросло больше ссылки — счёт ужимается, ссылка не уходит в минус.
+        app(\App\Offers\Actions\UpdateDealMoney::class)($deal->fresh(), $this->admin, 1150000 - $car + 5000);
+        $deal = $deal->fresh();
+        $this->assertSame(0, $deal->linkDue());
+        $this->assertSame(max((int) $deal->cost, $car - 5000), $deal->carPrice());
+        // Снова закупочная — умолчание, хранится пустым.
+        app(\App\Offers\Actions\UpdateDealMoney::class)($deal, $this->admin, 50000, carPrice: (int) $deal->cost, setCarPrice: true);
+        $this->assertNull($deal->fresh()->contract->car_price);
 
         app(ChangeDealScheme::class)($deal, DealScheme::Prime, $this->admin);
         $prime = $deal->fresh();

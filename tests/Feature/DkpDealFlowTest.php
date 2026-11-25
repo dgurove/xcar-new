@@ -174,17 +174,19 @@ class DkpDealFlowTest extends TestCase
         $this->actingAs($this->admin)->put($crm('/owner-price'), ['owner_price' => '760 000'])->assertSessionHasNoErrors()->assertRedirect();
         $this->assertSame(760000, $deal->fresh()->supplierPayment());
         $this->assertSame(19000, $deal->fresh()->offset());
-        $this->actingAs($this->admin)->put($crm('/cost'), ['cost' => '700 000'])->assertNotFound();
+        // Закупочная — полем шторки денег (25.11.2026): у «страховой напрямую» её там нет, присланное не трогается.
+        $this->actingAs($this->admin)->put($crm('/money'), ['cost' => '700 000'])->assertRedirect();
+        $this->assertNotSame(700000, $deal->fresh()->cost);
 
         $deal->forceFill(['scheme' => DealScheme::Prime, 'owner_price' => null])->save();
-        $this->actingAs($this->admin)->put($crm('/cost'), ['cost' => '900 000'])->assertSessionHasErrors('cost');
-        $this->actingAs($this->admin)->put($crm('/cost'), ['cost' => '770 000'])->assertSessionHasNoErrors()->assertRedirect();
+        $this->actingAs($this->admin)->put($crm('/money'), ['cost' => '900 000'])->assertSessionHasErrors('cost');
+        $this->actingAs($this->admin)->put($crm('/money'), ['cost' => '770 000'])->assertSessionHasNoErrors()->assertRedirect();
         $this->assertSame(770000, $deal->fresh()->cost);
         $this->assertSame(779000, (int) $offer->fresh()->floor_price);
         $invoice = $deal->fresh()->issuedInvoices()->where('state', InvoiceState::Issued)->first();
         if ($invoice) {
             app(RecordPayment::class)($invoice, $this->admin, 1000, now(), PaymentSource::Bank);
-            $this->actingAs($this->admin)->put($crm('/cost'), ['cost' => '760 000'])->assertSessionHasErrors();
+            $this->actingAs($this->admin)->put($crm('/money'), ['cost' => '760 000'])->assertSessionHasErrors();
             $this->assertSame(770000, $deal->fresh()->cost);
         }
     }

@@ -52,7 +52,7 @@
         // Сумма поставщику или собственнику и взаимозачёт со страховой — у схем с подбором, кто правит деньги (23.11.2026 ДКП,
         // `x-deal.offset-sheet`; 24.11.2026 и «страховой напрямую», владелец: «редактировать можно всё, как в „Оплатах“»).
         $offsetEdit = $editMoney && $deal->paysSelection() && ! $deal->isGarage() && $deal->cost !== null;
-        // Закупочная ПРАЙМ / Р.О.С. — шторкой `x-deal.cost-sheet`, пока по счетам не платили (24.11.2026, владелец).
+        // Закупочная ПРАЙМ / Р.О.С. — полем шторки денег (25.11.2026; с 24.11.2026 была своей шторкой), пока по счетам не платили.
         $costEdit = $editMoney && ! $deal->paysSelection() && ! $deal->isGarage() && ! $deal->isAuction() && $deal->cost !== null;
         // Что раньше стояло строками («Кому», «Плательщик», «Кому» у подбора) — пунктами «⋯» (18.11.2026): шапки блоков и так это говорят.
         // «Кто платит…» — с 22.11.2026 строкой «Покупатель» (владелец: «из доп. меню убрать и вставить нормально»): в «⋯» — только
@@ -81,7 +81,7 @@
                         <div class="menu-group">
                             @if ($editMoney)<button type="button" class="menu-item w-full" data-controller="emit" data-action="emit#send" data-emit-event-param="deal-money-{{ $deal->id }}:open">{{ $deal->isGarageManager() ? 'Вознаграждение…' : 'Цена и вознаграждение…' }}</button>@endif
                             @if ($withContract)<button type="button" class="menu-item w-full" data-controller="emit" data-action="emit#send" data-emit-event-param="dkp-{{ $deal->id }}:open">Данные договора…</button>@endif
-                            @if ($offsetEdit && ! $deal->offset())<button type="button" class="menu-item w-full" data-controller="emit" data-action="emit#send" data-emit-event-param="offset-{{ $deal->id }}:open">Взаимозачёт со страховой…</button>@endif
+                            @if ($offsetEdit)<button type="button" class="menu-item w-full" data-controller="emit" data-action="emit#send" data-emit-event-param="offset-{{ $deal->id }}:open">Взаимозачёт со страховой…</button>@endif
                         </div>
                     @endif
                     @if ($paidBy->contains->isDocument() || ($deal->moneyOpen() && $issued->isNotEmpty()))
@@ -96,7 +96,7 @@
                 </x-ui.more>
             @endif
             @if ($offsetEdit)<x-deal.offset-sheet :deal="$deal"/>@endif
-            @if ($costEdit)<x-deal.cost-sheet :deal="$deal"/>@endif
+            {{-- Закупочная ПРАЙМ / Р.О.С. — полем шторки денег (25.11.2026, владелец: «без отдельного окна»). --}}
             @if ($editMoney)
             {{-- Шторка денег сделки — пунктом «⋯» (15.11.2026: «Изменить» в заголовке «Продажи» было непонятно, что меняет). --}}
             <div data-controller="sheet" class="contents" data-action="deal-money-{{ $deal->id }}:open@window->sheet#open">
@@ -241,7 +241,15 @@
             \App\Offers\DealScheme::OwnerDkp => 'владельцу по ДКП',
         };
     @endphp
-    @php $garageBuyer = $deal->forGarageBuyer(); @endphp
+    @php
+        $garageBuyer = $deal->forGarageBuyer();
+        // Шкала долей цены продажи (25.11.2026, владелец выбрал из макетов вариант 1: «нужны шкалы, что куда от цены продажи»): у ПРАЙМ /
+        // Р.О.С. с известными деньгами — счёт за ТС (`Deal::carPrice`), подбор ссылкой (`linkDue`), менеджеру, наличные; у «страховой
+        // напрямую» и ДКП — поставщику или собственнику, менеджеру, подбор. Гараж и аукцион — прежними строками.
+        $carNow = $carBlock && ! $deal->isGarage() && ! $deal->isAuction() ? $deal->carPrice() : null;
+        $scale = $topPrice && $deal->amount !== null && ! $deal->isGarage() && ! $deal->isAuction()
+            && ($carNow !== null || ($supplierBlock && $deal->supplierPayment() !== null));
+    @endphp
     @if ($topPrice || $supplierSum || $shown || $rewardRow || $garageBuyer || ($feeBilled && $selection))
         {{-- Без своей подписи (22.11.2026, владелец: «шрифты скачут» — «Продажа» и «Итог» стояли двумя подписями подряд): список
              сразу под заголовком; числа одного вида — 15 обычным, полужирным только цена продажи. --}}
@@ -249,6 +257,41 @@
             @if ($schemeWord)
                 @if ($schemeEdit)<x-deal.sale-row label="Покупатель платит" :value="$schemeWord" data-controller="emit" data-action="emit#send" data-emit-event-param="scheme-{{ $deal->id }}:open"/>@else<div class="row sale-row"><span class="sale-row-label">Покупатель платит</span><span class="sale-row-value">{{ $schemeWord }}</span><x-ui.chevron-space/></div>@endif
             @endif
+            @if ($scale)
+                @php
+                    $pending = $deal->rewardPending();
+                    $base = $carNow !== null ? (int) $deal->cost : (int) $deal->supplierPayment();
+                    $over = $carNow !== null ? max(0, $carNow - $base) : 0;
+                    $link = $carNow !== null ? (int) $deal->linkDue() : max(0, (int) $deal->selectionDue());
+                    $cashNow = (int) $deal->contract?->cash_part;
+                    $vat = $contract ? ($contract->vatRate() ? "НДС\u{00A0}".$contract->vatRate()."\u{00A0}%" : "без\u{00A0}НДС") : null;
+                    $tag = $editMoney ? 'button' : 'div';
+                    $payee = $deal->schemeOf() === \App\Offers\DealScheme::OwnerDkp ? 'Собственнику' : 'Поставщику';
+                @endphp
+                {{-- Деньги одной плашкой (25.11.2026, владелец: «убрать разделения между составными частями, это как одно кликабельное — оно
+                     всё одно и то же окно открывает»; «подбор в счёте объединить с закупочной»; «закупочную серой, вознаграждение жёлтым»):
+                     цена, шкала и строки «Закупочная / На счёт / По ссылке / Вознаграждение» без линий, нажатие — шторка денег. --}}
+                <{{ $tag }} @if ($editMoney) type="button" data-controller="emit" data-action="emit#send" data-emit-event-param="deal-money-{{ $deal->id }}:open" @endif class="row sale-money">
+                    <span class="sale-money-line"><span class="sale-row-label">Цена продажи</span><span class="nums font-semibold">{{ Money::rub($deal->amount) }}@if ($editMoney)<x-ui.chevron class="sale-money-chev"/>@endif</span></span>
+                    {{-- Вознаграждение не назначено — что не легло в счёт, ещё не поделено между ссылкой и вознаграждением: светлой долей. --}}
+                    <x-deal.money-scale :parts="$pending
+                        ? ['car' => $over, 'rest' => $carNow !== null ? $link : max(0, (int) $deal->amount - $base - $cashNow), 'cash' => $cashNow]
+                        : ['car' => $over, 'link' => $link, 'mgr' => (int) $deal->commission, 'cash' => $cashNow]"/>
+                    @if ($carNow !== null)
+                        <span class="sale-money-line"><span><span class="share-dot share-dot--cost"></span>Закупочная</span><span class="nums">{{ Money::rub($base) }}</span></span>
+                        <span class="sale-money-line"><span><span class="share-dot share-dot--car"></span>На счёт {{ $deal->schemeOf()->short() }}@if ($vat) <span class="text-sm text-ink-muted">{{ $vat }}</span>@endif</span><span class="nums">{{ Money::rub($carNow) }}</span></span>
+                    @else
+                        <span class="sale-money-line"><span><span class="share-dot share-dot--cost"></span>{{ $payee }}</span><span class="nums">{{ $supplierSum ?? Money::rub($base) }}</span></span>
+                    @endif
+                    <span class="sale-money-line"><span><span class="share-dot share-dot--link"></span>По ссылке@if ($link > 0 && ! $pending) <span class="text-sm text-ink-muted">{{ $deal->feeSeller()->config()['name'] ?? '' }}</span>@endif</span>@if ($pending)<span class="text-ink-muted">назначим</span>@elseif ($link > 0)<span class="nums">{{ Money::rub($link) }}</span>@else<span class="text-ink-muted">нет</span>@endif</span>
+                    @if ($rewardRow)
+                        <span class="sale-money-line"><span><span class="share-dot share-dot--mgr"></span>Вознаграждение</span>@if ($deal->commission !== null)<span class="nums">{{ Money::rub((int) $deal->commission) }}</span>@elseif ($editMoney)<span class="text-accent-text">Назначить</span>@else<span class="text-ink-muted">назначим</span>@endif</span>
+                    @endif
+                    @if ($cashNow)
+                        <span class="sale-money-line"><span><span class="share-dot share-dot--cash"></span>Наличными мимо счёта</span><span class="nums">{{ Money::rub($cashNow) }}</span></span>
+                    @endif
+                </{{ $tag }}>
+            @else
             @if ($garageBuyer)
                 {{-- Покупатель с гаражом (24.11.2026): цену продажи вводит он сам в гараже (`SetGarageSalePrice`), вознаграждение — разница
                      с его ценой; счёт и договор — на его цену. --}}
@@ -323,6 +366,7 @@
                     @if ($selEdit)<x-ui.chevron/>@else<x-ui.chevron-space/>@endif
                 </{{ $selTag }}>
             @endif
+            @endif
         </div>
     @endif
     {{-- Услуги подбора (ДКП, «страховой», доля гаража) — своим блоком сразу под «Итогом», над «Покупателем» (23.11.2026, владелец):
@@ -369,12 +413,13 @@
             $saleWord = $sale ? \App\Billing\DocWord::staff($sale) : null;
             ob_start();
         @endphp
-            @if ($carSum)
+            {{-- Со шкалой сумма счёта и наличные — строками долей выше (25.11.2026), здесь не повторяются. --}}
+            @if ($carSum && ! $scale)
                 @php $sumText = Money::rub($carSum).($contract ? ($contract->vatRate() ? ', НДС '.$contract->vatRate().' %' : ', без НДС') : ''); @endphp
                 @if ($priceEditable)<x-deal.sale-row label="Счёт и договор" :value="$sumText" data-controller="emit" data-action="emit#send" data-emit-event-param="deal-money-{{ $deal->id }}:open"/>@else<div class="row sale-row"><span class="sale-row-label">Счёт и договор</span><span class="sale-row-value nums">{{ $sumText }}</span><x-ui.chevron-space/></div>@endif
             @endif
             {{-- Часть мимо счёта — строкой, когда есть: из-за неё счёт и договор меньше цены продажи. --}}
-            @if ($contract?->cash_part)<div class="row sale-row"><span class="sale-row-label">Наличными мимо счёта</span><span class="sale-row-value nums">{{ Money::rub($contract->cash_part) }}</span><x-ui.chevron-space/></div>@endif
+            @if ($contract?->cash_part && ! $scale)<div class="row sale-row"><span class="sale-row-label">Наличными мимо счёта</span><span class="sale-row-value nums">{{ Money::rub($contract->cash_part) }}</span><x-ui.chevron-space/></div>@endif
             @if ($payerApart)<x-deal.payer :deal="$deal" :action="'/work/deals/'.$deal->id.'/payer'" :editable="$canEdit" pick/>@endif
             @if ($sale)
                 {!! $billRows($sale, false) !!}

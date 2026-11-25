@@ -298,7 +298,6 @@ Route::domain(config('xcar.crm_host'))->middleware(['auth', 'ability:isStaff'])-
         // «Ещё счёт»; оплаты, ссылки и заявки об оплате — кусок «Оплат» `routes/money-shared.php`.
         Route::put('/work/deals/{deal}/money', [DealController::class, 'money']);
         Route::put('/work/deals/{deal}/owner-price', [DealController::class, 'ownerPrice']);
-        Route::put('/work/deals/{deal}/cost', [DealController::class, 'cost']);
         Route::get('/work/invoices/new', [InvoiceController::class, 'create']);
         Route::post('/work/invoices', [InvoiceController::class, 'store']);
     });

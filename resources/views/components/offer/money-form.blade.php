@@ -15,9 +15,12 @@
      которая будет у него в сделке»): по умолчанию с подтверждения, разница, взаимозачёт и согласие `loss` идут за ней.
      13.11.2026: `share` — доля менеджера от разницы (`users.deal_share`, владелец: «у Сахиба по умолчанию 50:50»);
      `prefill` (принятие) — пустое поле сразу долей, и поле идёт за разницей, пока его не правили руками.
-     16.11.2026: вознаграждение — ползунком, суммой или процентом от разницы (`x-deal.reward-split`; чипа доли больше нет). --}}
+     16.11.2026: вознаграждение — ползунком, суммой или процентом от разницы (`x-deal.reward-split`; чипа доли больше нет).
+     25.11.2026: `rest`, `tone` — подпись остатка и тон полосы вознаграждения (`x-deal.reward-split`); слот `after` — под ней (шторка
+     денег сделки ставит туда вторую полосу «на счёт | по ссылке» и наличные); `costFirst` — закупочная полем над слотом (над ценой
+     продажи; владелец: «первым закупочная, вторым продажная»), `costLabel` — её подпись, `rubLabel` — подпись поля вознаграждения. --}}
 @props(['action', 'amount', 'cost' => null, 'commission' => null, 'submit' => 'Принять', 'confirm' => null, 'method' => 'post', 'id' => null, 'note' => null,
-    'scheme' => null, 'schemes' => null, 'ownerPrice' => null, 'fee' => true, 'ownerLocked' => false, 'supplierCost' => null, 'priced' => false, 'costEditable' => false, 'schemeLocked' => false, 'offer' => null, 'share' => null, 'prefill' => false, 'letter' => false, 'stored' => false])
+    'scheme' => null, 'schemes' => null, 'ownerPrice' => null, 'fee' => true, 'ownerLocked' => false, 'supplierCost' => null, 'priced' => false, 'costEditable' => false, 'schemeLocked' => false, 'offer' => null, 'share' => null, 'prefill' => false, 'letter' => false, 'stored' => false, 'rest' => 'Подбор', 'tone' => null, 'costFirst' => false, 'costLabel' => 'Закупочная менеджера, ₽', 'rubLabel' => 'Менеджеру, ₽'])
 @php
     use App\Offers\DealScheme;
     use App\Support\Money;
@@ -43,6 +46,14 @@
          пустым полем стёрла её в ноль): пустое поле при пустом «было» не стирает появившееся с тех пор (`DealController::money`). --}}
     <input type="hidden" name="commission_was" value="{{ ($stored === false ? $commission : $stored) ?? '' }}">
     @if ($priced || $costEditable)<input type="hidden" name="loss" value="" data-commission-target="loss">@endif
+    @if ($costEditable && $costFirst)
+        <div class="field @error('cost') field-invalid @enderror">
+            <label for="{{ $id }}-cost" class="field-label">{{ $costLabel }}</label>
+            <input type="hidden" name="cost" data-commission-target="costAmount" value="{{ $costNow }}">
+            <input id="{{ $id }}-cost" type="text" inputmode="decimal" class="field-input nums" data-controller="digits" data-digits-decimals-value="0" data-commission-target="costDisplay" data-action="input->digits#format input->commission#input" value="{{ $costNow ? Money::nums((int) $costNow) : '' }}" autocomplete="off">
+            @error('cost')<p class="field-error">{{ $message }}</p>@enderror
+        </div>
+    @endif
     {{ $slot }}
     {{-- Схема сделки меняется своей строкой «Схема» (`x-deal.scheme`, 03.11.2026): в «Деньгах» — только она сама, без выбора. --}}
     @if ($scheme && $schemeLocked)
@@ -72,9 +83,9 @@
         @if ($margin !== null || $costEditable)<dt class="text-sm text-ink-dim" data-commission-target="oursOnly" @if ($dkp) hidden @endif>Разница</dt><dd class="nums text-right font-semibold {{ $margin < 0 ? 'text-danger' : '' }}" data-commission-target="oursOnly margin" @if ($dkp) hidden @endif>{{ $margin === null || ($priced && ! $amount) ? '' : Money::rub($margin) }}</dd>@endif
     </dl>
     <div class="flex flex-col gap-3">
-        @if ($costEditable)
+        @if ($costEditable && ! $costFirst)
             <div class="field @error('cost') field-invalid @enderror">
-                <label for="{{ $id }}-cost" class="field-label">Закупочная менеджера, ₽</label>
+                <label for="{{ $id }}-cost" class="field-label">{{ $costLabel }}</label>
                 <input type="hidden" name="cost" data-commission-target="costAmount" value="{{ $costNow }}">
                 <input id="{{ $id }}-cost" type="text" inputmode="decimal" class="field-input nums" data-commission-target="costDisplay" data-action="input->commission#input" value="{{ $costNow ? Money::nums((int) $costNow) : '' }}" autocomplete="off">
                 @error('cost')<p class="field-error">{{ $message }}</p>@enderror
@@ -94,8 +105,9 @@
         <div @unless ($fee) hidden @endunless>
             <x-deal.reward-split name="commission" :id="$id" :value="$current === null || $current === '' ? null : (int) $current" :margin="$margin !== null && ($amount || ! $priced) ? $margin : null"
                 :follow="$prefill && $share !== null && $current !== null && $margin !== null && (int) $current === \App\Offers\Deal::shareOf($margin, $share)" :share="$prefill ? $share : null"
-                :show-margin="false" :hidden="['data-commission-target' => 'amount']" data-commission-target="display" data-action="input->commission#input"/>
+                :show-margin="false" :hidden="['data-commission-target' => 'amount']" :rest="$rest" :tone="$tone" :rub-label="$rubLabel" data-commission-target="display" data-action="input->commission#input"/>
         </div>
+        {{ $after ?? '' }}
     </div>
     @if ($margin !== null || $scheme)
         {{-- Услуги подбора у ПРАЙМ — уже подписью на полосе вознаграждения (16.11.2026): строкой — только у ДКП и «страховой

@@ -155,7 +155,7 @@ class SupplierVatTest extends TestCase
         return $deal->fresh()->issuedInvoices()->where('kind', $kind)->where('state', '!=', InvoiceState::Void)->get();
     }
 
-    /** Подбор в счёте за ТС по умолчанию при любой ставке; отдельной ссылкой — выбором (24.11.2026, `SetSelectionApart`). */
+    /** Подбор в счёте за ТС по умолчанию при любой ставке; ссылкой — сколько не легло в счёт (`car_price`, 25.11.2026; до того переключателем). */
     public function test_selection_in_car_invoice_by_default_and_apart_by_choice(): void
     {
         $deal = $this->deal(22);
@@ -166,14 +166,15 @@ class SupplierVatTest extends TestCase
         $this->assertCount(0, $this->live($deal, ChargeKind::Selection));
 
         $admin = User::where('phone', '79000000001')->firstOrFail();
-        app(\App\Offers\Actions\SetSelectionApart::class)($deal->fresh(), true, $admin);
+        app(\App\Offers\Actions\UpdateDealMoney::class)($deal->fresh(), $admin, 30000, carPrice: 944000, setCarPrice: true);
         $this->assertEquals(944000, $this->live($deal, ChargeKind::Sale)->sole()->total, 'счёт за ТС — на закупочную');
         $this->assertSame(944000, $deal->fresh()->contract->price);
         $fee = $this->live($deal, ChargeKind::Selection)->sole();
         $this->assertEquals(1050000 - 30000 - 944000, $fee->total, 'подбор — остаток, своим счётом');
         $this->assertSame(5, $fee->vatRate());
 
-        app(\App\Offers\Actions\SetSelectionApart::class)($deal->fresh(), false, $admin);
+        app(\App\Offers\Actions\UpdateDealMoney::class)($deal->fresh(), $admin, 30000, carPrice: 1050000 - 30000, setCarPrice: true);
+        $this->assertNull($deal->fresh()->contract->car_price, 'всё в счёте — умолчание ПРАЙМ');
         $this->assertEquals(1050000 - 30000, $this->live($deal, ChargeKind::Sale)->sole()->total);
         $this->assertCount(0, $this->live($deal, ChargeKind::Selection), 'ссылка подбора погашена');
     }

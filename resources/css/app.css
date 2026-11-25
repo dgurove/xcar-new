@@ -123,6 +123,13 @@
   /* Word — синим, как сам Word (19.11.2026, владелец: «docx иконка должна быть синей, а не зелёной, везде»); Excel — зелёным (`open`). */
   --color-word: #1f63d6;
   --color-word-soft: #e7effc;
+  /* Доли цены продажи (25.11.2026, шкала «Продажи» и полосы шторки денег сделки): закупочная — серым, сверх неё в счёте — светлым
+     лаймом, подбор ссылкой — лаймом (`--color-accent`), вознаграждение — жёлтым (владелец: «закупочную серой, вознаграждение
+     жёлтым»), наличные мимо счёта — светло-серым. */
+  --color-share-cost: #c8c8c8;
+  --color-share-car: #d3e59b;
+  --color-share-mgr: #f2c230;
+  --color-share-cash: #ececec;
   /* Красный — один токен на все хосты (16.11.2026, владелец: «приятный красный, как на iOS, везде; розово-красный бесит»): системный
      красный iOS, в тёмной теме — его тёмный вариант. Своих красных мимо токена нет. */
   --color-danger: #ff3b30;
@@ -303,6 +310,10 @@ html.kb-open { --home-gap: 0px; }
   --color-closed-soft: #3a3a3c;
   --color-word: #6ea4ff;
   --color-word-soft: #17263f;
+  --color-share-cost: #48484a;
+  --color-share-car: #4d6414;
+  --color-share-mgr: #d9a821;
+  --color-share-cash: #5a5a5e;
   --color-danger: #ff453a;
   --color-danger-soft: #3b1311;
   --color-req-release: #d0587a;
@@ -714,6 +725,16 @@ html.kb-open { --home-gap: 0px; }
   .reward-bar { position: relative; height: 2.75rem; border-radius: var(--radius-m); background: var(--color-surface-3); overflow: hidden; container-type: inline-size; touch-action: pan-y; }
   .reward-bar-fill { position: absolute; inset: 0 auto 0 0; width: var(--p, 0%); background: var(--color-accent); overflow: hidden; }
   .reward-bar.is-over .reward-bar-fill { background: var(--color-danger); }
+  /* Шторка денег сделки (25.11.2026, `x-deal.price-money`): доля менеджера — тёмно-серым, остаток в счёт — светлым лаймом, как на
+     шкале «Продажи» (`x-deal.money-scale`); в «Принять» и «Отдать» полоса лаймовая, как была. */
+  .reward-bar--mgr .reward-bar-fill { background: var(--color-share-mgr); }
+  .reward-bar--mgr .reward-bar-fill .reward-bar-text, .reward-bar--mgr .reward-bar-fill .reward-bar-text > :last-child { color: #1d1d1b; }
+  .reward-bar--car .reward-bar-fill { background: var(--color-share-car); }
+  .reward-bar--car .reward-bar-fill .reward-bar-text, .reward-bar--car .reward-bar-fill .reward-bar-text > :last-child { color: var(--color-ink); }
+  /* «+ Наличными мимо счёта» — лаймовым словом, нажатие раскрывает поле (`<details>`, раскрыт, когда сумма есть). */
+  .cash-part > summary { list-style: none; cursor: pointer; width: fit-content; font-size: var(--text-sm); }
+  .cash-part > summary::-webkit-details-marker { display: none; }
+  .cash-part[open] > summary { display: none; }
   .reward-bar-text { position: absolute; inset: 0 auto 0 0; width: 100cqw; display: flex; align-items: center; justify-content: space-between; gap: .75rem; padding-inline: .875rem; font-size: var(--text-sm); white-space: nowrap; color: var(--color-ink); pointer-events: none; }
   .reward-bar-text > :last-child { color: var(--color-ink-muted); }
   .reward-bar-fill .reward-bar-text, .reward-bar-fill .reward-bar-text > :last-child { color: #fff; }
@@ -2115,6 +2136,29 @@ html.kb-open { --home-gap: 0px; }
   /* Поступление по счёту (`x-deal.receipts`, 23.11.2026): «Оплата от …», под ней откуда, сумма справа; строка — ссылка на операцию. */
   .deal-receipt { min-height: 0; padding-block: .5rem; }
   .sale-row-value { flex-shrink: 0; max-width: 65%; text-align: right; }
+  /* Шкала долей цены продажи (`x-deal.money-scale`, 25.11.2026, вариант 1 макета): 12 px под ценой в той же строке, доли встык через
+     2 px; закупочная — постоянные 30 %, остальное — по суммам. Строки долей — с точкой того же цвета у подписи. */
+  .sale-row--scale { flex-wrap: wrap; row-gap: .625rem; }
+  /* Деньги одной плашкой (25.11.2026, владелец: «убрать разделения, это как одно кликабельное»): цена, шкала и строки долей без
+     линий, нажатие — шторка денег. */
+  .sale-money { flex-direction: column; align-items: stretch; gap: .375rem; width: 100%; text-align: left; }
+  .sale-money .money-scale { margin-block: .25rem .375rem; flex-basis: auto; }
+  .sale-money-line { display: flex; align-items: baseline; justify-content: space-between; gap: .75rem; }
+  .sale-money-line > :first-child { display: flex; align-items: baseline; flex-wrap: wrap; column-gap: .375rem; min-width: 0; }
+  .sale-money-line > :first-child > .share-dot { margin-right: .125rem; align-self: center; }
+  .sale-money-line > :last-child { flex-shrink: 0; text-align: right; }
+  .sale-money-chev { display: inline-block; vertical-align: middle; margin-left: .25rem; }
+  .money-scale { display: flex; gap: 2px; flex-basis: 100%; height: .75rem; border-radius: var(--radius-s); overflow: hidden; }
+  .money-scale-seg { flex: 0 1 0; min-width: 3px; }
+  .money-scale-seg--cost { flex: 0 0 30%; background: var(--color-share-cost); }
+  .money-scale-seg--cost.is-whole { flex-grow: 1; }
+  .money-scale-seg--car, .share-dot--car { background: var(--color-share-car); }
+  .money-scale-seg--link, .share-dot--link { background: var(--color-accent); }
+  .money-scale-seg--mgr, .share-dot--mgr { background: var(--color-share-mgr); }
+  .money-scale-seg--cash, .share-dot--cash { background: var(--color-share-cash); }
+  .share-dot--cost { background: var(--color-share-cost); }
+  .money-scale-seg--rest { background: var(--color-surface-3); }
+  .share-dot { display: inline-block; width: .625rem; height: .625rem; border-radius: 3px; margin-right: .5rem; flex-shrink: 0; }
   .signed-add.sale-row { cursor: pointer; }
   /* Сумма к переводу поставщику — числом окна (17), не 26: была крупнее всего в окне. */
   /* Сумма «Оплаты поставщику» — как цена продажи в «Продаже»: 15 полужирным (22.11.2026, владелец: «шрифты скачут»). */

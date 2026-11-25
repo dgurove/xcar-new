@@ -57,7 +57,7 @@ use Spatie\MediaLibrary\InteractsWithMedia;
  * остальное — услуги подбора (`ours`). Выплат менеджеру, режима «выплачиваем» и зачёта «удержано» в системе нет.
  */
 #[Fillable(['manager_sees', 'offer_id', 'bid_id', 'buyer_id', 'amount', 'cost', 'supplier_cost', 'owner_price', 'share', 'commission', 'scheme', 'garage_payer', 'parallel', 'notes', 'closed_at', 'cancelled_at', 'close_reason', 'close_note', 'agreed_at', 'buyer_asked_at', 'signing_slots', 'signing_address', 'signing_at', 'signing_asked_at', 'signing_wish', 'prepaid_at', 'supplier_paid_at', 'contract_signed_at', 'contract_signed_by', 'paid_in_at', 'dates_by_hand',
-    'receiver_user_id', 'receiver_name', 'receiver_phone', 'receiver_at', 'auction_at', 'buyer_party_id', 'payer_party_id', 'fee_seller', 'selection_apart', 'shadow_stage_id', 'shadow_at', 'reissue_at'])]
+    'receiver_user_id', 'receiver_name', 'receiver_phone', 'receiver_at', 'auction_at', 'buyer_party_id', 'payer_party_id', 'fee_seller', 'shadow_stage_id', 'shadow_at', 'reissue_at'])]
 class Deal extends Model implements HasMedia
 {
     use FastAttributes;
@@ -79,7 +79,7 @@ class Deal extends Model implements HasMedia
 
     protected function casts(): array
     {
-        return ['scheme_at' => 'datetime', 'parallel' => 'bool', 'selection_apart' => 'bool', 'amount' => 'int', 'cost' => 'int', 'supplier_cost' => 'int', 'owner_price' => 'int', 'share' => 'int', 'commission' => 'int', 'scheme' => DealScheme::class, 'garage_payer' => GaragePayer::class, 'closed_at' => 'datetime', 'cancelled_at' => 'datetime', 'agreed_at' => 'datetime', 'buyer_asked_at' => 'datetime', 'signing_slots' => 'array', 'signing_at' => 'datetime', 'signing_asked_at' => 'datetime', 'signing_wish' => 'array', 'prepaid_at' => 'datetime', 'supplier_paid_at' => 'datetime', 'contract_signed_at' => 'datetime', 'paid_in_at' => 'datetime', 'dates_by_hand' => 'array', 'receiver_at' => 'datetime', 'auction_at' => 'datetime', 'shadow_at' => 'datetime', 'reissue_at' => 'datetime', 'manager_sees' => 'array'];
+        return ['scheme_at' => 'datetime', 'parallel' => 'bool', 'amount' => 'int', 'cost' => 'int', 'supplier_cost' => 'int', 'owner_price' => 'int', 'share' => 'int', 'commission' => 'int', 'scheme' => DealScheme::class, 'garage_payer' => GaragePayer::class, 'closed_at' => 'datetime', 'cancelled_at' => 'datetime', 'agreed_at' => 'datetime', 'buyer_asked_at' => 'datetime', 'signing_slots' => 'array', 'signing_at' => 'datetime', 'signing_asked_at' => 'datetime', 'signing_wish' => 'array', 'prepaid_at' => 'datetime', 'supplier_paid_at' => 'datetime', 'contract_signed_at' => 'datetime', 'paid_in_at' => 'datetime', 'dates_by_hand' => 'array', 'receiver_at' => 'datetime', 'auction_at' => 'datetime', 'shadow_at' => 'datetime', 'reissue_at' => 'datetime', 'manager_sees' => 'array'];
     }
 
     public function offer(): BelongsTo
@@ -603,22 +603,56 @@ class Deal extends Model implements HasMedia
     }
 
     /**
-     * Подбор отдельной ссылкой, а не в счёте за ТС (`deals.selection_apart`, переключатель в шторке «Цена и вознаграждение»).
-     * 20.11.2026 подбор отделялся сам, когда НДС поставщика не 5 % ПРАЙМ (владелец: «чтобы мозги не выносили в бухгалтерии»), и у
-     * Совкомбанка без НДС — всегда; 24.11.2026 владелец по BMW X6 2611164186: «если через ПРАЙМ, должно быть в стоимость ТС в счёте
-     * включено; можно функцию, чтобы отдельно ссылкой, но по умолчанию счёт единый». Тогда счёт за ТС и ДКП — на закупочную, подбор
-     * (цена − вознаграждение − наличные − закупочная) — своим счётом ПРАЙМ по ссылке, 5 %. **Р.О.С. — всегда отдельно** (24.11.2026,
-     * владелец: «Р.О.С. не в счёте, Р.О.С. отдельно ссылкой должен быть»): счёт Р.О.С. — на закупочную, подбор — ссылкой, выбора нет.
+     * Сколько покупатель платит нашему юрлицу по счёту за ТС и ДКП (ПРАЙМ / Р.О.С. не гаража) — вписывается (25.11.2026, владелец по
+     * 7806/046/03674/26: «должен быть ввод цены, которая на счёт, а не строго закупочная»; Р.О.С. 1 700 000 при закупочной 1 671 000).
+     * Цена продажи = счёт + подбор ссылкой + вознаграждение + наличные мимо счёта, ссылка — остаток (`linkDue`). Не вписано
+     * (`deal_contracts.car_price` пусто) — умолчание: Р.О.С. — закупочная, ПРАЙМ — всё в счёте (24.11.2026, владелец: «по умолчанию
+     * счёт единый»; у Совкомбанка ссылка — только через «Вы уверены?»). Вписанное — не меньше закупочной и не больше цены минус
+     * вознаграждение и наличные (цену уменьшили позже — ссылка не уходит в минус). null — денег не знаем.
      */
-    public function splitsSelection(): bool
+    public function carPrice(): ?int
     {
-        return $this->moneyKnown() && ($this->seller() === Seller::Ros || ($this->seller() === Seller::Prime && $this->selection_apart));
+        if (! $this->moneyKnown()) {
+            return null;
+        }
+        $set = $this->contract->car_price;
+        if ($set === null) {
+            return $this->carDefault();
+        }
+
+        return max((int) $this->cost, min($this->carCap(), (int) $set));
     }
 
-    /** Подбор можно вынести из счёта за ТС выбором: ПРАЙМ продаёт (у Р.О.С. он отдельно всегда), не гараж, деньги известны. */
+    /** Счёт за ТС по умолчанию: Р.О.С. — закупочная, ПРАЙМ — цена минус вознаграждение и наличные. */
+    public function carDefault(): int
+    {
+        return $this->seller() === Seller::Ros ? (int) $this->cost : $this->carCap();
+    }
+
+    /** Сколько покупатель платит нам всего, кроме вознаграждения менеджера и наличных мимо счёта: счёт за ТС и ссылка подбора. */
+    public function carCap(): int
+    {
+        return max(0, (int) $this->amount - (int) $this->commission - (int) $this->contract?->cash_part);
+    }
+
+    /** Подбор ссылкой у ПРАЙМ / Р.О.С. — что не легло в счёт за ТС; null — денег не знаем. */
+    public function linkDue(): ?int
+    {
+        $car = $this->carPrice();
+
+        return $car === null ? null : max(0, $this->carCap() - $car);
+    }
+
+    /** Подбор отдельной ссылкой: у ПРАЙМ / Р.О.С. в счёт за ТС легло не всё (`carPrice`). */
+    public function splitsSelection(): bool
+    {
+        return ($this->linkDue() ?? 0) > 0;
+    }
+
+    /** Счёт за ТС можно делить с подбором (шкала «в счёт | ссылкой» в шторке денег): ПРАЙМ или Р.О.С., не гараж, деньги известны. */
     public function canSplitSelection(): bool
     {
-        return $this->moneyKnown() && $this->seller() === Seller::Prime;
+        return $this->moneyKnown();
     }
 
     /** Счёт ПРАЙМ / Р.О.С. за ТС не гаража с известными ценой, закупочной и договором — его можно делить с подбором. */
@@ -1285,7 +1319,7 @@ class Deal extends Model implements HasMedia
             // Вознаграждение не назначено — подбор неизвестен (22.11.2026, владелец: «пока явно не указали, что вознаграждение 0,
             // нельзя писать, что он нам якобы должен 80 тыщ»): счёта нет, в «Оплатах» — «назначить».
             $this->rewardPending() => 0,
-            $this->splitsSelection() => max(0, (int) $this->amount - (int) $this->commission - (int) $this->contract?->cash_part - (int) $this->cost),
+            $this->splitsSelection() => (int) $this->linkDue(),
             $this->paysSelection() => (int) $this->selectionBase() - (int) $this->commission,
             default => 0,
         };

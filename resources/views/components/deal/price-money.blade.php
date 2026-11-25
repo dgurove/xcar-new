@@ -1,51 +1,47 @@
 {{-- Цена продажи сделки одной шторкой (18.11.2026, владелец выбрал «Г + А»: «они путают, что такое сумма договора и что такое цена
-     продажи»): цена продажи, вознаграждение и «Часть наличными мимо счёта» (`deal_contracts.cash_part`) — `x-offer.money-form` с полем
-     цены (`priced`) → `PUT /work/deals/{id}/money` (`DealController::money`); ниже — во что это выходит («Счёт и договор: N»,
-     `DealContract::priceFor`) и НДС договора сегментом (сохраняется сразу, `PUT /work/deals/{id}/contract`). Суммы договора руками
-     нет: договор и счёт считаются сами. Открывают: цена в шапке «Продажи», пункт «⋯» и окно «Счёт невозможно сформировать»
-     (`x-deal.invoice-gaps`). Гаражная Совкомбанка без цены — как «Продаю» (машина «Продана», вознаграждение по доле, если не вписано). --}}
+     продажи»): цена продажи, вознаграждение — `x-offer.money-form` с полем цены (`priced`) → `PUT /work/deals/{id}/money`
+     (`DealController::money`); ниже — НДС договора сегментом (сохраняется сразу, `PUT /work/deals/{id}/contract`). Открывают: строки
+     «Продажи», пункт «⋯» и окно «Счёт невозможно сформировать» (`x-deal.invoice-gaps`). Гаражная Совкомбанка без цены — как «Продаю»
+     (машина «Продана», вознаграждение по доле, если не вписано).
+     25.11.2026 (владелец выбрал из макетов «Б»: «нужны шкалы, что куда от цены продажи»): у ПРАЙМ / Р.О.С. две полосы — вознаграждение
+     «менеджеру | остаётся» и под ним остаток «в счёт | ссылкой» (`x-deal.invoice-split`, сколько на счёт за ТС — `car_price`); «Наличными
+     мимо счёта» (`deal_contracts.cash_part`) — строкой «+», раскрыта, когда сумма есть. Переключателя «подбор в счёте | ссылкой» больше нет. --}}
 @props(['deal', 'submit' => 'Сохранить'])
 @php
     use App\Offers\DealContract;
     use App\Support\Money;
     $contract = $deal->hasContract() && $deal->schemeOf()->paysCar() ? DealContract::for($deal) : null;
     $total = $contract ? DealContract::priceFor($deal) : null;
-    $nb = fn (string $s) => str_replace(' ', "\u{00A0}", $s);
     $fid = 'deal-price-'.$deal->id;
-    // Выбор «где подбор» — у счёта ПРАЙМ за ТС, пока по счетам не платили; суммы — по нынешним деньгам сделки.
-    $one = $contract && $deal->amount !== null ? max(0, (int) $deal->amount - (int) $deal->commission - (int) $contract->cash_part) : null;
-    $apart = $contract && $one !== null && $deal->canSplitSelection() && $deal->moneyEditable() && ! $deal->rewardPending()
-        ? ['one' => $one, 'car' => (int) $deal->cost, 'fee' => max(0, $one - (int) $deal->cost)] : null;
+    // Делить счёт и ссылку — у ПРАЙМ / Р.О.С. с известными ценой и закупочной (шторку и так открывают, только пока по счетам не платили);
+    // вознаграждение полоса берёт из той же формы.
+    $split = $contract && $deal->canSplitSelection();
+    $cash = old('cash_part', $contract?->cash_part);
+    // Закупочная ПРАЙМ / Р.О.С. — первым полем (25.11.2026, владелец: «закупочную в этом окне», «первым закупочная, вторым продажная»).
+    $costEdit = $deal->isPrime() && ! $deal->isGarage() && ! $deal->isAuction() && $deal->cost !== null;
 @endphp
 <x-offer.money-form :action="'/work/deals/'.$deal->id.'/money'" method="put" :amount="$deal->amount" priced :cost="$deal->cost" :commission="$deal->commission ?? ($deal->namesBuyer() ? $deal->suggestedCommission() : null)" :stored="$deal->commission" :fee="! $deal->isDirect()"
     :scheme="\App\Offers\DealScheme::choiceFor($deal->offer->vendor?->deal_format, $deal->schemeOf())" scheme-locked :owner-price="$deal->owner_price" :owner-locked="true"
-    :supplier-cost="$deal->supplier_cost" :share="$deal->isGarage() ? null : $deal->buyer?->deal_share" :prefill="$deal->commission === null" :submit="$submit" :id="$fid">
+    :supplier-cost="$deal->supplier_cost" :share="$deal->isGarage() ? null : $deal->buyer?->deal_share" :prefill="$deal->commission === null" :submit="$submit" :id="$fid"
+    :rest="$split ? 'остаётся' : 'Подбор'" tone="mgr" :cost-editable="$costEdit" cost-first cost-label="Закупочная, ₽" rub-label="Вознаграждение, ₽">
     <div class="flex flex-col gap-3">
         <x-ui.field name="amount" label="Цена продажи, ₽" :value="$deal->amount ? Money::nums($deal->amount) : null" :id="$fid.'-amount'" required
             data-commission-target="price" data-action="input->commission#input"/>
-        @if ($contract)
-            {{-- Редкий случай (владелец: «сумма договора меняется в очень редких случаях, когда часть наличными отдали»). --}}
-            <x-ui.field name="cash_part" label="Часть наличными мимо счёта, ₽" :value="$contract->cash_part ? Money::nums($contract->cash_part) : null" :id="$fid.'-cash'" placeholder="0"/>
-            @if ($apart)
-                {{-- Подбор — в счёте за ТС или отдельной ссылкой (24.11.2026, владелец: «по умолчанию счёт единый»; `Deal::splitsSelection`):
-                     выбор сохраняется вместе с ценой (`DealController::money` → `SetSelectionApart`), строка ниже — во что выйдет каждый. --}}
-                {{-- У Совкомбанка подбор всегда в счёте за ТС (25.11.2026, владелец) — «Отдельной ссылкой» своим «Вы уверены?». --}}
-                @php $sovcom = $deal->offer->vendor?->parser === \App\Vendors\Parser::Sovcombank; @endphp
-                <div class="flex flex-col gap-1.5" data-controller="reveal{{ $sovcom ? ' confirm-pick' : '' }}"
-                    @if ($sovcom) data-confirm-pick-value-value="1" data-confirm-pick-title-value="{{ \App\Offers\Warnings::TITLE }}"
-                        data-confirm-pick-text-value="{{ \App\Offers\Warnings::SELECTION_APART_SOVCOM }}" data-confirm-pick-ok-value="Да, отдельной ссылкой"
-                        data-confirm-pick-cancel-value="{{ \App\Offers\Warnings::CANCEL }}" data-action="change->confirm-pick#pick" @endif>
-                    <span class="field-label">Услуги подбора</span>
-                    <x-ui.segment name="selection_apart" :options="['0' => 'В счёте за ТС', '1' => 'Отдельной ссылкой']" :value="$deal->selection_apart ? '1' : '0'" pick/>
-                    <p class="text-sm text-ink-muted" data-reveal-target="pane" data-reveal-key="0">Счёт и договор: <span class="nums">{{ Money::rub($apart['one']) }}</span></p>
-                    <p class="text-sm text-ink-muted" data-reveal-target="pane" data-reveal-key="1">Счёт и договор: <span class="nums">{{ Money::rub($apart['car']) }}</span>, подбор ссылкой: <span class="nums">{{ Money::rub($apart['fee']) }}</span></p>
-                </div>
-            @elseif ($total !== null && $deal->splitsSelection() && $one !== null)
-                {{-- Р.О.С. — подбор всегда отдельной ссылкой ПРАЙМ (24.11.2026, владелец), выбора нет. --}}
-                <p class="text-sm text-ink-muted">Счёт и договор: <span class="nums">{{ Money::rub($total) }}</span>, подбор ссылкой: <span class="nums">{{ Money::rub(max(0, $one - $total)) }}</span></p>
-            @elseif ($total !== null)<p class="text-sm text-ink-muted">Счёт и договор: <span class="nums">{{ Money::rub($total) }}</span></p>@endif
-        @endif
     </div>
+    @if ($contract)
+        <x-slot:after>
+            @if ($split)
+                <x-deal.invoice-split :deal="$deal" :id="$fid"/>
+            @elseif ($total !== null)
+                <p class="text-sm text-ink-muted">Счёт и договор: <span class="nums">{{ Money::rub($total) }}</span></p>
+            @endif
+            {{-- Редкое (владелец: «сумма договора меняется в очень редких случаях, когда часть наличными отдали») — строкой «+». --}}
+            <details class="cash-part" @if ($cash || $errors->has('cash_part')) open @endif>
+                <summary class="text-accent-text">+ Наличными мимо счёта</summary>
+                <x-ui.field name="cash_part" label="Наличными мимо счёта, ₽" :value="$cash ? Money::nums((int) Money::rubles((string) $cash)) : null" :id="$fid.'-cash'" placeholder="0"/>
+            </details>
+        </x-slot:after>
+    @endif
 </x-offer.money-form>
 @if ($contract && auth()->user()?->canEditDeals())
     <form method="post" action="/work/deals/{{ $deal->id }}/contract" data-controller="autosubmit" data-sheet-clean class="mt-4 flex flex-col gap-1.5">

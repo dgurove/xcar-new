@@ -24,7 +24,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  * тот же `seller` (сам из договора комиссии Совкомбанка — `FillCommissionOwner`), номер — `commissionNo`. НДС договора —
  * выбором в CRM (`vatRate`).
  */
-#[Fillable(['deal_id', 'seller_party_id', 'buyer_user_id', 'payer', 'price', 'city', 'signed_at', 'ready_at', 'issuer', 'number', 'year', 'commission_no', 'vat_rate', 'cash_part', 'supplier_price', 'supplier_purpose', 'supplier_requisites', 'shown_at', 'shown_by', 'code', 'numbered_on', 'edited_at', 'edited_by', 'edited_base', 'draft_party_id'])]
+#[Fillable(['deal_id', 'seller_party_id', 'buyer_user_id', 'payer', 'price', 'city', 'signed_at', 'ready_at', 'issuer', 'number', 'year', 'commission_no', 'vat_rate', 'cash_part', 'car_price', 'supplier_price', 'supplier_purpose', 'supplier_requisites', 'shown_at', 'shown_by', 'code', 'numbered_on', 'edited_at', 'edited_by', 'edited_base', 'draft_party_id'])]
 class DealContract extends Model
 {
     use FastAttributes;
@@ -35,7 +35,7 @@ class DealContract extends Model
 
     protected function casts(): array
     {
-        return ['price' => 'int', 'signed_at' => 'date', 'ready_at' => 'datetime', 'issuer' => Seller::class, 'number' => 'int', 'year' => 'int', 'vat_rate' => 'int', 'supplier_price' => 'int', 'supplier_requisites' => 'array', 'shown_at' => 'datetime', 'numbered_on' => 'date', 'invoice_without_reg_at' => 'datetime', 'cash_part' => 'int', 'edited_at' => 'datetime'];
+        return ['price' => 'int', 'signed_at' => 'date', 'ready_at' => 'datetime', 'issuer' => Seller::class, 'number' => 'int', 'year' => 'int', 'vat_rate' => 'int', 'supplier_price' => 'int', 'supplier_requisites' => 'array', 'shown_at' => 'datetime', 'numbered_on' => 'date', 'invoice_without_reg_at' => 'datetime', 'cash_part' => 'int', 'car_price' => 'int', 'edited_at' => 'datetime'];
     }
 
     /** Вид документа: физлицо физлицу (ДКП собственника) или ДКП с актом от нашего юрлица. */
@@ -107,8 +107,9 @@ class DealContract extends Model
             // Покупатель с гаражом — его цена гаража, закупочной в договоре нет (24.11.2026).
             $deal->forGarageBuyer() => ($p = $deal->garageCar?->buyer_price) ? (int) $p : null,
             $deal->isGarage() && ! $deal->namesBuyer() => $deal->cost,
-            // Подбор отдельной ссылкой (`Deal::splitsSelection`, выбором с 24.11.2026) — договор и счёт за ТС на закупочную.
-            $deal->splitsSelection() => (int) $deal->cost,
+            // ПРАЙМ / Р.О.С. с известными деньгами — сколько на счёт за ТС (`Deal::carPrice`, вписывается с 25.11.2026), остальное
+            // подбором по ссылке.
+            ($car = $deal->carPrice()) !== null => $car,
             // Цена продажи минус вознаграждение и часть, отданная наличными мимо счёта (18.11.2026, владелец: сумму договора путали
             // с ценой продажи; «сумма договора меняется в редких случаях, когда часть наличными отдали» — `cash_part`).
             $deal->amount !== null => max(0, (int) $deal->amount - (int) $deal->commission - (int) $deal->contract?->cash_part),

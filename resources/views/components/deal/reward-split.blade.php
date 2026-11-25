@@ -8,9 +8,11 @@
      держит поле суммы своими целями и действиями — атрибуты компонента ложатся на него; ползунок и процент шлют ему
      `input`. Разница меняется на лету — хозяин ставит `data-reward-margin-value` (`commission_controller#shareMargin`).
      `follow` — поле идёт за разницей процентом (предзаполнено долей менеджера `users.deal_share`), пока сумму не вписали
-     руками; `share` — доля по умолчанию, когда суммы ещё нет; `showMargin` false — разница уже строкой выше (`money-form`). `hidden` — атрибуты скрытого поля (у `money-form` его цель `amount`). --}}
+     руками; `share` — доля по умолчанию, когда суммы ещё нет; `showMargin` false — разница уже строкой выше (`money-form`). `hidden` — атрибуты скрытого поля (у `money-form` его цель `amount`).
+     `rest` — подпись правой части полосы («Подбор»; в шторке денег сделки ПРАЙМ / Р.О.С. — «остаётся»: его делит вторая полоса
+     «в счёт | ссылкой», `x-deal.invoice-split`, 25.11.2026); `tone` `mgr` — доля менеджера серым, как на шкале «Продажи». --}}
 @props(['name', 'value' => null, 'margin' => null, 'mode' => 'reward', 'label' => 'Вознаграждение', 'id' => null,
-    'hidden' => [], 'follow' => false, 'share' => null, 'showMargin' => true, 'placeholder' => '0', 'error' => null])
+    'hidden' => [], 'follow' => false, 'share' => null, 'showMargin' => true, 'placeholder' => '0', 'error' => null, 'rest' => 'Подбор', 'tone' => null, 'rubLabel' => 'Менеджеру, ₽'])
 @php
     use App\Support\Money;
     $id ??= 'reward-'.uniqid();
@@ -27,19 +29,19 @@
     $hostAction = trim((string) $attributes->get('data-action'));
     $error ??= $name;
 @endphp
-<div class="field reward-split @error($error) field-invalid @enderror" data-controller="reward" data-reward-mode-value="{{ $mode }}" @if ($margin !== null) data-reward-margin-value="{{ $margin }}" @endif @if ($follow) data-reward-follow-value="true" @endif>
+<div class="field reward-split @error($error) field-invalid @enderror" data-controller="reward" data-reward-mode-value="{{ $mode }}" data-reward-rest-value="{{ $rest }}" @if ($tone === 'mgr') data-reward-lead-value="Вознаграждение" @endif @if ($margin !== null) data-reward-margin-value="{{ $margin }}" @endif @if ($follow) data-reward-follow-value="true" @endif>
     <div class="flex items-baseline justify-between gap-3">
         <label for="{{ $id }}" class="field-label">{{ $split ? $label : ($mode === 'ours' ? 'Услуги подбора, ₽' : $label.', ₽') }}</label>
         <span class="field-label nums" data-reward-target="margin" @unless ($split && $showMargin) hidden @endunless @unless ($showMargin) data-off @endunless>разница {{ $split ? Money::nums($margin) : '' }}</span>
     </div>
-    <div class="reward-bar" data-reward-target="bar" style="--p: {{ $pct === null ? 0 : max(0, min(100, $pct)) }}%" @unless ($split) hidden @endunless>
+    <div @class(['reward-bar', 'reward-bar--mgr' => $tone === 'mgr']) data-reward-target="bar" style="--p: {{ $pct === null ? 0 : max(0, min(100, $pct)) }}%" @unless ($split) hidden @endunless>
         <div class="reward-bar-text" aria-hidden="true"><span data-reward-target="mgr"></span><span data-reward-target="ours"></span></div>
         <div class="reward-bar-fill" aria-hidden="true"><div class="reward-bar-text"><span data-reward-target="mgr"></span><span data-reward-target="ours"></span></div></div>
         <input type="range" min="0" max="100" step="5" value="{{ $pct === null ? 0 : (int) (round($pct / 5) * 5) }}" class="reward-bar-range" aria-label="Доля менеджера от разницы" data-reward-target="range" data-action="input->reward#slide">
     </div>
     <div @class(['grid gap-2', 'grid-cols-[minmax(0,1.4fr)_minmax(0,1fr)]' => $split]) data-reward-target="row">
         <div class="field">
-            <label for="{{ $id }}" class="field-label" data-reward-target="rubLabel" @unless ($split) hidden @endunless>Менеджеру, ₽</label>
+            <label for="{{ $id }}" class="field-label" data-reward-target="rubLabel" @unless ($split) hidden @endunless>{{ $rubLabel }}</label>
             <input id="{{ $id }}" type="text" inputmode="decimal" autocomplete="off" placeholder="{{ $placeholder }}"
                 {{ $attributes->except('data-action')->class(['field-input nums']) }}
                 value="{{ $split ? ($reward === null ? '' : Money::nums($reward)) : ($value === null ? '' : Money::nums($value)) }}"
