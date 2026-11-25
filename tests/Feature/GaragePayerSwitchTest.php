@@ -76,7 +76,14 @@ class GaragePayerSwitchTest extends TestCase
         $pickup = \App\Logistics\Transport::openFor($offer->fresh());
         $this->assertSame($manager->id, $pickup->executor_id);
 
+        // Расход по ждущей машине (25.11.2026: «Изменить гараж» сносил строку гаража, расходы уходили каскадом).
+        $car = Car::where('offer_id', $offer->id)->firstOrFail();
+        $car->costs()->create(['title' => 'Эвакуатор', 'amount' => 5000, 'spent_at' => now(), 'payer' => \App\Garage\Payer::cases()[0]]);
+
         $deal = app(Give::class)(new Giving($offer->fresh(), $manager, garage: true, scheme: DealScheme::Insurer, payer: GaragePayer::Manager), $admin);
+        $this->assertSame($car->id, Car::where('offer_id', $offer->id)->sole()->id, 'та же строка гаража');
+        $this->assertSame($deal->id, $car->fresh()->deal_id);
+        $this->assertSame(1, $car->fresh()->costs()->count(), 'расход остался');
 
         $this->assertSame(DealState::Cancelled, $old->fresh()->state);
         $this->assertSame(GaragePayer::Manager, $deal->garage_payer);

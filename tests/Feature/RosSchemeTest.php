@@ -217,4 +217,55 @@ class RosSchemeTest extends TestCase
         $this->assertNotNull($new->fresh()->prepaid_at);
         $this->assertNotNull($new->fresh()->supplier_paid_at);
     }
+
+    /**
+     * Ответ шагу — только в ветке письма и только не разобранный («Ответ не нужен»); «сообщили не письмом» находится и после отката;
+     * оплата поставщику переходит к новой сделке, только когда платило наше юрлицо (25.11.2026, ревью).
+     */
+    public function test_reply_thread_handled_reply_by_hand_and_pay_flags(): void
+    {
+        $deal = $this->deal(true);
+        app(ChangeDealScheme::class)($deal->fresh(), DealScheme::Ros, $this->admin);
+        $deal->fresh()->forceFill(['created_at' => now()->subHour()])->save();
+        $offer = $deal->offer->fresh();
+        $stage = Stage::where('workflow_id', $offer->vendor->workflow(Track::Sale)->id)->where('name', 'Письмо с реквизитами')->firstOrFail();
+        $account = \Illuminate\Support\Facades\DB::table('mail_accounts')->insertGetId(['slug' => 'deal', 'title' => 'deal', 'email' => 'deal@xcar.ru', 'scope' => 'offers',
+            'imap_host' => 'x', 'imap_username' => 'x', 'imap_password' => 'x', 'smtp_host' => 'x', 'smtp_username' => 'x', 'smtp_password' => 'x']);
+        $thread = \App\Mail\Thread::create(['account_id' => $account, 'subject' => '5491/046/00861/26', 'offer_id' => $offer->id]);
+        $other = \App\Mail\Thread::create(['account_id' => $account, 'subject' => 'Вывоз', 'offer_id' => $offer->id]);
+        $msg = fn ($t, string $dir, int $minutes) => \App\Mail\Message::create(['account_id' => $account, 'thread_id' => $t->id, 'direction' => $dir,
+            'from_email' => $dir === 'out' ? 'deal@xcar.ru' : 'a@alfastrah.ru', 'subject' => 'x', 'text_body' => 'x', 'date_at' => now()->subMinutes($minutes),
+            'sent_at' => $dir === 'out' ? now()->subMinutes($minutes) : null]);
+        $letter = $msg($thread, 'out', 30);
+        $at = $letter->sent_at;
+        // Телефон для вывоза в другой ветке — шагу не ответ.
+        $phone = $msg($other, 'in', 20);
+        $offer->log(\App\Offers\OfferEventType::InsurerReplied, null, ['letter' => $phone->id, 'contact' => true]);
+        $this->assertNull(\App\Offers\Listeners\MarkSupplierLetter::replyAfter($offer, $at, $thread->id));
+        // Ответ в ветке, потом «Ответ не нужен» — не воскресает.
+        $reply = $msg($thread, 'in', 15);
+        $offer->log(\App\Offers\OfferEventType::InsurerReplied, null, ['letter' => $reply->id]);
+        $this->assertSame($reply->id, \App\Offers\Listeners\MarkSupplierLetter::replyAfter($offer, $at, $thread->id)?->id);
+        $this->travel(1)->minutes();
+        $position = $offer->fresh()->position(Track::Sale);
+        $position->update(['stage_id' => $stage->id, 'waits_for' => \App\Workflow\WaitsFor::Us,
+            'payload' => ['letter_id' => $letter->id, 'letter_at' => $at->toIso8601String(), 'reply_at' => $reply->date_at->toIso8601String()]]);
+        $this->assertTrue($position->fresh()->setRelation('offer', $offer)->replyHandled());
+        $this->assertNull(\App\Offers\Listeners\MarkSupplierLetter::replyAfter($offer, $at, $thread->id));
+
+        // «Сообщили не письмом» — отметкой с шаблоном; после отката находится.
+        $position->fresh()->update(['payload' => null, 'waits_for' => \App\Workflow\WaitsFor::Us]);
+        $this->travel(1)->minutes();
+        app(\App\Workflow\Actions\SkipLetter::class)($offer->fresh(), $this->admin);
+        $this->assertNotNull(\App\Offers\Listeners\MarkSupplierLetter::byHand($offer->fresh(), $stage, undo: true));
+
+        // «Страховой напрямую»: оплату поставщику делал прежний покупатель — новой сделке не переносится.
+        $previous = $deal->fresh();
+        $previous->forceFill(['scheme' => DealScheme::Insurer, 'prepaid_at' => now(), 'supplier_paid_at' => now(), 'cancelled_at' => now(), 'closed_at' => now()])->save();
+        $new = Deal::create(['offer_id' => $offer->id, 'buyer_id' => $previous->buyer_id, 'amount' => 1150000, 'cost' => $previous->cost, 'scheme' => DealScheme::Insurer]);
+        $offer->forceFill(['deal_id' => $new->id])->save();
+        app(\App\Offers\Actions\Give::class)->handOver($offer->fresh(), $previous, $new, $this->admin);
+        $this->assertNull($new->fresh()->prepaid_at);
+        $this->assertNull($new->fresh()->supplier_paid_at);
+    }
 }

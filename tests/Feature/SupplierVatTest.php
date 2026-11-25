@@ -216,6 +216,21 @@ class SupplierVatTest extends TestCase
         $this->assertNull($fee->fresh()->shown_at);
     }
 
+    /** Тот же менеджер снова (переприём после оплаты, 25.11.2026): оплаченный счёт за ТС — этой же сделке, второй не выставляется. */
+    public function test_same_manager_reaccept_keeps_paid_invoice(): void
+    {
+        $deal = $this->deal(22);
+        $admin = User::where('phone', '79000000001')->firstOrFail();
+        $sale = $this->live($deal, ChargeKind::Sale)->sole();
+        app(\App\Billing\Actions\RecordPayment::class)($sale, $admin, 100000, now(), \App\Billing\PaymentSource::Bank);
+
+        $again = app(\App\Offers\Actions\Give::class)(new \App\Offers\Giving($deal->offer->fresh(), $deal->buyer, amount: 1050000, scheme: DealScheme::Prime, commission: 30000), $admin);
+
+        $this->assertNotSame($deal->id, $again->id);
+        $this->assertSame($again->id, $sale->fresh()->deal_id, 'оплаченный счёт — новой сделке');
+        $this->assertCount(1, $this->live($again, ChargeKind::Sale), 'второго счёта за ТС нет');
+    }
+
     public function test_unknown_supplier_vat_is_without_vat_and_one_invoice(): void
     {
         $deal = $this->deal(null);

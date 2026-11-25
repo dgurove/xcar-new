@@ -92,11 +92,16 @@ final class Give
 
             // Отдаём другому: прежняя сделка отменяется, прежний победитель узнаёт об этом.
             $previous = $offer->deal()->with('bid')->first();
+            $same = false;
             if ($previous) {
                 // Гаражную меняют тому же менеджеру (плательщик, доля — «Изменить гараж», 13.11.2026): его вывоз и место в гараже
                 // остаются — машину не отбирают (было: вывоз Сергея Николаева отменился «Сделка отменена»).
                 $same = $previous->isGarage() && $garage && $manager && $previous->buyer_id === $manager->id;
-                ($this->cancelDeal)($previous, $by, keepCar: $same, keepPickup: $same, same: $same);
+                // Вывоз нашей логистикой (не «забирает сам» прежнего менеджера) машине нужен и при новой сделке — не отменяется
+                // (25.11.2026: переприём отменял вывоз с назначенным водителем, `tellPickupWorkers` ниже его уже не находил).
+                $trip = Transport::openFor($offer);
+                $keepTrip = $same || ($trip && ! $trip->isSelfPickup());
+                ($this->cancelDeal)($previous, $by, keepCar: $same, keepPickup: $keepTrip, same: $same);
                 if ($previous->bid) {
                     BidDeclined::dispatch($previous->bid->refresh(), $by);
                 }
@@ -110,6 +115,13 @@ final class Give
             $bid?->update(['state' => BidState::Accepted, 'decided_at' => now(), 'decided_by' => $by->id]);
 
             $deal = $this->deal($offer, $g, $bid, $manager, $garage, $cost);
+            // Тот же менеджер снова (переприём, «Изменить гараж», 25.11.2026): его оплаченные счета и счета с его заявкой об оплате —
+            // этой сделке, иначе `SyncDealInvoices` выставил бы их заново на полную сумму. Другому менеджеру — нет: это деньги прежнего.
+            if ($previous && $manager && $previous->buyer_id === $manager->id) {
+                \App\Billing\Invoice::where('deal_id', $previous->id)->where('direction', 'issued')
+                    ->whereIn('kind', [\App\Billing\ChargeKind::Sale, \App\Billing\ChargeKind::Selection])
+                    ->where('state', '!=', \App\Billing\InvoiceState::Void)->update(['deal_id' => $deal->id]);
+            }
             $offer->log(OfferEventType::BidAccepted, $by, array_filter(['bid_id' => $bid?->id, 'amount' => $deal->amount, 'commission' => $deal->commission,
                 'garage' => $deal->garage_payer?->value, 'manager' => $bid ? null : $manager?->id,
                 'scheme' => $deal->scheme->value, 'dkp' => $deal->ownerPrice(), 'share' => $deal->share,
@@ -121,7 +133,13 @@ final class Give
             if ($deal->isDirect()) {
                 DealContract::for($deal);
             }
-            if ($garage) {
+            // «Изменить гараж» тому же менеджеру — его строка гаража с расходами переходит к новой сделке (25.11.2026: `ReserveCar` сносил
+            // ждущую строку, расходы уходили каскадом; уже у менеджера — встала бы вторая строка).
+            $kept = $same ? \App\Garage\Car::where('offer_id', $offer->id)->where('deal_id', $previous->id)->first() : null;
+            if ($kept) {
+                $kept->update(['deal_id' => $deal->id] + ($manager?->holdsAsBuyer() ? ['buyer_price' => $g->buyerPrice] : []));
+                \App\Garage\Events\GarageChanged::dispatch($kept);
+            } elseif ($garage) {
                 ($this->reserve)($deal, $by, $manager?->holdsAsBuyer() ? $g->buyerPrice : null);
             }
 
@@ -323,12 +341,16 @@ final class Give
         // от 23.11 повис неразобранным за отменённой сделкой): ждущие разбора ответы поставщика (`ReplyReview`) и, при той же схеме,
         // отметки «поставщику оплачено» / «оплата получена» — деньги поставщику ушли при прежней сделке, «вывоз после оплаты» и
         // тревога обязывающего не возвращаются.
-        \App\Offers\ReplyReview::where('deal_id', $previous->id)->where('state', \App\Offers\ReplyReview::PENDING)->update(['deal_id' => $deal->id]);
-        if ($previous->schemeOf() === $deal->schemeOf() && ($previous->supplier_paid_at || $previous->prepaid_at)) {
+        $moved = \App\Offers\ReplyReview::where('deal_id', $previous->id)->where('state', \App\Offers\ReplyReview::PENDING)->update(['deal_id' => $deal->id]);
+        // Платило поставщику наше юрлицо (ПРАЙМ / Р.О.С.) — деньги не прежнего покупателя; «страховой напрямую» и ДКП платил он сам.
+        if ($previous->schemeOf() === $deal->schemeOf() && $deal->isPrime() && ($previous->supplier_paid_at || $previous->prepaid_at)) {
             $deal->forceFill(['supplier_paid_at' => $deal->supplier_paid_at ?? $previous->supplier_paid_at, 'prepaid_at' => $deal->prepaid_at ?? $previous->prepaid_at])->save();
         }
+        $moved && \App\Offers\Actions\Disclose::publish($deal->setRelation('offer', $offer));
         $stage = $offer->stage();
+        $same = true;
         if ($stage && $previous->isGarageUs() !== $deal->isGarageUs()) {
+            $same = false;
             // Поставщик уже согласовал (маршрут за «Согласием менеджера») — снова на согласие: менеджер жмёт исход своей ветки
             // («Беру в работу» / «Забираю в гараж»), письмо о покупке заново не пишется (13.11.2026, гараж Сергея Николаева:
             // «платим мы» сменили на «платит менеджер»). Иначе — вход сделки ветки.
@@ -336,7 +358,7 @@ final class Give
             $stage = $confirm && Parallels::rank($stage) > Parallels::rank($confirm) ? $confirm : ($stage->workflow->dealEntry($deal) ?? $stage);
         }
 
-        return $stage ? ($this->enter)($offer, $stage, $by) : $offer;
+        return $stage ? ($this->enter)($offer, $stage, $by, $same ? ['handover' => true] : []) : $offer;
     }
 
     /**

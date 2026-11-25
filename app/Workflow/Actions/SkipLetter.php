@@ -30,7 +30,8 @@ final class SkipLetter
             'overdue_at' => null,
             'payload' => [...$payload, 'letter_at' => now()->toIso8601String(), 'letter_by_hand' => true],
         ]);
-        $offer->log(OfferEventType::Note, $by, ['text' => 'Поставщику сообщили не письмом: «'.$position->stage->name.'»']);
+        // Шаблон шага — в отметке (25.11.2026): переприём и откат находят её, как письмо (`MarkSupplierLetter::byHand`).
+        $offer->log(OfferEventType::Note, $by, ['text' => 'Поставщику сообщили не письмом: «'.$position->stage->name.'»', 'by_hand_template' => $position->stage->template_id]);
         // Документы поставщику (Совкомбанк) — ответа не будет: шаг проходит сам.
         \App\Offers\Actions\PassSupplierDocs::after($offer, $by);
 

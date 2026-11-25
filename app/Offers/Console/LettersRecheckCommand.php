@@ -28,12 +28,23 @@ class LettersRecheckCommand extends Command
         foreach ($positions as $position) {
             $offer = $position->offer;
             $sent = MarkSupplierLetter::already($offer, $position->stage);
+            // «Сообщили не письмом» (25.11.2026) — тоже засчитывается.
+            if (! $sent && ($handAt = MarkSupplierLetter::byHand($offer, $position->stage))) {
+                $n++;
+                $this->line("№ {$offer->number} {$offer->title()}: «{$position->stage->name}», сообщили не письмом {$handAt->format('d.m H:i')}");
+                if ($this->option('apply')) {
+                    MarkSupplierLetter::creditByHand($position, $offer, $handAt);
+                    RefreshDeal::of($offer->deal);
+                }
+
+                continue;
+            }
             if (! $sent) {
                 continue;
             }
             $n++;
             $at = $sent->sent_at ?? $sent->date_at ?? now();
-            $reply = MarkSupplierLetter::replyAfter($offer, $at);
+            $reply = MarkSupplierLetter::replyAfter($offer, $at, $sent->thread_id);
             $this->line("№ {$offer->number} {$offer->title()}: «{$position->stage->name}», письмо {$at->format('d.m H:i')} «{$sent->subject}»"
                 .($reply ? ', ответ поставщика '.$reply->date_at?->format('d.m H:i') : ''));
             if ($this->option('apply')) {

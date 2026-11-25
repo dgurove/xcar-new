@@ -141,7 +141,8 @@ class PaymentProofFieldsTest extends TestCase
         $this->assertNull(Position::where('offer_id', $this->offer->id)->where('track', Track::Sale)->value('payload'));
         $entered = $this->offer->events()->where('type', OfferEventType::StageEntered)->latest('id')->first();
         $this->assertSame(['Дата оплаты' => '19 октября 2026', 'Номер платёжки' => '512'], $entered->payload['fields']);
-        $this->assertStringEndsWith('(«Поставщику оплачено»), дата оплаты 19 октября 2026, номер платёжки 512', $entered->text());
+        // С 24.11.2026 «что решили» выходом — словами `Workflow\ExitWhat` (`what`), платёжка в нём же.
+        $this->assertStringEndsWith('(«Поставщику оплачено»): Дата оплаты: 19 октября 2026, Номер платёжки: 512', $entered->text());
     }
 
     public function test_pay_form_keeps_slip_only_for_bank(): void

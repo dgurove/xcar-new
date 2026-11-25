@@ -54,7 +54,9 @@ final class EnterStage
         $for = isset($payload['for']) ? (string) $payload['for'] : null;
         // Без уведомлений («Уже продана…» закрывает давно проданную, `MarkSoldDeal`): `StageEntered::$quiet`.
         $quiet = ! empty($payload['quiet']);
-        unset($payload['letter'], $payload['out'], $payload['label'], $payload['for'], $payload['quiet']);
+        // Переприём на том же этапе (`Give::handOver`, 25.11.2026): слушатели входа ведут себя как при обычном входе (`StageEntered::$handover`).
+        $handover = ! empty($payload['handover']);
+        unset($payload['letter'], $payload['out'], $payload['label'], $payload['for'], $payload['quiet'], $payload['handover']);
         $to->loadMissing(['workflow', 'block', 'exits.to']);
         $track = $to->workflow->track;
         $now = Carbon::now();
@@ -150,16 +152,16 @@ final class EnterStage
         // Откат («Отменить шаг») на шаг с письмом — тоже (25.11.2026): шаг возвращается, каким был, а не «ничей» (новое письмо и ответ
         // поставщика тогда не засчитывались вовсе).
         $letterStep = $track === Track::Sale && $deal?->isActive() && $to->isLetterStep() && ! $ownLetter;
-        if (($awaitsLetter || ($back && $letterStep)) && ($sent = MarkSupplierLetter::already($offer, $to, $before, undo: $back))) {
-            MarkSupplierLetter::credit($position->setRelation('stage', $to), $offer, $sent, $before);
-        } elseif ($awaitsLetter && $before?->stage_id === $to->id && ! empty($before->payload['letter_by_hand'])
-            && (! $to->isRequisitesStep() || $deal->isPrime())) {
-            // «Сообщили не письмом» на этом же шаге (`SkipLetter`) — переприём и «Отдать» его не стирают (25.11.2026): письма в истории
-            // нет, `already` его не найдёт. Реквизиты покупателя (не ПРАЙМ / Р.О.С.) — новой сделке заново.
-            $keep = array_intersect_key($before->payload, array_flip(['letter_at', 'letter_by_hand', 'reply_at']));
-            $position->update(['waits_for' => isset($keep['reply_at']) ? WaitsFor::Us : null,
-                'deadline_at' => isset($keep['reply_at']) ? null : $to->deadlineFor($offer, Carbon::parse($keep['letter_at'] ?? $now)),
-                'payload' => [...($position->payload ?? []), ...$keep]]);
+        // «Сообщили не письмом» (`SkipLetter`) — тоже факт машины: переприём, «Отдать» и откат его не стирают; из двух — что позже.
+        if ($awaitsLetter || ($back && $letterStep)) {
+            $sent = MarkSupplierLetter::already($offer, $to, $before, undo: $back);
+            $handAt = MarkSupplierLetter::byHand($offer, $to, undo: $back);
+            $position->setRelation('stage', $to);
+            if ($handAt && (! $sent || $handAt->gt($sent->sent_at ?? $sent->date_at ?? $handAt))) {
+                MarkSupplierLetter::creditByHand($position, $offer, $handAt);
+            } elseif ($sent) {
+                MarkSupplierLetter::credit($position, $offer, $sent, $before);
+            }
         }
 
         // Оплата за ТС подтверждена (поставщик получил, «платим мы» — оплатили сами): у Альфы только теперь можно забирать
@@ -191,7 +193,7 @@ final class EnterStage
             ...($out ? ['fields' => $out] : []), ...($said ? ['label' => $said] : []), ...($for ? ['for' => $for] : []),
             ...($what ? ['what' => $what] : []),
         ]);
-        StageEntered::dispatch($offer, $track, $from, $to, $exit, $by, $deal, $letter, $quiet);
+        StageEntered::dispatch($offer, $track, $from, $to, $exit, $by, $deal, $letter, $quiet, $handover);
         // Машина сделки на нашей парковке: стало можно забирать — выдача, пропуск, получатель (18.10.2026, одна дверь).
         if ($track === Track::Sale && $deal) {
             DB::afterCommit(function () use ($deal, $by) {

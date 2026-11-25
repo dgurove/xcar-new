@@ -104,8 +104,10 @@ final class CancelDeal
     {
         // Счёт менеджеру, за который ещё не платили (подбор по ДКП выставляется при принятии), гаснет вместе со сделкой —
         // и ссылка на оплату с ним (`CloseLinksWhenSettled`). Оплаченное — история: возврат решает человек.
+        // Менеджер сообщил, что оплатил, и приложил платёжку (заявка ждёт проверки) — счёт не гаснет (25.11.2026): деньги могли прийти,
+        // а `VoidInvoice` погасил бы и саму заявку; решает человек в «Оплатах».
         foreach ($deal->issuedInvoices()->where('state', InvoiceState::Issued)->get() as $invoice) {
-            if (! $invoice->payments()->whereNotIn('source', PaymentSource::soft())->exists()) {
+            if (! $invoice->payments()->whereNotIn('source', PaymentSource::soft())->exists() && ! $invoice->claims()->exists()) {
                 app(VoidInvoice::class)($invoice, $by, $why);
             }
         }

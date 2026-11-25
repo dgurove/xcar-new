@@ -145,7 +145,7 @@ final class MarkSupplierLetter
 
         return OfferEvent::where('offer_id', $offerId)->where('id', '>', $afterId)->where('type', OfferEventType::StageEntered->value)
             ->get(['payload'])->contains(fn (OfferEvent $e) => in_array((int) ($e->payload['from_id'] ?? 0), $stages, true)
-                && ! empty($e->payload['exit']) && empty($e->payload['back']) && (int) ($e->payload['to_id'] ?? 0) !== (int) ($e->payload['from_id'] ?? 0));
+                && ! empty($e->payload['exit']) && empty($e->payload['back']));
     }
 
     /**
@@ -155,24 +155,73 @@ final class MarkSupplierLetter
     public static function credit(Position $position, Offer $offer, Message $sent, ?Position $before = null): void
     {
         $at = $sent->sent_at ?? $sent->date_at ?? now();
-        $payload = [...($position->payload ?? []), 'letter_id' => $sent->id, 'letter_at' => $at->toIso8601String()];
-        // Ответ — из истории (`insurer_replied`) или из прежней позиции того же письма (`OnInsurerReply::mark` события не пишет).
-        $replyAt = self::replyAfter($offer, $at)?->date_at
+        // Ответ — из истории (`insurer_replied` в ветке письма) или из прежней позиции того же письма (`OnInsurerReply::mark` события
+        // не пишет).
+        $replyAt = self::replyAfter($offer, $at, $sent->thread_id)?->date_at
             ?? (($before?->payload['letter_id'] ?? null) === $sent->id && isset($before->payload['reply_at']) ? \Illuminate\Support\Carbon::parse($before->payload['reply_at']) : null);
+        self::mark($position, $offer, $at, ['letter_id' => $sent->id], $replyAt);
+    }
+
+    /** То же для «сообщили не письмом» (`byHand`): ответ — любой после отметки, ветки у неё нет. */
+    public static function creditByHand(Position $position, Offer $offer, \Carbon\CarbonInterface $at): void
+    {
+        self::mark($position, $offer, $at, ['letter_by_hand' => true], self::replyAfter($offer, $at)?->date_at);
+    }
+
+    private static function mark(Position $position, Offer $offer, \Carbon\CarbonInterface $at, array $what, ?\Carbon\CarbonInterface $replyAt): void
+    {
+        $payload = [...array_diff_key($position->payload ?? [], array_flip(['letter_id', 'letter_by_hand', 'reply_at', 'letter_failed', 'letter_bounced'])),
+            ...$what, 'letter_at' => $at->toIso8601String()];
         $position->update($replyAt
             ? ['waits_for' => WaitsFor::Us, 'deadline_at' => null, 'reminded_at' => null, 'overdue_at' => null,
                 'payload' => $payload + ['reply_at' => $replyAt->toIso8601String()]]
-            : ['waits_for' => null, 'deadline_at' => $position->stage->deadlineFor($offer, $at->copy()), 'reminded_at' => null, 'overdue_at' => null,
+            : ['waits_for' => null, 'deadline_at' => $position->stage->deadlineFor($offer, \Illuminate\Support\Carbon::instance($at)->copy()), 'reminded_at' => null, 'overdue_at' => null,
                 'payload' => $payload]);
     }
 
-    /** Последний ответ поставщика по машине позже нашего письма (`insurer_replied` в истории). */
-    public static function replyAfter(Offer $offer, \Carbon\CarbonInterface $at): ?Message
+    /**
+     * Последний ответ поставщика по машине позже нашего письма (`insurer_replied` в истории): в ветке письма (`$thread`; ответ в
+     * чужой ветке — телефон для вывоза, ответ на доп. просьбу — шагу не ответ) и позже «Ответ не нужен» (`Position::replyHandled`) —
+     * разобранный ответ не воскресает.
+     */
+    public static function replyAfter(Offer $offer, \Carbon\CarbonInterface $at, ?int $thread = null): ?Message
     {
         $ids = OfferEvent::where('offer_id', $offer->id)->where('type', OfferEventType::InsurerReplied->value)->latest('id')->limit(20)->get()
             ->map(fn (OfferEvent $e) => $e->payload['letter'] ?? null)->filter()->values();
+        if ($ids->isEmpty()) {
+            return null;
+        }
+        $handled = OfferEvent::where('offer_id', $offer->id)->where('type', OfferEventType::Note->value)->where('payload->reply_handled', true)->max('created_at');
+        $since = $handled && \Illuminate\Support\Carbon::parse($handled)->gt($at) ? \Illuminate\Support\Carbon::parse($handled) : $at;
 
-        return $ids->isEmpty() ? null : Message::whereIn('id', $ids)->where('direction', Direction::In->value)->where('date_at', '>', $at)->latest('date_at')->first();
+        return Message::whereIn('id', $ids)->where('direction', Direction::In->value)->where('date_at', '>', $since)
+            ->when($thread, fn ($q) => $q->where('thread_id', $thread))->latest('date_at')->first();
+    }
+
+    /**
+     * «Сообщили не письмом» этого шага (`SkipLetter`, отметка с шаблоном) — когда; тем же правилом, что письмо (`already`): разговор
+     * не начинался заново, шаг не проходили вперёд (кроме отката), реквизиты — этой сделке или нашего же юрлица.
+     */
+    public static function byHand(Offer $offer, Stage $to, bool $undo = false): ?\Carbon\CarbonInterface
+    {
+        if (! $to->template_id) {
+            return null;
+        }
+        $event = OfferEvent::where('offer_id', $offer->id)->where('type', OfferEventType::Note->value)
+            ->where('payload->by_hand_template', (int) $to->template_id)->latest('id')->first();
+        $letter = OfferEvent::where('offer_id', $offer->id)->where('type', OfferEventType::SupplierLetter->value)->max('id');
+        if (! $event || ($letter && $letter > $event->id) || OfferEvent::supplierTalkBroken($offer->id, $event->id)
+            || (! $undo && self::leftForward($offer->id, $event->id, (int) $to->template_id))) {
+            return null;
+        }
+        if ($to->isRequisitesStep()) {
+            $deal = $offer->deal()->first();
+            if (! $deal || $deal->reissue_at || ($event->created_at->lt($deal->created_at) && ! self::fromOurSeller($offer, $deal, $event->created_at))) {
+                return null;
+            }
+        }
+
+        return $event->created_at;
     }
 
     /** Письмо реквизитов ушло при прежней сделке машины, и тогда, как и сейчас, поставщику платило то же наше юрлицо. */

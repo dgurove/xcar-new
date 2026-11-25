@@ -198,8 +198,8 @@ final class OnInsurerReply
      */
     public function entered(StageEntered $e): void
     {
-        // Переприём на том же шаге (`Give::handOver`: выхода нет, этап тот же, 25.11.2026) — как вход: новому менеджеру та же просьба.
-        if ($e->track !== Track::Sale || $e->to->waits_for !== WaitsFor::Supplier || (! $e->exit && $e->from?->id !== $e->to->id) || $e->letter) {
+        // Переприём на том же шаге (`Give::handOver`, `StageEntered::$handover`, 25.11.2026) — как вход: новому менеджеру та же просьба.
+        if ($e->track !== Track::Sale || $e->to->waits_for !== WaitsFor::Supplier || (! $e->exit && ! $e->handover) || $e->letter) {
             return;
         }
         $deal = $e->deal ?? $e->offer->deal()->first();

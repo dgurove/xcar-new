@@ -128,6 +128,9 @@ class Position extends Model
             'overdue_at' => null,
             'payload' => [...$payload, ...($letter ? ['letter_id' => $letter->id, 'letter_at' => $at->toIso8601String()] : [])],
         ]);
+        // «Ответ не нужен» письма не оставляет — отметка в истории (25.11.2026): переприём или откат не вернут разобранный ответ
+        // (`MarkSupplierLetter::replyAfter`).
+        $letter || $this->offer?->log(\App\Offers\OfferEventType::Note, null, ['text' => 'Ответ поставщика разобран, ждём его', 'reply_handled' => true]);
 
         return true;
     }
