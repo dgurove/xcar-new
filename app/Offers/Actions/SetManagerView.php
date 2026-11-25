@@ -37,7 +37,22 @@ final class SetManagerView
     public function __invoke(Deal $deal, User $by, array $show, array $hide = [], ?string $text = null, ?Message $letter = null, ?Outcome $step = null, array $lines = [], bool $reviews = false): array
     {
         $deal->loadMissing('offer');
-        $items = collect(ManagerView::items($deal))->keyBy('key');
+        // Вложение письма (`att:{id}`, 25.11.2026: любой формат) — сначала документом машины как есть, дальше — как документ.
+        $show = array_values(array_filter(array_map(function (string $k) use ($deal) {
+            if (! str_starts_with($k, 'att:')) {
+                return $k;
+            }
+            $a = \App\Mail\Attachment::with('message.thread')->find((int) substr($k, 4));
+            if (! $a || $a->is_inline || $a->message?->thread?->offer_id !== $deal->offer_id) {
+                return null;
+            }
+            $m = \App\Offers\LetterFiles::ensure($deal->offer, $a);
+            $deal->offer->unsetRelation('media');
+            $deal->offer->carRecord()->unsetRelation('media');
+
+            return $m ? 'file:'.$m->id : null;
+        }, $show)));
+        $items = collect(ManagerView::items($deal->fresh('offer')))->keyBy('key');
         $show = array_values(array_filter(array_unique($show), fn ($k) => isset($items[$k]) && ! $items[$k]['visible'] && $items[$k]['can']));
         $hide = array_values(array_filter(array_unique($hide), fn ($k) => isset($items[$k]) && $items[$k]['visible'] && $items[$k]['can'] && ! in_array($k, $show, true)));
         $label = fn ($k) => $items[$k]['label'];

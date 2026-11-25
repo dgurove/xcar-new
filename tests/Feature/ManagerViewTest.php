@@ -162,4 +162,37 @@ class ManagerViewTest extends TestCase
         $this->assertNull($moved->getCustomProperty('hidden'));
         $this->assertCount(0, $car->fresh()->getMedia('photos'));
     }
+
+    /**
+     * Любое вложение письма — показать менеджеру как есть (25.11.2026, владелец: «почему только одобренный формат?»): .heic с типом
+     * «файл», неизвестный .xyz и PDF — все в окне письма, отмечены; показ кладёт их документами машины, менеджер их скачивает.
+     */
+    public function test_any_letter_attachment_can_be_shown_as_is(): void
+    {
+        Queue::fake();
+        Storage::fake('cache');
+        [$offer, $deal, $letter] = $this->deal();
+        $files = ['image-23-09-26-03-33.heic' => ['application/octet-stream', 'HEICBYTES'], 'расчёт.xyz' => ['application/octet-stream', 'WHATEVER'], 'птс.pdf' => ['application/pdf', '%PDF-1.4 ptc']];
+        $atts = [];
+        foreach ($files as $name => [$mime, $body]) {
+            $a = \App\Mail\Attachment::create(['message_id' => $letter->id, 'filename' => $name, 'mime' => $mime, 'size' => strlen($body), 'path' => 'att/'.md5($name)]);
+            Storage::disk('cache')->put('att/'.md5($name), $body);
+            $atts[$name] = $a;
+        }
+        \App\Offers\ReplyReview::create(['message_id' => $letter->id, 'deal_id' => $deal->id, 'offer_id' => $offer->id, 'state' => \App\Offers\ReplyReview::PENDING]);
+
+        $html = $this->actingAs($this->admin)->get('http://'.config('xcar.crm_host').'/offers/'.$offer->number)->assertOk()->getContent();
+        foreach ($atts as $a) {
+            $this->assertMatchesRegularExpression('/value="att:'.$a->id.'"[^>]*checked/', $html);
+        }
+
+        $this->putView($deal, ['reviews' => 1, 'show' => array_map(fn ($a) => 'att:'.$a->id, array_values($atts))])->assertSessionHasNoErrors();
+        foreach ($atts as $name => $a) {
+            $m = $offer->fresh()->getMedia('papers')->first(fn ($m) => (int) $m->getCustomProperty('attachment') === $a->id);
+            $this->assertNotNull($m, $name);
+            $this->assertTrue(\App\Media\ForManagers::is($m));
+            $this->assertSame($files[$name][1], file_get_contents($m->getPath()));
+            $this->actingAs($this->manager)->get("http://xcar.localhost/files/{$m->id}")->assertOk();
+        }
+    }
 }

@@ -23,7 +23,21 @@
     $letterIds = $letters->pluck('id')->all();
     // Из письма: его документы (картинки — не отмечены: обычно фото машины), контакт, если в письме он есть, строки подписания.
     $proposals = $fromLetter ? Disclosures::proposals($deal, $letters, $letter?->id) : [];
-    $letterItems = $fromLetter ? $items->filter(fn ($i) => $i['media'] && in_array($i['letter'], $letterIds, true))->values() : collect();
+    // Вложения самого письма — все, в любом формате (25.11.2026, владелец: «почему показать можно только одобренный формат?»): уже
+    // лежит документом машины — тем пунктом (видит / не видит), нет — пунктом вложения (`att:{id}`, при показе ляжет как есть).
+    $byKey = $items->keyBy('key');
+    $letterItems = $fromLetter ? $letters->flatMap(fn ($m) => \App\Offers\LetterFiles::of($m)->map(function ($a) use ($offer, $byKey, $m) {
+        $media = \App\Offers\LetterFiles::existing($offer, $a);
+        if ($media && isset($byKey['file:'.$media->id])) {
+            return $byKey['file:'.$media->id];
+        }
+
+        return ['key' => 'att:'.$a->id, 'group' => 'docs', 'icon' => null, 'file' => $a->filename, 'media' => null, 'letter' => $m->id, 'edit' => false,
+            'label' => pathinfo((string) $a->filename, PATHINFO_FILENAME) ?: $a->filename,
+            'sub' => \App\Support\FileSize::short((int) $a->size).', из письма '.Ago::day($m->date_at ?? $m->created_at), 'visible' => false, 'can' => true];
+    }))->unique('key')->values() : collect();
+    // Документы машины из этих писем, что не вложения (распакованные из архива), — тоже.
+    $letterItems = $letterItems->merge($items->filter(fn ($i) => $i['media'] && in_array($i['letter'], $letterIds, true) && ! $letterItems->contains('key', $i['key'])))->values();
     $hasContact = collect($proposals)->contains(fn ($p) => in_array($p['kind'], ['phone', 'name'], true) && str_starts_with((string) $p['group'], 'letter:'));
     $contactItem = $items->firstWhere('key', ManagerView::CONTACT);
     if ($fromLetter && $hasContact && $contactItem['can']) {
