@@ -6393,7 +6393,7 @@ dialog.lightbox:not(.lb-one) .lb-pill--bottom { bottom: calc(var(--lb-strip-bott
   .msg-file-open { display: contents; color: inherit; }
   .msg-file .file-icon { grid-row: 1 / span 2; width: 2.75rem; height: 2.75rem; border-radius: .75rem; font-size: 11px; }
   .msg-file-name { display: flex; min-width: 0; align-self: end; font-size: var(--text-base); font-weight: 500; line-height: 1.25; }
-  .msg-file-sub { grid-column: 2; align-self: start; display: flex; gap: .625rem; margin-top: .125rem; font-size: var(--text-sm); line-height: 1.3; color: var(--color-ink-muted); }
+  .msg-file-sub { grid-column: 2; align-self: start; display: flex; gap: .375rem; margin-top: .125rem; font-size: var(--text-sm); line-height: 1.3; color: var(--color-ink-muted); }
   .msg-file-get { color: var(--color-accent-text); }
   .msg-tick { display: none; }
   .msg.is-mine .msg-tick-sent { display: block; }

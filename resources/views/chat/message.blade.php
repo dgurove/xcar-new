@@ -41,7 +41,7 @@
                     @foreach ($images as $f)<a href="/chats/{{ $m->chat_id }}/files/{{ $f->id }}" data-action="chat#view:prevent"><img src="/chats/{{ $m->chat_id }}/files/{{ $f->id }}" data-thumb="/chats/{{ $m->chat_id }}/files/{{ $f->id }}?thumb=1" alt="" loading="lazy" decoding="async"></a>@endforeach
                 </div>
             @endif
-            {{-- Файл — как в Telegram (25.11.2026, владелец прислал снимок): значок слева, имя, под ним вес и «Скачать»; значок и имя
+            {{-- Файл — как в Telegram (25.11.2026, владелец прислал снимок): значок слева, имя, под ним «вес - Скачать» (дефис — как у Telegram, исключение владельца); значок и имя
                  открывают шторку документов, «Скачать» (`download`, шторка такие не ловит) — сам файл, и PDF тоже. --}}
             @foreach ($docs as $f)
                 @php $href = '/chats/'.$m->chat_id.'/files/'.$f->id; @endphp
@@ -50,7 +50,7 @@
                         <x-ui.file-icon :name="$f->name" :mime="$f->mime"/>
                         <span class="msg-file-name"><x-ui.file-name :name="$f->name"/></span>
                     </a>
-                    <div class="msg-file-sub"><span class="nums">{{ \App\Support\FileSize::short($f->size) }}</span>@if (!$deleted)<a href="{{ $href }}" download="{{ $f->name }}" class="msg-file-get">Скачать</a>@endif</div>
+                    <div class="msg-file-sub"><span class="nums">{{ \App\Support\FileSize::short($f->size) }}</span>@if (!$deleted)<span aria-hidden="true">-</span><a href="{{ $href }}" download="{{ $f->name }}" class="msg-file-get">Скачать</a>@endif</div>
                 </div>
             @endforeach
             @if ($deleted)
