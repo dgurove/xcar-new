@@ -172,6 +172,8 @@ class AlfaPrepayTest extends TestCase
         $deal = $this->accept($offer);
         $this->toPayStep($offer, $deal);
         $this->assertTrue($deal->fresh()->paysSupplierOn($offer->fresh()->stage()));
+        // Город подписания — до документа об оплате (25.11.2026).
+        $deal->forceFill(['signing_settlement_id' => \App\Cars\Settlement::create(['name' => 'Белгород', 'type' => 'г', 'region_code' => '31', 'rank' => 1])->id])->save();
 
         // Подбор оплачен по ссылке — шаг на месте, ход менеджера, вывоз закрыт.
         $selection = $deal->fresh()->issuedInvoices()->sole();
@@ -194,10 +196,9 @@ class AlfaPrepayTest extends TestCase
         $this->assertSame('Подготовка договора', $offer->fresh()->stage()->name);
         app(AssignDealPickup::class)($offer->fresh(), $deal->fresh(), 'manager', $this->admin);
         $this->assertSame('Сначала отметьте «Автомобиль забрал»', $deal->fresh()->closeBlocker());
-        // Договор готов → время → запись подтверждена → «Подписание»: закрыть сделку «Договор подписан» нельзя, пока не забрал.
+        // Подписание в Белгороде — без записи (25.11.2026): «Договор готов» сразу на «Подписание»; закрыть сделку «Договор подписан»
+        // нельзя, пока не забрал.
         $this->exit($offer, 'Договор готов');
-        $this->exit($offer, 'Время согласовано');
-        $this->exit($offer, 'Запись подтверждена');
         $this->assertSame('Подписание', $offer->fresh()->stage()->name);
         $requirement = $deal->fresh()->openRequirement()->firstOrFail();
         $close = $offer->fresh()->stage()->exitsFor(Actor::Manager, $deal->fresh())->first(fn ($e) => $e->label === 'Договор подписан');

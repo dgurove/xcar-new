@@ -42,7 +42,7 @@ final class NudgeInvoice
         $ago = $days < 1 ? 'сегодня' : 'прошло '.$days.' '.\App\Support\Plural::of($days, ['день', 'дня', 'дней']);
         if ($invoice->isDocument()) {
             return 'Отправили '.mb_lcfirst(PayOffer::invoiceName($invoice)).' от '.$invoice->issued_at->format('d.m').' на '.Money::rub(PayOffer::amount($invoice))
-                .', '.$ago.'. Просим приложить платёжное поручение в сделке';
+                .', '.$ago.'. Просим приложить документ об оплате в сделке';
         }
         $link = $invoice->openLink();
 

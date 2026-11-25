@@ -144,6 +144,8 @@ class AppServiceProvider extends ServiceProvider
         }
         // До `Notify`: «Время подписания», названное заранее, проходит само — «Ваш ход» по нему не уходит.
         Event::subscribe(ApplySigningWish::class);
+        // До `Notify`: подписание не в Москве — «Время подписания» и запись проходятся сразу (25.11.2026).
+        Event::subscribe(\App\Offers\Listeners\SkipSigningBooking::class);
         // «Ждём письмо поставщика», а письмо уже есть — ход наш, «Спросить менеджера» (`SupplierLetterWait`).
         Event::subscribe(MarkSupplierLetterWait::class);
         Event::subscribe(Notify::class);

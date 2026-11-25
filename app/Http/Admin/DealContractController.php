@@ -165,7 +165,7 @@ class DealContractController
         }
         $due = $bills->filter(fn ($i) => \App\Billing\Actions\NudgeInvoice::allows($i));
         if ($due->isEmpty()) {
-            return back()->with('toast', 'Напоминать не о чем: оплачено или менеджер уже приложил платёжное поручение');
+            return back()->with('toast', 'Напоминать не о чем: оплачено или менеджер уже приложил документ об оплате');
         }
         if ($data['when'] === 'days') {
             $due->each(fn ($i) => $nudge->later($i, (int) ($data['days'] ?? 1), $request->user()));
@@ -212,7 +212,7 @@ class DealContractController
             return back()->with('toast', 'Не напоминаем');
         }
         if (! \App\Billing\Actions\NudgeInvoice::allows($invoice)) {
-            return back()->with('toast', 'Напоминать не о чем: счёт оплачен или менеджер уже приложил платёжное поручение');
+            return back()->with('toast', 'Напоминать не о чем: счёт оплачен или менеджер уже приложил документ об оплате');
         }
         if ($data['when'] === 'days') {
             $nudge->later($invoice, (int) ($data['days'] ?? 1), $request->user());

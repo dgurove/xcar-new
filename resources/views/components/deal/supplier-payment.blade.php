@@ -15,7 +15,7 @@
     use App\Support\Money;
     $offer = $deal->offer;
     // Платёжка поставщику прямо отсюда (16.11.2026, владелец: «прикрепление платёжки — в «Оплате поставщику» и в шаге сделки тоже,
-    // без этого следующий шаг не продвинется»): та же шторка и тот же адрес, что «Приложить платёжку за менеджера» в шаге
+    // без этого следующий шаг не продвинется»): та же шторка и тот же адрес, что «Приложить документ за менеджера» в шаге
     // (`PaymentProofController`, `pass=1` — шаг проходит); открыта, пока шаг оплаты ждёт документ. После — файлом PDF.
     $proofStage = $offer?->position(\App\Workflow\Track::Sale)?->stage;
     $proofReq = $deal->openRequirement;
@@ -54,7 +54,7 @@
         $insurerState = match (true) {
             $paid => ['оплачено', 'text-open'],
             \App\Workflow\Requirement::where('deal_id', $deal->id)->whereNotNull('done_at')->whereIn('answer->exit', \App\Offers\Documents\PaymentProofPdf::EXITS)->exists() => ['ждём подтверждения поставщика', 'text-ink-muted'],
-            default => ['ждём платёжное поручение', 'text-ink-muted'],
+            default => ['ждём документ об оплате', 'text-ink-muted'],
         };
         $bill = \App\Offers\SupplierInvoice::shown($offer)->first();
     }

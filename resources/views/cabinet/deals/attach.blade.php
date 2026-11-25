@@ -13,16 +13,16 @@
         (bool) $stage?->isPayStep() || (bool) preg_match('/плат[её]ж/iu', (string) $requirement->title) => 'pay',
         default => 'doc',
     };
-    $attachLabel ??= ['contract' => 'Приложить договор', 'pay' => 'Приложить платёжное поручение', 'doc' => 'Приложить документ'][$what];
+    $attachLabel ??= ['contract' => 'Приложить договор', 'pay' => 'Приложить документ об оплате', 'doc' => 'Приложить документ'][$what];
     // Название документа — заполнено: «Договор купли-продажи …», «Платёжное поручение …», иначе что просит шаг («ПТС»).
     $docName = match ($what) {
         'contract' => 'Договор купли-продажи',
-        'pay' => 'Платёжное поручение',
+        'pay' => 'Документ об оплате',
         default => \Illuminate\Support\Str::ucfirst(trim((string) preg_replace('/^(приложите|приложить|пришлите|прислать)\s+/iu', '', (string) $requirement->title))) ?: 'Документ',
     }.' '.$deal->offer->title();
 @endphp
 <div id="requirement-attach">
-    <x-ui.photo-pdf :id="'req-'.$requirement->id" :url="'/deals/'.$deal->id.'/files/doc'" :title="['contract' => 'Договор купли-продажи', 'pay' => 'Платёжное поручение', 'doc' => 'Документ'][$what]" :name="$docName" icon="clip" always
+    <x-ui.photo-pdf :id="'req-'.$requirement->id" :url="'/deals/'.$deal->id.'/files/doc'" :title="['contract' => 'Договор купли-продажи', 'pay' => 'Документ об оплате', 'doc' => 'Документ'][$what]" :name="$docName" icon="clip" always
         :word="$what !== 'pay'" :label="$has ? 'Приложить ещё' : $attachLabel"
         :button="$has ? 'retreat-link mt-1 flex items-center justify-center gap-1.5' : 'btn btn-accent w-full gap-2'"/>
 </div>

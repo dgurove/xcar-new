@@ -56,6 +56,16 @@ final class SigningController
         return back(fallback: '/work/deals/'.$deal->id)->with('toast', 'Покупатель может '.Signing::wishLine($deal));
     }
 
+    /** Город подписания за менеджера (25.11.2026, `SetSigningCity`). */
+    public function city(Request $request, Deal $deal, \App\Offers\Actions\SetSigningCity $set)
+    {
+        abort_unless($request->user()->canEditDeals(), 403);
+        $data = $request->validate(['settlement_id' => ['required', 'integer', 'exists:settlements,id']], ['settlement_id.required' => 'Выберите город']);
+        $deal = $set($deal, \App\Cars\Settlement::findOrFail($data['settlement_id']), $request->user());
+
+        return back(fallback: '/work/deals/'.$deal->id)->with('toast', 'Город подписания: '.$deal->signingCity?->name);
+    }
+
     public function ics(Deal $deal)
     {
         abort_unless(Signing::booked($deal), 404);

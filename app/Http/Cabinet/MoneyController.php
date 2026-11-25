@@ -123,6 +123,10 @@ class MoneyController
         $me = $request->user();
         $invoice = $deal->issuedInvoices()->whereKey((int) $request->input('invoice'))->firstOrFail();
         abort_unless($invoice->isVisibleToManager($me) && ! $invoice->isOwed(), 404);
+        // Чек по счёту и наличные — с городом подписания (25.11.2026); ссылку на оплату картой не держим.
+        if ($request->input('way') !== 'link' && ($gap = $deal->signingCityGap($deal->offer->position(\App\Workflow\Track::Sale)?->stage))) {
+            return redirect($deal->href().'#money')->with('toast', $gap);
+        }
 
         [$toast, $link] = $choice($request, $invoice, $me);
         // «Оплатить» есть и в задаче сделки, и на машине в гараже (гаражная сделка ещё идёт) — ответ туда, откуда платили.
@@ -146,6 +150,10 @@ class MoneyController
         $me = $request->user();
         $invoice = $deal->issuedInvoices()->whereKey((int) $request->input('invoice'))->firstOrFail();
         abort_unless($invoice->isVisibleToManager($me) && ! $invoice->isOwed(), 404);
+        // Город подписания — до документа об оплате (25.11.2026).
+        if ($gap = $deal->signingCityGap($deal->offer->position(\App\Workflow\Track::Sale)?->stage)) {
+            return response()->json(['message' => $gap], 422);
+        }
         $doc = $photos->fromRequest($request, $deal->offer->title());
         $pay = $request->duplicate($request->query->all(), ['way' => 'transfer', 'invoice' => $invoice->id], null, null, ['slip' => $doc['file']]);
         [$toast, $link] = $choice($pay, $invoice, $me);

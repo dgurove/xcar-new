@@ -106,7 +106,7 @@ final class SwapPaymentProof
                 $files->each(fn (Media $m) => $m->delete());
                 ($this->claim)($invoice->fresh(), $by, round($invoice->remaining() - $invoice->claimed(), 2), null,
                     new UploadedFile($tmp, $name, 'application/pdf', null, true), null, PaymentSource::Bank);
-                $offer->log(OfferEventType::Note, $by, ['text' => 'Платёжка поставщику — оплата '.($invoice->seller->config()['name'] ?? 'по счёту').': перенесли, ждём чек поставщику']);
+                $offer->log(OfferEventType::Note, $by, ['text' => 'Документ об оплате поставщику — оплата '.($invoice->seller->config()['name'] ?? 'по счёту').': перенесли, ждём чек поставщику']);
             });
         } finally {
             is_file($tmp) && @unlink($tmp);

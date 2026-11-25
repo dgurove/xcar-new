@@ -94,7 +94,7 @@ final class AttachRequirementFiles
     /** «Платёжное поручение Renault Duster.pdf» (24.11.2026, без номера убытка), следующие — «… 2.pdf». */
     private static function proofName(Requirement $requirement): string
     {
-        $base = pathinfo($requirement->deal ? PaymentProofPdf::fileName($requirement->deal) : 'Платёжное поручение', PATHINFO_FILENAME);
+        $base = pathinfo($requirement->deal ? PaymentProofPdf::fileName($requirement->deal) : 'Документ об оплате', PATHINFO_FILENAME);
         $taken = $requirement->getMedia('files')->pluck('file_name')->all();
         for ($n = 1; in_array($name = $base.($n > 1 ? ' '.$n : '').'.pdf', $taken, true); $n++);
 

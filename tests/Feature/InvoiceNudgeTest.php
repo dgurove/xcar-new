@@ -86,7 +86,7 @@ class InvoiceNudgeTest extends TestCase
         $text = NudgeInvoice::text($invoice->fresh());
         $this->assertStringContainsString('№ '.$invoice->fresh()->number, $text);
         $this->assertStringContainsString('прошло 3 дня', $text);
-        $this->assertStringContainsString('платёжное поручение', $text);
+        $this->assertStringContainsString('документ об оплате', $text);
         $this->assertTrue(Message::where('text', 'like', 'Отправили счёт%')->exists());
         $this->assertNotNull($invoice->fresh()->nudged_at);
 

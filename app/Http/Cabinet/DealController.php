@@ -434,6 +434,21 @@ class DealController
         return $this->back($request, $deal)->with('toast', 'Покупатель может '.Signing::wishLine($deal));
     }
 
+    /** Город подписания (25.11.2026, `SetSigningCity`): чипом или поиском в шторке «Другой город…». */
+    public function signingCity(Request $request, Deal $deal, \App\Offers\Actions\SetSigningCity $set)
+    {
+        $data = $request->validate(['settlement_id' => ['required', 'integer', 'exists:settlements,id']], ['settlement_id.required' => 'Выберите город']);
+        $deal = $set($deal, \App\Cars\Settlement::findOrFail($data['settlement_id']), $request->user());
+
+        return $this->back($request, $deal)->with('toast', 'Город подписания: '.$deal->signingCity?->name);
+    }
+
+    /** Поиск города в шторке «Другой город…» — тот же справочник, что у CRM (`ReferenceController::settlements`). */
+    public function signingPlaces(Request $request, Deal $deal)
+    {
+        return app(\App\Http\Admin\ReferenceController::class)->settlements($request);
+    }
+
     /** Встреча в календарь телефона: подписание на час, с адресом. */
     public function signingIcs(Request $request, Deal $deal)
     {
@@ -486,6 +501,9 @@ class DealController
     {
         $requirement = $deal->openRequirement()->first() ?? $deal->sentPaymentProof();
         abort_unless($requirement, 404);
+        if (! $requirement->done_at && ($gap = $deal->signingCityGap($requirement->stage))) {
+            return response()->json(['message' => $gap], 422);
+        }
         $request->validate(['file' => ['required', 'file', 'max:30720']]);
         $file = $request->file('file');
         try {
@@ -494,7 +512,7 @@ class DealController
             return response()->json(['message' => $e->getMessage()], 422);
         }
         if ($this->proofPassed($deal, $requirement, $answer, $request->user())) {
-            session()->flash('toast', 'Платёжное поручение приложено');
+            session()->flash('toast', 'Документ об оплате приложен');
 
             return Stream::response('');
         }
@@ -510,10 +528,14 @@ class DealController
     {
         $requirement = $deal->openRequirement()->first() ?? $deal->sentPaymentProof();
         abort_unless($requirement && $requirement->asks === Asks::Document, 404);
+        // Город подписания — до документа об оплате (25.11.2026, владелец: «без указания чек пусть не отправляется»).
+        if (! $requirement->done_at && ($gap = $deal->signingCityGap($requirement->stage))) {
+            return response()->json(['message' => $gap], 422);
+        }
         $doc = $photos->fromRequest($request, $deal->offer->title());
         app(AttachRequirementFiles::class)($requirement, $doc['file'], named: true);
         $paid = $this->proofPassed($deal, $requirement, $answer, $request->user());
-        session()->flash('toast', $paid ? 'Платёжное поручение приложено' : 'Приложено: '.$doc['name']);
+        session()->flash('toast', $paid ? 'Документ об оплате приложен' : 'Приложено: '.$doc['name']);
 
         return response()->json(['reload' => true, 'name' => $doc['name'], 'pages' => $doc['pages']]);
     }
@@ -549,6 +571,9 @@ class DealController
             if (! $requirement) {
                 return redirect($deal->href())->with('toast', 'Сейчас чек поставщику не приложить');
             }
+            if (! $requirement->done_at && ($gap = $deal->signingCityGap($requirement->stage))) {
+                return redirect($deal->href().'#money')->with('toast', $gap);
+            }
             app(AttachRequirementFiles::class)($requirement, $request->file('file'));
             if (! $requirement->done_at && ($move = $deal->proofMove($requirement->stage))) {
                 $answer($requirement->fresh(), $move, $me);
@@ -558,6 +583,9 @@ class DealController
         }
         $invoice = $deal->issuedInvoices()->whereKey((int) substr($data['for'], 8))->firstOrFail();
         abort_unless($invoice->isVisibleToManager($me) && ! $invoice->isOwed(), 404);
+        if ($gap = $deal->signingCityGap($deal->offer->position(\App\Workflow\Track::Sale)?->stage)) {
+            return redirect($deal->href().'#money')->with('toast', $gap);
+        }
         $left = round($invoice->remaining() - $invoice->claimed(), 2);
         if ($left <= 0) {
             return redirect($deal->href())->with('toast', 'По этому счёту оплата уже приложена');

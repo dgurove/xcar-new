@@ -144,7 +144,7 @@ class ParallelDealTest extends TestCase
         $this->assertSame('Нет реквизитов', $par->fresh()->shadowStage->name);
         $html = $this->page($this->second, $par);
         $this->assertStringContainsString('Нужны реквизиты', $html);
-        foreach (['Тужиков', 'Оплата счёта', 'Платёжное поручение', 'Счёт от поставщика'] as $leak) {
+        foreach (['Тужиков', 'Оплата счёта', 'Документ об оплате', 'Счёт от поставщика'] as $leak) {
             $this->assertStringNotContainsString($leak, $html, 'параллельный видит: '.$leak);
         }
         // Его «Сделки»: своя строка в «Ваш ход».
@@ -159,7 +159,7 @@ class ParallelDealTest extends TestCase
         $this->assertSame(0, $par->invoices()->count(), 'у параллельной счетов нет');
         Notification::assertSentTo($this->admin, ParallelBuyerNotice::class);
         $html = $this->page($this->second, $par);
-        foreach (['Тужиков', 'Оплата счёта', 'Счёт от поставщика', 'Платёжное поручение'] as $leak) {
+        foreach (['Тужиков', 'Оплата счёта', 'Счёт от поставщика', 'Документ об оплате'] as $leak) {
             $this->assertStringNotContainsString($leak, $html, 'параллельный видит: '.$leak);
         }
 
@@ -205,7 +205,7 @@ class ParallelDealTest extends TestCase
         // Закрытая — без шагов машины: ни оплаты нового, ни его счёта.
         $closed = $this->actingAs($this->first)->get(Surface::Site->url('/deals/'.$main->id));
         if ($closed->status() === 200) {
-            $closed->assertDontSee('Оплата счёта')->assertDontSee('Зайцев')->assertDontSee('Платёжное поручение');
+            $closed->assertDontSee('Оплата счёта')->assertDontSee('Зайцев')->assertDontSee('Документ об оплате');
         } else {
             $closed->assertRedirect();
         }

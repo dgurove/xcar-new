@@ -48,6 +48,6 @@ final class PaymentProofPdf
     {
         // Название и марка с моделью, без номера убытка (24.11.2026, владелец: «номера убытков мы не пишем нигде, марку модель
         // там просто и всё»).
-        return \App\Media\PhotosPdf::fileName('Платёжное поручение', $deal->offer?->title());
+        return \App\Media\PhotosPdf::fileName('Документ об оплате', $deal->offer?->title());
     }
 }

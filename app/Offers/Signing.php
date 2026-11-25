@@ -69,6 +69,30 @@ final class Signing
         return (bool) $stage?->loadedExits()->contains(fn (Outcome $e) => self::slotsExit($e));
     }
 
+    /** В маршруте шага есть запись на подписание (Альфа): шаг «Запись на подписание» с исходом «Поставщик предложил другое время». */
+    public static function routeBooks(Stage $stage): bool
+    {
+        // На запрос: страница сделки спрашивает несколько раз (Octane — статика живёт между запросами, отсюда ключ запроса).
+        if (self::$booksFor !== spl_object_id(request())) {
+            [self::$books, self::$booksFor] = [[], spl_object_id(request())];
+        }
+
+        return self::$books[$stage->workflow_id] ??= Stage::where('workflow_id', $stage->workflow_id)->with('exits')->get()->contains(fn (Stage $s) => self::awaitsSlots($s));
+    }
+
+    /** @var array<int, bool> */
+    private static array $books = [];
+
+    private static ?int $booksFor = null;
+
+    /** Шаг подписания до записи: «Подготовка договора», «Время подписания», «Запись на подписание». */
+    public static function beforeBooking(Stage $stage): bool
+    {
+        $stage->loadMissing('exits.to.exits');
+
+        return self::asksTime($stage) || self::picks($stage) || self::awaitsSlots($stage);
+    }
+
     public const CONFIRM_EXIT = 'запись подтверждена';
 
     /** Шаг ждёт подтверждения записи от поставщика («Запись на подписание»: есть исход «Запись подтверждена»). */

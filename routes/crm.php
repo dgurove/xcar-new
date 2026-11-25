@@ -275,6 +275,7 @@ Route::domain(config('xcar.crm_host'))->middleware(['auth', 'ability:isStaff'])-
         Route::post('/work/deals/{deal}/signing-slots', [SigningController::class, 'slots']);
         Route::post('/work/deals/{deal}/signing', [SigningController::class, 'pick']);
         Route::post('/work/deals/{deal}/signing-wish', [SigningController::class, 'wish']);
+        Route::post('/work/deals/{deal}/signing-city', [SigningController::class, 'city']);
         Route::post('/work/deals/{deal}/signing-confirm', [SigningController::class, 'confirm']);
         Route::get('/work/deals/{deal}/signing.ics', [SigningController::class, 'ics']);
         Route::post('/work/deals/{deal}/payment-proof', [PaymentProofController::class, 'store']);

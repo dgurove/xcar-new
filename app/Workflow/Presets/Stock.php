@@ -50,7 +50,7 @@ final class Stock extends Route
             'claimed' => $claimed,
             'invoice' => [
                 'name' => 'Оплата счёта', 'block' => 'payment', 'waits_for' => 'manager', 'limit_minutes' => 14 * self::DAY, 'asks' => 'document',
-                'ask_title' => 'Оплатить счёт', 'ask_text' => 'После оплаты счёта нужно приложить платёжное поручение',
+                'ask_title' => 'Оплатить счёт', 'ask_text' => 'После оплаты счёта нужно приложить документ об оплате',
                 'exits' => [['Оплатил, документ приложен', 'manager', 'payment_check']],
             ],
             'payment_check' => [

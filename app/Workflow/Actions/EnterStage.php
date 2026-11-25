@@ -98,7 +98,8 @@ final class EnterStage
         }
         // Поставщик начал готовить договор — сразу спросить менеджера, когда покупатель сможет подписать: день и время, кнопками
         // в чате (11.11.2026, `AskSigningTime`).
-        if ($track === Track::Sale && $deal?->isActive() && ! $back && Signing::asksTime($to->loadMissing('exits.to.exits'))) {
+        // Подписание не в Москве — без записи (25.11.2026, `Deal::signsByAppointment`): время не спрашиваем.
+        if ($track === Track::Sale && $deal?->isActive() && ! $back && $deal->signsByAppointment() && Signing::asksTime($to->loadMissing('exits.to.exits'))) {
             app(AskSigningTime::class)($deal);
         }
 

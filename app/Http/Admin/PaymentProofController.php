@@ -40,14 +40,14 @@ final class PaymentProofController
             app(AttachChatFiles::class)($requirement, $message);
         }
         if ($requirement->refresh()->getMedia('files')->isEmpty()) {
-            throw ValidationException::withMessages(['payment_proof' => 'Добавьте чек, скан или файл платёжного поручения']);
+            throw ValidationException::withMessages(['payment_proof' => 'Добавьте чек, скан или файл документа об оплате']);
         }
         if (! $request->boolean('pass')) {
             return back()->with('toast', 'Документ приложен');
         }
         $this->pass($deal, $requirement, $request, $take);
 
-        return back()->with('toast', 'Платёжное поручение приложено');
+        return back()->with('toast', 'Документ об оплате приложен');
     }
 
     /**
@@ -58,12 +58,15 @@ final class PaymentProofController
     {
         abort_unless($request->user()->canEditDeals(), 403);
         $requirement = $this->open($deal);
+        if ($request->boolean('pass') && ($gap = $deal->signingCityGap($requirement->stage))) {
+            return response()->json(['message' => $gap], 422);
+        }
         $doc = $photos->fromRequest($request, $deal->offer->title());
         $attach($requirement, $doc['file'], named: true);
         if ($request->boolean('pass') && ! $requirement->done_at) {
             $this->pass($deal, $requirement, $request, $take);
         }
-        session()->flash('toast', 'Платёжное поручение приложено');
+        session()->flash('toast', 'Документ об оплате приложен');
 
         return response()->json(['reload' => true, 'name' => $doc['name'], 'pages' => $doc['pages']]);
     }
@@ -71,6 +74,10 @@ final class PaymentProofController
     /** Ответ менеджера «Оплатил, документ приложен» — за него (в «Истории» — за менеджера). */
     private function pass(Deal $deal, Requirement $requirement, Request $request, TakeExit $take): void
     {
+        // За менеджера — тоже с городом подписания (25.11.2026): без него не пройти.
+        if ($gap = $deal->signingCityGap($requirement->stage)) {
+            throw ValidationException::withMessages(['payment_proof' => $gap]);
+        }
         $exit = $deal->proofMove($requirement->stage);
         if (! $exit) {
             throw ValidationException::withMessages(['payment_proof' => 'У шага нет ответа «Оплатил, документ приложен»']);

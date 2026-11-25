@@ -385,6 +385,8 @@ class AlfaRequisitesTest extends TestCase
         $prime = $deal->issuedInvoices()->where('kind', ChargeKind::Selection)->first();
         $this->assertNotNull($prime, 'нет счёта ПРАЙМ за подбор');
         $this->sendToManager($deal);
+        // Город подписания — до документа об оплате (25.11.2026, `Deal::needsSigningCity`).
+        $deal->forceFill(['signing_settlement_id' => \App\Cars\Settlement::create(['name' => 'Белгород', 'type' => 'г', 'region_code' => '31', 'rank' => 1])->id])->save();
 
         return [$offer->fresh(), $deal->fresh(), $prime->fresh()];
     }
@@ -400,7 +402,7 @@ class AlfaRequisitesTest extends TestCase
         // Комиссия ПРАЙМ — ссылкой или наличными (18.11.2026): чека перевода к ней нет, чек — только поставщику, вопроса «За что» нет.
         // С 18.11.2026 — одна лаймовая «Приложить платёжку» поставщику в блоке денег (`cabinet.deals.receipt-card`); «Приложить
         // чек» и вопроса «За что» больше нет.
-        $page->assertSee('Приложить платёжку')->assertDontSee('За что этот чек?')->assertDontSee('Приложить чек');
+        $page->assertSee('Приложить документ об оплате')->assertDontSee('За что этот чек?')->assertDontSee('Приложить чек');
         $this->actingAs($this->manager)->post(Surface::Site->url('/deals/'.$deal->id.'/receipt'), ['file' => UploadedFile::fake()->image('chek-2.jpg', 500, 800), 'for' => 'supplier'])->assertRedirect();
         $this->assertSame('Подтверждение оплаты', $offer->fresh()->stage()->name);
         $this->assertSame(['application/pdf'], PaymentProofPdf::files($deal->fresh())->pluck('mime_type')->all());

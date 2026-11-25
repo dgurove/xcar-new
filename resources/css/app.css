@@ -2202,6 +2202,23 @@ html.kb-open { --home-gap: 0px; }
   .list > .contents > .send-under { padding: 0 .75rem .75rem; }
   /* Кнопка первой в плашке (строк над ней нет) — отступ и сверху, а не прилипшей к краю. */
   .list > .send-under:first-child, .list > .contents:first-child > .send-under:first-child { padding-top: .75rem; }
+  /* Город подписания (25.11.2026, `x-deal.signing-city`): «1 Где будет подписание?» чипами, «2 Документ об оплате» — серым, пока
+     города нет. Выбранный чип — тёмным, как `.choice`. */
+  .signing-city-q { display: flex; align-items: center; gap: .5rem; font-weight: 500; }
+  .signing-city-q.is-off { color: var(--color-ink-dim); }
+  .signing-city-num { display: inline-flex; align-items: center; justify-content: center; width: 1.375rem; height: 1.375rem; flex: none;
+    border-radius: 9999px; background: var(--color-accent); color: #fff; font-size: var(--text-xs); }
+  .signing-city-num.is-wait { background: var(--color-surface-3); color: var(--color-ink-muted); }
+  .signing-city-chips { display: flex; flex-wrap: wrap; gap: .5rem; margin-top: .625rem; }
+  .signing-city-chip { display: inline-flex; align-items: baseline; gap: .25rem; border-radius: 9999px; background: var(--color-surface-3);
+    padding: .5rem .875rem; color: var(--color-ink); transition: background-color .15s; }
+  .signing-city-chip small { font-size: var(--text-xs); color: var(--color-ink-muted); }
+  .signing-city-chip.is-on { background: var(--color-chrome); color: #fff; }
+  .signing-city-chip.is-on small { color: rgb(255 255 255 / .6); }
+  .dark .signing-city-chip.is-on { background: #fff; color: var(--color-chrome); }
+  .dark .signing-city-chip.is-on small { color: var(--color-ink-muted); }
+  .signing-city-means { display: flex; align-items: flex-start; gap: .5rem; margin-top: .625rem; font-size: var(--text-sm); color: var(--color-ink-muted); }
+  .signing-city-means svg { margin-top: .125rem; }
   .send-pair { display: flex; gap: .5rem; }
   /* Пара кнопок под счётом и ссылкой — по ширине надписей, а не двумя равными половинами (23.11.2026, владелец: «Оплатил
      наличными…» резалась «…» рядом с «Напомнить менеджеру» — «ужасно выглядит»). */

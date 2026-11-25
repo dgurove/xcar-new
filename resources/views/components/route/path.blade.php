@@ -298,7 +298,7 @@
                         $forKeys = $stage->asks === \App\Workflow\Asks::Buyer && ! $deal?->contractSigned() ? collect() : $forManager->reject(fn ($x) => $x->isRetreat());
                         $forKeys = ! $takeFor && ! ($wantsInvoice || $moves->isNotEmpty() || $stage->template_id || $requests || $payNow->isNotEmpty()) ? $forKeys : collect();
                         $proofFor = $req && $req->asks === \App\Workflow\Asks::Document && $stage->isPayStep() && auth()->user()?->canEditDeals();
-                        // Шаг платит только комиссию без счёта (18.11.2026) — ссылкой или наличными, платёжки нет: «Приложить платёжку за
+                        // Шаг платит только комиссию без счёта (18.11.2026) — ссылкой или наличными, платёжки нет: «Приложить документ за
                         // менеджера» не нужна. Где платят поставщику или по счёту — как было.
                         // Шаг пройдёт сам, когда деньги придут (`AdvanceOnPayment`): «За менеджера: Оплатил, документ приложен» тоже не нужен.
                         $feeOnly = false;
@@ -309,7 +309,7 @@
                         }
                         $reqFiles = $req ? $req->getMedia('files') : collect();
                         // Оплату с документом проходят только с платёжкой (16.11.2026, владелец: «без этого следующий шаг не продвинется»):
-                        // «Приложить платёжку за менеджера» и есть этот ход, голого «За менеджера: Оплатил, документ приложен» нет.
+                        // «Приложить документ за менеджера» и есть этот ход, голого «За менеджера: Оплатил, документ приложен» нет.
                         $forKeys = $proofFor || $feeOnly ? $forKeys->reject(fn ($x) => in_array($x->label, \App\Offers\Documents\PaymentProofPdf::EXITS, true)) : $forKeys;
                     @endphp
                     {{-- Всё, что за менеджера, — под строкой «Менеджер» (16.11.2026, владелец: «„Беру в работу за менеджера“ должно быть под
@@ -318,6 +318,12 @@
                          о том же письме второй строкой не пишем (17.11.2026). --}}
                     @php $letterWaits = $deal?->buyer_id && $position->track === \App\Workflow\Track::Sale && auth()->user()?->canEditDeals()
                         && \App\Offers\ReplyReview::pending()->where('deal_id', $deal->id)->exists(); @endphp
+                    {{-- Город подписания (25.11.2026, `x-deal.signing-city`): на оплате, когда впереди запись (Альфа), — всегда (без него
+                         документ об оплате не пройдёт и за менеджера); на шагах подписания до записи — пока не указан. --}}
+                    @if ($deal && $position->track === \App\Workflow\Track::Sale && auth()->user()?->canEditDeals() && ! $deal->contractSigned()
+                        && (($stage->isPayStep() && \App\Offers\Signing::routeBooks($stage)) || $deal->needsSigningCity($stage)))
+                        <x-deal.signing-city :deal="$deal" :action="'/work/deals/'.$deal->id.'/signing-city'" search="/reference/settlements" class="mt-3"/>
+                    @endif
                     <x-route.who :position="$position" :offer="$offer" :deal="$deal" :named="! $compact" :replied="! $letterWaits">
                         <x-slot:acts>
                             @if ($reqFiles->isNotEmpty())
@@ -335,7 +341,7 @@
                                 <a href="/offers/{{ $offer->number }}?buyer=1#invoice-buyer" class="btn btn-s btn-quiet" data-turbo-frame="_top">Заполнить реквизиты за менеджера</a>
                             @endif
                             @if ($proofFor)
-                                <div><x-deal.payment-proof-sheet :id="'payment-proof-'.$position->id" :deal="$deal" :requirement="$req" :label="$reqFiles->isEmpty() ? 'Приложить платёжное поручение за менеджера' : 'Приложить ещё за менеджера'"/></div>
+                                <div><x-deal.payment-proof-sheet :id="'payment-proof-'.$position->id" :deal="$deal" :requirement="$req" :label="$reqFiles->isEmpty() ? 'Приложить документ об оплате за менеджера' : 'Приложить ещё за менеджера'"/></div>
                             @endif
                             @if ($takeFor)
                                 <form method="post" action="/offers/{{ $n }}/exit/{{ $takeFor->id }}">
@@ -474,13 +480,13 @@
                                 <span class="nums font-semibold">{{ Money::rub($p->amount) }}</span>
                                 <span class="nums text-sm text-ink-dim">{{ \App\Support\Ago::html($p->paid_at, words: false) }}@if ($p->ref), № {{ $p->ref }}@endif</span>
                             </div>
-                            @if ($slip = $p->slip())<x-ui.file name="Платёжное поручение" :mime="$slip->mime_type" :bytes="$slip->size" :size="\App\Support\Ago::at($slip->created_at, true, words: false)" :href="\App\Support\Docs::media($slip)['url']" class="mt-2"/>@endif
+                            @if ($slip = $p->slip())<x-ui.file name="Документ об оплате" :mime="$slip->mime_type" :bytes="$slip->size" :size="\App\Support\Ago::at($slip->created_at, true, words: false)" :href="\App\Support\Docs::media($slip)['url']" class="mt-2"/>@endif
                             <div class="claim-acts mt-2">
                                 <form method="post" action="/work/payments/{{ $p->id }}/confirm" class="contents" data-turbo-confirm="Поступила {{ Money::rub($p->amount) }}?">@csrf<x-ui.button size="sm">Поступила</x-ui.button></form>
                                 <div data-controller="sheet" class="contents">
                                     <x-ui.button type="button" size="sm" variant="secondary" data-action="sheet#open">Не поступила</x-ui.button>
                                     <x-ui.sheet id="reject-{{ $p->id }}" title="Оплата не поступила">
-                                        <form method="post" action="/work/payments/{{ $p->id }}/reject" class="flex flex-col gap-3">@csrf<x-ui.field name="reason" label="Что не так" placeholder="Денег на счёте нет, платёжное поручение не читается"/><x-ui.sheet-foot variant="secondary">Не поступила</x-ui.sheet-foot></form>
+                                        <form method="post" action="/work/payments/{{ $p->id }}/reject" class="flex flex-col gap-3">@csrf<x-ui.field name="reason" label="Что не так" placeholder="Денег на счёте нет, документ об оплате не читается"/><x-ui.sheet-foot variant="secondary">Не поступила</x-ui.sheet-foot></form>
                                     </x-ui.sheet>
                                 </div>
                                 <x-deal.claim-other :payment="$p"/>

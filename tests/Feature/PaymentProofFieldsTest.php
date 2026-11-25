@@ -115,7 +115,7 @@ class PaymentProofFieldsTest extends TestCase
         $this->assertSame('Оплатил, документ приложен', $requirement->answer['exit']);
         $files = $requirement->getMedia('files');
         $this->assertSame(['application/pdf'], $files->pluck('mime_type')->all());
-        $this->assertStringStartsWith('Платёжное-поручение', $files->first()->file_name);
+        $this->assertStringStartsWith('Документ-об-оплате', $files->first()->file_name);
         $this->assertSame([], $requirement->getMedia('scan')->all());
         $this->assertNotSame('Оплата счёта', $this->offer->fresh()->stage()->name);
         $this->assertStringStartsWith('%PDF', (string) PaymentProofPdf::render($this->deal->fresh()));
@@ -161,7 +161,7 @@ class PaymentProofFieldsTest extends TestCase
 
         $html = (string) $this->withViewErrors([])->blade('<x-billing.pay-form :invoice="$i" action="/x" sheet/>', ['i' => $invoice->fresh()]);
         $this->assertStringContainsString('data-reveal-key="cash"', $html);
-        $this->assertSame(1, substr_count($html, '№ платёжного поручения'));
+        $this->assertSame(1, substr_count($html, '№ документа об оплате'));
         $this->assertStringContainsString('№ операции', $html);
     }
 

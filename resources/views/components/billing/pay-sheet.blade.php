@@ -90,8 +90,8 @@
             @endif
             <div class="fields">
                 <x-ui.field name="paid_at" id="{{ $id }}-date-transfer" label="Дата оплаты" type="date" :value="now()->toDateString()" max="{{ now()->toDateString() }}"/>
-                <x-ui.field name="ref" id="{{ $id }}-ref" label="№ платёжного поручения"/>
-                <x-ui.file-field name="slip" label="Платёжное поручение" accept=".pdf,.jpg,.jpeg,.png,.heic,image/*"/>
+                <x-ui.field name="ref" id="{{ $id }}-ref" label="№ документа об оплате"/>
+                <x-ui.file-field name="slip" label="Документ об оплате" accept=".pdf,.jpg,.jpeg,.png,.heic,image/*"/>
             </div>
             <x-ui.sheet-foot>Я оплатил</x-ui.sheet-foot>
         </div>

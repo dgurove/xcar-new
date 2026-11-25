@@ -245,6 +245,9 @@ Route::middleware(['auth', 'wall'])->group(function () {
             Route::post('/deals/{deal}/extra-ask', [DealController::class, 'extraAsk']);
             Route::post('/deals/{deal}/signing', [DealController::class, 'signing']);
             Route::post('/deals/{deal}/signing-wish', [DealController::class, 'signingWish']);
+            // Город подписания (25.11.2026, `SetSigningCity`) и поиск города в его шторке.
+            Route::post('/deals/{deal}/signing-city', [DealController::class, 'signingCity']);
+            Route::get('/deals/{deal}/signing-city/places', [DealController::class, 'signingPlaces']);
             Route::get('/deals/{deal}/signing.ics', [DealController::class, 'signingIcs']);
             Route::put('/deals/{deal}/receiver', [DealController::class, 'receiver']);
             Route::post('/deals/{deal}/pickup', [DealController::class, 'requestPickup']);

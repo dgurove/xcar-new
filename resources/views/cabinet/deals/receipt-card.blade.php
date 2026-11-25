@@ -3,7 +3,7 @@
      должны ВМЕСТЕ»; «по ссылке за машину НИКОГДА не платят — только по счёту или наличными; по ссылке только подбор»). Стоит
      сразу под шагом (`cabinet.deals.show`, гараж — `garage.cars.show`); чек-листа договора, карточек «Договор и счёт»,
      «Договор уже подписан?», «Укажите покупателя» и денег справа больше нет — всё здесь, порядком CRM («Продажа»):
-     цена продажи → кому за ТС (покупатель → счёт → договор → оплаты; «Приложить платёжку», «Оплатил наличными…») →
+     цена продажи → кому за ТС (покупатель → счёт → договор → оплаты; «Приложить документ», «Оплатил наличными…») →
      подбор ООО «ПРАЙМ» ссылкой → вознаграждение. Дело шага менеджера — главной кнопкой здесь же: платёжка, подписанный договор.
      Вход: $deal, $offer, $invoices, $requirement, $position. --}}
 @php
@@ -55,6 +55,11 @@
     $proofs = $toSupplier ? ($deal->sentPaymentProof()?->getMedia('files') ?? collect()) : collect();
     // На шаге оплаты поставщику уже приложенные, но ещё не ответившие шаг листы — тоже платёжками.
     $stepProofs = $supplierStep ? $requirement->getMedia('files') : collect();
+    // Город подписания (25.11.2026, вариант А): на шаге оплаты, когда впереди запись на подписание, — «1 Где будет подписание?»
+    // над кнопкой документа об оплате, «2 Документ об оплате»; пока города нет — кнопка серая (`Deal::needsSigningCity`, сервер тоже).
+    $payStage = $live ? $offer->position(\App\Workflow\Track::Sale)?->stage : null;
+    $cityHere = $payStage && $payStage->isPayStep() && ! $deal->contractSigned() && \App\Offers\Signing::routeBooks($payStage);
+    $cityGap = $cityHere && $deal->needsSigningCity($payStage);
     $carTitle = $ours ? ($sale?->seller ?? $deal->seller())->config()['name'] : ($scheme === DealScheme::Insurer ? 'Поставщику' : 'Собственнику');
     $carSum = $ours ? ($sale ? $sale->total : \App\Offers\DealContract::priceFor($deal)) : ($deal->isDirect() && $deal->owner_price === null ? null : ($toSupplier ? $deal->supplierPayment() : $deal->ownerPrice()));
     $carState = $ours ? $stateOf($sale) : ($deal->prepaid_at ? ['оплачено', 'text-open'] : ($proofs->isNotEmpty() ? ['ждём подтверждения', 'text-ink-muted'] : null));
@@ -118,12 +123,23 @@
                             @foreach ($salePayments as $p)
                                 <x-money.payment :payment="$p" :slip="'/account/money/invoices/'.$sale->id.'/payments/'.$p->id.'/slip'"/>
                             @endforeach
-                            @if ($carPay)
+                            @if ($carPay && $cityHere)
+                                <div class="send-under">
+                                    <x-deal.signing-city :deal="$deal" step="1" :action="'/deals/'.$deal->id.'/signing-city'" :search="'/deals/'.$deal->id.'/signing-city/places'"/>
+                                    <p @class(['signing-city-q mt-4', 'is-off' => $cityGap])><span @class(['signing-city-num', 'is-wait' => $cityGap])>2</span><span>Документ об оплате</span></p>
+                                </div>
+                            @endif
+                            @if ($carPay && $cityGap)
+                                <div class="send-under">
+                                    <button type="button" class="btn btn-s btn-quiet w-full gap-2 opacity-50" disabled><x-ui.icon name="clip" class="size-4"/>Приложить документ об оплате</button>
+                                    <p class="field-error">Сначала укажите город подписания</p>
+                                </div>
+                            @elseif ($carPay)
                                 <div class="send-under send-pair">
                                     {{-- «Приложить» одним документом (24.11.2026, `x-ui.photo-pdf`): фото и файлы — одно платёжное поручение
                                          чеком «я оплатил» на остаток (`MoneyController::payDoc`). Рядом «Наличными…» — тесно, здесь «Платёжка». --}}
-                                    <x-ui.photo-pdf :id="'slip-'.$sale->id" :url="'/account/money/deals/'.$deal->id.'/pay/doc'" :fields="['invoice' => (string) $sale->id]" title="Платёжное поручение"
-                                        :name="'Платёжное поручение '.$deal->offer->title()" icon="clip" always :label="$slipMore ? 'Приложить ещё' : 'Приложить платёжку'"
+                                    <x-ui.photo-pdf :id="'slip-'.$sale->id" :url="'/account/money/deals/'.$deal->id.'/pay/doc'" :fields="['invoice' => (string) $sale->id]" title="Документ об оплате"
+                                        :name="'Документ об оплате '.$deal->offer->title()" icon="clip" always :label="$slipMore ? 'Приложить ещё' : 'Приложить документ'"
                                         :button="\Illuminate\Support\Arr::toCssClasses(['btn btn-s gap-2', 'btn-accent' => $left($sale) > 0, 'btn-quiet' => $left($sale) <= 0])"/>
                                     <div class="contents" data-controller="sheet">
                                         <button type="button" class="btn btn-quiet btn-s" data-action="sheet#open">Наличными…</button>
@@ -148,19 +164,30 @@
                             <x-ui.file name="Счёт поставщика" :mime="$f->mime_type" :bytes="$f->size" :size="'от '.$f->created_at->timezone('Europe/Moscow')->format('d.m')" href="/files/{{ $f->id }}" download class="row"/>
                         @endforeach
                         @foreach ($proofs->concat($stepProofs) as $m)
-                            <x-ui.file name="Платёжное поручение" :mime="$m->mime_type" :bytes="$m->size" :size="\App\Support\Ago::at($m->created_at, true, words: false)" href="/files/{{ $m->id }}" class="row"/>
+                            <x-ui.file name="Документ об оплате" :mime="$m->mime_type" :bytes="$m->size" :size="\App\Support\Ago::at($m->created_at, true, words: false)" href="/files/{{ $m->id }}" class="row"/>
                         @endforeach
-                        @if ($supplierStep)
-                            {{-- «Приложить» одним документом (24.11.2026, `x-ui.photo-pdf`): фото и файлы — одно платёжное поручение. --}}
+                        @if ($supplierStep && $cityHere)
                             <div class="send-under">
-                                <x-ui.photo-pdf :id="'supplier-proof-'.$deal->id" :url="'/deals/'.$deal->id.'/files/doc'" title="Платёжное поручение" :name="'Платёжное поручение '.$deal->offer->title()" icon="clip" always
-                                    :label="$stepProofs->isEmpty() ? 'Приложить платёжное поручение' : 'Приложить ещё'"
+                                <x-deal.signing-city :deal="$deal" step="1" :action="'/deals/'.$deal->id.'/signing-city'" :search="'/deals/'.$deal->id.'/signing-city/places'"/>
+                                <p @class(['signing-city-q mt-4', 'is-off' => $cityGap])><span @class(['signing-city-num', 'is-wait' => $cityGap])>2</span><span>Документ об оплате</span></p>
+                            </div>
+                        @endif
+                        @if ($supplierStep && $cityGap)
+                            <div class="send-under">
+                                <button type="button" class="btn btn-s btn-quiet w-full gap-2 opacity-50" disabled><x-ui.icon name="clip" class="size-4"/>Приложить документ об оплате</button>
+                                <p class="field-error">Сначала укажите город подписания</p>
+                            </div>
+                        @elseif ($supplierStep)
+                            {{-- «Приложить» одним документом (24.11.2026, `x-ui.photo-pdf`): фото и файлы — один документ об оплате. --}}
+                            <div class="send-under">
+                                <x-ui.photo-pdf :id="'supplier-proof-'.$deal->id" :url="'/deals/'.$deal->id.'/files/doc'" title="Документ об оплате" :name="'Документ об оплате '.$deal->offer->title()" icon="clip" always
+                                    :label="$stepProofs->isEmpty() ? 'Приложить документ об оплате' : 'Приложить ещё'"
                                     :button="\Illuminate\Support\Arr::toCssClasses(['btn btn-s w-full gap-2', 'btn-accent' => $stepProofs->isEmpty(), 'btn-quiet' => $stepProofs->isNotEmpty()])"/>
                             </div>
                         @endif
                     </div>
                     {{-- Лист уже приложен, а шаг не отвечен (приложили до 18.11) — ответ шага «Оплатил, документ приложен». --}}
-                    @if ($supplierStep && $stepProofs->isNotEmpty())<div class="mt-3">@include('cabinet.deals.exits', ['exits' => $deal->managerExits($requirement->stage)])</div>@endif
+                    @if ($supplierStep && $stepProofs->isNotEmpty() && ! $cityGap)<div class="mt-3">@include('cabinet.deals.exits', ['exits' => $deal->managerExits($requirement->stage)])</div>@endif
                 </div>
             @endif
 

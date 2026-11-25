@@ -95,7 +95,7 @@
                                data-url="{{ request()->fullUrlWithQuery(['city' => '__CITY__']) }}" data-action="change->compose-requests#city keydown.enter->compose-requests#city:prevent" aria-label="Другой город" form="none">
                     </div>
                 @endif
-                @if ($extraNoProof ?? false)<p class="compose-requests-note">Платёжного поручения в системе нет — приложите скрепкой</p>@endif
+                @if ($extraNoProof ?? false)<p class="compose-requests-note">Документа об оплате в системе нет — приложите скрепкой</p>@endif
             </div>
         @endif
         {{-- Шаблоны нового письма и готовые ответы парковки (`Template::replies`) — лентой чипов над текстом, а не строкой шапки

@@ -36,7 +36,7 @@
         <x-slot:acts>
             @if ($file)
                 {{-- Платёжка — строкой файла, как все документы (16.11.2026, владелец: чип «платёжка» — «это файл»). --}}
-                <x-ui.file name="Платёжное поручение" :mime="$file->mime_type" :bytes="$file->size" :size="\App\Support\Ago::at($file->created_at, true, words: false)" :href="$slip" class="w-full"/>
+                <x-ui.file name="Документ об оплате" :mime="$file->mime_type" :bytes="$file->size" :size="\App\Support\Ago::at($file->created_at, true, words: false)" :href="$slip" class="w-full"/>
             @endif
             {{ $acts ?? '' }}
         </x-slot:acts>

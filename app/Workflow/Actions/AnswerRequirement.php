@@ -29,6 +29,11 @@ final class AnswerRequirement
                 throw ValidationException::withMessages(['exit' => 'Эта кнопка не отсюда']);
             }
 
+            // «Оплатил, документ приложен» — с городом подписания (25.11.2026, `Deal::signingCityGap`).
+            if ($exit->isPayExit() && ($deal = \App\Offers\Deal::find($requirement->deal_id)) && ($gap = $deal->signingCityGap($requirement->stage))) {
+                throw ValidationException::withMessages(['signing_city' => $gap]);
+            }
+
             $answer = [];
             if ($requirement->asks === Asks::Fields) {
                 foreach ($requirement->fields as $field) {

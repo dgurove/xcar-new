@@ -19,7 +19,7 @@
                     <x-ui.field name="body" label="Фраза" :value="$template->body" placeholder="прислать ПТС" required
                                 oninput="this.form.querySelector('[data-sample]').textContent = this.value.trim().replace(/\x7b\x7b ?city ?\x7d\x7d/, (this.form.elements.choices.value.split('\n')[0] || '').trim()) || '…'"/>
                     <x-ui.field name="choices" label="Варианты города" type="textarea" :value="$choicesText" placeholder="в Москве"/>
-                    <x-ui.check name="attach" :value="\App\Mail\Template::PAY_PROOF" :checked="$template->attach === \App\Mail\Template::PAY_PROOF">Приложить платёжное поручение</x-ui.check>
+                    <x-ui.check name="attach" :value="\App\Mail\Template::PAY_PROOF" :checked="$template->attach === \App\Mail\Template::PAY_PROOF">Приложить документ об оплате</x-ui.check>
                     <div class="rounded-(--radius-m) bg-surface-2 p-3 text-ink-muted">Здравствуйте!<br><br>Просьба <span class="text-ink" data-sample>{{ $template->body ? \App\Offers\ExtraRequest::phrase(collect([$template]), $template->choices[0] ?? null) : '…' }}</span>.<br><br>{!! nl2br(e(\App\Mail\Template::OFFERS_SIGN)) !!}</div>
                 </div>
             </x-ui.card>

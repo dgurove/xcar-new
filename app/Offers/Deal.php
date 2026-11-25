@@ -56,7 +56,7 @@ use Spatie\MediaLibrary\InteractsWithMedia;
  * вознаграждения менеджерам никогда не выплачиваем»): наши счёт и ДКП — цена минус вознаграждение, из них закупочная — за ТС,
  * остальное — услуги подбора (`ours`). Выплат менеджеру, режима «выплачиваем» и зачёта «удержано» в системе нет.
  */
-#[Fillable(['manager_sees', 'offer_id', 'bid_id', 'buyer_id', 'amount', 'cost', 'supplier_cost', 'owner_price', 'share', 'commission', 'scheme', 'garage_payer', 'parallel', 'notes', 'closed_at', 'cancelled_at', 'close_reason', 'close_note', 'agreed_at', 'buyer_asked_at', 'signing_slots', 'signing_address', 'signing_at', 'signing_asked_at', 'signing_wish', 'prepaid_at', 'supplier_paid_at', 'contract_signed_at', 'contract_signed_by', 'paid_in_at', 'dates_by_hand',
+#[Fillable(['manager_sees', 'offer_id', 'bid_id', 'buyer_id', 'amount', 'cost', 'supplier_cost', 'owner_price', 'share', 'commission', 'scheme', 'garage_payer', 'parallel', 'notes', 'closed_at', 'cancelled_at', 'close_reason', 'close_note', 'agreed_at', 'buyer_asked_at', 'signing_slots', 'signing_address', 'signing_at', 'signing_asked_at', 'signing_wish', 'signing_settlement_id', 'prepaid_at', 'supplier_paid_at', 'contract_signed_at', 'contract_signed_by', 'paid_in_at', 'dates_by_hand',
     'receiver_user_id', 'receiver_name', 'receiver_phone', 'receiver_at', 'auction_at', 'buyer_party_id', 'payer_party_id', 'fee_seller', 'shadow_stage_id', 'shadow_at', 'reissue_at'])]
 class Deal extends Model implements HasMedia
 {
@@ -768,6 +768,43 @@ class Deal extends Model implements HasMedia
         $proof = PaymentProofPdf::requirement($this);
 
         return $stage && $proof?->stage?->isPayStep() && $proof->stage->exits->contains(fn (Outcome $e) => $e->to_stage_id === $stage->id) ? $proof : null;
+    }
+
+    /** Город подписания договора у поставщика (25.11.2026, `signing_settlement_id`). */
+    public function signingCity(): \Illuminate\Database\Eloquent\Relations\BelongsTo
+    {
+        return $this->belongsTo(\App\Cars\Settlement::class, 'signing_settlement_id');
+    }
+
+    /** Подписание в Москве — по записи; город не указан — как раньше, тоже по записи. Остальные города — без записи. */
+    public function signsByAppointment(): bool
+    {
+        return $this->signing_settlement_id === null || $this->signing_settlement_id === \App\Park\City::main();
+    }
+
+    /**
+     * Нужен ли город подписания (25.11.2026, владелец: у Альфы запись только в Москве, в других городах — в рабочее время без
+     * записи; «на этапе, когда прикладывают документ об оплате, обязательное указание города, без него не отправляется»): в маршруте
+     * есть запись на подписание (`Signing::awaitsSlots`), сделка на оплате или ещё до записи, договор не подписан, город не указан.
+     * `$stage` — шаг, на котором спрашиваем (по умолчанию текущий).
+     */
+    public function needsSigningCity(?Stage $stage = null): bool
+    {
+        if ($this->signing_settlement_id !== null || ! $this->isActive() || $this->contractSigned() || $this->isAuction() || $this->isGarage()) {
+            return false;
+        }
+        $stage ??= $this->offer?->position(\App\Workflow\Track::Sale)?->stage;
+        if (! $stage || ! ($stage->isPayStep() || \App\Offers\Signing::beforeBooking($stage))) {
+            return false;
+        }
+
+        return \App\Offers\Signing::routeBooks($stage);
+    }
+
+    /** Документ об оплате без города подписания не принимается (25.11.2026): шаг оплаты, а город нужен — текст отказа. */
+    public function signingCityGap(?Stage $stage): ?string
+    {
+        return $stage?->isPayStep() && $this->needsSigningCity($stage) ? 'Сначала укажите город подписания' : null;
     }
 
     public function paysSupplierOn(?Stage $stage): bool

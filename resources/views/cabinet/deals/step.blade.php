@@ -68,6 +68,11 @@
                 $turn = \App\Offers\Turn::of($deal, $position);
             @endphp
             @if ($turn)<x-deal.turn-head :turn="$turn"/>@endif
+            {{-- Город подписания не указали при оплате (оплатил ссылкой, деньги пришли сами) — тот же вопрос в шаге подписания: не Москва —
+                 запись пропускается (25.11.2026, `SetSigningCity`). --}}
+            @if (! $position->stage->isPayStep() && $deal->needsSigningCity($position->stage))
+                <x-deal.signing-city :deal="$deal" :action="'/deals/'.$deal->id.'/signing-city'" :search="'/deals/'.$deal->id.'/signing-city/places'" class="mt-4"/>
+            @endif
             @if ($signingDays)
                 <x-deal.signing-when :deal="$deal" :action="'/deals/'.$deal->id.'/signing-wish'" class="mt-4"/>
             @endif
