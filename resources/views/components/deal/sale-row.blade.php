@@ -7,5 +7,5 @@
     <span class="sale-row-label">{{ $label }}</span>
     <span @class(['sale-row-value', 'text-danger' => $tone === 'danger', 'text-accent-text' => $tone === 'accent'])>{{ $value }}</span>
     {{-- «Приложить» — скрепкой, как у «Подписанного договора» (16.11.2026, владелец: «у одного стрелочка, у другого скрепка»). --}}
-    @if ($icon)<x-ui.icon :name="$icon" class="size-5 shrink-0 text-ink-dim"/>@else<x-ui.chevron/>@endif
+    @if ($icon)<x-ui.icon :name="$icon" class="row-chev size-5 shrink-0 text-ink-dim"/>@else<x-ui.chevron/>@endif
 </{{ $tag }}>
