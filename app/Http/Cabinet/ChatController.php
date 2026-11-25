@@ -93,7 +93,7 @@ class ChatController
         if ($to === 'support') {
             return redirect(Chat::path('support'));
         }
-        if ($chat = Direct::between($me, $to)) {
+        if ($chat = Direct::chatFor($me, $to)) {
             return redirect(Chat::path($chat->id));
         }
         abort_unless(Direct::canStart($me, $to), 404);

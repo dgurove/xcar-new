@@ -70,7 +70,7 @@ class ChatController
     public function direct(Request $request, User $user, OpenDirect $open, PostMessage $post)
     {
         $me = $request->user();
-        abort_unless(Direct::between($me, $user) || Direct::canStart($me, $user), 404);
+        abort_unless(Direct::chatFor($me, $user) || Direct::canStart($me, $user), 404);
         $this->validateMessage($request);
         $chat = $open($me, $user);
         $this->guarded(fn () => $post($chat, $me, $request->input('text'), $request->file('files', []), $request->integer('reply_to') ?: null));

@@ -75,7 +75,7 @@ class ChatController
         $me = $request->user();
         $to = Direct::target($request, $user);
         abort_if($to === 'support', 404);
-        if ($chat = Direct::between($me, $to)) {
+        if ($chat = Direct::chatFor($me, $to)) {
             return redirect(Chat::base().'/'.$chat->id);
         }
         abort_unless(Direct::canStart($me, $to), 404);

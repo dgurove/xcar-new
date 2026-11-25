@@ -48,28 +48,41 @@ class DirectChatTest extends TestCase
     {
         $this->assertTrue(Direct::canStart($this->admin, $this->manager));
         $this->assertTrue(Direct::canStart($this->moderator, $this->admin));
-        $this->assertTrue(Direct::canStart($this->manager, $this->moderator));
+        $this->assertFalse(Direct::canStart($this->manager, $this->moderator), 'менеджер сотруднику — через «Администрацию XCAR»');
         $this->assertTrue(Direct::canStart($this->manager, $this->buyer));
         $this->assertTrue(Direct::canStart($this->buyer, $this->manager));
         $this->assertFalse(Direct::canStart($this->manager, $this->other), 'менеджер менеджеру — нет');
         $this->assertFalse(Direct::canStart($this->other, $this->buyer), 'чужому покупателю — нет');
         $this->assertFalse(Direct::canStart($this->buyer, $this->admin), 'покупатель — только своему менеджеру');
-        $this->assertFalse(Direct::canStart($this->admin, $this->buyer), 'покупателю пишет его менеджер');
+        $this->assertTrue(Direct::canStart($this->admin, $this->buyer), 'сотрудник покупателю — от «Администрации XCAR»');
         $this->assertFalse(Direct::canStart($this->admin, $this->admin));
 
         $this->actingAs($this->manager)->get(Surface::Site->url('/chats/with/'.$this->other->id))->assertNotFound();
         $this->actingAs($this->manager)->post(Surface::Site->url('/chats/with/'.$this->other->id), ['text' => 'Привет'])->assertNotFound();
-        $this->actingAs($this->manager)->get(Surface::Site->url('/chats/with/'.$this->admin->id))->assertOk()->assertSee('Андрей Админов');
+        $this->actingAs($this->manager)->get(Surface::Site->url('/chats/with/'.$this->admin->id))->assertNotFound();
         $this->actingAs($this->admin)->get(Surface::Crm->url('/work/chats/with/'.$this->manager->id))->assertOk()->assertSee('Дмитрий Макаров');
+    }
+
+    /** Сотрудник менеджеру и покупателю пишет от «Администрации XCAR» — в его чат площадки, имя сотрудника скрыто. */
+    public function test_staff_writes_as_platform(): void
+    {
+        $a = app(OpenDirect::class)($this->admin, $this->manager);
+        $b = app(OpenDirect::class)($this->moderator, $this->manager);
+        $this->assertSame($a->id, $b->id);
+        $this->assertSame([$this->manager->id, null, null], [$a->user_id, $a->manager_id, $a->offer_id]);
+
+        $this->actingAs($this->admin)->post(Surface::Crm->url('/chats/with/'.$this->buyer->id), ['text' => 'Добрый день'])->assertOk();
+        $chat = Chat::where('user_id', $this->buyer->id)->sole();
+        $this->assertNull($chat->manager_id);
+        $this->assertSame(Chat::PLATFORM, $chat->messages()->sole()->authorName($chat, $this->buyer));
+        $this->actingAs($this->admin)->get(Surface::Crm->url('/work/chats/with/'.$this->buyer->id))->assertRedirect(Chat::base().'/'.$chat->id);
     }
 
     public function test_one_chat_per_pair_both_ways(): void
     {
-        $a = app(OpenDirect::class)($this->manager, $this->admin);
-        $b = app(OpenDirect::class)($this->admin, $this->manager);
+        $a = app(OpenDirect::class)($this->moderator, $this->admin);
+        $b = app(OpenDirect::class)($this->admin, $this->moderator);
         $this->assertSame($a->id, $b->id);
-        // Младший по рангу — участник: менеджер против сотрудника.
-        $this->assertSame([$this->manager->id, $this->admin->id], [$a->user_id, $a->manager_id]);
 
         // Переписка покупателя с менеджером — та же личка пары.
         $enquiry = app(OpenEnquiry::class)($this->buyer, null, null);
@@ -79,12 +92,12 @@ class DirectChatTest extends TestCase
         // Первое сообщение заводит личку, второе — в ту же.
         $this->actingAs($this->moderator)->post(Surface::Crm->url('/chats/with/'.$this->admin->id), ['text' => 'Привет'])->assertOk()->assertHeader('X-Chat-Id');
         $this->actingAs($this->admin)->post(Surface::Crm->url('/chats/with/'.$this->moderator->id), ['text' => 'Привет'])->assertOk();
-        $this->assertSame(3, Chat::count());
+        $this->assertSame(2, Chat::count());
     }
 
     public function test_access_and_counters(): void
     {
-        $chat = app(OpenDirect::class)($this->admin, $this->manager);
+        $chat = $this->legacy($this->admin);
         app(PostMessage::class)($chat, $this->manager, 'Вопрос по оплате', []);
 
         // Модератор чужую личку не открывает ни списком, ни номером.
@@ -100,7 +113,7 @@ class DirectChatTest extends TestCase
         $this->assertSame(0, $this->admin->fresh()->unreadDirectChats());
 
         // Чужую личку админ читает без поля ответа и писать в неё не может.
-        $mod = app(OpenDirect::class)($this->moderator, $this->manager);
+        $mod = $this->legacy($this->moderator);
         app(PostMessage::class)($mod, $this->manager, 'Модератору лично', []);
         $this->actingAs($this->admin)->get(Surface::Crm->url('/work/chats/'.$mod->id))->assertOk()->assertSee('data-chat-readonly-value="true"', false);
         $this->actingAs($this->admin)->post(Surface::Crm->url('/chats/'.$mod->id.'/messages'), ['text' => 'Влезу'])->assertNotFound();
@@ -113,15 +126,21 @@ class DirectChatTest extends TestCase
     {
         $page = $this->actingAs($this->admin)->get(Surface::Crm->url('/work/chats?q=Макаров'))->assertOk();
         $page->assertSee('/work/chats/with/'.$this->manager->id, false);
-        // Менеджер сотрудника находит только по имени: телефон сотрудника ему не виден.
-        $this->actingAs($this->manager)->get(Surface::Site->url('/chats?q=79000000001'))->assertDontSee('/chats/with/'.$this->admin->id, false);
-        $this->actingAs($this->manager)->get(Surface::Site->url('/chats?q=Админов'))->assertSee('/chats/with/'.$this->admin->id, false);
+        $this->actingAs($this->admin)->get(Surface::Crm->url('/work/chats?q=Покупатель'))->assertSee('/work/chats/with/'.$this->buyer->id, false);
+        // Менеджер сотрудников поимённо не находит — только «Администрацию XCAR».
+        $this->actingAs($this->manager)->get(Surface::Site->url('/chats?q=Админов'))->assertDontSee('/chats/with/'.$this->admin->id, false);
     }
 
     public function test_contacts_does_not_pick_up_direct_chat(): void
     {
-        $chat = app(OpenDirect::class)($this->manager, $this->admin);
+        $chat = $this->legacy($this->admin);
         app(PostMessage::class)($chat, $this->admin, 'Лично менеджеру', []);
         $this->actingAs($this->manager)->get(Surface::Site->url('/contacts'))->assertDontSee('Лично менеджеру');
+    }
+
+    /** Личка сотрудника с менеджером, начатая до 25.11.2026: открыта обоим как была. */
+    private function legacy(User $staff): Chat
+    {
+        return Chat::create(['offer_id' => null, 'user_id' => $this->manager->id, 'manager_id' => $staff->id]);
     }
 }

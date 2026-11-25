@@ -6,6 +6,7 @@ use App\Search\Term;
 use App\Support\People;
 use App\Users\Role;
 use App\Users\User;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\Request;
 use Illuminate\Support\Collection;
 
@@ -15,8 +16,14 @@ use Illuminate\Support\Collection;
  * менеджером, и это одна строка. У пары личка одна, в одну и ту же сторону: младший по рангу — `user_id` (покупатель против
  * своего менеджера, менеджер против сотрудника), при равном — меньший номер; поэтому `AuthorKind::Staff` и `unread_for_staff`
  * по-прежнему значат «отвечающая сторона». Кто кому может написать первым — только здесь (владелец): сотрудник
- * (`canEditDeals`) — сотрудникам и менеджерам (и супер-покупателям), менеджер — сотрудникам и своим покупателям, другим
- * менеджерам — нет; покупатель — только своему менеджеру. Админ читает чужие лички (`Chat::allows`), но не пишет в них.
+ * (`canEditDeals`) — сотрудникам, менеджерам, супер-покупателям и покупателям с доступом, менеджер — своим покупателям,
+ * покупатель — только своему менеджеру. Админ читает чужие лички (`Chat::allows`), но не пишет в них.
+ *
+ * **От чьего имени** (25.11.2026, владелец: «админы и модераторы от лица администрации XCAR пишут, а между собой от своего
+ * лица»; Ананьеву нужно написать): сотрудник не сотруднику пишет в его чат площадки «Администрация XCAR» (`viaPlatform`,
+ * `chatFor`: `offer_id` и `manager_id` пусты, имя сотрудника скрыто — `Message::hidesAuthorFrom`), личка — только между
+ * сотрудниками и у менеджера с покупателем. Менеджеру сотрудников поимённо в «Написать» нет — только «Администрация XCAR»;
+ * лички, начатые до 25.11, открыты обоим как были.
  */
 final class Direct
 {
@@ -59,17 +66,35 @@ final class Direct
         $dealer = fn (User $u) => $u->isManager() || $u->isSuperBuyer();
 
         return match (true) {
-            $staff($from) => $staff($to) || $dealer($to),
-            $dealer($from) => $staff($to) || ($from->isManager() && $to->isBuyer() && $to->manager_id === $from->id && $to->hasBuyerAccess()),
+            $staff($from) => $staff($to) || $dealer($to) || ($to->isBuyer() && $to->hasBuyerAccess()),
+            $dealer($from) => $from->isManager() && $to->isBuyer() && $to->manager_id === $from->id && $to->hasBuyerAccess(),
             $from->isBuyer() => $to->id === $from->manager_id,
             default => false,
         };
     }
 
+    /** Сотрудник пишет не сотруднику — от «Администрации XCAR», в чат площадки человека, а не личкой. */
+    public static function viaPlatform(User $from, User $to): bool
+    {
+        return $from->canEditDeals() && ! $to->canEditDeals();
+    }
+
+    /** Чат, куда `me` пишет `to`: чат площадки человека (`viaPlatform`) или личка пары. */
+    public static function chatFor(User $me, User $to): ?Chat
+    {
+        return self::viaPlatform($me, $to) ? self::platformOf($to)->first() : self::between($me, $to);
+    }
+
+    /** Чат площадки человека без машины — его «Администрация XCAR». */
+    public static function platformOf(User|int $user): Builder
+    {
+        return Chat::whereNull('offer_id')->whereNull('manager_id')->where('user_id', $user instanceof User ? $user->id : $user)
+            ->orderByDesc('last_message_at')->orderBy('id');
+    }
+
     /**
-     * Кому можно написать — строки `x-people.pick` группами: сотруднику «Сотрудники» и «Менеджеры», менеджеру — первой строкой
-     * «Администрация XCAR» (обращение к площадке, `id` = `support`), «Сотрудники» и «Покупатели». Телефон и почту сотрудника
-     * менеджеру не показываем — только роль.
+     * Кому можно написать — строки `x-people.pick` группами: сотруднику «Сотрудники», «Менеджеры» и «Покупатели» (с доступом),
+     * менеджеру — первой строкой «Администрация XCAR» (обращение к площадке, `id` = `support`) и его «Покупатели».
      *
      * @return Collection<int, array{id: int|string, name: string, sub: ?string, user: ?User, group: string}>
      */
@@ -82,14 +107,17 @@ final class Direct
                 return $rows;
             }
             if (! $isStaff) {
-                $rows->push(['id' => 'support', 'name' => Chat::PLATFORM, 'sub' => null, 'user' => null, 'logo' => true, 'group' => 'Сотрудники']);
-            }
-            foreach (self::staff($me) as $u) {
-                $rows->push(People::row($u, self::roleWord($u)) + ['group' => 'Сотрудники']);
+                $rows->push(['id' => 'support', 'name' => Chat::PLATFORM, 'sub' => null, 'user' => null, 'logo' => true, 'group' => '']);
             }
             if ($isStaff) {
+                foreach (self::staff($me) as $u) {
+                    $rows->push(People::row($u, self::roleWord($u)) + ['group' => 'Сотрудники']);
+                }
                 foreach (self::dealers($me) as $u) {
                     $rows->push(People::row($u, $u->isSuperBuyer() && ! $u->isManager() ? 'Супер-покупатель' : null) + ['group' => 'Менеджеры']);
+                }
+                foreach (self::buyers() as $u) {
+                    $rows->push(People::row($u) + ['group' => 'Покупатели']);
                 }
             } elseif ($me->isManager()) {
                 foreach (People::buyersOf($me)->filter(fn (User $b) => $b->hasBuyerAccess()) as $u) {
@@ -129,6 +157,15 @@ final class Direct
             ->where(fn ($w) => $w->where('user_id', $me->id)->whereIn('manager_id', $users->pluck('id'))
                 ->orWhere(fn ($w) => $w->where('manager_id', $me->id)->whereIn('user_id', $users->pluck('id'))))
             ->get()->keyBy(fn (Chat $c) => $c->user_id === $me->id ? $c->manager_id : $c->user_id);
+        // Сотруднику не сотрудник — его чат площадки, а не личка (`viaPlatform`).
+        $outside = $users->filter(fn (User $u) => self::viaPlatform($me, $u))->pluck('id');
+        if ($outside->isNotEmpty()) {
+            $chats = $chats->except($outside->all());
+            foreach (Chat::withLast()->whereNull('offer_id')->whereNull('manager_id')->whereIn('user_id', $outside)
+                ->orderBy('last_message_at')->get() as $c) {
+                $chats->put($c->user_id, $c);
+            }
+        }
 
         // С перепиской — первыми, свежие выше; без неё — по имени.
         return $users->map(fn (User $u) => ['user' => $u, 'chat' => $chats->get($u->id)])
@@ -173,6 +210,13 @@ final class Direct
         return User::withRole(Role::Manager, Role::SuperBuyer)->where('users.id', '!=', $me->id)->where('is_demo', false)
             ->whereNull('rejected_at')->with(User::withAvatar())->orderBy('name')->get()
             ->reject(fn (User $u) => $u->canEditDeals())->values();
+    }
+
+    /** Покупатели с доступом — сотруднику, по имени. */
+    private static function buyers(): Collection
+    {
+        return User::withRole(Role::Buyer)->withBuyerAccess()->where('is_demo', false)->whereNull('rejected_at')
+            ->with(User::withAvatar())->orderBy('name')->get();
     }
 
     private static function roleWord(User $u): string
