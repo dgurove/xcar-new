@@ -29,7 +29,12 @@
             @if ($apart)
                 {{-- Подбор — в счёте за ТС или отдельной ссылкой (24.11.2026, владелец: «по умолчанию счёт единый»; `Deal::splitsSelection`):
                      выбор сохраняется вместе с ценой (`DealController::money` → `SetSelectionApart`), строка ниже — во что выйдет каждый. --}}
-                <div class="flex flex-col gap-1.5" data-controller="reveal">
+                {{-- У Совкомбанка подбор всегда в счёте за ТС (25.11.2026, владелец) — «Отдельной ссылкой» своим «Вы уверены?». --}}
+                @php $sovcom = $deal->offer->vendor?->parser === \App\Vendors\Parser::Sovcombank; @endphp
+                <div class="flex flex-col gap-1.5" data-controller="reveal{{ $sovcom ? ' confirm-pick' : '' }}"
+                    @if ($sovcom) data-confirm-pick-value-value="1" data-confirm-pick-title-value="{{ \App\Offers\Warnings::TITLE }}"
+                        data-confirm-pick-text-value="{{ \App\Offers\Warnings::SELECTION_APART_SOVCOM }}" data-confirm-pick-ok-value="Да, отдельной ссылкой"
+                        data-confirm-pick-cancel-value="{{ \App\Offers\Warnings::CANCEL }}" data-action="change->confirm-pick#pick" @endif>
                     <span class="field-label">Услуги подбора</span>
                     <x-ui.segment name="selection_apart" :options="['0' => 'В счёте за ТС', '1' => 'Отдельной ссылкой']" :value="$deal->selection_apart ? '1' : '0'" pick/>
                     <p class="text-sm text-ink-muted" data-reveal-target="pane" data-reveal-key="0">Счёт и договор: <span class="nums">{{ Money::rub($apart['one']) }}</span></p>
