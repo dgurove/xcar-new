@@ -101,9 +101,11 @@ export default class extends Controller {
             if (this.stageValue) form.append('stage', this.stageValue);
             if (this.vehicleValue) form.append('vehicle', this.vehicleValue);
             this.progress(0.7);
-            const r = await request(this.urlValue, { method: 'POST', body: form, quiet: true, statuses: [422], timeout: 120000 });
+            // Отказ сервера — своими словами, «Нет связи» — только когда ответа нет вовсе (25.11.2026: 404 читался как обрыв).
+            const r = await request(this.urlValue, { method: 'POST', body: form, quiet: true, statuses: [403, 404, 413, 419, 422, 500, 502, 503, 504], timeout: 120000 });
             const answer = r ? await r.json().catch(() => ({})) : null;
-            if (!r || !r.ok) throw new Error(answer?.errors?.name?.[0] || answer?.message || (r ? 'PDF не собрался' : 'Нет связи'));
+            if (!r) throw new Error('Нет связи');
+            if (!r.ok) throw new Error(refusal(r.status, answer));
             this.progress(1);
             // Сделка: файл лёг в договор или шаг, шаг мог пройти — страница целиком заново, тост — с сервера.
             if (answer.reload) {
@@ -157,6 +159,14 @@ function plural(n, one, few, many) {
     if (m10 === 1 && m100 !== 11) return one;
     if (m10 >= 2 && m10 <= 4 && (m100 < 12 || m100 > 14)) return few;
     return many;
+}
+
+// Почему сервер не принял: ошибка поля и своё слово сервера — как есть (422), остальное — по коду.
+function refusal(status, answer) {
+    if (status === 422) return answer?.errors?.name?.[0] || Object.values(answer?.errors ?? {})[0]?.[0] || answer?.message || 'PDF не собрался';
+    if (status === 413) return 'Файлы слишком большие';
+    if (status === 403 || status === 404 || status === 419) return 'Сюда приложить нельзя, обновите страницу';
+    return 'PDF не собрался, попробуйте ещё раз';
 }
 
 // Фото (и HEIC без типа), PDF, Word; остальное не берём.

@@ -145,7 +145,9 @@ class ReportController
             'kind' => ['required_without:stage', 'nullable', 'string'],
             'stage' => ['nullable', 'in:intake,release'],
         ], ['name.required' => 'Как назвать документ?']);
-        abort_unless($vehicle->accepted_at, 404);
+        // Отчёт о приёме — только у принятой; файлы шага окна «Приём» кладут и до приёма (25.11.2026: 404 до нажатия «Принять»
+        // окно читало как «Нет связи», и ни один PDF в приём не вставал).
+        abort_unless(($data['stage'] ?? null) || $vehicle->accepted_at, 404);
         // Слот отчёта о приёме — вид документа (`kind`); файлы шага окна приёма или выдачи (`stage`) — без вида, со стадией.
         $stage = $data['stage'] ?? null;
         $kind = $stage ? null : (ReportDoc::tryFrom((string) $data['kind']) ?? abort(422, 'Нет такого документа'));
