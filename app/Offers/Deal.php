@@ -481,6 +481,20 @@ class Deal extends Model implements HasMedia
     }
 
     /** Договор купли-продажи: собственника (ДКП) или ПРАЙМ с покупателем менеджера (`DealContract`). */
+    /**
+     * С какого момента идёт эта продажа машины: начало первой сделки цепочки переприёмов (`from_deal_id`, `CarryDeal`), иначе своё.
+     * Переоценка, разобранная при прежней сделке, — и этой (26.11.2026).
+     */
+    public function since(): \Illuminate\Support\Carbon
+    {
+        $first = $this;
+        for ($i = 0; $first->from_deal_id && $i < 10 && ($up = self::find($first->from_deal_id)); $i++) {
+            $first = $up;
+        }
+
+        return $first->created_at;
+    }
+
     public function contract(): HasOne
     {
         return $this->hasOne(DealContract::class);

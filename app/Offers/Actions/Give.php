@@ -115,13 +115,10 @@ final class Give
             $bid?->update(['state' => BidState::Accepted, 'decided_at' => now(), 'decided_by' => $by->id]);
 
             $deal = $this->deal($offer, $g, $bid, $manager, $garage, $cost);
-            // Тот же менеджер снова (переприём, «Изменить гараж», 25.11.2026): его оплаченные счета и счета с его заявкой об оплате —
-            // этой сделке, иначе `SyncDealInvoices` выставил бы их заново на полную сумму. Другому менеджеру — нет: это деньги прежнего.
-            if ($previous && $manager && $previous->buyer_id === $manager->id) {
-                \App\Billing\Invoice::where('deal_id', $previous->id)->where('direction', 'issued')
-                    ->whereIn('kind', [\App\Billing\ChargeKind::Sale, \App\Billing\ChargeKind::Selection])
-                    ->where('state', '!=', \App\Billing\InvoiceState::Void)->update(['deal_id' => $deal->id]);
-            }
+            // Переприём (25–26.11.2026): что про машину и поставщика, а тому же менеджеру и про покупателя, — новой сделке (`CarryDeal`).
+            // Прежнюю только что отменили («Менеджер отказался», приняли резерв) — та же продажа, берём у неё.
+            $prior = $previous ?? CarryDeal::prior($offer);
+            $carried = $prior && app(CarryDeal::class)($prior, $deal);
             $offer->log(OfferEventType::BidAccepted, $by, array_filter(['bid_id' => $bid?->id, 'amount' => $deal->amount, 'commission' => $deal->commission,
                 'garage' => $deal->garage_payer?->value, 'manager' => $bid ? null : $manager?->id,
                 'scheme' => $deal->scheme->value, 'dkp' => $deal->ownerPrice(), 'share' => $deal->share,
@@ -144,6 +141,8 @@ final class Give
             }
 
             $offer = $previous && $offer->state === OfferState::Sold ? $this->handOver($offer, $previous, $deal, $by) : $this->enterDeal($offer, $deal, $by);
+            // Перенесли ответы поставщика или доп. просьбы — окну и счётчикам перечитаться.
+            $carried && Disclose::publish($deal->setRelation('offer', $offer));
             $offer->unsetRelation('positions');
             if (! $offer->position(Track::Sale)) {
                 // Маршрута нет — согласовывать не с кем и ждать со страховой нечего: счета сразу, гаражная — сразу «В гараже».
@@ -337,16 +336,6 @@ final class Give
      */
     public function handOver(Offer $offer, Deal $previous, Deal $deal, User $by): Offer
     {
-        // Факты о машине и поставщике переходят к новой сделке (25.11.2026, Sitrak C7H 7806/046/03674/26: после переприёма счёт Альфы
-        // от 23.11 повис неразобранным за отменённой сделкой): ждущие разбора ответы поставщика (`ReplyReview`) и, при той же схеме,
-        // отметки «поставщику оплачено» / «оплата получена» — деньги поставщику ушли при прежней сделке, «вывоз после оплаты» и
-        // тревога обязывающего не возвращаются.
-        $moved = \App\Offers\ReplyReview::where('deal_id', $previous->id)->where('state', \App\Offers\ReplyReview::PENDING)->update(['deal_id' => $deal->id]);
-        // Платило поставщику наше юрлицо (ПРАЙМ / Р.О.С.) — деньги не прежнего покупателя; «страховой напрямую» и ДКП платил он сам.
-        if ($previous->schemeOf() === $deal->schemeOf() && $deal->isPrime() && ($previous->supplier_paid_at || $previous->prepaid_at)) {
-            $deal->forceFill(['supplier_paid_at' => $deal->supplier_paid_at ?? $previous->supplier_paid_at, 'prepaid_at' => $deal->prepaid_at ?? $previous->prepaid_at])->save();
-        }
-        $moved && \App\Offers\Actions\Disclose::publish($deal->setRelation('offer', $offer));
         $stage = $offer->stage();
         $same = true;
         if ($stage && $previous->isGarageUs() !== $deal->isGarageUs()) {

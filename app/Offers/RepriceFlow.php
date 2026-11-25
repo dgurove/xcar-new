@@ -52,7 +52,7 @@ final class RepriceFlow
         // Ждущая — она; иначе последняя разобранная после начала сделки (до сделки переоценка её не касалась). Последнюю отклонили —
         // шага нет: прежняя применённая своё уже отыграла (24.11.2026: после отклонённой новой вставала старая с «Ответить поставщику»).
         $reprice = $offer->pendingReprice
-            ?? Reprice::where('offer_id', $offer->id)->whereIn('state', [Reprice::APPLIED, Reprice::DISMISSED])->where('created_at', '>=', $deal->created_at)->latest('id')->first();
+            ?? Reprice::where('offer_id', $offer->id)->whereIn('state', [Reprice::APPLIED, Reprice::DISMISSED])->where('created_at', '>=', $deal->since())->latest('id')->first();
         if (! $reprice || $reprice->state === Reprice::DISMISSED) {
             return null;
         }

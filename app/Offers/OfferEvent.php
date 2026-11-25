@@ -363,7 +363,8 @@ class OfferEvent extends Model
         return match ($p['do'] ?? null) {
             'stage' => match ($state = CarState::tryFrom($p['state'] ?? '')) {
                 // Догадка по выписке (`SellFromStatement`, 18.11.2026, владелец: «в истории помечать, что это догадки»).
-                CarState::Sold => 'Продана'.(isset($p['price']) ? ' за '.$sum('price') : '').(isset($p['guess']) ? ' — догадка по выписке: '.$p['guess'] : ''),
+                CarState::Sold => 'Продана'.(isset($p['price']) ? ' за '.$sum('price') : '').(isset($p['guess']) ? ' — догадка по выписке: '.$p['guess'] : '')
+                    .(isset($p['client']) ? ': '.$p['client'].' оплатил счёт' : ''),
                 null => 'Гараж',
                 default => ($state->isPrep() ? 'Гараж: ' : 'Продажа: ').mb_lcfirst($state->label()),
             },

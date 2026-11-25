@@ -212,6 +212,7 @@ class RosSchemeTest extends TestCase
         $previous->forceFill(['cancelled_at' => now(), 'closed_at' => now()])->save();
         $new = Deal::create(['offer_id' => $offer->id, 'buyer_id' => $previous->buyer_id, 'amount' => 1150000, 'cost' => $previous->cost, 'scheme' => DealScheme::Ros]);
         $offer->forceFill(['deal_id' => $new->id])->save();
+        app(\App\Offers\Actions\CarryDeal::class)($previous->fresh(), $new);
         app(\App\Offers\Actions\Give::class)->handOver($offer->fresh(), $previous, $new, $this->admin);
         $this->assertSame($new->id, $review->fresh()->deal_id);
         $this->assertNotNull($new->fresh()->prepaid_at);
@@ -264,6 +265,7 @@ class RosSchemeTest extends TestCase
         $previous->forceFill(['scheme' => DealScheme::Insurer, 'prepaid_at' => now(), 'supplier_paid_at' => now(), 'cancelled_at' => now(), 'closed_at' => now()])->save();
         $new = Deal::create(['offer_id' => $offer->id, 'buyer_id' => $previous->buyer_id, 'amount' => 1150000, 'cost' => $previous->cost, 'scheme' => DealScheme::Insurer]);
         $offer->forceFill(['deal_id' => $new->id])->save();
+        app(\App\Offers\Actions\CarryDeal::class)($previous->fresh(), $new);
         app(\App\Offers\Actions\Give::class)->handOver($offer->fresh(), $previous, $new, $this->admin);
         $this->assertNull($new->fresh()->prepaid_at);
         $this->assertNull($new->fresh()->supplier_paid_at);

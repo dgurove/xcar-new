@@ -263,7 +263,7 @@ class Position extends Model
         }
 
         return Reprice::where('offer_id', $this->offer_id)->where('state', Reprice::APPLIED)->where('source', 'letter')->whereNull('answered_at')
-            ->where('created_at', '>=', $deal->created_at)
+            ->where('created_at', '>=', $deal->since())
             ->whereNotExists(fn ($q) => $q->selectRaw('1')->from('reprice_asks')->where('deal_id', $deal->id)->whereIn('state', RepriceAsk::OPEN))
             ->latest('id')->first();
     }

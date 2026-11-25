@@ -216,6 +216,7 @@ class RouteController
         abort_if($offer->state === OfferState::Garage, 422);
         $passed = Path::for($offer, $stage->workflow->track)->where('state', Path::DONE)->pluck('block.id')->all();
         abort_unless(in_array($stage->block_id, $passed, true), 422);
+        abort_if(Stage::dealLocked($offer, $stage), 422);
         $place($offer, $stage, $request->user(), back: true);
 
         return back(fallback: "/offers/{$offer->number}")->with('toast', 'Снова «'.$stage->block->name.'»');

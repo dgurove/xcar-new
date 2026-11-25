@@ -195,7 +195,7 @@
                             @endforeach
                             {{-- Назад — на последний этап блока, где предложение было, а не на первый. --}}
                             @php $lastIn = $step['stages']->last(); $target = $lastIn ? ($block->stages->firstWhere('id', $lastIn['stage_id']) ?? $block->stages->firstWhere('name', $lastIn['stage'])) : null; $target ??= $block->stages->first(); @endphp
-                            @if ($target && $block->id !== $stage->block_id)
+                            @if ($target && $block->id !== $stage->block_id && ! \App\Workflow\Stage::dealLocked($offer, $target))
                                 <form method="post" action="/offers/{{ $n }}/stage" class="mt-1" data-turbo-confirm="Вернуть на «{{ $target->name }}»?">
                                     @csrf<input type="hidden" name="stage_id" value="{{ $target->id }}">
                                     <x-ui.button size="sm" variant="secondary">Вернуть на этот шаг</x-ui.button>

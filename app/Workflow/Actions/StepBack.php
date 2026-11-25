@@ -56,7 +56,7 @@ final class StepBack
         }
         $in = Stage::where('workflow_id', $position->stage->workflow_id);
         $to = $last['from_id'] ? $in->whereKey($last['from_id'])->first() : $in->where('name', $last['from'])->first();
-        if (! $to || ($to->offer_state && $to->offer_state !== $offer->state)) {
+        if (! $to || ($to->offer_state && $to->offer_state !== $offer->state) || Stage::dealLocked($offer, $to)) {
             return null;
         }
 
