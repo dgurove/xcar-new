@@ -118,7 +118,8 @@ class InvoiceNudgeTest extends TestCase
         $invoice = $deal->issuedInvoices()->where('state', '!=', 'void')->sole();
         $this->actingAs($this->admin);
         $money = fn () => \Illuminate\Support\Facades\Blade::render('<x-deal.money :deal="$deal"/>', ['deal' => $deal->fresh()]);
-        // До отправки: подпись «Счёт — не отправлен», «Отправить менеджеру» под строкой.
+        // До отправки: подпись «Счёт — не отправлен», «Отправить менеджеру» под строкой (реквизиты покупателя проверены, `CheckBuyer`).
+        \App\Offers\Actions\CheckBuyer::mark($deal->fresh(), $this->admin);
         $html = $money();
         $this->assertMatchesRegularExpression('/<span>Счёт<\/span>\s*<span[^>]*text-danger[^>]*>не отправлен/u', $html);
         $this->assertStringContainsString('/invoices/'.$invoice->id.'/show', $html);

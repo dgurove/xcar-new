@@ -50,6 +50,33 @@ final class TransportNotice extends Notice
         return $this->quiet;
     }
 
+    /**
+     * Вкладка «Вывоза», чья это забота (26.11.2026, `Responsibility::wants`; владелец про Катю: «ей только по вывозу назначить
+     * исполнителя и из других этапов вывоза, если сроки горят»): новый и ждущий — «Назначить исполнителя», документы — «Документы на
+     * вывоз», просрочка и сводка — горящее «Везём». Остальное — по машине.
+     */
+    public function tabs(): ?array
+    {
+        return match (Str::after($this->kind(), ':')) {
+            'requested', 'waiting' => ['pickup_assign'],
+            'docs-needed', 'docs-needed-many' => ['pickup_docs'],
+            'late', 'unreachable' => ['pickup_moving'],
+            'stale' => ['pickup_assign', 'pickup_moving'],
+            default => parent::tabs(),
+        };
+    }
+
+    /** Исполнитель и логист этого вывоза — лично им. */
+    public function personalTo(User $user): bool
+    {
+        return ($this->transport && in_array($user->id, [$this->transport->executor_id, $this->transport->logist_id], true)) || parent::personalTo($user);
+    }
+
+    public function urgent(): bool
+    {
+        return in_array(Str::after($this->kind(), ':'), ['late', 'unreachable', 'stale'], true) || parent::urgent();
+    }
+
     /** Новый вывоз — админам: выбрать, кто вывозит. */
     public static function requested(Transport $t): self
     {

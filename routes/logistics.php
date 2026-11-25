@@ -98,6 +98,9 @@ Route::domain(config('xcar.logistics_host'))->middleware(['auth', 'ability:canLo
         Route::post('/contractors/invites/{invite}/on', [InviteController::class, 'enable']);
         Route::put('/contractors/{user}', [ContractorController::class, 'update'])->whereNumber('user');
         Route::post('/contractors/{user}/revoke', [ContractorController::class, 'revoke'])->whereNumber('user');
+    });
+    // Выплаты исполнителям — админу и логисту (26.11.2026: «Исполнители» с того дня и модератору, деньги — нет).
+    Route::middleware('ability:paysContractors')->group(function () {
         Route::get('/money', [MoneyController::class, 'index']);
         Route::put('/money/{user}/party', [MoneyController::class, 'party'])->whereNumber('user');
         Route::post('/money/paid', [MoneyController::class, 'paid']);

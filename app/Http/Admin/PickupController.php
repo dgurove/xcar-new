@@ -69,6 +69,12 @@ class PickupController
         return self::query($tab)->distinct()->pluck('transports.car_id')->map(fn ($id) => (int) $id)->all();
     }
 
+    /** Машины вкладки с горящим вывозом (`Responsibility::lateSql`). @return list<int> */
+    public static function lateCarIds(string $tab): array
+    {
+        return self::query($tab)->whereRaw(\App\Offers\Responsibility::lateSql())->distinct()->pluck('transports.car_id')->map(fn ($id) => (int) $id)->all();
+    }
+
     public function tab(Request $request, string $tab)
     {
         $detail = Detail::of($request, fn (string $key) => CarWindow::of($request, OfferNumber::find($key)));
@@ -83,9 +89,23 @@ class PickupController
         }
         // Дольше ждущие — выше.
         $rows = Rows::filter($q->orderBy('transports.created_at')->get(), fn (Transport $t) => $t->offer?->number);
-        $groups = $tab === 'pickup_moving'
-            ? $rows->groupBy(fn (Transport $t) => $t->state->label())
-            : collect(['' => $rows]);
+        // Горящее — первыми подгруппами (26.11.2026, владелец: Кате во вывозе красным только просроченное и горящий срок
+        // обязывающего): «Горит срок обязывающего», «Просрочено» (`Responsibility::lateSql`), дальше — как было.
+        $hot = \App\Offers\Offer::whereIntegerInRaw('id', $rows->map(fn (Transport $t) => $t->offer?->id)->filter()->values()->all())
+            ->whereRaw(\App\Offers\Responsibility::hotSql())->pluck('id')->flip();
+        $late = Transport::whereIntegerInRaw('id', $rows->pluck('id')->all())->whereRaw(\App\Offers\Responsibility::lateSql())->pluck('id')->flip();
+        $rest = $tab === 'pickup_moving' ? fn (Transport $t) => $t->state->label() : fn () => '';
+        $groups = $rows->groupBy(fn (Transport $t) => match (true) {
+            $t->offer && $hot->has($t->offer->id) => OfferController::HOT_GROUP,
+            $late->has($t->id) => \App\Offers\Responsibility::LATE_GROUP,
+            default => $rest($t),
+        });
+        $order = [OfferController::HOT_GROUP, \App\Offers\Responsibility::LATE_GROUP];
+        $groups = $groups->sortKeysUsing(fn ($a, $b) => (array_search($a, $order, true) === false ? 9 : array_search($a, $order, true)) <=> (array_search($b, $order, true) === false ? 9 : array_search($b, $order, true)));
+        // Есть горящее, а у вкладки своих групп нет — остальные строки «Остальные».
+        if ($groups->has('') && $groups->count() > 1) {
+            $groups = $groups->mapWithKeys(fn ($v, $k) => [$k === '' ? 'Остальные' : $k => $v]);
+        }
 
         return view('admin.pickups.index', [
             'detail' => $detail,
@@ -98,6 +118,25 @@ class PickupController
             'sections' => OfferController::sections($user),
             'counts' => OfferController::counts($user),
         ]);
+    }
+
+    /** Трек документов СДЭКом из окна машины CRM (26.11.2026) — тот же `Docs::send`, что на хосте логистики. */
+    public function docs(Request $request, Transport $transport, \App\Logistics\Actions\Docs $docs)
+    {
+        abort_unless($request->user()->sendsLogisticsDocs(), 403);
+        $track = (string) $request->validate(['docs_track' => ['required', 'string', 'max:60']], ['docs_track.required' => 'Трек-номер СДЭК'])['docs_track'];
+        $docs->send($transport, $track, $request->user());
+
+        return back()->with('toast', 'Документы отправлены');
+    }
+
+    /** «Документы получены» за исполнителя — ведущим логистику (`Docs::receive`). */
+    public function docsReceived(Request $request, Transport $transport, \App\Logistics\Actions\Docs $docs)
+    {
+        abort_unless($request->user()->leadsLogistics(), 403);
+        $docs->receive($transport, $request->user());
+
+        return back()->with('toast', 'Документы получены');
     }
 
     /** Столбцы — как у логистики на её вкладке, без галочек пачки (назначают в окне машины). */

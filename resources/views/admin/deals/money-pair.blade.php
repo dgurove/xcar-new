@@ -50,7 +50,10 @@
         </div>
     </div>
     @if ($canEdit && $open->isNotEmpty())
-        @if (! $sent)
+        {{-- Реквизиты покупателя в счёте не проверены — «Проверить и отправить менеджеру» (26.11.2026, `x-deal.buyer-check`). --}}
+        @if (! $sent && \App\Offers\Actions\CheckBuyer::onInvoice($deal, $sale) && $deal->contract?->needsBuyerCheck())
+            <x-deal.buyer-check :deal="$deal" then="bills" class="w-full"/>
+        @elseif (! $sent)
             <form method="post" action="/work/deals/{{ $deal->id }}/bills/send" class="contents">@csrf
                 <button type="submit" class="btn btn-accent btn-s w-full gap-2"><x-ui.icon name="send" class="size-4"/>Отправить менеджеру</button>
             </form>

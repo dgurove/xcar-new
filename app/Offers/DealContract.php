@@ -24,7 +24,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  * тот же `seller` (сам из договора комиссии Совкомбанка — `FillCommissionOwner`), номер — `commissionNo`. НДС договора —
  * выбором в CRM (`vatRate`).
  */
-#[Fillable(['deal_id', 'seller_party_id', 'buyer_user_id', 'payer', 'price', 'city', 'signed_at', 'ready_at', 'issuer', 'number', 'year', 'commission_no', 'vat_rate', 'cash_part', 'car_price', 'supplier_price', 'supplier_purpose', 'supplier_requisites', 'shown_at', 'shown_by', 'code', 'numbered_on', 'edited_at', 'edited_by', 'edited_base', 'draft_party_id'])]
+#[Fillable(['deal_id', 'seller_party_id', 'buyer_user_id', 'payer', 'price', 'city', 'signed_at', 'ready_at', 'issuer', 'number', 'year', 'commission_no', 'vat_rate', 'cash_part', 'car_price', 'supplier_price', 'supplier_purpose', 'supplier_requisites', 'shown_at', 'shown_by', 'code', 'numbered_on', 'edited_at', 'edited_by', 'edited_base', 'draft_party_id', 'buyer_checked_at', 'buyer_checked_by', 'buyer_checked_sum'])]
 class DealContract extends Model
 {
     use FastAttributes;
@@ -35,7 +35,7 @@ class DealContract extends Model
 
     protected function casts(): array
     {
-        return ['price' => 'int', 'signed_at' => 'date', 'ready_at' => 'datetime', 'issuer' => Seller::class, 'number' => 'int', 'year' => 'int', 'vat_rate' => 'int', 'supplier_price' => 'int', 'supplier_requisites' => 'array', 'shown_at' => 'datetime', 'numbered_on' => 'date', 'invoice_without_reg_at' => 'datetime', 'cash_part' => 'int', 'car_price' => 'int', 'edited_at' => 'datetime'];
+        return ['price' => 'int', 'signed_at' => 'date', 'ready_at' => 'datetime', 'issuer' => Seller::class, 'number' => 'int', 'year' => 'int', 'vat_rate' => 'int', 'supplier_price' => 'int', 'supplier_requisites' => 'array', 'shown_at' => 'datetime', 'numbered_on' => 'date', 'invoice_without_reg_at' => 'datetime', 'cash_part' => 'int', 'car_price' => 'int', 'edited_at' => 'datetime', 'buyer_checked_at' => 'datetime'];
     }
 
     /** Вид документа: физлицо физлицу (ДКП собственника) или ДКП с актом от нашего юрлица. */
@@ -195,6 +195,43 @@ class DealContract extends Model
     public function buyerParty(): ?Party
     {
         return $this->buyer?->party;
+    }
+
+    /** Поля стороны, что уходят в счёт, договор и письмо с реквизитами: их отпечаток проверяет сотрудник (`buyerSum`). */
+    private const CHECKED_FIELDS = ['kind', 'name', 'inn', 'kpp', 'ogrn', 'legal_address', 'director', 'director_basis', 'full_name', 'passport', 'passport_issued',
+        'passport_issued_at', 'passport_code', 'reg_address', 'birth_at', 'birth_place', 'bank_name', 'bik', 'account', 'corr_account'];
+
+    /**
+     * Отпечаток реквизитов покупателя (26.11.2026, проверка сотрудником — `Actions\CheckBuyer`): сторона, её поля и страницы скана.
+     * Поменялось что-то из этого (менеджер поправил, скан распознался заново) — проверка снова нужна. Покупателя нет — null.
+     */
+    public function buyerSum(): ?string
+    {
+        $party = $this->buyerParty();
+        if (! $party) {
+            return null;
+        }
+        $fields = array_map(fn ($v) => $v === null ? null : (string) $v, array_intersect_key($party->getAttributes(), array_flip(self::CHECKED_FIELDS)));
+        ksort($fields);
+
+        return sha1(json_encode([$party->id, $fields, $party->getMedia('passport')->pluck('id')->sort()->values()->all()]));
+    }
+
+    /** Реквизиты покупателя проверены сотрудником в этом виде. */
+    public function buyerChecked(): bool
+    {
+        return $this->buyer_checked_sum !== null && $this->buyer_checked_sum === $this->buyerSum();
+    }
+
+    /**
+     * Нужна проверка (26.11.2026, владелец: «без её «Всё верно» реквизиты не уходят поставщику и не отправляются счёт и договор»):
+     * у сделки есть покупатель с данными (хоть для счёта, хоть для договора), а этот их вид сотрудник ещё не проверил.
+     */
+    public function needsBuyerCheck(): bool
+    {
+        $party = $this->buyerParty();
+
+        return $party !== null && ($party->readyForContract() || $party->readyForInvoice()) && ! $this->buyerChecked();
     }
 
     /**

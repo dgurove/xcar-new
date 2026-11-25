@@ -437,6 +437,17 @@ abstract class Notice extends Notification implements ShouldQueue
         if ($this->quiet()) {
             return $via;
         }
+        // Не по ответственности сотрудника (26.11.2026, `Responsibility::wants`): строкой ленты, без пуша, Telegram, почты и
+        // всплывашки (`mutedFor`) — и критичное тоже (владелец про Катю: «остальные уведомления ни пуш ни в телегу ей не нужны»).
+        if (! \App\Offers\Responsibility::wants($user, $this)) {
+            $this->muted[$user->id] = true;
+            $this->skipped($user, 'push', 'не его вкладка');
+            if ($user->telegram_chat_id && $this->toTelegram() !== null) {
+                $this->skipped($user, 'telegram', 'не его вкладка');
+            }
+
+            return $via;
+        }
         if (! $user->quietHours()) {
             $via[] = WebPushChannel::class;
         } else {
@@ -455,6 +466,59 @@ abstract class Notice extends Notification implements ShouldQueue
         }
 
         return $via;
+    }
+
+    /** @var array<int, true> сотрудники, кому это не по ответственности (`via`): строкой ленты без всплывашки */
+    public array $muted = [];
+
+    public function mutedFor(object $user): bool
+    {
+        return isset($this->muted[$user->id ?? 0]);
+    }
+
+    /** @var list<string>|false|null вкладки, посчитанные раз на уведомление (`tabs`) */
+    private array|false|null $tabsMemo = false;
+
+    /**
+     * Вкладки «Предложений», о строках которых уведомление (26.11.2026, `Responsibility::wants`): по умолчанию — где сейчас его
+     * машина (`Responsibility::tabsOf`); null — уведомление не о строке вкладки (люди, выписка, сводки, личка) — как раньше всем.
+     *
+     * @return list<string>|null
+     */
+    public function tabs(): ?array
+    {
+        if ($this->tabsMemo === false) {
+            $offer = $this->responsibleOffer();
+            $this->tabsMemo = $offer ? \App\Offers\Responsibility::tabsOf($offer) : null;
+        }
+
+        return $this->tabsMemo;
+    }
+
+    /** О горящем ли (для ответственного «только за горящее»): горит обязывающий, просрочен шаг или вывоз. */
+    public function urgent(): bool
+    {
+        $offer = $this->responsibleOffer();
+
+        return $offer !== null && \App\Offers\Responsibility::urgentOffer($offer);
+    }
+
+    /**
+     * Уведомление лично ему, а не всем сотрудникам: он менеджер этой сделки или гаража (Катя — ещё и менеджер). Ответственность
+     * (`Responsibility::wants`) такое не глушит.
+     */
+    public function personalTo(User $user): bool
+    {
+        $offer = $this->responsibleOffer();
+
+        return $offer !== null && (\App\Offers\Deal::active()->where('offer_id', $offer->id)->where('buyer_id', $user->id)->exists()
+            || \App\Garage\Car::where('offer_id', $offer->id)->where('manager_id', $user->id)->exists());
+    }
+
+    /** Машина уведомления для ответственности: среди полей или по номеру (`offerNumber` — у денег машины среди полей нет). */
+    private function responsibleOffer(): ?Offer
+    {
+        return $this->aboutOffer() ?? (($n = $this->offerNumber()) ? Offer::where('number', $n)->first() : null);
     }
 
     /**

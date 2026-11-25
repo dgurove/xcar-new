@@ -101,7 +101,13 @@ final class Sovcombank extends Route
                     // сам (`MarkSupplierLetter`, `SkipLetter` → `Stage::isSupplierDocs`).
                     // Ждёт поставщика — значит шаг письма (`Stage::isLetterStep`): пока письмо не ушло, ход наш, «Отправить документы».
                     'name' => 'Документы поставщику', 'block' => 'supplier', 'waits_for' => 'supplier', 'limit_minutes' => 2 * self::DAY, 'letter' => 'docs',
-                    'exits' => [[self::DOCS_SENT, 'staff', 'closed_won']],
+                    'exits' => [[self::DOCS_SENT, 'staff', 'originals']],
+                ],
+                'originals' => [
+                    // Оригиналы (26.11.2026, `Offers\Originals`): договор комиссии и акт — в Совкомбанк, ДКП — прежнему владельцу,
+                    // подписанный ДКП — от менеджера к нам. Всё дошло — шаг проходит сам.
+                    'name' => \App\Offers\Originals::STAGE, 'block' => 'supplier', 'waits_for' => 'us', 'limit_minutes' => 14 * self::DAY,
+                    'exits' => [[\App\Offers\Originals::DONE, 'staff', 'closed_won']],
                 ],
             ]
             + $this->insurerBuyer()

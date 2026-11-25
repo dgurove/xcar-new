@@ -52,7 +52,7 @@
          «Оплата получена» (шторка оплаты `paid-{id}`, прежняя «Деньги пришли?») и «Напомнить менеджеру» (`x-deal.nudge-sheet`);
          заявка менеджера — её «Поступила / Не поступила» ниже вместо них; оплачен — без кнопок. --}}
     @if (! $i->isShownToManager())
-        <x-deal.send-row :deal="$deal" :action="'/work/deals/'.$deal->id.'/invoices/'.$i->id.'/show'"/>
+        <x-deal.send-row :deal="$deal" :action="'/work/deals/'.$deal->id.'/invoices/'.$i->id.'/show'" :then="\App\Offers\Actions\CheckBuyer::onInvoice($deal, $i) ? 'invoice:'.$i->id : null"/>
     @elseif ($paidBy->contains('id', $i->id) && $i->claims->isEmpty())
         <div class="send-under send-pair">
             <button type="button" class="btn btn-accent btn-s gap-2" data-controller="emit" data-action="emit#send" data-emit-event-param="paid-{{ $i->id }}:open"><x-ui.icon name="check" class="size-4"/>Оплата получена</button>

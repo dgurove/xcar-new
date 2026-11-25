@@ -38,7 +38,8 @@ final class AdvanceOnPayment
         }
         // Счетов у сделки бывает два (гаражная «платит менеджер»: машина и наша доля) — шаг оплаты проходит, только когда
         // оплачены все, а не тот, что заплатили первым.
-        if ($invoice->deal?->fullyPaid()) {
+        // С 26.11.2026 — и когда оплачен счёт за ТС, а ссылка за подбор ещё нет (`Deal::payStepPaid`).
+        if ($invoice->deal?->payStepPaid()) {
             $this->pass($invoice->deal, $e->by);
         }
     }
@@ -68,7 +69,7 @@ final class AdvanceOnPayment
             return;
         }
         $deal = $e->deal ?? $e->offer->deal()->first();
-        if ($deal?->isActive() && ($deal->fullyPaid() || MoneyIn::closes($deal->setRelation('offer', $e->offer)))) {
+        if ($deal?->isActive() && ($deal->payStepPaid() || MoneyIn::closes($deal->setRelation('offer', $e->offer)))) {
             $this->pass($deal->setRelation('offer', $e->offer), $e->by);
         }
     }

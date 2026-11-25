@@ -132,6 +132,9 @@ class AlfaRequisitesTest extends TestCase
 
     public function test_insurer_scheme_asks_buyer_data_then_letter_with_passport(): void
     {
+        // Вход в шаг и запрос реквизитов при входе — одним моментом (`Position::requisitesTodo` сравнивает их строго): без заморозки
+        // тест зависел от того, перешагнула ли работа уведомлений границу секунды (26.11.2026).
+        $this->freezeSecond();
         [$offer, $deal] = $this->deal(vat: false);
         $this->assertSame(DealScheme::Insurer, $deal->scheme);
 
@@ -165,7 +168,8 @@ class AlfaRequisitesTest extends TestCase
         $this->assertSame('Письмо с реквизитами', $offer->stage()->name);
         $this->assertSame(WaitsFor::Us, $offer->position(Track::Sale)->waits_for);
         $this->assertSame('ready', $deal->fresh()->requisitesState());
-        $crm('/offers/'.$offer->number)->assertSee('Отправить реквизиты');
+        // Реквизиты внёс менеджер — сначала проверка (26.11.2026, `x-deal.buyer-check`): «Проверить и отправить реквизиты».
+        $crm('/offers/'.$offer->number)->assertSee('Проверить и отправить реквизиты')->assertSee('Всё верно, отправить реквизиты');
         $this->assertNull($deal->fresh()->contract->ready_at, 'договора у «страховой напрямую» нет — «ДКП готов» не шлём');
 
         // В письме — реквизиты покупателя, скан — у него же (вложение черновика).
@@ -346,7 +350,11 @@ class AlfaRequisitesTest extends TestCase
 
         // Без файла — нельзя.
         $this->actingAs($this->admin)->post($crm('/work/deals/'.$deal->id.'/payment-proof'), ['pass' => 1])->assertSessionHasErrors('payment_proof');
-        $this->actingAs($this->admin)->followingRedirects()->get($crm('/work/deals/'.$deal->id))->assertSee('Приложить платёжку за менеджера');
+        $this->actingAs($this->admin)->followingRedirects()->get($crm('/work/deals/'.$deal->id))->assertSee('Приложить документ об оплате за менеджера');
+        // С 25.11.2026 у Альфы без города подписания документ об оплате не принимается (`Deal::signingCityGap`).
+        if ($deal->fresh()->signingCityGap($offer->fresh()->stage())) {
+            $deal->forceFill(['signing_settlement_id' => \App\Park\City::main() ?? \App\Cars\Settlement::query()->value('id')])->save();
+        }
 
         $files = [UploadedFile::fake()->image('chek-1.jpg', 600, 900), UploadedFile::fake()->image('chek-2.jpg', 640, 960)];
         $this->actingAs($this->admin)->post($crm('/work/deals/'.$deal->id.'/payment-proof'), ['files' => $files, 'pass' => 1])->assertSessionHasNoErrors();

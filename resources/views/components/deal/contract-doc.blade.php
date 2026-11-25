@@ -55,10 +55,15 @@
                 @if ($canEdit && ! $edited)
                     <button type="button" class="btn btn-accent btn-s gap-2" data-controller="emit" data-action="emit#send" data-emit-event-param="{{ $sheet }}:open"><x-ui.icon name="edit" class="size-4"/>Заполнить…</button>
                 @endif
+                {{-- Реквизиты покупателя не проверены — «Проверить и отправить» (26.11.2026, `x-deal.buyer-check`). --}}
+                @if ($deal->contract?->needsBuyerCheck())
+                    <x-deal.buyer-check :deal="$deal" then="contract" label="Отправить менеджеру" @class(['btn-quiet' => $canEdit && ! $edited])/>
+                @else
                 <form method="post" action="{{ $base }}/contract/show" class="contents">
                     @csrf
                     <button type="submit" @class(['btn btn-s gap-2', 'btn-quiet' => $canEdit && ! $edited, 'btn-accent' => ! ($canEdit && ! $edited)])><x-ui.icon name="send" class="size-4"/>{{ $edited || ! $canEdit ? 'Отправить менеджеру' : 'Отправить как есть' }}</button>
                 </form>
+                @endif
             </div>
         @endif
         {{-- Подписанный — кнопкой словами, а не скрепкой в строке (19.11.2026, владелец: «тупо иконка скрепки — непонятно»): до отправки —

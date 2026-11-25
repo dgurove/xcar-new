@@ -230,7 +230,7 @@ class OfferController
     /** Зелёные числа колеса: ключ вкладки → ключ числа в `counts` (оценки менеджеров, наши дела по этапам сделки). */
     public static function badges(): array
     {
-        return ['refused' => 'refused', 'estimating' => 'estimating_given', 'priced' => 'priced_given', 'all_deals' => 'all_deals_our', 'paying' => 'paying_our',
+        return ['refused' => 'refused', 'estimating' => 'estimating_given', 'priced' => 'priced_given', 'all_deals' => 'all_deals_our', 'paying_fee' => 'paying_fee_our',
             ...array_combine(PickupController::OURS, array_map(fn ($k) => $k.'_our', PickupController::OURS)), ...collect(DealTabs::TABS)->except(DealTabs::WAITING)->mapWithKeys(fn ($t, $k) => [$k => $k.'_our'])->all()];
     }
 
@@ -324,8 +324,8 @@ class OfferController
     /** Прежние пилюли — в новые вкладки: ссылки из Telegram, закладки, `LegacyAdmin`. */
     private const LEGACY = [
         'draft' => 'unpriced', 'purchase' => 'unpriced', 'closed' => 'done', 'slot' => 'slots', 'open' => 'published', 'recommended' => 'published',
-        // «Оплата за подбор» — с 24.11.2026 часть «Менеджер должен нам».
-        'selection' => 'paying',
+        // «Оплата за подбор» — с 24.11.2026 часть «Менеджер должен нам», с 26.11.2026 — «Ждём оплату подбора».
+        'selection' => 'paying_fee',
     ];
 
     /** Вкладки, где идёт работа по шагам: всегда таблица, без сортировки — порядок задаёт сам шаг. */
@@ -731,8 +731,13 @@ class OfferController
         // Сделка (16.11.2026): этап — раскладка `DealTabs`. Ключи — из `DealTabs::TABS`, не списком: «Спросить менеджера» (`ask`)
         // в список не попал и считался условием «Архива» — 105 в колесе при 2 строках (18.11.2026).
         // «Менеджер должен нам» (24.11.2026) — и машины с открытым счётом подбора на любом этапе (бывшая «Оплата за подбор»).
+        // С 26.11.2026 — двумя вкладками: «Ждём оплату ТС» (шаг оплаты, долг за машину) и «Ждём оплату подбора» (подбор на шаге оплаты,
+        // в том числе внутри счёта за ТС, и открытый счёт подбора на любом этапе).
         if ($preset === 'paying') {
-            return $q->whereIntegerInRaw('offers.id', array_values(array_unique([...DealTabs::ids('paying', ! self::$apart), ...SelectionController::ids()])));
+            return $q->whereIntegerInRaw('offers.id', DealTabs::paying('car', ! self::$apart));
+        }
+        if ($preset === 'paying_fee') {
+            return $q->whereIntegerInRaw('offers.id', array_values(array_unique([...DealTabs::paying('fee', ! self::$apart), ...SelectionController::ids()])));
         }
         if (isset(DealTabs::TABS[$preset])) {
             return $q->whereIn('offers.id', DealTabs::ids($preset, ! self::$apart));
@@ -1133,6 +1138,8 @@ class OfferController
         // Условия те же, что у списков вкладок (`scopeFor` и чипы), — подзапросами одного SELECT.
         $subs = [];
         $count = fn ($q) => $q->toBase()->cloneWithout(['orders', 'columns', 'limit', 'offset'])->cloneWithoutBindings(['order', 'select'])->selectRaw('count(*)');
+        // Горящий срок обязывающего — один раз на все вкладки (`Binding::panicSql` тяжёлый: подзапросами по подтверждениям и сделкам).
+        $hot = Offer::query()->whereRaw(\App\Offers\Responsibility::hotSql())->pluck('offers.id')->map(fn ($id) => (int) $id)->all();
         foreach (array_diff(array_keys(self::presets($user)), ['archive', 'all_archive']) as $key) {
             // «Закупки» — открытые закупки, как прежнее число таб-бара.
             if ($key === 'purchases') {
@@ -1152,6 +1159,12 @@ class OfferController
                 $q->where(fn ($v) => $v->whereNull('offers.vendor_id')->orWhere('offers.vendor_id', '!=', $carcade));
             }
             $subs[$key] = $count($q);
+            // Горящее вкладки — красным тем, кто отвечает только за горящее или следит за сроком обязывающего (`Responsibility`,
+            // 26.11.2026): горит обязывающий везде, у сделки — и просроченный шаг, у вывоза — просроченный вывоз.
+            // Сделки и вывоз — по готовым спискам ниже (`urgentOf`), без второго прохода условий вкладки.
+            if (! array_key_exists($key, self::SUMMARIES) && $key !== 'all' && ! isset(DealTabs::TABS[$key]) && ! isset(PickupController::TABS[$key])) {
+                $subs[$key.'_hot'] = $count((clone $q)->whereIntegerInRaw('offers.id', $hot));
+            }
             // У «Из таблицы Кати» в числе и незаведённые номера — призрачные строки. Черновик из письма встаёт туда из
             // призрака, и число не меняется, — пилюле отдельно число черновиков: выросло — она вспыхивает (flip.js).
             if ($key === 'legacy' && self::ghostsShown($facets)) {
@@ -1181,13 +1194,20 @@ class OfferController
         }
         // «Менеджер должен нам» (24.11.2026, вместе с «Оплатой за подбор») — красным, сколько ссылок подбора не выставлено на шаге
         // оплаты (тем же кругом машин, что число вкладки); остальное в ней — ожидание.
-        if (isset($counts['paying'])) {
-            $counts['paying_our'] = self::carcadeApart($base(), false)->whereIntegerInRaw('offers.id', SelectionController::unsentIds())->count();
+        if (isset($counts['paying_fee'])) {
+            $counts['paying_fee_our'] = self::carcadeApart($base(), false)->whereIntegerInRaw('offers.id', SelectionController::unsentIds())->count();
         }
         // «Вывоз» — там, где ход наш, красным всё (`PickupController::OURS`).
         foreach (PickupController::OURS as $tab) {
             if (isset($counts[$tab])) {
                 $counts[$tab.'_our'] = $counts[$tab];
+            }
+        }
+        // Горящее вкладок сделки и вывоза (`Responsibility`, 26.11.2026): строки вкладки ∩ горящий обязывающий, у сделки — и
+        // просроченный шаг, у вывоза — просроченный вывоз.
+        foreach (self::urgentOf($hot) as $alias => $n) {
+            if (isset($counts[strtok($alias, ':')])) {
+                $counts[str_replace(':', '_', $alias)] = $n;
             }
         }
         // У «Все сделки» — все наши дела по этапам.
@@ -1196,6 +1216,44 @@ class OfferController
         }
 
         return $counts;
+    }
+
+    /**
+     * Горящее вкладок сделки и вывоза по их спискам машин: `{вкладка}:hot` и `{вкладка}:urgent`. Без чипов — красное «только
+     * горящего» ответственного и так про всю вкладку.
+     *
+     * @param  list<int>  $hot  машины с горящим обязывающим
+     * @return array<string, int>
+     */
+    private static function urgentOf(array $hot): array
+    {
+        $hotSet = array_flip($hot);
+        $late = array_flip(DealTabs::overdueIds());
+        $out = [];
+        foreach (array_keys(DealTabs::TABS) as $tab) {
+            $ids = match ($tab) {
+                'paying' => DealTabs::paying('car'),
+                'paying_fee' => array_values(array_unique([...DealTabs::paying('fee'), ...SelectionController::ids()])),
+                default => DealTabs::ids($tab),
+            };
+            $out[$tab.':hot'] = count(array_filter($ids, fn ($id) => isset($hotSet[$id])));
+            $out[$tab.':urgent'] = count(array_filter($ids, fn ($id) => isset($hotSet[$id]) || isset($late[$id])));
+        }
+        $cars = [];
+        foreach (array_keys(PickupController::TABS) as $tab) {
+            $cars[$tab] = PickupController::carIds($tab);
+        }
+        // Машина вывоза → её живые предложения (горящий обязывающий — у предложения).
+        $offers = Offer::whereIntegerInRaw('car_id', array_values(array_unique(array_merge(...array_values($cars) ?: [[]]))))
+            ->whereNotIn('state', [OfferState::Archived, OfferState::Cancelled])->get(['id', 'car_id'])->groupBy('car_id')->map(fn ($g) => $g->pluck('id')->all());
+        foreach ($cars as $tab => $ids) {
+            $lateCars = array_flip(PickupController::lateCarIds($tab));
+            $burning = fn ($car) => array_any($offers[$car] ?? [], fn ($id) => isset($hotSet[$id]));
+            $out[$tab.':hot'] = count(array_filter($ids, $burning));
+            $out[$tab.':urgent'] = count(array_filter($ids, fn ($car) => isset($lateCars[$car]) || $burning($car)));
+        }
+
+        return $out;
     }
 
     /**

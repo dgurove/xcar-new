@@ -314,7 +314,8 @@ final class PublishLiveUpdates
         $topic = Topics::user($e->notifiable);
         // Сообщение чата карточкой показывает сам live-канал (событие chat) — второй раз не надо; тихое — только строка
         // в ленте и бейдж.
-        if ($e->notification instanceof Notice && ! $e->notification instanceof ChatNotice && ! $e->notification->quiet()) {
+        // Не по ответственности сотрудника (`Notice::mutedFor`, 26.11.2026) — тоже только строка ленты.
+        if ($e->notification instanceof Notice && ! $e->notification instanceof ChatNotice && ! $e->notification->quiet() && ! $e->notification->mutedFor($e->notifiable)) {
             $this->publish->notice($topic, Banner::of($e->notification, (string) $e->notification->id, $e->notifiable));
         }
         $this->publish->badges($topic);

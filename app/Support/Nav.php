@@ -87,7 +87,7 @@ final class Nav
                 $user->isLogist() ? self::item('Заказчики', '/clients') : null,
                 // Свои стоянки логиста (18.10.2026): где машины ждут между отрезками.
                 $user->isLogist() ? self::item('Стоянки', '/depots') : null,
-                $user->isAdmin() || $user->isLogist() ? self::item('Исполнители', '/contractors') : null,
+                $user->managesContractors() ? self::item('Исполнители', '/contractors') : null,
                 $user->isAdmin() || $user->isLogist() ? self::item('Оплаты', '/money') : null,
             ]));
         }
@@ -600,7 +600,7 @@ final class Nav
                     '/clients' => $user->isLogist() ? Client::of($user)->whereNull('archived_at')->count() : 0,
                     // Стоянки — сколько машин на них стоит сейчас.
                     '/depots' => $user->isLogist() ? Transport::where('logist_id', $user->id)->whereNotNull('from_depot_id')->whereIn('state', [TransportState::New, TransportState::Logist, TransportState::Assigned, TransportState::Agreed])->count() : 0,
-                    '/contractors' => $user->isAdmin() || $user->isLogist() ? User::contractorsFor($user)->count() : 0,
+                    '/contractors' => $user->managesContractors() ? User::contractorsFor($user)->count() : 0,
                     // Ждут выплаты логисту: свои — логисту, все — админу. Логисту ещё свои деньги (18.10.2026): привезённые заявки,
                     // за которые заказчик не заплатил, и вывозы, где он не заплатил исполнителю, — те же строки, что в «Оплатах».
                     '/money' => ($user->isAdmin() || $user->isLogist()
@@ -681,7 +681,7 @@ final class Nav
     private static function paidPayAsks(User $user): array
     {
         $paid = Requirement::where('user_id', $user->id)->whereNull('done_at')->with(['stage', 'deal'])->get()
-            ->filter(fn (Requirement $r) => $r->deal?->isActive() && $r->stage?->isPayStep() && $r->deal->fullyPaid());
+            ->filter(fn (Requirement $r) => $r->deal?->isActive() && $r->stage?->isPayStep() && $r->deal->payStepPaid());
 
         return ['deals' => $paid->filter(fn ($r) => $r->deal->garage_payer === null)->count(), 'garage' => $paid->filter(fn ($r) => $r->deal->garage_payer !== null)->count()];
     }
@@ -737,14 +737,20 @@ final class Nav
             $staff = self::staffCounts($surface);
             $staff['/work/money'] = $staff['money:deals'] ?? 0;
             $staff['/work/chats'] = ($staff['/work/chats'] ?? 0) + $user->unreadDirectChats();
+            // «Предложения» — своё по «Ответственным» (26.11.2026, `Responsibility::total`): то же, что красное в колесе.
+            $mine = \App\Offers\Responsibility::assigned($user) ? ['/offers' => \App\Offers\Responsibility::total($user)] : [];
 
-            return array_filter($badges + array_intersect_key($staff, array_flip($keys)));
+            return array_filter($badges + $mine + array_intersect_key($staff, array_flip($keys)));
         }
         if ($surface === Surface::Park || $surface === Surface::Crm) {
             $staff = self::staffCounts($surface);
             // Чаты площадки — общие на всех сотрудников (кэш), свои лички — каждому свои (22.11.2026).
             if ($surface === Surface::Crm && $user->canEditDeals()) {
                 $staff['/work/chats'] = ($staff['/work/chats'] ?? 0) + $user->unreadDirectChats();
+            }
+            // Админу с «Ответственными» — своё в «Предложениях» (26.11.2026); главному администратору — всё, как было.
+            if ($surface === Surface::Crm && ! $user->isOwner() && \App\Offers\Responsibility::assigned($user)) {
+                $staff['/offers'] = \App\Offers\Responsibility::total($user);
             }
 
             return array_filter($badges + $staff);

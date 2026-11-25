@@ -169,10 +169,10 @@ class DealController
         // дальше «Ждём менеджера», «Ждём поставщика». Числа групп — по всему списку, строки живого обновления — только запрошенные.
         // «Менеджер должен нам» — сверху итог: кто сколько должен нам (27.10.2026, `DealDebt`); с 24.11.2026 — и бывшая «Оплата за
         // подбор» (`payingGroups`).
-        $debts = $whole !== null && $preset === 'paying' ? self::debts($whole) : null;
+        $debts = $whole !== null && in_array($preset, ['paying', 'paying_fee'], true) ? self::debts($whole) : null;
         $groups = match (true) {
             $whole === null => null,
-            $debts !== null => self::payingGroups($whole, $live),
+            $debts !== null => self::payingGroups($whole, $live, $preset === 'paying_fee'),
             default => self::stageGroups($whole, $live),
         };
         $table = ListView::isTable(ListView::pick($request, 0));
@@ -239,11 +239,12 @@ class DealController
      *
      * @return Collection<string, array>
      */
-    private static function payingGroups(Collection $deals, ?array $live): Collection
+    private static function payingGroups(Collection $deals, ?array $live, bool $fee = false): Collection
     {
         $of = $deals->mapWithKeys(fn (Deal $d) => [$d->id => DealDebt::of($d)]);
-        $unsent = array_flip(\App\Http\Admin\SelectionController::unsentIds());
-        $stage = array_flip(DealTabs::ids('paying'));
+        // «Выставить ссылку» подбора — только во «Ждём оплату подбора» (26.11.2026).
+        $unsent = $fee ? array_flip(\App\Http\Admin\SelectionController::unsentIds()) : [];
+        $stage = array_flip(DealTabs::paying($fee ? 'fee' : 'car'));
         $none = ['key' => '', 'title' => '', 'rank' => 0, 'since' => null, 'button' => null];
         $unsentBill = fn (Deal $d) => $d->invoices->first(fn ($i) => $i->kind === \App\Billing\ChargeKind::Selection && $i->direction === 'issued'
             && $i->state === \App\Billing\InvoiceState::Issued && ! $i->shown_at && (float) $i->paid <= 0);
@@ -361,8 +362,11 @@ class DealController
                 ->orWhere(fn ($g) => $g->whereNull('deals.cancelled_at')->whereHas('offer', fn ($o) => $o->where('offers.state', OfferState::Garage)
                     ->whereHas('garageCar', fn ($c) => $c->where('state', CarState::Settled))))),
             // «Менеджер должен нам» (24.11.2026, вместе с «Оплатой за подбор»): шаг оплаты и любая сделка с открытым счётом подбора.
-            'paying' => $q->where(fn ($w) => $w->where(fn ($s) => $s->active()->whereHas('offer', fn ($o) => $o->where('offers.state', OfferState::Sold)
-                ->whereIn('offers.id', DealTabs::ids('paying'))))
+            // С 26.11.2026 — «Ждём оплату ТС» (шаг оплаты, долг за машину) и «Ждём оплату подбора» (подбор на шаге оплаты и открытый
+            // счёт подбора на любом этапе).
+            'paying' => $q->active()->whereHas('offer', fn ($o) => $o->where('offers.state', OfferState::Sold)->whereIn('offers.id', DealTabs::paying('car'))),
+            'paying_fee' => $q->where(fn ($w) => $w->where(fn ($s) => $s->active()->whereHas('offer', fn ($o) => $o->where('offers.state', OfferState::Sold)
+                ->whereIn('offers.id', DealTabs::paying('fee'))))
                 ->orWhere(fn ($s) => $s->whereNull('deals.cancelled_at')->whereIntegerInRaw('deals.offer_id', SelectionController::ids())))
                 // Каркаде — в «Предложениях из закупок» (24.11.2026).
                 ->whereHas('offer', fn ($o) => OfferController::carcadeApart($o, false)),

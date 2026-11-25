@@ -324,6 +324,10 @@
                         && (($stage->isPayStep() && \App\Offers\Signing::routeBooks($stage)) || $deal->needsSigningCity($stage)))
                         <x-deal.signing-city :deal="$deal" :action="'/work/deals/'.$deal->id.'/signing-city'" search="/reference/settlements" class="mt-3"/>
                     @endif
+                    {{-- Оригиналы документов (26.11.2026, `x-deal.originals`): где каждый и трек СДЭК; всё на месте — шаг проходит сам. --}}
+                    @if ($deal && $position->track === \App\Workflow\Track::Sale && auth()->user()?->canEditDeals() && \App\Offers\Originals::applies($stage) && $deal->isActive())
+                        <x-deal.originals :deal="$deal" class="mt-3"/>
+                    @endif
                     <x-route.who :position="$position" :offer="$offer" :deal="$deal" :named="! $compact" :replied="! $letterWaits">
                         <x-slot:acts>
                             @if ($reqFiles->isNotEmpty())
@@ -337,8 +341,19 @@
                                     @endforeach
                                 </div>
                             @endif
-                            @if ($buyerData && auth()->user()?->canEditDeals())
+                            @php $noBuyer = $deal && auth()->user()?->canEditDeals() && \App\Offers\DealTabs::awaitsBuyer($deal, $position); @endphp
+                            @if (($buyerData || $noBuyer) && auth()->user()?->canEditDeals())
                                 <a href="/offers/{{ $offer->number }}?buyer=1#invoice-buyer" class="btn btn-s btn-quiet" data-turbo-frame="_top">Заполнить реквизиты за менеджера</a>
+                            @endif
+                            {{-- Нет покупателя или его данных на оплате (26.11.2026, «Спросить менеджера»): напомнить в чат. --}}
+                            @if ($noBuyer)
+                                <form method="post" action="/offers/{{ $n }}/ask-buyer" class="contents">@csrf<button class="btn btn-s btn-quiet gap-2"><x-ui.icon name="bell" class="size-4"/>Напомнить менеджеру</button></form>
+                                @if ($deal->buyer_asked_at)<p class="w-full text-sm text-ink-muted">Напомнили {{ \App\Support\Ago::at($deal->buyer_asked_at, time: true) }}</p>@endif
+                            @endif
+                            {{-- Ждём от менеджера подписанный договор (26.11.2026, вкладка «Ждём договор»): приложить за него или напомнить в чат. --}}
+                            @if ($deal && auth()->user()?->canEditDeals() && \App\Offers\DealTabs::awaitsSigned($deal, $position))
+                                <x-deal.attach-signed :deal="$deal" :base="'/work/deals/'.$deal->id" label="Приложить договор за менеджера"/>
+                                <form method="post" action="/work/deals/{{ $deal->id }}/signed/nudge" class="contents">@csrf<button class="btn btn-s btn-quiet gap-2"><x-ui.icon name="bell" class="size-4"/>Напомнить менеджеру</button></form>
                             @endif
                             @if ($proofFor)
                                 <div><x-deal.payment-proof-sheet :id="'payment-proof-'.$position->id" :deal="$deal" :requirement="$req" :label="$reqFiles->isEmpty() ? 'Приложить документ об оплате за менеджера' : 'Приложить ещё за менеджера'"/></div>
@@ -652,6 +667,10 @@
                                 @if ($deal->buyer_asked_at)<p class="w-full text-sm text-ink-muted">Запросили у менеджера {{ \App\Support\Ago::at($deal->buyer_asked_at, time: true) }}</p>@endif
                             @elseif ($reqState === 'none' || ($requisitesGap && ! $buyerPays))
                                 <p class="order-first w-full text-sm text-ink-muted">{{ $requisitesGap }}, письмо поставщику пока не написать @if (auth()->user()?->canEditDeals())<a href="{{ \App\Support\Surface::Park->url('/money/parties') }}" class="btn btn-s btn-quiet ml-1" data-turbo-frame="_top">Заполнить</a>@endif</p>
+                            @elseif ($reqState && $buyerPays && $deal->contract?->needsBuyerCheck())
+                                {{-- Реквизиты покупателя не проверены (26.11.2026, `x-deal.buyer-check`): проверка и письмо одним действием —
+                                     «Всё верно, отправить реквизиты» сохраняет и открывает окно письма поставщику. --}}
+                                <x-deal.buyer-check :deal="$deal" then="letter" label="Отправить реквизиты" class="step-main order-first"/>
                             @elseif ($reqState)
                                 {{-- Отправить реквизиты — окно письма поставщику; не всё заполнено — сначала переспросить. --}}
                                 @php $missing = $reqState === 'partial' ? ($deal->contract?->buyer?->party?->gapWord() ?? mb_lcfirst($requisitesGap)) : null; @endphp

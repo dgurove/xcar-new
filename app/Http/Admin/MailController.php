@@ -1061,6 +1061,13 @@ class MailController
         if (! $composer->emails($data['to'])) {
             return redirect($retry ?: url()->previous())->withInput()->withErrors(['to' => 'Нужен хотя бы один адрес']);
         }
+        // Письмо с реквизитами покупателя (шаблон с `{{ buyer }}`) — только проверенными (26.11.2026, `Offers\Actions\CheckBuyer`):
+        // «Проверить и отправить реквизиты» в шаге сделки сначала проверяет, потом открывает это окно.
+        if ($this->scope === Scope::Offers && ! empty($data['offer']) && ctype_digit((string) $request->input('template'))
+            && preg_match('/\{\{ ?buyer ?\}\}/', (string) \App\Mail\Template::whereKey((int) $request->input('template'))->value('body')) === 1
+            && ($deal = Offer::find($data['offer'])?->deal) && ! $deal->schemeOf()->paysCar() && ! $deal->isGarageUs() && $deal->contract?->needsBuyerCheck()) {
+            return redirect($retry ?: url()->previous())->withInput()->withErrors(['body' => 'Реквизиты покупателя не проверены: «Проверить и отправить реквизиты» в шаге сделки']);
+        }
 
         // Родитель — письмо, ветку которого человеку видно: своей стороны или другой в окне машины (`across`). Ответ уходит с
         // выбранного ящика («От»); с ящика не той ветки — новой веткой с In-Reply-To (`Composer::create`).

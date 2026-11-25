@@ -82,6 +82,15 @@ final class OfferTabs
         return self::map()[$offer->id] ?? self::OTHER;
     }
 
+    /**
+     * Вкладка одной машины заново, мимо кэша раскладки (`Responsibility::tabsOf`: уведомление уходит сразу после шага, а кэш
+     * живёт 30 с). Сделки — по кэшу `DealTabs`: для идущей сделки `Responsibility` считает её вкладку сам.
+     */
+    public static function fresh(Offer $offer): string
+    {
+        return self::layout(fn () => Offer::query()->whereKey($offer->id))[$offer->id] ?? self::OTHER;
+    }
+
     /** Номера предложений, что раскладка кладёт в эти вкладки. @param list<string> $keys @return list<int> */
     public static function ids(array $keys): array
     {

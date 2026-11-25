@@ -42,7 +42,7 @@ class ContractorController
     /** Ссылка исполнителю — одноразовая на неделю, подпись — кому (имя). */
     public function invite(Request $request, IssueInvite $issue)
     {
-        abort_unless($request->user()->isLogist() || $request->user()->isAdmin(), 404);
+        abort_unless($request->user()->isLogist() || $request->user()->isAdmin() || $request->user()->isModerator(), 404);
         $invite = $issue->contractor($request->user(), $request->validate(['label' => ['nullable', 'string', 'max:120']])['label'] ?? null);
 
         return redirect(InviteController::home())->with('invite', $invite->id);
@@ -96,6 +96,6 @@ class ContractorController
     private function guard(Request $request, User $user): void
     {
         $me = $request->user();
-        abort_unless($user->hasRole(Role::Contractor) && ($me->isAdmin() || $user->logist_id === $me->id), 404);
+        abort_unless($user->hasRole(Role::Contractor) && ($me->isAdmin() || $me->isModerator() || $user->logist_id === $me->id), 404);
     }
 }

@@ -15,7 +15,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  * несколько сотрудников (администраторы и модераторы). Задаёт админ в «Настройки → Ответственные» (`SetTabOwners`); по ним
  * «Только мои» в колесе оставляет вкладки человека (`presetsOf`).
  */
-#[Fillable(['preset', 'user_id'])]
+#[Fillable(['preset', 'user_id', 'scope', 'notify'])]
 final class TabOwner extends Model
 {
     use FastAttributes;
@@ -24,15 +24,46 @@ final class TabOwner extends Model
 
     protected $table = 'offer_tab_owners';
 
+    protected function casts(): array
+    {
+        return ['notify' => 'boolean'];
+    }
+
     public function user(): BelongsTo
     {
         return $this->belongsTo(User::class);
     }
 
-    /** Вкладки, за которые человек отвечает. @return list<string> */
+    /**
+     * Вкладки, за которые человек отвечает (`Responsibility::BINDING` — не вкладка: «Только мои» её не показывает).
+     *
+     * @return list<string>
+     */
     public static function presetsOf(User $user): array
     {
-        return array_keys(array_filter(self::owners(), fn (Collection $people) => $people->contains('id', $user->id)));
+        return array_values(array_diff(array_keys(self::of($user)), [Responsibility::BINDING]));
+    }
+
+    /**
+     * Строки человека: вкладка → за что отвечает (`scope`: `all` | `urgent`) и шлём ли пуш и Telegram (`notify`), 26.11.2026.
+     *
+     * @return array<string, self>
+     */
+    public static function of(User $user): array
+    {
+        return self::rows()->where('user_id', $user->id)->keyBy('preset')->all();
+    }
+
+    /**
+     * Все строки ответственных — раз на запрос (не статическим полем: воркер Octane живёт дольше запроса).
+     *
+     * @return \Illuminate\Support\Collection<int, self>
+     */
+    public static function rows(): \Illuminate\Support\Collection
+    {
+        $rows = fn () => self::query()->orderBy('id')->get()->toBase();
+
+        return app()->runningInConsole() ? $rows() : once($rows);
     }
 
     /**

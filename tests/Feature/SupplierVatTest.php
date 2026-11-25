@@ -192,6 +192,11 @@ class SupplierVatTest extends TestCase
         $sale = $this->live($deal, ChargeKind::Sale)->sole();
         $fee = $this->live($deal, ChargeKind::Selection)->sole();
 
+        // Реквизиты покупателя не проверены — счёт не уходит (26.11.2026, `CheckBuyer`); проверили — уходит.
+        $this->assertTrue(\App\Offers\DealContract::for($deal->fresh())->needsBuyerCheck());
+        $this->actingAs($admin)->post($crm('/bills/send'))->assertSessionHasErrors('buyer');
+        $this->assertNull($sale->fresh()->shown_at);
+        \App\Offers\Actions\CheckBuyer::mark($deal->fresh(), $admin);
         $this->actingAs($admin)->post($crm('/bills/send'))->assertRedirect();
         $this->assertNotNull($sale->fresh()->shown_at);
         $this->assertNotNull($fee->fresh()->shown_at);

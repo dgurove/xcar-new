@@ -41,6 +41,10 @@ final class DealTabs
         // Вопрос менеджеру (18.11.2026): письмо Т-Страхования пришло — спросить, берёт ли в работу (`Position::todo` `ask-consent`);
         // и всё, где ждём ответа менеджера на шаге согласования (группа «Ждём ответа»).
         'ask' => 'Спросить менеджера',
+        // «Проверить реквизиты» (26.11.2026, владелец: «распознавание часто кривое, менеджеры отправляют как есть — Алина проверяет»):
+        // следующее наше дело отправляет реквизиты покупателя (письмо с реквизитами, счёт за ТС, договор), а их этот вид ещё не
+        // проверили (`DealContract::needsBuyerCheck`). Дело — «Проверить и отправить» одним действием (`x-deal.buyer-check`).
+        'verify' => 'Проверить реквизиты',
         'letter' => 'Написать поставщику',
         // «На согласовании» (17.11.2026, владелец: «не Согласование, а На согласовании») — с 18.11.2026 только ожидание поставщика
         // (владелец: «то, что менеджеры думают, там не должно быть ничего»).
@@ -52,21 +56,32 @@ final class DealTabs
         // отправлен — «Счёт оплачен» (красным) и «Счёт не оплачен» (`Deal::paperTodo`).
         'contract' => 'Отправить договор',
         // «Менеджер должен нам» — только то, что ожидает платежа; пришли оплаты — «Проверить оплату» (17.11.2026, владелец).
-        'paying' => 'Менеджер должен нам',
+        // С 26.11.2026 двумя вкладками (владелец: «Андрей хочет собирать только оплаты за подбор»): «Ждём оплату ТС» — долг за машину
+        // (Алина), «Ждём оплату подбора» — за услуги подбора (Андрей); подбор внутри неоплаченного счёта за ТС — в обеих (`paying`).
+        'paying' => 'Ждём оплату ТС',
+        'paying_fee' => 'Ждём оплату подбора',
         // «Ждём покупателя» (24.11.2026, владелец: «счёт отправлен, ждём, когда оплатят — полупрозрачная вкладка без ответственного»):
         // покупатель платит поставщику сам по его счёту (`Deal::paysSupplierOn`), счёт показан — нам он ничего не должен.
-        'buyer' => 'Ждём покупателя',
+        // «Покупатель оплачивает» с 26.11.2026 (владелец: «отдельная вкладка-ожидание, Алина её видит, но она тихая»).
+        'buyer' => 'Покупатель оплачивает',
         'check' => 'Проверить оплату',
         'arrived' => 'Деньги пришли',
         'payout' => 'Оплатить поставщику',
+        // «Оригиналы» (26.11.2026, владелец: «сделка не закрыта, пока оригиналы документов не получили»; ведёт Лиза): договор комиссии
+        // и акт — поставщику, ДКП — прежнему владельцу, подписанный ДКП — от менеджера нам (`Originals`).
+        'originals' => 'Оригиналы',
         'pickup' => 'Менеджер забирает ТС',
+        // «Ждём договор» (26.11.2026, владелец: «мониторить подгрузку фоток договоров — отдельная вкладка, Алина видит, подгрузили или
+        // нет, если что — сама подгрузит или напомнит менеджеру»): шаг просит у менеджера подписанный договор, а его ещё нет. Ожидание:
+        // красным — только просроченные (у Алины «только горящее»).
+        'signed' => 'Ждём договор',
         'docs' => 'Подписание договора',
         // Дело без своего места в ходе сделки — последней. «Не распределено», а не «Другие дела» (18.11.2026, владелец).
         'todo' => 'Не распределено',
     ];
 
     /** Вкладки «Ждём»: нашего дела в них нет. */
-    public const WAITING = ['agree', 'invoice', 'paying', 'buyer', 'pickup', 'docs'];
+    public const WAITING = ['agree', 'invoice', 'paying', 'paying_fee', 'buyer', 'pickup', 'signed', 'docs'];
 
     /** Группы «Ждём поставщика» по шагу: чего ждём. */
     public const WAIT_STAGES = ['Письмо с реквизитами' => 'Ждём счёт', 'Подтверждение оплаты' => 'Ждём подтверждение оплаты'];
@@ -93,7 +108,7 @@ final class DealTabs
         'Оформление документов' => 'docs',
     ];
 
-    private const CACHE = 'deal-tabs';
+    private const CACHE = 'deal-tabs:6';
 
     /**
      * Вкладка и наш ли ход одной сделки по её шагу и делу. `$repricing` — вопрос переоценки ещё не закрыт (`RepriceFlow::for`,
@@ -190,9 +205,43 @@ final class DealTabs
             if ($todo === null && ! $repricing) {
                 $todo = $deal->paperTodo();
             }
+            // Шаг «Оригиналы» — своей вкладкой: наше дело — отправить, что у нас; остальное — ждём (26.11.2026).
+            if (! $repricing && Originals::applies($position?->stage)) {
+                return [$deal->id => ['deal' => $deal, 'tab' => 'originals', 'todo' => Originals::todo($deal, $position->entered_at)]];
+            }
+            // Отправляем реквизиты покупателя, а они не проверены — сначала проверка (26.11.2026): «Проверить реквизиты».
+            if (! $repricing && self::verifies($deal, $todo)) {
+                return [$deal->id => ['deal' => $deal, 'tab' => 'verify', 'todo' => [...$todo, 'key' => 'verify', 'title' => 'Проверить реквизиты', 'rank' => 1,
+                    'button' => ['label' => 'Проверить', 'href' => '/offers/'.$deal->offer?->number]]]];
+            }
+
+            // Шаг оплаты, а менеджер не указал покупателя или его данные (Совкомбанк: без них нет счёта и договора) — «Спросить
+            // менеджера» (26.11.2026, владелец: «Алина отвечает за то, чтобы менеджеры заполнили реквизиты для счёта»).
+            if ($todo === null && ! $repricing && self::awaitsBuyer($deal, $position)) {
+                return [$deal->id => ['deal' => $deal, 'tab' => 'ask', 'todo' => null]];
+            }
+            // Ждём от менеджера фото подписанного договора — «Ждём договор» (26.11.2026), на каком бы блоке шаг ни стоял.
+            if ($todo === null && ! $repricing && self::awaitsSigned($deal, $position)) {
+                return [$deal->id => ['deal' => $deal, 'tab' => 'signed', 'todo' => null]];
+            }
 
             return [$deal->id => ['deal' => $deal, 'tab' => self::of($position, $todo, $repricing), 'todo' => $todo]];
         });
+    }
+
+    /** Шаг оплаты ждёт менеджера, а счёта нет: не указан покупатель или его данные (`Deal::invoiceGap`). */
+    public static function awaitsBuyer(Deal $deal, ?Position $position): bool
+    {
+        return $position?->stage?->isPayStep() && $position->waitsFor() === WaitsFor::Manager && in_array($deal->invoiceGap(), ['buyer', 'passport'], true);
+    }
+
+    /** Шаг ждёт от менеджера подписанный договор (`Asks::Document` про договор), а его ещё нет — ни у сделки, ни в ответе шага. */
+    public static function awaitsSigned(Deal $deal, ?Position $position): bool
+    {
+        $stage = $position?->stage;
+
+        return $stage !== null && $stage->asks === \App\Workflow\Asks::Document && $stage->aboutContract() && $position->waitsFor() === WaitsFor::Manager
+            && ! $deal->contractSigned() && \App\Offers\Documents\SignedContractPdf::files($deal)->isEmpty();
     }
 
     /** Раскладка всех идущих сделок: `offer_id` → [вкладка, наш ход]. @return array<int, array{0: string, 1: bool}> */
@@ -208,7 +257,7 @@ final class DealTabs
         return array_map(fn (array $v) => $v[0], array_filter(self::raw(), fn (array $v) => $v[2]));
     }
 
-    /** Вся раскладка: машина → [вкладка, наше ли дело, Каркаде]. @return array<int, array{0: string, 1: bool, 2: bool}> */
+    /** Вся раскладка: машина → [вкладка, наше ли дело, Каркаде, шаг просрочен, за что долг на оплате]. @return array<int, array{0: string, 1: bool, 2: bool, 3: bool, 4: list<string>}> */
     private static function raw(): array
     {
         $carcade = \App\Http\Admin\OfferController::carcadeId();
@@ -219,8 +268,56 @@ final class DealTabs
         return StaffCache::remember(self::CACHE, 30, fn () => self::rows(Deal::active()->whereHas('offer', fn ($o) => $o->where('offers.state', OfferState::Sold))
             ->with(array_values(array_diff(self::WITH, ['offer.media'])))->get())->reject(fn (array $r) => $r['deal']->sellsFromGarage($r['deal']->offer?->position()?->stage))
             // Тихое дело (заявка Каркаде, `Position::todo` `quiet`) — во вкладке, но не в её счётчике.
+            // Шаг просрочен (`Position::isOverdue`) — горящее для «только горящего» ответственного (`Responsibility`, 26.11.2026).
+            // У «Ждём оплату» — за что долг (`payingParts`).
             ->mapWithKeys(fn (array $r) => [$r['deal']->offer_id => [$r['tab'], $r['todo'] !== null && empty($r['todo']['quiet']),
-                $carcade !== null && $r['deal']->offer?->vendor_id === $carcade]])->all());
+                $carcade !== null && $r['deal']->offer?->vendor_id === $carcade, (bool) $r['deal']->offer?->position()?->isOverdue(),
+                $r['tab'] === 'paying' ? self::payingParts($r['deal']) : []]])->all());
+    }
+
+    /**
+     * За что менеджер должен на шаге оплаты (26.11.2026): `car` — за ТС, `fee` — за подбор, оба — подбор внутри счёта за ТС
+     * (`DealDebt`: «за ТС и подбор»). Не понять — за ТС: на шаге оплаты ждём платёж за машину.
+     *
+     * @return list<'car'|'fee'>
+     */
+    public static function payingParts(Deal $deal): array
+    {
+        $what = \App\Billing\DealDebt::of($deal)?->what ?? '';
+        $parts = array_values(array_filter([str_contains($what, 'ТС') ? 'car' : null, str_contains($what, 'подбор') ? 'fee' : null]));
+
+        return $parts ?: ['car'];
+    }
+
+    /** Машины «Ждём оплату ТС» (`car`) или «Ждём оплату подбора» (`fee`) с шага оплаты; carcade — и сделки Каркаде. @return list<int> */
+    public static function paying(string $part, bool $carcade = false): array
+    {
+        return array_keys(array_filter($carcade ? self::raw() : self::map(), fn (array $v) => $v[0] === 'paying' && in_array($part, $v[4] ?? ['car'], true)));
+    }
+
+    /**
+     * Наше дело отправит реквизиты покупателя — письмо с реквизитами (платит покупатель), счёт за ТС на него, договор, — а этот их
+     * вид сотрудник не проверил (`DealContract::needsBuyerCheck`, 26.11.2026).
+     */
+    private static function verifies(Deal $deal, ?array $todo): bool
+    {
+        $key = $todo['key'] ?? '';
+        if (! in_array($key, ['letter:requisites', 'gap:send', 'contract:paid', 'contract:unpaid'], true) || ! $deal->contract?->needsBuyerCheck()) {
+            return false;
+        }
+
+        return match ($key) {
+            'letter:requisites' => ! $deal->schemeOf()->paysCar() && ! $deal->isGarageUs(),
+            'gap:send' => $deal->invoices->contains(fn ($i) => $i->kind === \App\Billing\ChargeKind::Sale && $i->direction === 'issued' && ! $i->shown_at
+                && $i->state === \App\Billing\InvoiceState::Issued && $i->party_id === $deal->contract->buyerParty()?->id),
+            default => true,
+        };
+    }
+
+    /** Машины идущих сделок с просроченным шагом. @return list<int> */
+    public static function overdueIds(): array
+    {
+        return array_keys(array_filter(self::map(), fn (array $v) => $v[3] ?? false));
     }
 
     /** Машины вкладки (`OfferController::scopeFor`); carcade — и сделки Каркаде. @return list<int> */
@@ -245,7 +342,7 @@ final class DealTabs
         'buyer', 'openRequirement', 'invoices.claims', 'invoices.party', 'contract.buyer.party.media', 'garageCar'];
 
     /** Группы сделок без нашего дела, по порядку. */
-    public const WAITS = ['answer' => 'Ждём ответа', 'manager' => 'Ждём менеджера', 'supplier' => 'Ждём поставщика', 'transport' => 'Везёт наша логистика', 'other' => 'Прочее'];
+    public const WAITS = ['answer' => 'Ждём ответа', 'buyer' => 'Ждём данные покупателя', 'originals' => 'Документы в пути', 'manager' => 'Ждём менеджера', 'supplier' => 'Ждём поставщика', 'transport' => 'Везёт наша логистика', 'other' => 'Прочее'];
 
     /** Ждём ответа менеджера на шаге согласования, а не на оплате, получении, договоре или расчёте (у них свои вкладки). */
     private static function asksManager(?Position $position, string $block): bool
@@ -274,6 +371,9 @@ final class DealTabs
             // Ждём реквизиты от менеджера на шаге письма (`Position::requisitesTodo`).
             ($position?->todo()['key'] ?? null) === 'requisites-asked' => 'answer',
             $position?->carried() === true => 'transport',
+            Originals::applies($position?->stage) => 'originals',
+            // Шаг оплаты без покупателя или его данных (26.11.2026, «Спросить менеджера»).
+            self::awaitsBuyer($deal, $position) => 'buyer',
             // Вопрос менеджеру на шаге не из вкладок ожидания (оплата, получение, договор) — «Спросить менеджера», «Ждём ответа».
             self::asksManager($position, self::BLOCKS[$position?->stage?->block?->name ?? $position?->stage?->name ?? ''] ?? 'agree') => 'answer',
             $position?->waitsFor() === WaitsFor::Manager => 'manager',

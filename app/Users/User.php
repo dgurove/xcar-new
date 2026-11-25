@@ -805,7 +805,7 @@ class User extends Authenticatable implements HasMedia, WebAuthnAuthenticatable
     /** Исполнители, которых видит человек: логисту — свои, админу — все исполнители логистов. */
     public static function contractorsFor(self $user): Builder
     {
-        return self::withRole(Role::Contractor)->when(! $user->isAdmin(), fn ($q) => $q->where('logist_id', $user->id));
+        return self::withRole(Role::Contractor)->when(! $user->isAdmin() && ! $user->isModerator(), fn ($q) => $q->where('logist_id', $user->id));
     }
 
     /**
@@ -839,8 +839,17 @@ class User extends Authenticatable implements HasMedia, WebAuthnAuthenticatable
         return $query->withRole(Role::Admin, Role::Moderator)->whereNull('rejected_at');
     }
 
-    /** Исполнители логиста — сам логист и админ. */
+    /**
+     * Исполнители логиста — сам логист и админ; с 26.11.2026 и модератор (владелец: «Лизе в логистике все нужные права, чтобы она
+     * там работала»): все наши исполнители, как у админа (`contractorsFor`), ссылка, правка (пункт СДЭК). Оплаты им — `paysContractors`.
+     */
     public function managesContractors(): bool
+    {
+        return $this->isAdmin() || $this->isLogist() || $this->isModerator();
+    }
+
+    /** «Оплаты» логистики (выплаты исполнителям) — админ и логист, модератору нет. */
+    public function paysContractors(): bool
     {
         return $this->isAdmin() || $this->isLogist();
     }

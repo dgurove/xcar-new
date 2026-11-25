@@ -91,6 +91,11 @@ class DealInvoiceReleaseTest extends TestCase
         $row = fn () => \Illuminate\Support\Facades\Blade::render('<x-deal.send-task :deal="$deal" :invoice="$invoice"/>', ['deal' => $deal->fresh(), 'invoice' => $invoice->fresh()]);
         // Что уходит — словами `Billing\PayOffer` (17.11.2026): шлюз в тесте не подключён — счёт, а не ссылка; «без номера» не пишем.
         $this->assertMatchesRegularExpression('/Менеджер не видит счёт за \S+\s*</u', $row());
+        // Реквизиты покупателя не проверены (26.11.2026, `CheckBuyer`) — «Проверить и отправить», проверили — «Отправить менеджеру».
+        $this->assertTrue(\App\Offers\DealContract::for($deal->fresh())->needsBuyerCheck());
+        $this->assertStringContainsString('Всё верно, отправить', $row());
+        $this->assertStringNotContainsString('/work/deals/'.$deal->id.'/invoices/'.$invoice->id.'/show', $row());
+        \App\Offers\Actions\CheckBuyer::mark($deal->fresh(), $admin);
         $this->assertStringContainsString('/work/deals/'.$deal->id.'/invoices/'.$invoice->id.'/show', $row());
         // Не отправлен — на месте QR заглушка (21.11.2026, владелец: «QR сформируется после отправки»).
         $sheet = fn () => view('billing.docs.invoice', ['invoice' => $invoice->fresh(), 'self' => $invoice->seller->party()])->render();

@@ -65,6 +65,10 @@ class DealContractController
     public function showInvoice(Request $request, Deal $deal, \App\Billing\Invoice $invoice, \App\Offers\Actions\ShowToManager $show)
     {
         abort_unless($invoice->deal_id === $deal->id && $deal->buyer_id, 404);
+        // Реквизиты покупателя в счёте — только проверенными (26.11.2026, `CheckBuyer`).
+        if (\App\Offers\Actions\CheckBuyer::onInvoice($deal, $invoice)) {
+            \App\Offers\Actions\CheckBuyer::gate($deal);
+        }
         $show->invoice($deal, $invoice, $request->user());
 
         return back()->with('toast', \App\Billing\PayOffer::sent($invoice->fresh()));
@@ -81,6 +85,9 @@ class DealContractController
         $bills = $deal->issuedInvoices()->whereIn('kind', [\App\Billing\ChargeKind::Sale, \App\Billing\ChargeKind::Selection])
             ->where('state', \App\Billing\InvoiceState::Issued)->whereNull('shown_at')->get();
         abort_if($bills->isEmpty(), 404);
+        if ($bills->contains(fn ($i) => \App\Offers\Actions\CheckBuyer::onInvoice($deal, $i))) {
+            \App\Offers\Actions\CheckBuyer::gate($deal);
+        }
         \Illuminate\Support\Facades\DB::transaction(fn () => $bills->each(fn ($i) => $show->invoice($deal, $i, $request->user())));
 
         return back()->with('toast', $bills->count() > 1 ? 'Счёт и ссылка на подбор у менеджера' : \App\Billing\PayOffer::sent($bills->first()->fresh()));
@@ -262,9 +269,69 @@ class DealContractController
     public function showContract(Request $request, Deal $deal, \App\Offers\Actions\ShowToManager $show)
     {
         abort_unless($deal->hasContract() && $deal->buyer_id, 404);
+        \App\Offers\Actions\CheckBuyer::gate($deal);
         $show->contract($deal, $request->user());
 
         return back()->with('toast', 'Договор отправлен менеджеру');
+    }
+
+    /**
+     * «Напомнить менеджеру» приложить подписанный договор (26.11.2026, владелец: Алина «видит, подгрузили договор или нет, и если что
+     * сама подгрузит или напомнит менеджеру»): сообщением в чат сделки от площадки — оно же уведомление менеджеру.
+     */
+    public function nudgeSigned(Request $request, Deal $deal)
+    {
+        abort_unless($request->user()->canEditDeals() && $deal->buyer_id && $deal->isActive(), 404);
+        \App\Offers\Actions\NudgeSignedContract::run($deal, $request->user());
+
+        return back()->with('toast', 'Напомнили менеджеру');
+    }
+
+    /** Оригиналы (26.11.2026, `Offers\Originals`): где документ и трек СДЭК. */
+    public function original(Request $request, Deal $deal, \App\Offers\Original $original)
+    {
+        abort_unless($request->user()->canEditDeals() && $original->deal_id === $deal->id, 404);
+        $data = $request->validate(['state' => ['required', 'string'], 'track' => ['nullable', 'string', 'max:60']]);
+        \App\Offers\Originals::update($original, $data['state'], $data['track'] ?? null, $request->user());
+
+        return back()->with('toast', $original->title.': '.$original->fresh()->place());
+    }
+
+    /** «+ Документ» в оригиналах: доп. соглашение и прочее. */
+    public function originalAdd(Request $request, Deal $deal)
+    {
+        abort_unless($request->user()->canEditDeals() && $deal->isActive(), 404);
+        $data = $request->validate(['title' => ['required', 'string', 'max:200'], 'to' => ['required', 'in:'.implode(',', array_keys(\App\Offers\Originals::DESTINATIONS))]],
+            ['title.required' => 'Что за документ']);
+        \App\Offers\Originals::add($deal, $data['title'], $data['to'], $request->user());
+
+        return back()->with('toast', 'Добавлено: '.$data['title']);
+    }
+
+    public function originalRemove(Request $request, Deal $deal, \App\Offers\Original $original)
+    {
+        abort_unless($request->user()->canEditDeals() && $original->deal_id === $deal->id, 404);
+        \App\Offers\Originals::remove($original, $request->user());
+
+        return back()->with('toast', 'Убрано: '.$original->title);
+    }
+
+    /** «Завести документы» оригиналов — сделка на шаге, а документов нет. */
+    public function originalOpen(Request $request, Deal $deal)
+    {
+        abort_unless($request->user()->canEditDeals() && $deal->isActive(), 404);
+        \App\Offers\Originals::ensure($deal);
+
+        return back()->with('toast', 'Документы заведены');
+    }
+
+    /** Попросить менеджера прислать оригинал подписанного ДКП. */
+    public function originalNudge(Request $request, Deal $deal)
+    {
+        abort_unless($request->user()->canEditDeals(), 404);
+        \App\Offers\Originals::nudge($deal, $request->user());
+
+        return back()->with('toast', 'Попросили менеджера');
     }
 
     /** Договор от страховой руками («страховой напрямую», 16.11.2026): файл к машине, открыт менеджеру (`SupplierContract`). */
@@ -294,6 +361,14 @@ class DealContractController
             PartyRules::squeeze($request);
             $data = $request->validate($rules, [], ['buyer.name' => 'ФИО покупателя'] + PartyRules::buyerLabels());
             $contract = $save(DealContract::for($deal), $data, $request->user());
+            // Данные покупателя вписал или поправил сотрудник — проверены (26.11.2026, `CheckBuyer`); из шторки проверки — и сразу
+            // отправить то, ради чего проверяли (`then`).
+            if ($request->has('buyer')) {
+                \App\Offers\Actions\CheckBuyer::mark($deal->fresh(), $request->user());
+                if ($then = $this->afterCheck($request, $deal->fresh())) {
+                    return $then;
+                }
+            }
             // Выбрали покупателя без данных для договора — сразу их шторка со сканом паспорта, как у менеджера.
             $needs = ! empty($data['buyer_id']) && ($b = $contract->fresh()->buyer) && ! $b->party?->readyAsBuyer();
 
@@ -361,8 +436,45 @@ class DealContractController
         PartyRules::squeeze($request);
         $data = $request->validate($rules, [], collect($need)->mapWithKeys(fn ($l, $k) => ['buyer.'.$k => $l])->all());
         $save($deal->contract, ['buyer' => ['kind' => $kind] + ($data['buyer'] ?? [])] + ($without ? ['invoice_without_reg' => true] : []), $request->user());
+        \App\Offers\Actions\CheckBuyer::mark($deal->fresh(), $request->user());
 
         return back()->with('toast', $deal->fresh()->hasSaleInvoice() ? 'Счёт сформирован' : 'Данные покупателя сохранены');
+    }
+
+    /**
+     * «Всё верно, отправить» шторки проверки реквизитов (`x-deal.buyer-check`, 26.11.2026): данные сохранены и проверены — сразу то,
+     * ради чего проверяли: счёт (`invoice:N`), счёт и ссылку (`bills`), договор (`contract`) или письмо поставщику с реквизитами
+     * (`letter` — окно письма на той же странице). Ничего — null.
+     */
+    private function afterCheck(Request $request, Deal $deal)
+    {
+        $then = (string) $request->input('then');
+        $show = app(\App\Offers\Actions\ShowToManager::class);
+
+        return match (true) {
+            str_starts_with($then, 'invoice:') => (function () use ($request, $deal, $then, $show) {
+                $invoice = \App\Billing\Invoice::where('deal_id', $deal->id)->findOrFail((int) substr($then, 8));
+                // Сохранение данных перевыставило счёт (сменилась сторона или сумма) — отправить новый того же вида.
+                if ($invoice->state === \App\Billing\InvoiceState::Void) {
+                    $invoice = $deal->issuedInvoices()->where('kind', $invoice->kind)->where('state', \App\Billing\InvoiceState::Issued)->whereNull('shown_at')->latest('id')->firstOrFail();
+                }
+                $show->invoice($deal, $invoice, $request->user());
+
+                return back()->with('toast', 'Реквизиты проверены. '.\App\Billing\PayOffer::sent($invoice->fresh()));
+            })(),
+            $then === 'bills' => (function () use ($request, $deal) {
+                $this->sendBills($request, $deal, app(\App\Offers\Actions\ShowToManager::class));
+
+                return back()->with('toast', 'Реквизиты проверены, счёт у менеджера');
+            })(),
+            $then === 'contract' && $deal->hasContract() => (function () use ($request, $deal, $show) {
+                $show->contract($deal, $request->user());
+
+                return back()->with('toast', 'Реквизиты проверены, договор отправлен менеджеру');
+            })(),
+            $then === 'letter' && ($url = $deal->offer?->vendorLetterUrl()) !== null => back()->with('letters', $url)->with('toast', 'Реквизиты проверены'),
+            default => null,
+        };
     }
 
     public function show(Request $request, Deal $deal, EditContract $edit)

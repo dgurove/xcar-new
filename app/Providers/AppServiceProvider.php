@@ -148,6 +148,8 @@ class AppServiceProvider extends ServiceProvider
         Event::subscribe(\App\Offers\Listeners\SkipSigningBooking::class);
         // Для менеджера сделка закрыта, когда впереди только наши шаги (25.11.2026, `deals.manager_done_at`).
         Event::subscribe(\App\Offers\Listeners\SyncManagerDone::class);
+        // Шаг «Оригиналы» Совкомбанка — документы, что должны дойти (26.11.2026, `Offers\Originals`).
+        Event::subscribe(\App\Offers\Listeners\OpenOriginals::class);
         // «Ждём письмо поставщика», а письмо уже есть — ход наш, «Спросить менеджера» (`SupplierLetterWait`).
         Event::subscribe(MarkSupplierLetterWait::class);
         Event::subscribe(Notify::class);

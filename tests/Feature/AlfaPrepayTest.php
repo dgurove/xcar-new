@@ -120,7 +120,8 @@ class AlfaPrepayTest extends TestCase
         app(SyncDealInvoices::class)($deal->fresh(), $this->admin);
         $this->assertSame('passport', $deal->fresh()->invoiceGap());
         $this->passportFor($this->manager);
-        $invoice = $deal->fresh()->issuedInvoices()->sole();
+        // У Р.О.С. в счёте за ТС — закупочная, подбор — отдельной ссылкой ПРАЙМ (`Deal::splitsSelection`).
+        $invoice = $deal->fresh()->issuedInvoices()->where('kind', \App\Billing\ChargeKind::Sale)->sole();
         $this->assertSame(Seller::Ros, $invoice->seller);
         // Номер — при отправке менеджеру (16.11.2026), своей нумерацией Р.О.С.
         $this->assertNull($invoice->number);

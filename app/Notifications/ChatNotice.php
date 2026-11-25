@@ -41,6 +41,21 @@ final class ChatNotice extends Notice
         return $via;
     }
 
+    /**
+     * Чьё сообщение (`Responsibility::wants`, 26.11.2026, владелец про Катю: «если ей лично написал кто-то из сотрудников — пусть
+     * приходит»): личка — всегда (null), чат машины — тем, кто ведёт её вкладку (вкладки вывоза не в счёт: там чат не их забота).
+     */
+    public function tabs(): ?array
+    {
+        $chat = $this->message->chat;
+        if ($chat->isDirect() || ! $chat->offer_id) {
+            return null;
+        }
+        $tabs = parent::tabs();
+
+        return $tabs === null ? null : array_values(array_diff($tabs, array_keys(\App\Http\Admin\PickupController::TABS)));
+    }
+
     /** Адресат — не сотрудник площадки: менеджер чата (ему пишет покупатель или площадка) или покупатель. */
     private function toManagerSide(User $user): bool
     {

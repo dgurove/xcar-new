@@ -56,6 +56,10 @@ final class SetManagerView
         $show = array_values(array_filter(array_unique($show), fn ($k) => isset($items[$k]) && ! $items[$k]['visible'] && $items[$k]['can']));
         $hide = array_values(array_filter(array_unique($hide), fn ($k) => isset($items[$k]) && $items[$k]['visible'] && $items[$k]['can'] && ! in_array($k, $show, true)));
         $label = fn ($k) => $items[$k]['label'];
+        // Счёт на покупателя и договор — только с проверенными реквизитами покупателя (26.11.2026, `CheckBuyer`), до любых изменений.
+        if (array_filter($show, fn ($k) => $k === 'contract' || (str_starts_with($k, 'invoice:') && ($i = Invoice::find((int) substr($k, 8))) && CheckBuyer::onInvoice($deal, $i)))) {
+            CheckBuyer::gate($deal);
+        }
 
         // Скрыть — сначала: сообщения без убранного уходят до нового показа.
         if ($hide) {

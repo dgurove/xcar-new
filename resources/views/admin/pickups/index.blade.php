@@ -19,7 +19,8 @@
         <x-ui.table :id="$tab.'-table'" class="mt-4" :table="$table">
             <x-slot:head><x-table.head :table="$table"/></x-slot:head>
             @foreach ($groups as $title => $rows)
-                @if ($title !== '')<x-table.group :table="$table" :key="'g'.$loop->index" :title="$title" :count="$rows->count()"/>@endif
+                {{-- Горящее (26.11.2026, `PickupController::tab`) — красным заголовком; ключ группы — по названию, не по месту: живое перечитывание узнаёт смену группы. --}}
+                @if ($title !== '')<x-table.group :table="$table" :key="'g'.md5($title)" :title="$title" :count="$rows->count()" :danger="in_array($title, [\App\Http\Admin\OfferController::HOT_GROUP, \App\Offers\Responsibility::LATE_GROUP], true)"/>@endif
                 @foreach ($rows as $t)<x-logistics.row :t="$t" :table="$table" :preset="$tab" :peek="$t->offer?->number"/>@endforeach
             @endforeach
         </x-ui.table>

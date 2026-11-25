@@ -16,6 +16,12 @@ final class BindingPanicNotice extends Notice
 {
     public function __construct(private Offer $offer, private ?Transport $transport = null) {}
 
+    /** Горит по определению (`Responsibility::wants`): «только горящее» вкладки машины его получает. */
+    public function urgent(): bool
+    {
+        return true;
+    }
+
     /** Заменяет само себя: в ленте строка одна (`CollapseNotices`). */
     public function collapses(?\App\Users\User $user): bool
     {

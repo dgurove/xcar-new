@@ -407,7 +407,7 @@ class Deal extends Model implements HasMedia
         }
         $req = $this->openRequirement;
         if ($req) {
-            if ($position?->stage->isPayStep() && $this->fullyPaid()) {
+            if ($position?->stage->isPayStep() && $this->payStepPaid()) {
                 return null;
             }
             // Просит подписанный договор, а договора ещё нет — не выбран покупатель или нет его данных (11.11.2026, владелец по
@@ -1890,6 +1890,23 @@ class Deal extends Model implements HasMedia
     }
 
     /** Все наши счета по сделке оплачены, и хотя бы один есть. */
+    /**
+     * Шаг оплаты оплачен (26.11.2026): все счета сделки — или все, кроме ссылки за подбор, когда есть счёт за ТС и он оплачен. Подбор
+     * с 25.11.2026 — отдельной ссылкой и своей вкладкой «Ждём оплату подбора»: до того шаг держал и деньги за ТС (Р.О.С. получил за ТС,
+     * а «Перевод поставщику» Альфе ждал оплату подбора). Шаг, где платят только подбор (Т-Страхование), — по-прежнему всё.
+     */
+    public function payStepPaid(): bool
+    {
+        if ($this->fullyPaid()) {
+            return true;
+        }
+        $issued = $this->issuedInvoices()->where('state', '!=', InvoiceState::Void)->get();
+        $car = $issued->filter(fn (Invoice $i) => $i->kind === \App\Billing\ChargeKind::Sale);
+
+        return $car->isNotEmpty() && $car->every(fn (Invoice $i) => $i->state === InvoiceState::Paid)
+            && $issued->reject(fn (Invoice $i) => $i->state === InvoiceState::Paid)->every(fn (Invoice $i) => $i->kind === \App\Billing\ChargeKind::Selection && ! $i->isDocument());
+    }
+
     public function fullyPaid(): bool
     {
         // Счёт вознаграждения вендору (наш доход от поставщика) — не оплата покупателя: неоплаченный, он держал шаг «Оплата»

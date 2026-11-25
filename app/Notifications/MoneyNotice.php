@@ -33,9 +33,22 @@ final class MoneyNotice extends Notice
 
     private ?User $actor = null;
 
+    /** Счёт за подбор (26.11.2026): сотрудникам — забота «Ждём оплату подбора», а не вкладки денег за ТС (`tabs`). */
+    private bool $selection = false;
+
+    /**
+     * Чьё (`Responsibility::wants`, 26.11.2026, владелец: «Андрею мозг по оплатам за ТС не выносить»): деньги за подбор — «Ждём
+     * оплату подбора», остальное — по вкладке машины.
+     */
+    public function tabs(): ?array
+    {
+        return $this->toStaff && $this->selection ? ['paying_fee'] : parent::tabs();
+    }
+
     /** Строка ленты, которую заменяет уведомление: деньги по сделке — строка сделки, сотрудникам — счёт. */
     private function about(Invoice $i): self
     {
+        $this->selection = $i->kind === \App\Billing\ChargeKind::Selection;
         $this->subject = match (true) {
             $this->toStaff => '/work/money/invoices/'.$i->id,
             $i->deal_id !== null => '/deals/'.$i->deal_id,

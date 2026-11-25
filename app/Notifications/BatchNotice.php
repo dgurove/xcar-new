@@ -63,6 +63,22 @@ final class BatchNotice extends Notice
         return $this->sample->category();
     }
 
+    /** Чьё — как у первого в пачке (`Responsibility::wants`). */
+    public function tabs(): ?array
+    {
+        return $this->sample->tabs();
+    }
+
+    public function urgent(): bool
+    {
+        return $this->sample->urgent();
+    }
+
+    public function personalTo(\App\Users\User $user): bool
+    {
+        return $this->sample->personalTo($user);
+    }
+
     public function quiet(): bool
     {
         return $this->sample->quiet();

@@ -10,9 +10,12 @@
 @php($presets = ($counts['todo'] ?? 0) || $preset === 'todo' ? $presets : array_diff_key($presets, ['todo' => true]))
 {{-- Ссылки колеса несут и `mine_as` (24.11.2026): главный администратор смотрит «Только мои» сотрудника, и переход по вкладке
      выбор не теряет. --}}
-{{-- У «Все сделки» в колесе красного счётчика нет (24.11.2026, владелец): дела видны по вкладкам сделки. --}}
+{{-- У «Все сделки» в колесе красного счётчика нет (24.11.2026, владелец): дела видны по вкладкам сделки. Красное — только своё
+     (26.11.2026, `Responsibility::wheel`): у главного администратора — всё, у сотрудника — по «Ответственным». --}}
+@php($mine = \App\Http\Admin\OfferController::tabMine(auth()->user()))
+@php([$counts, $badges] = auth()->user() ? \App\Offers\Responsibility::wheel(auth()->user(), $counts, $mine['as'] ?? null) : [$counts, []])
 <div class="title-row">
-    <x-ui.tab-title :pills="$presets" :pill="$preset" pill-param="preset" pill-home="" :counts="$counts" :badges="array_diff_key(\App\Http\Admin\OfferController::badges(), ['all_deals' => true])" :bumps="['legacy' => 'legacy_drafts']" :sections="$sections" :heads="['all', ...array_keys(\App\Http\Admin\OfferController::SUMMARIES)]" :waits="[...array_diff(\App\Offers\DealTabs::WAITING, ['paying']), 'pickup_moving']" :dots="[...array_keys(\App\Offers\DealTabs::TABS), ...array_keys(\App\Http\Admin\PickupController::TABS)]" :columns="\App\Http\Admin\OfferController::wheelColumns(auth()->user())" :skip-empty="! $facets?->active()" :keep="[\App\Support\ListView::PARAM, 'mine_as']" :mine="\App\Http\Admin\OfferController::tabMine(auth()->user())" :fallback="$fallback" id="offers-tabs"/>
+    <x-ui.tab-title :pills="$presets" :pill="$preset" pill-param="preset" pill-home="" :counts="$counts" :badges="$badges" :bumps="['legacy' => 'legacy_drafts']" :sections="$sections" :heads="['all', ...array_keys(\App\Http\Admin\OfferController::SUMMARIES)]" :waits="array_values(array_diff([...\App\Offers\DealTabs::WAITING, 'pickup_moving'], array_keys($badges)))" :dots="[...array_keys(\App\Offers\DealTabs::TABS), ...array_keys(\App\Http\Admin\PickupController::TABS)]" :columns="\App\Http\Admin\OfferController::wheelColumns(auth()->user())" :skip-empty="! $facets?->active()" :keep="[\App\Support\ListView::PARAM, 'mine_as']" :mine="$mine" :fallback="$fallback" id="offers-tabs"/>
     @isset($actions)
         <div class="title-actions">{{ $actions }}</div>
     @endisset
