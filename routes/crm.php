@@ -175,6 +175,7 @@ Route::domain(config('xcar.crm_host'))->middleware(['auth', 'ability:isStaff'])-
         Route::post('/people/{user}/password-link-mail', [PeopleMailController::class, 'passwordLink']);
         Route::get('/work/deals/{deal}', [DealController::class, 'show']);
         Route::put('/work/deals/{deal}/contract', [DealContractController::class, 'update']);
+        Route::post('/work/deals/{deal}/buyer-new', [DealContractController::class, 'buyerNew']);
         Route::put('/work/deals/{deal}/invoice-data', [DealContractController::class, 'invoiceData']);
         Route::put('/work/deals/{deal}/payer', [DealContractController::class, 'payer']);
         // Собственник по договору комиссии ПРАЙМ (25.11.2026): поставщик, из договора комиссии, физлицо, ИП или организация.

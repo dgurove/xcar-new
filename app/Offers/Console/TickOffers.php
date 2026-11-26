@@ -49,7 +49,7 @@ class TickOffers extends Command
                 // Письмо-предложение не завелось черновиком при приходе (выкладка); документы черновиков из писем дочитать —
                 // раз в пять минут, как у парковки: проход читает письма всех их веток.
                 + ['drafts' => $auto->catchUp(), 'read' => now()->minute % 5 === 0 ? AutoScan::sweep(offers: true) : 0]
-                + ['expired' => $this->expired()]
+                + ['expired' => $this->expired(), 'passports' => \App\Billing\Jobs\ReadPassport::retryStuck()]
                 // Массовое сотрудникам — пачкой (`Notifications\Batch`): созревшие уходят одним уведомлением.
                 + ['batches' => Batch::flush()];
             $this->line(collect($counts)->filter()->map(fn ($n, $k) => "{$k}: {$n}")->implode(', ') ?: 'тихо');

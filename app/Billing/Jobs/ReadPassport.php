@@ -65,6 +65,31 @@ final class ReadPassport implements ShouldQueue
     }
 
     /**
+     * Сторож (26.11.2026, паспорт Аракелян: страница с 23.11 «распознаётся» — задание перечитать потерялось при выкладке): страница
+     * в `reading` дольше 10 минут читается заново, после двух таких попыток — `failed` («не распознано», поля руками, ход наш).
+     * Зовёт `offers:tick`.
+     */
+    public static function retryStuck(): int
+    {
+        $n = 0;
+        Media::where('collection_name', 'passport')->where('custom_properties->read', 'reading')->where('updated_at', '<', now()->subMinutes(10))
+            ->orderBy('id')->limit(20)->get()->each(function (Media $m) use (&$n) {
+                $n++;
+                $tries = (int) $m->getCustomProperty('read_tries', 0);
+                if ($tries >= 2) {
+                    $m->setCustomProperty('read', 'failed')->save();
+                    self::apply($m->fresh());
+
+                    return;
+                }
+                $m->setCustomProperty('read_tries', $tries + 1)->save();
+                self::dispatch($m->id);
+            });
+
+        return $n;
+    }
+
+    /**
      * Обе страницы дочитаны — прочитанное в данные контрагента (`Party::fillFromScan`, 13.11.2026): не зависит от того, открыта
      * ли форма. «Распознать заново» (`over` у страницы) — поверх вписанного. Данные стали полными — счёт и договор встают сами.
      */
@@ -117,14 +142,16 @@ final class ReadPassport implements ShouldQueue
             default => $page,
         };
         $party = $media->model;
-        if ($actual === $page || ! $party instanceof Party) {
+        // Меняем местами один раз на пару (26.11.2026: два скриншота разворота из Word — каждая страница «разворот», они гоняли
+        // друг друга, и вторая так и осталась «распознаётся»).
+        if ($actual === $page || ! $party instanceof Party || $media->getCustomProperty('swapped')) {
             return $page;
         }
         $other = Media::where('model_type', $media->model_type)->where('model_id', $media->model_id)->where('collection_name', 'passport')
             ->whereKeyNot($media->id)->get()->first(fn (Media $m) => $m->getCustomProperty('page') === $actual);
-        $media->setCustomProperty('page', $actual)->save();
+        $media->setCustomProperty('page', $actual)->setCustomProperty('swapped', true)->save();
         if ($other) {
-            $other->setCustomProperty('page', $page)->setCustomProperty('read', 'reading')->save();
+            $other->setCustomProperty('page', $page)->setCustomProperty('read', 'reading')->setCustomProperty('swapped', true)->save();
             self::dispatch($other->id);
         }
 

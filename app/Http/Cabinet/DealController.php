@@ -378,17 +378,7 @@ class DealController
         $me = $request->user();
         abort_unless($deal->holderEditable() && $deal->buyer_id === $me->id && ! $me->isSuperBuyer(), 404);
         $kind = $request->validate(['kind' => ['required', 'in:person,ip,company']])['kind'];
-        $as = match ($kind) {
-            'ip' => PartyKind::Entrepreneur, 'company' => PartyKind::Company, default => PartyKind::Person,
-        };
-        $contract = DealContract::for($deal);
-        // Передумал вид или нажал дважды — тот же черновик: вписанное и скан на месте, меняется только вид.
-        $draft = $contract->draftParty;
-        if ($draft && ! User::where('party_id', $draft->id)->exists()) {
-            $draft->update(['kind' => $as]);
-        } else {
-            $contract->update(['draft_party_id' => Party::create(['kind' => $as, 'name' => ''])->id]);
-        }
+        app(\App\Offers\Actions\OpenBuyerDraft::class)($deal, $kind);
 
         return $this->back($request, $deal)->with('open_sheet', 'deal-buyer-new');
     }

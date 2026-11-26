@@ -44,7 +44,7 @@ class DealContractController
             PartyRules::squeeze($request, 'owner');
             $rules += PartyRules::passport('owner', owner: true);
         }
-        $data = $request->validate($rules, [], ['owner.name' => 'ФИО'] + PartyRules::buyerLabels('owner'));
+        $data = $request->validate($rules, PartyRules::messages('owner'), ['owner.name' => 'ФИО'] + PartyRules::buyerLabels('owner'));
         $party = $set($deal, $request->user(), $mode, $data);
 
         return back()->with('toast', 'Собственник: '.\App\Offers\Actions\SetDealOwner::label($party));
@@ -367,6 +367,20 @@ class DealContractController
         return back()->with('toast', 'Договор от страховой приложен');
     }
 
+    /**
+     * Новый покупатель плиткой вида за менеджера (26.11.2026, владелец: «когда прикрепили покупателя, его ни от лица менеджера,
+     * ни в CRM невозможно убрать»): черновик у договора (`OpenBuyerDraft`), шторка «Новый покупатель» (`cabinet.deals.buyer-draft`
+     * с адресом CRM), «Сохранить» ставит покупателя менеджера сделки.
+     */
+    public function buyerNew(Request $request, Deal $deal, \App\Offers\Actions\OpenBuyerDraft $open)
+    {
+        abort_unless($request->user()->canEditDeals() && $deal->holderEditable() && $deal->buyer && ! $deal->isDirect(), 404);
+        $kind = $request->validate(['kind' => ['required', 'in:person,ip,company']])['kind'];
+        $open($deal, $kind);
+
+        return back()->with('open_sheet', 'deal-buyer-new-'.$deal->id);
+    }
+
     public function update(Request $request, Deal $deal, SaveDealContract $save)
     {
         // Покупатель для счёта поставщика без договора (03.11.2026, `Deal::collectsBuyer`) — только его часть, без ДКП.
@@ -375,13 +389,13 @@ class DealContractController
         // должна быть возможность указывать за него»): тот же выбор, что у менеджера, — его покупатели, сам менеджер
         // (`me` — покупатель сделки), данные для договора и кто платит по счёту ПРАЙМ.
         if (($request->hasAny(['buyer_id', 'payer', 'buyer'])) && ! $request->has('vehicle')) {
-            abort_unless($deal->isLive(), 404);
+            abort_unless($deal->holderEditable(), 404);
             $rules = ['buyer_id' => ['nullable', 'string'], 'payer' => ['nullable', 'in:buyer,manager']];
             if ($request->has('buyer')) {
                 $rules += PartyRules::passport('buyer');
             }
             PartyRules::squeeze($request);
-            $data = $request->validate($rules, [], ['buyer.name' => 'ФИО покупателя'] + PartyRules::buyerLabels());
+            $data = $request->validate($rules, PartyRules::messages(), ['buyer.name' => 'ФИО покупателя'] + PartyRules::buyerLabels());
             $contract = $save(DealContract::for($deal), $data, $request->user());
             // Данные покупателя вписал или поправил сотрудник — проверены (26.11.2026, `CheckBuyer`); из шторки проверки — и сразу
             // отправить то, ради чего проверяли (`then`).
@@ -423,7 +437,7 @@ class DealContractController
             'vehicle' => ['required', 'array'], 'vehicle.price' => ['nullable', 'integer', 'min:1'], 'vehicle.city' => ['nullable', 'string', 'max:80'],
         ] + collect(DealContract::VEHICLE)->keys()->mapWithKeys(fn ($k) => ["vehicle.{$k}" => ['nullable', 'string', 'max:40']])->all(),
             // Подписи полей ТС — те же, что в форме: «Кузов №», а не «vehicle.body_no» (07.10.2026).
-            [], ['seller.name' => $prime ? 'ФИО собственника' : 'ФИО продавца', 'commission_no' => 'номер договора комиссии', 'vehicle.price' => 'цена по ДКП', 'vehicle.city' => 'город договора']
+            PartyRules::messages('seller'), ['seller.name' => $prime ? 'ФИО собственника' : 'ФИО продавца', 'commission_no' => 'номер договора комиссии', 'vehicle.price' => 'цена по ДКП', 'vehicle.city' => 'город договора']
                 + collect(DealContract::VEHICLE)->mapWithKeys(fn ($label, $k) => ["vehicle.{$k}" => $label])->all());
         $save(DealContract::for($deal), $data, $request->user());
 

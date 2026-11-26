@@ -39,7 +39,7 @@ class ContractDataController
     {
         abort_unless(self::opensFor($me = $request->user()), 404);
         PartyRules::squeeze($request);
-        $data = $request->validate(PartyRules::passport('buyer'), [], PartyRules::buyerLabels())['buyer'];
+        $data = $request->validate(PartyRules::passport('buyer'), PartyRules::messages(), PartyRules::buyerLabels())['buyer'];
         $party = $save(Party::forUser($me), $data);
         PassportScanController::resyncFor($me, $me, $invoices);
 

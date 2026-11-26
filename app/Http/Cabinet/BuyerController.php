@@ -174,7 +174,7 @@ class BuyerController
     public function passport(Request $request, User $user)
     {
         PartyRules::squeeze($request);
-        $data = $request->validate(PartyRules::passport('buyer'), [], ['buyer.name' => 'ФИО'])['buyer'];
+        $data = $request->validate(PartyRules::passport('buyer'), PartyRules::messages(), ['buyer.name' => 'ФИО'])['buyer'];
         $party = Party::forUser($user);
         $party->fill(['kind' => PartyKind::Person] + array_map(fn ($v) => is_string($v) && trim($v) === '' ? null : $v, $data))->save();
         // Поправили ФИО — имя покупателя в списках за ним (`SaveBuyerData::renameBuyer`).

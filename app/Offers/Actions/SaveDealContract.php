@@ -76,6 +76,10 @@ final class SaveDealContract
                 }
                 $contract->buyer_user_id = $buyer->id;
             }
+            // Сменить покупателя нельзя, когда договор подписан или по счёту платили (`Deal::buyerLocked`, 26.11.2026).
+            if ($wasBuyer && $contract->isDirty('buyer_user_id') && ($why = $deal->buyerLocked())) {
+                throw ValidationException::withMessages(['buyer_id' => $why]);
+            }
             // Покупатель по договору сменился, а платил прежний — платит новый: договор и счёт на одного (22.11.2026, владелец).
             // Плательщик «по умолчанию» (пусто) и есть покупатель по договору (`Deal::payerUser`, `SetDealPayer::current`) — его
             // сторону не пишем: она заводится заново с паспортом. «Платит другой» (сторона не из покупателей) остаётся.

@@ -10,7 +10,9 @@
      значение в своей плашке (18.11.2026, владелец: «в CRM и в xcar одинаково», прежде строками `.fields-stack`). --}}
 {{-- owner — собственник по договору комиссии (`x-deal.owner`, 25.11.2026): ему по его реквизитам не платим — без банка, ОГРНИП,
      адрес и руководитель не обязательны (в договорах комиссии Совкомбанка их бывает нет; `PartyRules::passport(owner: true)`). --}}
-@props(['party' => null, 'prefix' => 'buyer', 'key' => null, 'scan' => null, 'fallback' => null, 'owner' => false])
+{{-- kinds — какие виды можно выбрать (26.11.2026): у заведённого покупателя только «Физ. лицо | ИП» (тот же человек) или одна
+     «Юр. лицо» — тогда сегмента нет; другой вид — другой покупатель (`Party::sameKinds`). null — все три (черновик, новый). --}}
+@props(['party' => null, 'prefix' => 'buyer', 'key' => null, 'scan' => null, 'fallback' => null, 'owner' => false, 'kinds' => null])
 @php
     use App\Billing\PartyKind;
     $key ??= $prefix;
@@ -23,7 +25,12 @@
     $ip = $party?->kind === PartyKind::Entrepreneur;
 @endphp
 <div class="flex flex-col gap-3" data-controller="reveal requisites-paste" data-requisites-paste-prefix-value="{{ $prefix }}">
-    <x-ui.segment :name="$n('kind')" :options="['person' => 'Физ. лицо', 'ip' => 'ИП', 'company' => 'Юр. лицо']" :value="$kind" pick/>
+    @php $kindOptions = array_intersect_key(['person' => 'Физ. лицо', 'ip' => 'ИП', 'company' => 'Юр. лицо'], array_flip($kinds ?? ['person', 'ip', 'company'])); @endphp
+    @if (count($kindOptions) > 1)
+        <x-ui.segment :name="$n('kind')" :options="$kindOptions" :value="$kind" pick/>
+    @else
+        <input type="hidden" name="{{ $n('kind') }}" value="{{ array_key_first($kindOptions) }}">
+    @endif
     @if ($scan && $party?->exists)
         <div data-reveal-target="pane" data-reveal-key="person ip" @if ($kind === 'company') hidden @endif>
             <x-billing.passport-scan :party="$party" :form="$scan" :prefix="$prefix"/>

@@ -660,7 +660,7 @@
                             @endforeach
                             @if ($reqState && $buyerPays)
                                 {{-- Покупатель и его реквизиты — тем же видом, что в «Продаже»: посмотреть, поправить, заполнить за менеджера. --}}
-                                <div class="list order-first w-full"><x-deal.buyer :deal="$deal"/></div>
+                                <div class="list order-first w-full"><x-deal.buyer :deal="$deal" key="-step"/></div>
                             @endif
                             @if ($reqState === 'none' && $buyerPays && $deal->buyer_id)
                                 <form method="post" action="/offers/{{ $n }}/ask-buyer" class="step-main order-first">@csrf<button class="btn btn-accent btn-s"><x-ui.icon name="chat" class="size-4"/>Запросить реквизиты</button></form>

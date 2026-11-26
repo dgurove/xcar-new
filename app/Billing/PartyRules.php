@@ -105,6 +105,25 @@ final class PartyRules
         return count($words) > 1 ? [implode(' ', array_slice($words, 0, -1)), (string) end($words)] : ['', $p];
     }
 
+    /**
+     * Тексты ошибок полей контрагента (26.11.2026, владелец: «Поле название обязательно для заполнения, когда buyer.kind содержит
+     * company» — «тексты ошибок дебильно написаны»): что сделать, одной фразой, без имён полей формы.
+     */
+    public static function messages(string $prefix = 'buyer'): array
+    {
+        return collect([
+            'name.required_unless' => 'Укажите ФИО', 'org.required_if' => 'Укажите название организации',
+            'inn.required_if' => 'Укажите ИНН', 'inn.digits_between' => 'ИНН: 10 или 12 цифр', 'inn.digits' => 'ИНН ИП: 12 цифр',
+            'kpp.digits' => 'КПП: 9 цифр', 'ogrn.required_if' => 'Укажите ОГРНИП', 'ogrn.digits_between' => 'ОГРН: 13 цифр, ОГРНИП: 15',
+            'ogrn.digits' => 'ОГРНИП: 15 цифр', 'legal_address.required_if' => 'Укажите юридический адрес',
+            'director.required_if' => 'Укажите руководителя', 'bank_name.required_if' => 'Укажите банк', 'bik.required_if' => 'Укажите БИК',
+            'bik.digits' => 'БИК: 9 цифр', 'account.required_if' => 'Укажите расчётный счёт', 'account.digits' => 'Расчётный счёт: 20 цифр',
+            'corr_account.digits' => 'Корр. счёт: 20 цифр', 'birth_at.before' => 'Дата рождения должна быть в прошлом',
+            'birth_at.date' => 'Дата рождения в виде дд.мм.гггг', 'passport_issued_at.before_or_equal' => 'Дата выдачи не может быть позже сегодня',
+            'passport_issued_at.date' => 'Дата выдачи в виде дд.мм.гггг',
+        ])->mapWithKeys(fn ($v, $k) => [$prefix.'.'.$k => $v])->all();
+    }
+
     /** Подписи полей покупателя в ошибках: «Поле ОГРНИП обязательно», а не «buyer.ogrn». */
     public static function buyerLabels(string $prefix = 'buyer'): array
     {

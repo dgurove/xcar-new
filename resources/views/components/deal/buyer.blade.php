@@ -5,14 +5,16 @@
      счёта» поставщика (`x-deal.invoice-buyer`, 03.11.2026). --}}
 {{-- `capped` (18.11.2026, владелец: «Покупатель» и состояние — подписью над плашкой, в плашке имя, «в CRM тоже»): своя группа
      `.list` с подписью над ней; строка с именем открывает данные покупателя (там «Другой покупатель»), не выбран — выбор. --}}
-@props(['deal', 'contract' => null, 'autoOpen' => true, 'capped' => false])
+{{-- `key` — второй экземпляр на той же странице (шаг письма с реквизитами в пути, 26.11.2026): свои шторки, иначе событие открывало
+     две сразу. --}}
+@props(['deal', 'contract' => null, 'autoOpen' => true, 'capped' => false, 'key' => ''])
 @php
     $contract ??= \App\Offers\DealContract::for($deal)->loadMissing(['buyer.party']);
     $manager = $deal->buyer;
     $buyer = $contract->buyer;
     // Параллельная (07.11.2026) — тоже живая: её покупателя смотрят и заполняют за менеджера так же.
     // Покупатель с гаражом (24.11.2026) — его клиента выбираем и заводим за него так же, как покупателя менеджера.
-    $live = $deal->isLive() && ! $deal->isDirect() && ($manager?->isManager() || $deal->forGarageBuyer());
+    $live = $deal->holderEditable() && ! $deal->isDirect() && ($manager?->isManager() || $deal->forGarageBuyer());
     $isManager = $buyer && $buyer->id === $deal->buyer_id;
     $ready = $buyer?->party?->readyAsBuyer();
     $gap = $buyer?->party?->gapWord();
@@ -23,7 +25,12 @@
     // Менеджер оформляет на себя (13.11.2026, `Deal::selfBuy`) — словом в строке, а не «, менеджер» у имени.
     $selfWord = $isManager ? 'на себя, ' : '';
     $kindWord = match ($buyer?->party?->kind) { \App\Billing\PartyKind::Entrepreneur => 'ИП, ', \App\Billing\PartyKind::Company => 'юр. лицо, ', default => '' };
-    $dataSheet = 'deal-buyer-data-'.$deal->id;
+    $dataSheet = 'deal-buyer-data-'.$deal->id.$key;
+    $pickEvent = 'deal-buyer-pick-'.$deal->id.$key;
+    $chooseSheet = 'deal-buyer-choose-'.$deal->id.$key;
+    // Сменить покупателя можно (26.11.2026, владелец: «когда прикрепили покупателя, его невозможно убрать»): сделка держателя не
+    // закрыта, не прочая гаражная, договор не подписан, по счёту не платили (`Deal::buyerLocked`).
+    $canChange = $live && ($deal->forGarageBuyer() || ! ($deal->isGarage() && ! $deal->namesBuyer() && $buyer)) && ! ($buyer && $deal->buyerLocked());
     // Покупатель платит поставщику или собственнику сам — он и «Плательщик» блока «Поставщику» (16.11.2026).
     $paysSupplier = in_array($deal->schemeOf(), [\App\Offers\DealScheme::Insurer, \App\Offers\DealScheme::OwnerDkp], true);
     $rowLabel = 'Покупатель';
@@ -65,16 +72,16 @@
      в «страховой напрямую» и ДКП он и платит поставщику или собственнику — «Плательщик — имя ›», как у блока ПРАЙМ; в ПРАЙМ —
      «Покупатель». Кто платит по счёту ПРАЙМ — строкой «Плательщик» над счётом (`x-deal.payer`). --}}
 {{-- Гаражная Совкомбанка (`namesBuyer`) — покупателя называет менеджер, сменить его можно (22.11.2026); прочая гаражная — нет. --}}
-@if ($live && ($deal->forGarageBuyer() || ! ($deal->isGarage() && ! $deal->namesBuyer() && $buyer)))
+@if ($canChange)
     @php
         $rows = \App\Support\People::contractBuyers($manager, $manager->name, 'на себя, нужен паспорт', 'на себя, данные есть');
     @endphp
     <form method="post" action="/work/deals/{{ $deal->id }}/contract" class="contents">
         @csrf @method('put')
-        <x-people.pick data-action="deal-buyer-pick-{{ $deal->id }}:open@window->sheet#open" name="buyer_id" kind="buyer" passport :people="$rows" :value="$isManager ? 'me' : $buyer?->id" title="Покупатель" :deal="$deal->id" link autosubmit :open="$ask && ! $buyer"
+        <x-people.pick data-action="{{ $pickEvent }}:open@window->sheet#open" name="buyer_id" kind="buyer" passport :people="$rows" :value="$isManager ? 'me' : $buyer?->id" title="Покупатель" :deal="$deal->id" link autosubmit :open="$ask && ! $buyer"
             :placeholder="'не выбран'" :label="$rowLabel" finish="Выбрать" :variant="$capped ? 'none' : 'row'"/>
         @if ($capped && ! $buyer)
-            <button type="button" class="row w-full text-left" data-controller="emit" data-action="emit#send" data-emit-event-param="deal-buyer-pick-{{ $deal->id }}:open"><x-ui.icon name="user" class="size-5 shrink-0 text-ink-dim"/><span class="min-w-0 flex-1 text-danger">не выбран</span><x-ui.chevron/></button>
+            <button type="button" class="row w-full text-left" data-controller="emit" data-action="emit#send" data-emit-event-param="{{ $pickEvent }}:open"><x-ui.icon name="user" class="size-5 shrink-0 text-ink-dim"/><span class="min-w-0 flex-1 text-danger">не выбран</span><x-ui.chevron/></button>
         @endif
     </form>
     @error('buyer_id')<p class="field-error px-4 py-2">{{ $message }}</p>@enderror
@@ -87,7 +94,9 @@
             {{-- Строка открывает выбор «Покупатель» (22.11.2026, владелец: «Кто платит» — сюда, а не в «⋯»): выбор ставит и договор,
                  и счёт (`SetDealPayer`), карандаш у покупателя — эти данные; выбора нет (платили, нет прав) — сразу данные. --}}
             @php $choose = $deal->hasContract() && \App\Offers\Actions\SetDealPayer::editable($deal, auth()->user()); @endphp
-            <button type="button" class="row w-full text-left" @if ($choose) data-controller="emit" data-action="emit#send" data-emit-event-param="deal-payer-{{ $deal->id }}:open" @else data-action="sheet#open" @endif><x-ui.avatar :user="$buyer" :size="36"/><span class="min-w-0 flex-1 truncate">{{ $who }}</span><x-ui.chevron/></button>
+            {{-- Без выбора плательщика («страховой напрямую», ДКП) — выбор покупателя (`$chooseSheet`): новый плитками, текущий, из
+                 покупателей менеджера (26.11.2026); сменить нельзя — сразу данные. --}}
+            <button type="button" class="row w-full text-left" @if ($choose) data-controller="emit" data-action="emit#send" data-emit-event-param="deal-payer-{{ $deal->id }}:open" @elseif ($canChange) data-controller="emit" data-action="emit#send" data-emit-event-param="{{ $chooseSheet }}:open" @else data-action="sheet#open" @endif><x-ui.avatar :user="$buyer" :size="36"/><span class="min-w-0 flex-1 truncate">{{ $who }}</span><x-ui.chevron/></button>
         @else
             <x-deal.sale-row :label="'Реквизиты'" :value="$ready ? trim($kindWord.'есть', ', ') : ($gap ?? 'нужны')" :tone="$ready ? null : 'danger'" class="w-full text-left" data-action="sheet#open"/>
         @endif
@@ -101,7 +110,8 @@
             @endif
             <form method="post" action="/work/deals/{{ $deal->id }}/contract" class="flex flex-col gap-3" id="{{ $dataSheet }}-form">
                 @csrf @method('put')
-                <x-billing.buyer-fields :party="$buyerParty" :key="'crm-buyer-'.$deal->id" :scan="$dataSheet.'-form'" :fallback="$buyer->name">
+                {{-- Вид у заведённого — только физлицо или ИП того же человека; организация — другой покупатель (26.11.2026). --}}
+                <x-billing.buyer-fields :party="$buyerParty" :key="'crm-buyer-'.$deal->id.$key" :scan="$dataSheet.'-form'" :fallback="$buyer->name" :kinds="$buyer->isBuyerDraft() ? null : $buyerParty->sameKinds()">
                     {{-- Скан одним PDF — под плитками скана, а не над видом покупателя (06.11.2026). --}}
                     @if ($scanPdf)
                         <x-slot:scan-after>
@@ -117,11 +127,36 @@
                 </x-billing.buyer-fields>
                 <x-ui.sheet-foot>Сохранить</x-ui.sheet-foot>
             </form>
-            @unless ($deal->isGarage() && ! $deal->namesBuyer())
-                <button type="button" class="btn btn-quiet btn-s mt-3 w-full" data-controller="emit" data-action="sheet#close emit#send" data-emit-event-param="deal-buyer-pick-{{ $deal->id }}:open">Другой покупатель</button>
-            @endunless
+            @if ($canChange)
+                <button type="button" class="btn btn-quiet btn-s mt-3 w-full" data-controller="emit" data-action="sheet#close emit#send" data-emit-event-param="{{ $chooseSheet }}:open">Другой покупатель</button>
+            @endif
         </x-ui.sheet>
     </div>
+    @if ($canChange)
+        {{-- Выбор покупателя за менеджера: новый — плитками вида (черновик, шторка «Новый покупатель» с адресом CRM), текущий — его
+             данные, из покупателей менеджера — список с поиском. --}}
+        <div class="contents" data-controller="sheet" data-action="{{ $chooseSheet }}:open@window->sheet#open">
+            <x-ui.sheet :id="$chooseSheet" title="Покупатель">
+                <div class="list-cap !px-0">Новый покупатель</div>
+                <x-deal.buyer-kind :deal="$deal" :base="'/work/deals/'.$deal->id"/>
+                <div class="list-cap !px-0 mt-4">Сейчас</div>
+                <div class="list">
+                    <button type="button" class="row w-full text-left" data-controller="emit" data-action="sheet#close emit#send" data-emit-event-param="{{ $dataSheet }}:open">
+                        <x-ui.icon :name="$buyer->buyerIcon()" class="size-5 shrink-0 text-ink-dim"/>
+                        <span class="min-w-0 flex-1"><span class="block truncate">{{ $who }}</span><span @class(['row-sub', 'text-open' => $ready, 'text-danger' => ! $ready])>{{ $ready ? 'данные есть' : ($gap ?? 'нужны данные') }}</span></span>
+                        <span class="shrink-0 text-sm text-accent-text">Данные</span><x-ui.chevron/>
+                    </button>
+                    <button type="button" class="row w-full text-left" data-controller="emit" data-action="sheet#close emit#send" data-emit-event-param="{{ $pickEvent }}:open">
+                        <x-ui.row-icon name="users" size="s"/><span class="min-w-0 flex-1">Из покупателей менеджера</span><x-ui.chevron/>
+                    </button>
+                </div>
+            </x-ui.sheet>
+        </div>
+    @endif
+    {{-- «Новый покупатель» после плитки — шторка черновика с адресом CRM (одна на страницу: у второго экземпляра её нет). --}}
+    @if ($canChange && $key === '')
+        @include('cabinet.deals.buyer-draft', ['deal' => $deal, 'draftBase' => '/work/deals/'.$deal->id, 'draftSheet' => 'deal-buyer-new-'.$deal->id])
+    @endif
 @elseif ($buyer || ! $live)
     <div class="row">
         <span class="min-w-0 flex-1">@if ($buyer)<span class="block break-words">{{ $who }}</span>@if ($capped)@elseif ($ready)<span class="row-sub text-open">{{ $selfWord }}{{ $kindWord }}данные есть</span>@elseif ($isManager)<span class="row-sub">на себя</span>@endif @else<span class="text-ink-muted">Покупатель не выбран</span>@endif</span>

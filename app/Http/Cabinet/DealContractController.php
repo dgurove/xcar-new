@@ -47,7 +47,7 @@ class DealContractController
             $rules += PartyRules::passport('buyer');
         }
         PartyRules::squeeze($request);
-        $data = $request->validate($rules, [], ['buyer.name' => 'ФИО покупателя'] + PartyRules::buyerLabels());
+        $data = $request->validate($rules, PartyRules::messages(), ['buyer.name' => 'ФИО покупателя'] + PartyRules::buyerLabels());
         if ($new) {
             $data['new_buyer'] = ['phone' => $request->input('new_buyer.phone')];
             unset($data['buyer_id']);
