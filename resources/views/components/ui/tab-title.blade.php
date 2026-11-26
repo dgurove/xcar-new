@@ -124,7 +124,7 @@
                                  у прочих кружка нет. Число 0 поток пишет пустым — тогда под ним виден зелёный. Выбранная — с ореолом, без
                                  кружка — «›» на его месте. --}}
                             @if ($dot && isset($badges[$key]))
-                                <span class="tab-wheel-dot"><span class="tab-wheel-dot-ok"><x-ui.icon name="check" class="size-[.75em]"/></span><span class="tab-wheel-dot-n nums" data-pill-count="{{ $badges[$key] }}">{{ ($counts[$badges[$key]] ?? 0) ?: '' }}</span></span>
+                                <span class="tab-wheel-dot"><span class="tab-wheel-dot-ok"></span><span class="tab-wheel-dot-n nums" data-pill-count="{{ $badges[$key] }}">{{ ($counts[$badges[$key]] ?? 0) ?: '' }}</span></span>
                             @elseif ($dot && in_array($key, $waits, true))
                                 <span class="tab-wheel-dot is-wait"></span>
                             @else
@@ -133,7 +133,8 @@
                                 @if ((string) $pill === $key)<x-ui.icon name="chevron-right" class="tab-wheel-mark"/>@endif
                                 @isset($badges[$key])<span class="tab-wheel-dot is-count"><span class="tab-wheel-dot-n nums" data-pill-count="{{ $badges[$key] }}">{{ ($counts[$badges[$key]] ?? 0) ?: '' }}</span></span>@endisset
                             @endif
-                            <span class="tab-wheel-label">{{ $label }}</span>
+                            {{-- Вкладка ожидания — часики за названием (26.11.2026, владелец вернул: с 24.11 их заменила только серая точка слева). --}}
+                            <span class="tab-wheel-label">{{ $label }}@if (in_array($key, $waits, true))<x-ui.icon name="clock" class="tab-wheel-wait size-[.7em] lg:size-3.5"/>@endif{{ "" }}</span>
                             <span class="tab-wheel-nums">
                                 @if (array_key_exists($key, $counts))<span class="nums" data-pill-count="{{ $key }}">{{ $counts[$key] ?: '' }}</span>@endif
                                 {{-- Чья вкладка (24.11.2026, владелец: «маленькие аватарки кому она принадлежит, справа от чисел, не смещая их»):

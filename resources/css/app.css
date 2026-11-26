@@ -1551,8 +1551,8 @@ html.kb-open { --home-gap: 0px; }
   /* Ждём — точка меньше (владелец), на той же оси. */
   .tab-wheel-dot.is-wait { width: .625rem; height: .625rem; left: calc(var(--dot-x) + var(--dot) / 2 - .3125rem); background: color-mix(in srgb, var(--color-ink-dim) 60%, var(--color-wheel)); }
   .tab-wheel-dot-ok, .tab-wheel-dot-n { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; border-radius: inherit; }
-  .tab-wheel-dot-ok { background: var(--color-accent); color: #fff; font-size: var(--dot); }
-  .tab-wheel-dot-ok svg { stroke-width: 3; }
+  /* Всё разобрано — зелёная точка без галки, размером с серую точку ожидания (26.11.2026, владелец). */
+  .tab-wheel-dot-ok { inset: auto; left: 50%; top: 50%; translate: -50% -50%; width: .625rem; height: .625rem; background: var(--color-accent); }
   .tab-wheel-dot-n { background: var(--color-danger); color: #fff; }
   .tab-wheel-dot-n:empty { display: none; }
   /* Вне сделок и вывоза — только красный с числом: пустой кружок не виден и ореола не даёт. */
@@ -1578,6 +1578,8 @@ html.kb-open { --home-gap: 0px; }
   /* Вкладка, где мы только ждём (`DealTabs::WAITING`, 17.11.2026, владелец: «regular font полупрозрачный»): обычный вес и
      полупрозрачное название; выбранная — тоже обычным весом, но в полный цвет. */
   .tab-wheel-item.is-wait .tab-wheel-label { font-weight: 400; }
+  /* Часики вкладки ожидания — за названием, приглушённо (26.11.2026). */
+  .tab-wheel-wait { display: inline-block; margin-inline-start: .3em; vertical-align: .15em; color: var(--color-ink-muted); }
   .tab-wheel-item.is-wait:not([aria-current]) .tab-wheel-label { opacity: .5; }
   /* «Только мои» (18.11.2026, владелец выбрал тумблер iOS): в правом нижнем углу колеса подпись и переключатель; включён — вкладки, за
      которые человек не отвечает (`TabOwner`), и разделы без своих прячутся. Ничего не назначено — одна строка. */
@@ -1660,6 +1662,7 @@ html.kb-open { --home-gap: 0px; }
     .tab-wheel.is-mine .tab-wheel-col { width: min(30rem, 100%); }
     /* Аватарки ответственных — за краем столбца: промежуток шире на три аватарки, иначе они наезжали на соседний столбец. */
     .tab-wheel:not(.is-mine) .tab-wheel-scroll { column-gap: calc(clamp(1rem, 2.5vw, 2.5rem) + 2.75rem); }
+    .tab-wheel-wait { margin-inline-start: .4em; vertical-align: middle; }
     .tab-wheel-item { height: 2.25rem; cursor: pointer; }
     .tab-wheel-label { font-size: var(--text-lg); font-weight: 400; letter-spacing: 0; color: var(--color-ink-muted); transition: color var(--dur-fast); }
     /* Выбранная — шрифтом заголовка, как на телефоне (17.11.2026, владелец: «на телефоне нравится, а тут такой же, как все»). */
