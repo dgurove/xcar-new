@@ -45,7 +45,7 @@ final class CarLine
             $tone = $mine;
         }
         // Покупателю с гаражом его дело — оплатить свой счёт (сумма «к оплате» справа слова не говорила).
-        $pay = ! $crm && ! $asks && ! $viewer->garageStaff() && $car->forBuyer() && $car->manager_id === $viewer->id && ! $car->hidesBuyerPrice()
+        $pay = ! $crm && ! $asks && ! $viewer->garageStaff() && $car->forBuyer() && $car->manager_id === $viewer->id
             && ($due = $car->holderInvoice()) && $due->remaining() > 0 && ! $car->buyerHasPaid();
         if ($pay) {
             $tone = $due->isOverdue() ? 'font-medium text-danger' : $mine;
@@ -113,14 +113,12 @@ final class CarLine
 
     private static function siteMoney(Car $car, $current, bool $staff): array
     {
-        // Покупатель с гаражом (20.10.2026): его цена, а пока его счёт не оплачен — остаток; закупочной ему нет.
+        // Покупатель с гаражом: цена продажи его клиенту, а пока счёт не оплачен — остаток; его цены гаража и закупочной ему нет
+        // (26.11.2026).
         if (! $staff && $car->forBuyer()) {
-            if ($car->hidesBuyerPrice()) {
-                return [$car->offer?->asking_price, 'цена продажи'];
-            }
             $due = $car->holderInvoice();
 
-            return $due && $due->remaining() > 0 ? [$due->remaining(), 'к оплате'] : [$car->buyer_price, 'цена'];
+            return $due && $due->remaining() > 0 ? [$due->remaining(), 'к оплате'] : [$car->priceFor(false), 'цена продажи'];
         }
 
         return match ($car->state) {

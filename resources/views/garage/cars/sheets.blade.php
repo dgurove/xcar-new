@@ -143,7 +143,7 @@
 @endif
 
 @if (($buyerCar ?? $asBuyer ?? false) && $car->deal && $car->state !== \App\Garage\CarState::Settled)
-    {{-- Цена продажи у покупателя с гаражом (24.11.2026): сколько платит его клиент всего; вознаграждение — разница с его ценой. --}}
+    {{-- Цена продажи у покупателя с гаражом (26.11.2026): договор и счёт его клиенту — по ней, вознаграждения нет (`SetGarageSalePrice`). --}}
     <div {!! $wrap('sale-price') !!}>
         <x-ui.sheet id="sale-price-{{ $n }}" title="Цена продажи">
             <form method="post" action="/garage/cars/{{ $n }}/sale-price" class="flex flex-col gap-3">

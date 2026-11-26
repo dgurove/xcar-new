@@ -58,10 +58,10 @@ final class DealMoney
         $open = self::payable($invoices);
         // Гаражная сделка цены подтверждения не знает: её счёт (Каркаде, платит менеджер) — от закупочной.
         $label = $deal->isGarage() ? 'В гараж' : 'Цена подтверждения';
-        // Покупатель с гаражом закупочной не видит нигде (20.10.2026): его число — его цена.
-        $base = $deal->forGarageBuyer() ? (float) $deal->garageCar?->buyer_price : (float) $deal->base();
+        // Покупатель с гаражом закупочной и своей цены гаража не видит нигде (26.11.2026): его число — цена продажи.
+        $base = $deal->forGarageBuyer() ? (float) $deal->amount : (float) $deal->base();
         if ($deal->forGarageBuyer()) {
-            $label = 'Цена';
+            $label = 'Цена продажи';
         }
         $date = fn ($at) => Ago::day($at);
 

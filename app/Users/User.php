@@ -357,7 +357,9 @@ class User extends Authenticatable implements HasMedia, WebAuthnAuthenticatable
      */
     public function hasDeals(): bool
     {
-        return $this->isManager() || $this->isSuperBuyer() || ($this->holdsAsBuyer() && $this->canGarage());
+        // Держатель без тумблера гаража и без машины в гараже, а сделка на нём ещё идёт (счёт, договор) — тоже свои сделки (26.11.2026).
+        return $this->isManager() || $this->isSuperBuyer() || ($this->holdsAsBuyer() && ($this->canGarage()
+            || once(fn () => \App\Offers\Deal::where('buyer_id', $this->id)->live()->exists())));
     }
 
     /**
@@ -371,15 +373,6 @@ class User extends Authenticatable implements HasMedia, WebAuthnAuthenticatable
     }
 
     /**
-     * Покупатель с гаражом видит свою цену и счёт только галкой «Показывать цену покупателя» (21.10.2026, владелец: «скрой
-     * им пока что закупочные, пусть лучше продажные видят»); без неё — цену продажи предложения, счёта и оплаты нет.
-     */
-    public function seesGaragePrice(): bool
-    {
-        return ! $this->holdsAsBuyer() || $this->garage_price_shown;
-    }
-
-    /**
      * Покупатель без менеджера (21.10.2026, владелец про Лобуса: «не супер-покупатель, а покупатель, которому дали доступ к
      * продаже одной конкретной тачки»): ему отдали машину в гараж — и всё. Ни предложений, ни галереи, ни интереса, только
      * «Гараж» (`Nav`, `SiteWall`, `Offer::scopeVisibleTo`).
@@ -387,6 +380,16 @@ class User extends Authenticatable implements HasMedia, WebAuthnAuthenticatable
     public function onlyGarage(): bool
     {
         return $this->hasRole(Role::Buyer) && ! $this->manager_id && ! $this->hasRole(Role::Manager, Role::SuperBuyer, Role::Admin);
+    }
+
+    /**
+     * Свои покупатели (клиенты для договора): менеджер — и покупатель с гаражом, ему машину отдали продавать (26.11.2026,
+     * владелец про Ананьева: «если ему что-то отдают в сделку, он может как полноценный менеджер вести сделку или гараж»).
+     * Держатель заводит их только данными: ни доступа к предложениям, ни ссылки, ни групп и показов (`isManager`).
+     */
+    public function keepsBuyers(): bool
+    {
+        return ($this->isManager() && ! $this->isSuperBuyer()) || ($this->holdsAsBuyer() && $this->canGarage());
     }
 
     /** Держатель гаража — покупатель, а не менеджер: ему цена, а не закупочная, и чат с площадкой. */

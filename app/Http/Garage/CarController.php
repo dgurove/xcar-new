@@ -170,9 +170,10 @@ class CarController
             // Этап — своим столбцом от 640 (29.10.2026), а не вторым этажом названия.
             new Column('stage', 'Этап', from: 'sm', role: ColRole::State, rem: 11),
             new Column('taken', 'В гараже с', from: 'lg', aside: true, cell: 'nums', role: ColRole::When, rem: 5.5),
-            new Column('price', $user->holdsAsBuyer() ? ($user->seesGaragePrice() ? 'Цена' : 'Цена продажи') : 'Закупочная', from: 'sm', num: true, sort: 'price', cell: 'nums', rem: 7),
+            // Покупателю с гаражом — цена продажи его клиенту (`Car::priceFor`, 26.11.2026), второго столбца продажи у него нет.
+            new Column('price', $user->holdsAsBuyer() ? 'Цена продажи' : 'Закупочная', from: 'sm', num: true, sort: 'price', cell: 'nums', rem: 7),
             new Column('spent', 'Расходы', from: 'sm', num: true, cell: 'nums', rem: 5.5),
-            new Column('sold', 'Цена продажи', from: 'sm', num: true, cell: 'nums', rem: 7),
+            $user->holdsAsBuyer() ? null : new Column('sold', 'Цена продажи', from: 'sm', num: true, cell: 'nums', rem: 7),
             new Column('sum', 'Сумма', num: true, phone: true, cell: 'nums'),
         );
     }

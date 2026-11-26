@@ -274,16 +274,26 @@ Route::middleware(['auth', 'wall'])->group(function () {
         });
     });
 
-    // Покупатели менеджера — вторая пилюля «Сделок» (интерес, группы, показы внутри).
-    Route::middleware('ability:isManager')->group(function () {
+    // Свои покупатели — менеджеру и держателю гаража (`User::keepsBuyers`, 26.11.2026: Ананьев не мог завести клиента в сделку):
+    // список, карточка с паспортом, «+ Новый покупатель». Остальное «Покупателей» (приглашения, группы, показы, интерес, доступ) —
+    // только менеджеру, ниже.
+    Route::middleware('ability:keepsBuyers')->group(function () {
         Route::get('/buyers', [BuyerController::class, 'index']);
         // Тот же список — пунктом кабинета (12.10.2026, владелец: «чтобы точно нашли»).
         Route::get('/account/buyers', [BuyerController::class, 'index']);
+        // «+ Новый покупатель» в шторке выбора — на месте, без ухода со страницы (18.10.2026); кого и как — `PeopleController::allows`.
+        Route::post('/people', [PeopleController::class, 'store']);
+        Route::middleware('own:buyer')->group(function () {
+            Route::get('/buyers/{user}', [BuyerController::class, 'show'])->whereNumber('user');
+            Route::put('/buyers/{user}/passport', [BuyerController::class, 'passport'])->whereNumber('user');
+        });
+    });
+
+    // Покупатели менеджера — вторая пилюля «Сделок» (интерес, группы, показы внутри).
+    Route::middleware('ability:isManager')->group(function () {
         // Приглашения менеджера — внутри «Покупателей» (тот же экран, что в кабинете у админа).
         Route::get('/buyers/invites', [InviteController::class, 'index']);
         Route::post('/buyers/invites', [InviteController::class, 'store']);
-        // «+ Новый покупатель» в шторке выбора — на месте, без ухода со страницы (18.10.2026).
-        Route::post('/people', [PeopleController::class, 'store']);
         Route::post('/people/credentials-mail/{token}', [PeopleMailController::class, 'credentials']);
         Route::post('/people/{user}/password-link-mail', [PeopleMailController::class, 'passwordLink']);
         Route::post('/buyers/invites/{invite}/off', [InviteController::class, 'disable']);
@@ -303,13 +313,11 @@ Route::middleware(['auth', 'wall'])->group(function () {
         Route::post('/buyers/showings', [ShowingController::class, 'store']);
         Route::delete('/buyers/showings', [ShowingController::class, 'destroy']);
         Route::middleware('own:buyer')->group(function () {
-            Route::get('/buyers/{user}', [BuyerController::class, 'show'])->whereNumber('user');
             Route::put('/buyers/{user}/groups', [BuyerController::class, 'groups'])->whereNumber('user');
             Route::put('/buyers/{user}/sees', [BuyerController::class, 'sees'])->whereNumber('user');
             Route::post('/buyers/{user}/password', [BuyerController::class, 'passwordLink'])->whereNumber('user');
             Route::post('/buyers/{user}/access', [BuyerController::class, 'access'])->whereNumber('user');
             Route::delete('/buyers/{user}/access', [BuyerController::class, 'closeAccess'])->whereNumber('user');
-            Route::put('/buyers/{user}/passport', [BuyerController::class, 'passport'])->whereNumber('user');
         });
     });
 

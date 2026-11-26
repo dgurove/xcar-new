@@ -34,7 +34,6 @@ final class SetBuyerPrice
             return $car;
         }
         $car->update(['buyer_price' => $price]);
-        SetGarageSalePrice::follow($car);
         $car->log($by, ['do' => 'buyer_price', 'amount' => $price, 'was' => $was]);
         if ($car->deal) {
             ($this->sync)($car->deal->fresh(), $by);

@@ -527,10 +527,6 @@ final class Notify
         if (\App\Offers\Actions\ShowToManager::chats($i)) {
             return;
         }
-        // Покупателю с гаражом без галки цены счёт не показываем (`User::seesGaragePrice`).
-        if ($i->deal?->isGarage() && ! $i->deal->buyer?->seesGaragePrice()) {
-            return;
-        }
         // Деньги по сделке уже пришли (зачёт по VIN, 12.11.2026) — счёт закрывается ими сам, «оплатить» менеджеру не пишем.
         if ($i->deal?->credited() > 0) {
             return;

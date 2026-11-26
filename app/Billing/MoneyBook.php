@@ -90,7 +90,6 @@ final class MoneyBook
     public static function deals(string $tab, User|null|false $person, string $search = '', bool $own = false): Builder
     {
         return Deal::query()->where('deals.parallel', false)
-            ->when($own && $person && ! $person->seesGaragePrice(), fn ($q) => $q->whereNull('deals.garage_payer'))
             ->when($person !== false, fn ($q) => $person ? $q->where('deals.buyer_id', $person->id) : $q->whereNull('deals.buyer_id'))
             // Лупа — по машине: номер, убыток, VIN, марка (`Offer::searchCrm`).
             ->when($search !== '', fn ($q) => $q->whereHas('offer', fn ($o) => $o->searchCrm($search)))

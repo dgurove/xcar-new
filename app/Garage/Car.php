@@ -151,14 +151,14 @@ class Car extends Model
 
     /**
      * Цена тому, кто смотрит: сотруднику — закупочная `price()`, менеджеру — закреплённая `managerPrice()`, покупателю с
-     * гаражом — его цена `buyer_price` (20.10.2026, владелец: «покупатель нигде ни в коем случае не должен видеть
-     * закупочные цены»).
+     * гаражом — цена продажи сделки (26.11.2026, владелец: «он не должен нигде видеть цену закупа»; его цена гаража `buyer_price`
+     * часто равна закупочной).
      */
     public function priceFor(bool $staff): ?int
     {
         return match (true) {
             $staff => $this->price(),
-            $this->forBuyer() => $this->hidesBuyerPrice() ? $this->offer?->asking_price : $this->buyer_price,
+            $this->forBuyer() => $this->deal?->amount !== null ? (int) $this->deal->amount : null,
             default => $this->managerPrice(),
         };
     }
@@ -189,20 +189,10 @@ class Car extends Model
         return $this->forBuyer() && $this->holderInvoice()?->state === InvoiceState::Paid;
     }
 
-    /** Подпись цены тому, кто смотрит: покупателю — «Цена», остальным — «Закупочная». */
+    /** Подпись цены тому, кто смотрит: покупателю с гаражом — «Цена продажи», остальным — «Закупочная». */
     public function priceLabel(bool $staff): string
     {
-        return match (true) {
-            $staff || ! $this->forBuyer() => 'Закупочная',
-            $this->hidesBuyerPrice() => 'Цена продажи',
-            default => 'Цена',
-        };
-    }
-
-    /** Покупателю с гаражом без галки «Показывать цену покупателя» — только цена продажи (`User::seesGaragePrice`). */
-    public function hidesBuyerPrice(): bool
-    {
-        return $this->forBuyer() && ! $this->manager->seesGaragePrice();
+        return $staff || ! $this->forBuyer() ? 'Закупочная' : 'Цена продажи';
     }
 
     /**
@@ -235,7 +225,8 @@ class Car extends Model
      */
     public function profit(): ?float
     {
-        $price = $this->forBuyer() ? $this->buyer_price : $this->sold_price;
+        // У машины покупателя с гаражом — цена продажи его клиенту (26.11.2026); не назначена — его цена гаража как план.
+        $price = $this->forBuyer() ? ($this->deal?->amount ?? $this->buyer_price) : $this->sold_price;
         $supplier = $this->settledByDeal() ? (int) $this->deal->cost : 0;
 
         return $price === null ? null : round($price - $this->invested() - $supplier, 2);

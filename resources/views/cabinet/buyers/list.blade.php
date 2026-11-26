@@ -4,6 +4,7 @@
 
 @unless ($term)
     <div class="list">
+        @if ($manages)
         <a href="/buyers/interest" class="row">
             <x-ui.row-icon name="flag"/>
             <span class="min-w-0 flex-1 font-medium">Интерес</span>
@@ -14,16 +15,21 @@
             @endif
             <x-ui.chevron/>
         </a>
+        @endif
         {{-- На телефоне «Добавить» — плашка внизу экрана; строкой — только на компьютере. Экран ссылок открывается сразу
              шторкой «Покупатель»: ввести данные или сделать ссылку (18.10.2026). --}}
         <div class="contents max-md:hidden"><x-people.pick name="buyer" kind="buyer" only reload link passport placeholder="Добавить покупателя"/></div>
+        @if ($manages)
         <a href="{{ $invitesUrl }}" class="row max-md:!hidden">
             <x-ui.row-icon name="link"/>
             <span class="min-w-0 flex-1">Ссылки-приглашения</span>
             <x-ui.chevron/>
         </a>
+        @endif
     </div>
 
+    {{-- Держателю гаража (`User::keepsBuyers`) групп нет: показывать ему нечего. --}}
+    @if ($manages)
     <section>
         @if ($groups->isNotEmpty())<h2 class="list-head">Группы</h2>@endif
         <div class="list">
@@ -55,6 +61,7 @@
             </div>
         </div>
     </section>
+    @endif
 @endunless
 
 <section>
@@ -62,7 +69,7 @@
          входят и видят предложения, без — только данные для сделок (паспорт), войти не могут. При поиске — все вместе. --}}
     @if ($term)
         @if ($buyers->isNotEmpty())<h2 class="list-head">Покупатели <span class="nums">{{ $buyers->total() }}</span></h2>@endif
-    @elseif ($accessCounts['open'] + $accessCounts['none'])
+    @elseif ($manages && $accessCounts['open'] + $accessCounts['none'])
         <x-ui.pills class="mb-3">
             <x-ui.pill :href="$base" :current="$access === 'open'" :tone="$access === 'open' ? 'accent' : null">С доступом <span class="nums opacity-70">{{ $accessCounts['open'] }}</span></x-ui.pill>
             <x-ui.pill :href="$base.'?access=none'" :current="$access === 'none'" :tone="$access === 'none' ? 'accent' : null">Без доступа <span class="nums opacity-70">{{ $accessCounts['none'] }}</span></x-ui.pill>
@@ -71,7 +78,7 @@
     @if ($buyers->isEmpty())
         @if ($term)
             <x-ui.empty :href="$base" link="Все покупатели">Никого не нашлось</x-ui.empty>
-        @elseif ($accessCounts['open'] + $accessCounts['none'])
+        @elseif ($manages && $accessCounts['open'] + $accessCounts['none'])
             <x-ui.empty>{{ $access === 'none' ? 'Все ваши покупатели с доступом' : 'Доступ к предложениям пока никому не открыт' }}</x-ui.empty>
         @else
             <x-ui.empty>Покупателей пока нет</x-ui.empty>
@@ -95,7 +102,8 @@
                         @if ($interests[$buyer->id] ?? 0)<span class="nums text-sm font-medium text-accent-text">интерес {{ $interests[$buyer->id] }}</span>@endif
                         {{-- Без доступа ничего не видит — не «видит все» (11.11.2026, владелец); во вкладке «Без доступа» это и так
                              сказано, пометка — только в поиске, где все вместе. --}}
-                        @if (! $buyer->hasBuyerAccess())
+                        @if (! $manages)
+                        @elseif (! $buyer->hasBuyerAccess())
                             @if ($term)<span class="text-sm text-ink-muted">без доступа</span>@endif
                         @elseif ($buyer->buyerSeesAll())
                             <span class="text-sm text-ink-muted">видит все</span>

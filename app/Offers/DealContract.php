@@ -103,9 +103,10 @@ class DealContract extends Model
     public static function priceFor(Deal $deal): ?int
     {
         return match (true) {
+            // Покупатель с гаражом — цена продажи, которую назначил он или мы (`SetGarageSalePrice`, 26.11.2026, владелец: «он не
+            // должен нигде видеть цену закупа»; с 24.11 была его цена гаража — она часто и есть закупочная).
+            $deal->forGarageBuyer() => $deal->amount !== null ? (int) $deal->amount : null,
             $deal->isDkp() => $deal->ownerPrice(),
-            // Покупатель с гаражом — его цена гаража, закупочной в договоре нет (24.11.2026).
-            $deal->forGarageBuyer() => ($p = $deal->garageCar?->buyer_price) ? (int) $p : null,
             $deal->isGarage() && ! $deal->namesBuyer() => $deal->cost,
             // ПРАЙМ / Р.О.С. с известными деньгами — сколько на счёт за ТС (`Deal::carPrice`, вписывается с 25.11.2026), остальное
             // подбором по ссылке.

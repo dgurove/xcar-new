@@ -24,7 +24,7 @@ final class GarageView
         $holderInvoice = $buyerCar ? $car->holderInvoice() : null;
         // Не отправленный ему счёт (кнопка в CRM, 16.11.2026) — «Счёт готовится» (`Deal::invoiceNotYet`).
         $holderInvoice = $asBuyer && $holderInvoice && ! $holderInvoice->isShownToManager() ? null : $holderInvoice;
-        $holderDue = $asBuyer && ! $car->hidesBuyerPrice() && $holderInvoice && $holderInvoice->remaining() - $holderInvoice->claimed() > 0;
+        $holderDue = $asBuyer && $holderInvoice && $holderInvoice->remaining() - $holderInvoice->claimed() > 0;
         $n = $offer->number;
         $invoice = $car->invoice;
         // Ждёт денег сейчас: счёт по машине; у покупателя с гаражом — его счёт.
@@ -103,7 +103,8 @@ final class GarageView
                 && ($s !== CarState::Ready || $car->papersPending()))) : [],
             // Деньги плашкой — как только есть закупочная, до продажи крупно она: сотруднику нынешняя, менеджеру закреплённая
             // при подтверждении (16.10.2026). Считать нечего — плашки нет: «0 ₽» крупно ничего не говорит.
-            'money' => $car->isSold() || $car->priceFor($staff) || ($staff ? $car->spent() > 0 : $car->extraSpent($asBuyer ? Payer::Manager : null) > 0),
+            // Покупателю с гаражом — всегда при сделке: без цены продажи там «Указать» (26.11.2026).
+            'money' => $car->isSold() || $car->priceFor($staff) || ($asBuyer && $car->deal) || ($staff ? $car->spent() > 0 : $car->extraSpent($asBuyer ? Payer::Manager : null) > 0),
             'step' => $step,
             // Для пути: на каком шаге маршрута сделка и ждут ли ответа менеджера.
             'asks' => ! $staff && ($step['requirement'] ?? null),

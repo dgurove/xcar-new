@@ -103,19 +103,38 @@ class GarageBuyerTest extends TestCase
         // Наш эвакуатор — в его цене, ему не виден.
         app(AddCost::class)($car, ['title' => 'Эвакуатор', 'amount' => 15432, 'paid_by' => 'xcar'], $this->admin);
 
-        // Поставщик согласовал — счёт ПРАЙМ на его цену одной строкой, без закупочной.
+        // Поставщик согласовал — счёта нет, пока нет цены продажи и клиента (26.11.2026: договор и счёт — по цене продажи его клиенту).
         app(AgreeDeal::class)($deal->fresh(), $this->admin);
+        $this->assertNull(Invoice::where('deal_id', $deal->id)->where('kind', ChargeKind::Sale)->first());
+        $this->assertSame('price', $deal->fresh()->invoiceGap());
+        $n = $offer->fresh()->number;
+        // Ниже его цены — отказ без суммы: его цена гаража бывает закупочной.
+        $low = $this->actingAs($this->buyer)->put(self::SITE.'/garage/cars/'.$n.'/sale-price', ['sale_price' => '850 000']);
+        $low->assertSessionHasErrors('sale_price');
+        $this->assertStringNotContainsString('900', (string) session('errors')->first('sale_price'));
+        $this->actingAs($this->buyer)->put(self::SITE.'/garage/cars/'.$n.'/sale-price', ['sale_price' => '1 000 000'])->assertSessionHasNoErrors();
+        $this->assertSame(1000000, (int) $deal->fresh()->amount);
+        $this->assertNull($deal->fresh()->commission);
+        $this->assertNull(Invoice::where('deal_id', $deal->id)->where('kind', ChargeKind::Sale)->first());
+        $this->assertSame('buyer', $deal->fresh()->invoiceGap());
+        // Клиент — «Я сам»: счёт ПРАЙМ на цену продажи одной строкой, договор — на неё же.
+        $this->actingAs($this->buyer)->put(self::SITE.'/deals/'.$deal->id.'/contract', ['buyer_id' => 'me'])->assertSessionHasNoErrors();
         $invoice = Invoice::where('deal_id', $deal->id)->where('kind', ChargeKind::Sale)->firstOrFail();
-        $this->assertSame(900000.0, (float) $invoice->total);
+        $this->assertSame(1000000.0, (float) $invoice->total);
         $this->assertCount(1, $invoice->charges);
         $this->assertSame($this->buyer->fresh()->party_id, $invoice->party_id);
+        $this->assertSame(1000000, (int) \App\Offers\DealContract::for($deal->fresh())->price);
 
         $n = $offer->fresh()->number;
         foreach (['/garage', '/garage/cars/'.$n, '/account/money', '/garage?vid=table'] as $path) {
             $html = $this->actingAs($this->buyer)->get(self::SITE.$path)->assertOk()->getContent();
             $this->assertClean($html);
         }
-        $this->assertStringContainsString('900', $this->actingAs($this->buyer)->get(self::SITE.'/garage/cars/'.$n)->getContent());
+        // Его цены гаража нет нигде, и в «Сделках» тоже; цена продажи — есть.
+        foreach (['/garage', '/garage/cars/'.$n, '/account/money', '/garage?vid=table', '/deals'] as $path) {
+            $this->assertDoesNotMatchRegularExpression('/900(\s|&nbsp;|\x{00A0})?000/u', $this->actingAs($this->buyer)->get(self::SITE.$path)->getContent(), $path);
+        }
+        $this->assertMatchesRegularExpression('/1(\s|&nbsp;|\x{00A0})?000(\s|&nbsp;|\x{00A0})?000/u', $this->actingAs($this->buyer)->get(self::SITE.'/garage/cars/'.$n)->getContent());
         foreach (DatabaseNotification::where('notifiable_id', $this->buyer->id)->get() as $note) {
             $this->assertClean(json_encode($note->data, JSON_UNESCAPED_UNICODE));
         }
@@ -128,33 +147,47 @@ class GarageBuyerTest extends TestCase
         $this->actingAs($this->buyer)->post(self::SITE.'/garage/cars/'.$n.'/sold')->assertSessionHasNoErrors();
         $this->assertSame(CarState::Sold, $car->fresh()->state);
         $this->assertNull($car->fresh()->sold_price);
-        app(RecordPayment::class)($invoice->fresh(), $this->admin, 900000, null, PaymentSource::Bank);
+        app(RecordPayment::class)($invoice->fresh(), $this->admin, 1000000, null, PaymentSource::Bank);
         $this->assertSame(CarState::Settled, $car->fresh()->state);
     }
 
     /** Без галки «Показывать цену покупателя» — только цена продажи: ни его цены, ни счёта, ни уведомления о нём (21.10.2026). */
-    public function test_without_price_toggle_buyer_sees_sale_price_only(): void
+    /**
+     * Держатель ведёт сделку, как менеджер (26.11.2026, владелец про Ананьева): своей цены гаража не видит (закупочной тоже),
+     * блок денег и документов на странице гаража, заводит своего клиента — только данными, без доступа и ссылки, — и видит его в
+     * «Покупателях»; группы, приглашения и показы — только менеджеру.
+     */
+    public function test_holder_runs_deal_like_manager(): void
     {
-        $this->buyer->update(['garage_enabled' => true]);
+        $this->buyer->update(['garage_enabled' => true, 'garage_price_shown' => false]);
         $offer = $this->draft();
         $this->actingAs($this->admin)->post(self::CRM.'/offers/'.$offer->number.'/give', [
             'to' => 'garage', 'whom' => 'buyer', 'manager_id' => $this->buyer->id, 'buyer_price' => '753 210', 'where' => 'arrived',
         ])->assertSessionHasNoErrors();
         $car = Car::where('offer_id', $offer->id)->firstOrFail();
         app(AgreeDeal::class)($car->deal->fresh(), $this->admin);
-        $this->assertNotNull(Invoice::where('deal_id', $car->deal_id)->first());
 
         $n = $offer->fresh()->number;
-        foreach (['/garage', '/garage/cars/'.$n, '/account/money', '/garage?vid=table'] as $path) {
-            $html = $this->actingAs($this->buyer)->get(self::SITE.$path)->assertOk()->getContent();
+        $buyer = $this->buyer->fresh();
+        // Его цены гаража (бывает закупочной) не видно нигде (26.11.2026).
+        foreach (['/garage', '/garage/cars/'.$n, '/account/money', '/garage?vid=table', '/deals'] as $path) {
+            $html = $this->actingAs($buyer)->get(self::SITE.$path)->assertOk()->getContent();
             $this->assertClean($html);
             $this->assertDoesNotMatchRegularExpression('/753(\s|&nbsp;|\x{00A0})?210/u', $html, $path);
         }
-        $this->assertStringContainsString('Цена продажи', $this->actingAs($this->buyer)->get(self::SITE.'/garage/cars/'.$n)->getContent());
-        $this->assertSame(0, DatabaseNotification::where('notifiable_id', $this->buyer->id)->where('data', 'like', '%753%')->count());
 
-        $this->buyer->update(['garage_price_shown' => true]);
-        $this->assertMatchesRegularExpression('/753(\s|&nbsp;|\x{00A0})?210/u', $this->actingAs($this->buyer->fresh())->get(self::SITE.'/garage/cars/'.$n)->getContent());
+        // Свой клиент — данными, в сделку; ссылкой и «С доступом» — нет.
+        $this->assertTrue($buyer->keepsBuyers());
+        $this->actingAs($buyer)->postJson(self::SITE.'/people', ['kind' => 'buyer', 'mode' => 'link'])->assertForbidden();
+        $this->actingAs($buyer)->postJson(self::SITE.'/people', ['kind' => 'buyer', '_person' => ['first_name' => 'Иван', 'last_name' => 'Клиентов', 'access' => 'open', 'contact' => '+79990001122']])->assertForbidden();
+        $this->actingAs($buyer)->postJson(self::SITE.'/people', ['kind' => 'buyer', 'deal' => $car->deal_id, '_person' => ['first_name' => 'Иван', 'last_name' => 'Клиентов']])->assertOk();
+        $client = User::where('last_name', 'Клиентов')->firstOrFail();
+        $this->assertSame($buyer->id, $client->manager_id);
+        $this->assertFalse($client->hasBuyerAccess());
+
+        $this->actingAs($buyer)->get(self::SITE.'/buyers')->assertOk()->assertSee('Иван Клиентов')->assertDontSee('Новая группа');
+        $this->actingAs($buyer)->get(self::SITE.'/buyers/'.$client->id)->assertOk()->assertDontSee('Доступ к предложениям');
+        $this->actingAs($buyer)->get(self::SITE.'/buyers/invites')->assertNotFound();
     }
 
     /** Покупатель без менеджера — только свой гараж: ни предложений, ни галереи, шторка сохраняет «Без менеджера» (21.10.2026). */
@@ -192,11 +225,15 @@ class GarageBuyerTest extends TestCase
         $n = $offer->fresh()->number;
         app(AgreeDeal::class)($car->deal->fresh(), $this->admin);
 
-        // Цена правится: счёт на прежнюю гаснет, новый — на новую.
+        // Его цена — наш предел, счёт её не трогает; цена продажи правится сотрудником (и ниже его цены): счёт на прежнюю гаснет,
+        // новый — на новую (26.11.2026).
         $this->actingAs($this->admin)->put(self::CRM.'/garage/cars/'.$n.'/buyer-price', ['buyer_price' => '950 000'])->assertSessionHasNoErrors();
+        \App\Offers\DealContract::for($car->deal->fresh())->update(['buyer_user_id' => $this->buyer->id, 'payer' => 'manager']);
+        $this->actingAs($this->admin)->put(self::CRM.'/garage/cars/'.$n.'/sale-price', ['sale_price' => '1 100 000'])->assertSessionHasNoErrors();
+        $this->actingAs($this->admin)->put(self::CRM.'/garage/cars/'.$n.'/sale-price', ['sale_price' => '940 000'])->assertSessionHasNoErrors();
         $live = Invoice::where('deal_id', $car->deal_id)->where('kind', ChargeKind::Sale)->where('state', '!=', InvoiceState::Void)->get();
         $this->assertCount(1, $live);
-        $this->assertSame(950000.0, (float) $live->first()->total);
+        $this->assertSame(940000.0, (float) $live->first()->total);
         // Заплатил — цену не поправить и машину не забрать.
         app(RecordPayment::class)($live->first()->fresh(), $this->admin, 100000, null, PaymentSource::Bank);
         $this->actingAs($this->admin)->put(self::CRM.'/garage/cars/'.$n.'/buyer-price', ['buyer_price' => '800 000'])->assertSessionHasErrors('buyer_price');

@@ -70,7 +70,9 @@ final class HandOverGarage
             if ($car->forBuyer() && ($old = $car->holderInvoice()) && ! $car->buyerHasPaid()) {
                 ($this->void)($old, $by, 'ТС передана другому держателю');
             }
+            // Держателю цену продажи назначают заново (26.11.2026): прежняя цена менеджера не встаёт ему в счёт и договор сама.
             $deal->update(['buyer_id' => $to?->id, 'bid_id' => null, 'garage_payer' => $payer,
+                ...($to?->holdsAsBuyer() ? ['amount' => null, 'commission' => null] : []),
                 // Наша доля по ссылке — у «платит менеджер» не Совкомбанка; держатель сменился — доля та же, плательщик — нет.
                 'share' => $payer === GaragePayer::Manager ? $deal->share : null, 'buyer_asked_at' => null]);
             // Покупатель по договору — клиент прежнего менеджера: новому он не подходит (новый назовёт своего).

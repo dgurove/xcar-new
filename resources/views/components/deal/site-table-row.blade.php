@@ -13,7 +13,8 @@
     $position = $offer->position();
     $garage = $deal->isGarage();
     $href = $staff ? $deal->crmUrl() : ($garage ? $deal->href() : '/deals/'.$deal->id);
-    $amount = Money::rub($garage ? $deal->cost : $deal->amount);
+    // Покупателю с гаражом — цена продажи, а не закупочная (26.11.2026: `cost` гаражной сделки — закуп, ему не видно нигде).
+    $amount = Money::rub($garage && ! $deal->forGarageBuyer() ? $deal->cost : $deal->amount);
     $req = $deal->openRequirement;
     $paidUp = $req && $position?->stage->isPayStep() && $deal->fullyPaid();
     $late = $task ? (bool) $task['due']?->isPast() : false;

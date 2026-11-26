@@ -114,7 +114,8 @@ class ReacceptCarryTest extends TestCase
         $car = GarageCar::where('deal_id', $garage->id)->firstOrFail();
         $car->update(['state' => CarState::Selling]);
         $client = Party::create(['kind' => \App\Billing\PartyKind::Person, 'name' => 'Гречишкин Константин Вячеславович']);
-        $garage->forceFill(['payer_party_id' => $client->id])->save();
+        // Счёт — по цене продажи его клиенту (26.11.2026).
+        $garage->forceFill(['payer_party_id' => $client->id, 'amount' => 2700000])->save();
         app(\App\Offers\Actions\SyncDealInvoices::class)($garage->fresh(), $this->admin);
         $invoice = $garage->fresh()->issuedInvoices()->where('kind', ChargeKind::Sale)->where('state', '!=', InvoiceState::Void)->sole();
         $this->assertSame($client->id, $invoice->party_id);

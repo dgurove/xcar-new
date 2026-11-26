@@ -20,12 +20,13 @@
         <x-slot:chips>
             <div class="flex flex-col gap-0.5">
                 @if ($buyer->phone)<x-ui.tel :value="$buyer->phone" class="self-start"/>@endif
-                <span class="text-sm text-ink-muted">Покупатель {{ $access ? 'с доступом' : 'без доступа' }} с {{ \App\Support\Ago::day($buyer->created_at) }}</span>
+                <span class="text-sm text-ink-muted">Покупатель{{ $manages ? ($access ? ' с доступом' : ' без доступа') : '' }} с {{ \App\Support\Ago::day($buyer->created_at) }}</span>
             </div>
         </x-slot:chips>
     </x-ui.contact>
 
-    {{-- Доступ к предложениям (`User::hasBuyerAccess`). --}}
+    {{-- Доступ к предложениям (`User::hasBuyerAccess`). Держателю гаража (`User::keepsBuyers`) — нет: клиенты у него только данными. --}}
+    @if ($manages)
     <section>
         <h2 class="list-head">Доступ к предложениям</h2>
         @unless ($access)
@@ -138,6 +139,7 @@
             @endunless
         @endunless
     </section>
+    @endif
 
     {{-- Для сделок: паспорт для ДКП (05.10.2026; строкой со шторкой — 11.10.2026) и группы. --}}
     <section>
@@ -162,7 +164,7 @@
                     </form>
                 </x-ui.sheet>
             </div>
-            @if ($groups->isNotEmpty())
+            @if ($manages && $groups->isNotEmpty())
                 <div data-controller="sheet" class="contents">
                     <x-ui.sheet-row>
                         <x-ui.row-icon name="users"/>

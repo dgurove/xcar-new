@@ -67,7 +67,8 @@
 @endphp
 <div class="box deal-money-card" id="money">
     <div class="deal-money-rows">
-        @if ($deal->amount !== null)
+        {{-- У покупателя с гаражом цена продажи и есть сумма «ООО «ПРАЙМ»» ниже (26.11.2026) — второй раз её не пишем. --}}
+        @if ($deal->amount !== null && ! $deal->forGarageBuyer())
             <div class="deal-money-row deal-money-price flex items-start gap-3"><span class="min-w-0 flex-1">Цена продажи</span><span class="nums shrink-0 text-lg font-semibold">{{ Money::rub($deal->amount) }}</span></div>
         @endif
         @if ($direct && $deal->offset() && ! $deal->isDirect())

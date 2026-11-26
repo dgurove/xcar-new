@@ -39,13 +39,16 @@ class BuyerController
         // С доступом и без (11.11.2026, владелец: «разделить понятия»): пилюли над списком; поиск — по всем, у строки без
         // доступа — пометка. Сортировка «Видит предложений» — только у тех, кто видит.
         $access = $request->query('access') === 'none' ? 'none' : 'open';
+        // Держатель гаража (`User::keepsBuyers`, 26.11.2026) — клиенты только данными: все одним списком, без доступа, групп,
+        // интереса и приглашений.
+        $manages = $me->isManager();
         $sorts = $access === 'none' && ! $term ? array_diff_key(self::SORTS, ['seen' => 1]) : self::SORTS;
         $sort = Sort::from($request->query('sort'), $sorts, 'name');
         $accessCounts = $me->buyers()->selectRaw('count(*) filter (where buyer_access_at is not null) as open, count(*) filter (where buyer_access_at is null) as none')
             ->reorder()->first()?->only(['open', 'none']) ?? ['open' => 0, 'none' => 0];
         // «Видит N» — подзапросом в той же выборке (было по два запроса на человека); аватары — сразу.
         $q = $me->buyers()->with(['groups', 'media' => fn ($m) => $m->where('collection_name', 'avatar')])
-            ->when(! $term, fn ($q) => $access === 'none' ? $q->whereNull('users.buyer_access_at') : $q->withBuyerAccess())
+            ->when(! $term && $manages, fn ($q) => $access === 'none' ? $q->whereNull('users.buyer_access_at') : $q->withBuyerAccess())
             ->when($sort->key === 'seen', fn ($q) => $q->orderByRaw("(users.buyer_sees <> 'picked') ".$sort->dir()))
             ->orderBy(match ($sort->key) {
                 'created' => 'users.created_at', 'seen' => 'seen_count', default => 'users.name'
@@ -64,7 +67,7 @@ class BuyerController
 
         // Группы — свои объекты над списком (при поиске не показываются: ищут людей); на строке —
         // сколько человек и сколько предложений открыто группе.
-        $groups = $term ? collect() : $me->ownGroups()->withCount('members')->get();
+        $groups = $term || ! $manages ? collect() : $me->ownGroups()->withCount('members')->get();
         $groupSeen = $groups->isEmpty() ? collect() : Showing::whereIn('group_id', $groups->pluck('id'))
             ->whereHas('offer', fn ($o) => $o->where('state', OfferState::Open))
             ->selectRaw('group_id, count(*) as n')->groupBy('group_id')->pluck('n', 'group_id');
@@ -85,6 +88,7 @@ class BuyerController
         $base = $request->is('account/*') ? '/account/buyers' : '/buyers';
 
         return view('cabinet.buyers.index', [
+            'manages' => $manages,
             'base' => $base,
             'invitesUrl' => $base === '/account/buyers' && ! $me->isAdmin() ? '/account/invites' : '/buyers/invites',
             'interestNew' => $interestNew,
@@ -122,6 +126,7 @@ class BuyerController
         $chat = $request->integer('chat') ? Chat::whereKey($request->integer('chat'))->where('user_id', $user->id)->where('manager_id', $me->id)->first() : null;
 
         return view('cabinet.buyers.show', [
+            'manages' => $me->isManager(),
             'back' => $chat ? ['Чат', \App\Chats\Chat::path($chat->id)] : null,
             'buyer' => $user,
             'groups' => $me->ownGroups,

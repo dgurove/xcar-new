@@ -382,7 +382,8 @@ final class Nav
         if ($user->isManager() && ! $user->isAdmin()) {
             $links[] = self::link('Покупатели', '/account/buyers', icon: 'users');
             $links[] = self::link('Ссылки', '/account/invites', icon: 'link');
-        } elseif ($user->isManager()) {
+        } elseif ($user->keepsBuyers()) {
+            // И держателю гаража — его клиенты для договора (26.11.2026, `User::keepsBuyers`).
             $links[] = self::link('Покупатели', '/account/buyers', icon: 'users');
         }
         if ($user->hasDeals()) {
@@ -925,7 +926,7 @@ final class Nav
         // Пилюли кабинета, заголовки «Работы» и пилюля «Покупатели» у «Сделок» — корни своих экранов, а не глубина.
         if ($user) {
             $cabinet = self::cabinet($user, $surface);
-            if ($surface === Surface::Site && $user->isManager()) {
+            if ($surface === Surface::Site && $user->keepsBuyers()) {
                 $cabinet[] = [self::link('Покупатели', '/buyers')];
             }
             foreach ($cabinet as $links) {

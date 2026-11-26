@@ -29,6 +29,9 @@
     // Один адрес на всех хостах (с 20.11.2026 в CRM не `/settings/people`: там его открыли модератору, `routes/crm.php`).
     $create = '/people';
     $canCreate = \App\Http\PeopleController::allows(auth()->user(), $kind);
+    // Держатель гаража заводит покупателя только данными (`User::keepsBuyers`): без «Ссылкой» и «С доступом».
+    $dataOnly = $kind === 'buyer' && ! auth()->user()?->isManager() && ! \App\Http\PeopleController::staffForDeal(auth()->user());
+    $dataOnly && $link = false;
     $error = $errors->first($name);
     // «Готово» в шторке только «+ Новый» (новый просто в списке); в выборе — «Выбрать»: он встаёт в поле.
     $finish ??= $only ? 'Готово' : 'Выбрать';
@@ -150,7 +153,7 @@
             @endunless
             @if ($canCreate)
                 <div class="people-new-pane" data-new-title="{{ $newLabel }}">
-                    <x-people.new-pane :kind="$kind" :link="$link" :uid="$uid" :passport="$passport"/>
+                    <x-people.new-pane :kind="$kind" :link="$link" :uid="$uid" :passport="$passport" :access="! $dataOnly"/>
                     <span hidden data-people-pick-target="finishLabel">{{ $finish }}</span>
                 </div>
             @endif

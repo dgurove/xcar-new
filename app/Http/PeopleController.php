@@ -70,6 +70,10 @@ class PeopleController
             default => $issue($me, ['role' => $kind, 'expires_at' => now()->addWeek()->format('Y-m-d H:i')]),
         };
 
+        // Держатель гаража (не менеджер) заводит клиента только данными: ссылка и «С доступом» дали бы вход к предложениям его
+        // «менеджера», а их у него нет (26.11.2026).
+        abort_if($kind === 'buyer' && ! $forDeal && ! $me->isManager() && ($request->input('mode') === 'link' || ($data['access'] ?? null) === 'open'), 403);
+
         if ($request->input('mode') === 'link') {
             $made = $invite();
 
@@ -115,7 +119,7 @@ class PeopleController
     public static function allows(User $me, string $kind): bool
     {
         return match ($kind) {
-            'buyer' => ($me->isManager() && ! $me->isSuperBuyer()) || self::staffForDeal($me),
+            'buyer' => $me->keepsBuyers() || self::staffForDeal($me),
             'contractor', 'client' => $me->isLogist() && Surface::current() === Surface::Logistics,
             'depot' => ($me->isLogist() || $me->leadsLogistics()) && Surface::current() === Surface::Logistics,
             'logist', 'driver' => $me->isAdmin(),
@@ -124,7 +128,7 @@ class PeopleController
     }
 
     /** Админ в CRM: покупателя заводит не себе, а менеджеру сделки (`deal` обязателен). */
-    private static function staffForDeal(User $me): bool
+    public static function staffForDeal(User $me): bool
     {
         // И модератору (20.11.2026, Алина не нашла «+ Новый покупатель»): с 17.11 он ведёт сделки целиком (`canEditDeals`).
         return $me->canEditDeals() && Surface::current() === Surface::Crm;

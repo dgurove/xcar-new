@@ -59,7 +59,7 @@ final class SyncDealInvoices
         $deal->loadMissing(['offer', 'buyer', 'contract.buyer']);
         // Цена договора ПРАЙМ идёт за счётом — плательщик, цена и вознаграждение меняются по ходу (гаражная Совкомбанка
         // 27.10.2026, продажа — 16.11.2026: платит покупатель — минус вознаграждение; 18.11.2026 — и минус наличные мимо счёта).
-        if (($deal->namesBuyer() || $deal->isPrime()) && $deal->contract && $deal->contract->price !== ($price = DealContract::priceFor($deal))) {
+        if (($deal->namesBuyer() || $deal->isPrime() || $deal->forGarageBuyer()) && $deal->contract && $deal->contract->price !== ($price = DealContract::priceFor($deal))) {
             $deal->contract->update(['price' => $price]);
         }
         DB::transaction(function () use ($deal, $by) {
@@ -163,14 +163,15 @@ final class SyncDealInvoices
     /** @return array{party: Party, lines: list<array>, vat?: ?int}|null */
     private function prime(Deal $deal): ?array
     {
-        // Покупатель с гаражом — одна строка на его цену, какой бы ни была схема: закупочной в счёте нет (20.10.2026).
+        // Покупатель с гаражом — одна строка на цену продажи (26.11.2026; прежде — на его цену гаража, а она часто закупочная),
+        // какой бы ни была схема.
         if ($deal->forGarageBuyer()) {
-            $price = $deal->garageCar()->value('buyer_price');
+            $price = $deal->amount;
 
-            // Платит покупатель по договору (его клиент, 24.11.2026), не выбран — сам держатель. НДС — ставка договора (24.11.2026,
-            // владелец: «почему НДС в счёте, если Совком без НДС»): ПРАЙМ продаёт по комиссии, налог с машины — по режиму
-            // собственника (ст. 156 НК РФ), а не 5 % ПРАЙМ.
-            return $price ? ['party' => $deal->payerParty(sale: true), 'vat' => DealContract::for($deal)->vatRate(),
+            // Платит покупатель по договору (его клиент, 24.11.2026); пока клиента нет — счёта нет (26.11.2026, владелец: «ждать
+            // клиента»; «Я сам» — тоже клиент). НДС — ставка договора (24.11.2026, владелец: «почему НДС в счёте, если Совком без
+            // НДС»): ПРАЙМ продаёт по комиссии, налог с машины — по режиму собственника (ст. 156 НК РФ), а не 5 % ПРАЙМ.
+            return $price && ($deal->payer_party_id || $deal->contract?->buyer_user_id) ? ['party' => $deal->payerParty(sale: true), 'vat' => DealContract::for($deal)->vatRate(),
                 'lines' => [['title' => $deal->offer->invoiceTitle(), 'qty' => 1, 'unit' => 'pc', 'price' => (float) $price, 'kind' => ChargeKind::Sale->value]]] : null;
         }
         if (! $deal->isPrime() || $deal->cost === null || ! $deal->buyer) {

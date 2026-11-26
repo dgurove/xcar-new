@@ -1247,6 +1247,9 @@ class Deal extends Model implements HasMedia
         return match (true) {
             // Гаражная Совкомбанка: цену продажи и покупателя называет менеджер («Продаю»), вознаграждение — мы.
             $this->namesBuyer() && $this->amount === null => 'price',
+            // Покупатель с гаражом (26.11.2026): счёт и договор — по цене продажи его клиенту; нет цены или клиента — ход его.
+            $this->forGarageBuyer() && $this->amount === null => 'price',
+            $this->forGarageBuyer() && ! $this->contract?->buyer_user_id && ! $this->payer_party_id => 'buyer',
             // Ноль — услуг подбора нет (19.11.2026), не «не вписаны».
             $this->isGarageManager() && $this->share === null => 'share',
             $this->isPrime() && (! $this->isGarage() || $this->namesBuyer()) && ! $this->contract?->buyer_user_id => 'buyer',

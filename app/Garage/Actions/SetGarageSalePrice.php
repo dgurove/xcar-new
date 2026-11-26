@@ -3,45 +3,49 @@
 namespace App\Garage\Actions;
 
 use App\Garage\Car;
+use App\Garage\CarState;
 use App\Garage\Events\GarageChanged;
+use App\Offers\Actions\SyncDealInvoices;
 use App\Offers\OfferEventType;
 use App\Support\Money;
 use App\Users\User;
 use Illuminate\Validation\ValidationException;
 
 /**
- * Цена продажи у покупателя с гаражом (24.11.2026, владелец: «вознаграждение как у менеджера»; «2,7 млн — это цена продажи минус
- * вознаграждение, закуп плюс подбор; что свыше — он возьмёт себе; пусть введёт цену продажи, чтобы как в сделке было»). Его цена
- * (`garage_cars.buyer_price`) — что он платит нам счётом и сумма договора, она не меняется; цена продажи — сколько платит его
- * клиент всего (`deals.amount`), вознаграждение — разница (`deals.commission`), его берёт он сам, мимо нас. Ниже его цены — нельзя.
+ * Цена продажи у покупателя с гаражом (26.11.2026, владелец: «он не должен нигде видеть цену закупа; цену продажи для того
+ * покупателя он назначает сам либо мы за него»; вознаграждения у него нет). Цена продажи (`deals.amount`) — сумма договора и счёта
+ * его клиенту (`DealContract::priceFor`, `SyncDealInvoices::prime`); его цена гаража (`garage_cars.buyer_price`) — наш нижний предел,
+ * ему не видна: ниже неё держателю — отказ без суммы, сотрудник ставит любую. До 26.11 была модель «его цена + вознаграждение».
  */
 final class SetGarageSalePrice
 {
+    public function __construct(private SyncDealInvoices $sync) {}
+
     public function __invoke(Car $car, int $price, User $by): Car
     {
         $deal = $car->deal;
         if (! $car->forBuyer() || ! $deal) {
             throw ValidationException::withMessages(['sale_price' => 'ТС не у покупателя']);
         }
-        $base = (int) $car->buyer_price;
-        if ($price < $base) {
-            throw ValidationException::withMessages(['sale_price' => 'Меньше цены '.Money::rub($base).': вознаграждение не может быть в минус']);
+        if ($car->state === CarState::Settled) {
+            throw ValidationException::withMessages(['sale_price' => 'Расчёт закрыт']);
+        }
+        if ($car->buyerHasPaid()) {
+            throw ValidationException::withMessages(['sale_price' => 'По счёту уже есть оплата: цену не поменять']);
+        }
+        if (! $by->garageStaff() && $price < (int) $car->buyer_price) {
+            throw ValidationException::withMessages(['sale_price' => 'Слишком низкая цена']);
         }
         $was = $deal->amount;
-        $deal->update(['amount' => $price, 'commission' => $price - $base]);
-        $deal->offer->log(OfferEventType::Note, $by, ['text' => 'Цена продажи '.Money::rub($price).($was !== null && (int) $was !== $price ? ' (была '.Money::rub($was).')' : '')
-            .', вознаграждение '.Money::rub($price - $base)]);
+        if ($was !== null && (int) $was === $price) {
+            return $car;
+        }
+        $deal->update(['amount' => $price, 'commission' => null]);
+        $deal->offer->log(OfferEventType::Note, $by, ['text' => 'Цена продажи '.Money::rub($price).($was !== null ? ' (была '.Money::rub($was).')' : '')]);
+        // Договор и неоплаченный счёт — на новую цену.
+        ($this->sync)($deal->fresh(), $by);
         GarageChanged::dispatch($car);
 
         return $car;
-    }
-
-    /** Цена покупателю сменилась — вознаграждение снова разница с ценой продажи (`SetBuyerPrice`). */
-    public static function follow(Car $car): void
-    {
-        $deal = $car->deal;
-        if ($car->forBuyer() && $deal?->amount !== null) {
-            $deal->update(['commission' => max(0, (int) $deal->amount - (int) $car->buyer_price)]);
-        }
     }
 }
