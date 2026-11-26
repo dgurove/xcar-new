@@ -92,7 +92,7 @@ final class NoticeFaces
         if ($car && empty($data['car'])) {
             // Старая строка: «Имя: сообщение по № N» — сообщение чата; иначе заголовок без машины.
             $chat = preg_match('/^(.+?): (?:сообщение|обращение)\b/u', $title, $m) === 1;
-            $what = $chat ? $m[1].($text ? ': '.$text : '') : (trim(str_replace($car, '', $title), " \u{00A0}:—–-,") ?: $text);
+            $what = $chat ? $m[1].($text ? ': '.$text : '') : (mb_trim(str_replace($car, '', $title), " \u{00A0}:—–-,") ?: $text);
             $more = $chat || ! $text || self::repeats((string) $what, $text) ? null : $text;
         } elseif ($car) {
             $what = $data['brief'] ?? $title;

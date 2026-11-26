@@ -139,9 +139,9 @@ abstract class Notice extends Notification implements ShouldQueue
         if ($car === null || ! str_contains($title, $car)) {
             return $title;
         }
-        // Края — регуляркой по буквам, не `trim`: тот режет байты, и «—» в списке (E2 80 94) срезал хвост «р» (D1 80) —
-        // «Подписанный догово\xD1», строка ленты не писалась (26.11.2026, 30 `DealEventNotice` в `failed_jobs`).
-        $rest = (string) preg_replace('/^[\s\x{00A0}:—–,-]+|[\s\x{00A0}:—–,-]+$/u', '', str_replace($car, '', $title));
+        // `mb_trim`, не `trim`: тот режет байты, и «—» в списке (E2 80 94) срезал хвост «р» (D1 80) — «Подписанный догово\xD1»,
+        // строка ленты не писалась (26.11.2026, 30 `DealEventNotice` в `failed_jobs`).
+        $rest = mb_trim(str_replace($car, '', $title), " \u{00A0}:—–-,");
 
         return $rest !== '' ? $rest : ($this->textFor($user) ?? $title);
     }

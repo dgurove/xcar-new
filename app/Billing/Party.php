@@ -122,7 +122,7 @@ class Party extends Model implements HasMedia
             return [substr($digits, 0, 4), substr($digits, 4)];
         }
         if (preg_match('/^(.*?\d.*?)\s*№?\s*(\d{6,})$/u', $raw, $m)) {
-            return [trim(preg_replace('/^серия\s*/iu', '', rtrim($m[1], ' №'))), $m[2]];
+            return [trim(preg_replace('/^серия\s*/iu', '', mb_rtrim($m[1], ' №'))), $m[2]];
         }
 
         return [null, $raw ?: null];

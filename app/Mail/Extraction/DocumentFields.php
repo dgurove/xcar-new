@@ -326,7 +326,7 @@ final class DocumentFields
     {
         preg_match_all('/(?:^|[|\s])(?:'.$label.')[ \t]*(?:[:|—–][ \t]*|[ \t]{2,}|[ \t])([^|\n]+?)(?=[ \t]{2,}|[ \t]*\||[ \t]*\n|$)/umi', $text, $m);
 
-        return array_values(array_filter(array_map(fn ($v) => trim($v, " \t:—–-"), $m[1]), fn ($v) => $v !== ''));
+        return array_values(array_filter(array_map(fn ($v) => mb_trim($v, " \t:—–-"), $m[1]), fn ($v) => $v !== ''));
     }
 
     /** (Э)ПТС: 15 цифр электронного или «77 ТТ 123456» бумажного — после подписи «Паспорт ТС», «ПТС», «ЭПТС». */

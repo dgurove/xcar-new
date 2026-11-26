@@ -139,7 +139,7 @@ final class Handover
         // «Контакт» бывает строкой «Валентин Сергеевич +7 905 …»: телефон — отдельно, чтобы по нему звонили.
         if (isset($fields['name']) && ! isset($fields['phone']) && ($phones = Patterns::phones($fields['name']))) {
             $fields['phone'] = $phones[0];
-            $fields['name'] = trim((string) preg_replace('/'.Patterns::PHONE.'/u', '', $fields['name']), " \t,;–—-") ?: null;
+            $fields['name'] = mb_trim((string) preg_replace('/'.Patterns::PHONE.'/u', '', $fields['name']), " \t,;–—-") ?: null;
         }
 
         $vehicle = $offer->parkVehicle;

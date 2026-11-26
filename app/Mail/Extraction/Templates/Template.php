@@ -584,7 +584,7 @@ abstract class Template
                 }
             }
         }
-        $head = trim((string) preg_replace('/\s+/u', ' ', $head), " \t-–—,:;");
+        $head = mb_trim((string) preg_replace('/\s+/u', ' ', $head), " \t-–—,:;");
         do {
             $changed = false;
             foreach (self::STOP_WORDS as $word) {
@@ -607,7 +607,7 @@ abstract class Template
 
     protected function splitBrandModel(string $text): array
     {
-        $head = trim($this->stripMarkdown($text), " \t*_—–-:;,.");
+        $head = mb_trim($this->stripMarkdown($text), " \t*_—–-:;,.");
         if ($head === '') {
             return [null, null];
         }

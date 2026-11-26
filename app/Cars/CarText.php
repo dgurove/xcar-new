@@ -89,7 +89,7 @@ final class CarText
     {
         foreach (self::LABELS as $field => $label) {
             if (preg_match('/^(?:'.$label.')(?=[\s:\-–—=.]|$)[\s:\-–—=.]*(.*)$/iu', $line, $m)) {
-                $value = trim($m[1], " \t:—–-=");
+                $value = mb_trim($m[1], " \t:—–-=");
                 if ($value !== '') {
                     return [$field, $value];
                 }
