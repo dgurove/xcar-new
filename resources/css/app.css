@@ -1543,9 +1543,10 @@ html.kb-open { --home-gap: 0px; }
   }
   .tab-wheel-item.has-dot::before { top: 0; bottom: calc(50% + var(--r) + var(--halo) + var(--gap)); border-radius: 0 0 1px 1px; }
   .tab-wheel-item.has-dot::after { top: calc(50% + var(--r) + var(--halo) + var(--gap)); bottom: 0; border-radius: 1px 1px 0 0; }
-  .tab-wheel-item.is-run-start::before, .tab-wheel-item.is-run-end::after { display: none; }
-  /* «Только мои» прячет соседей — дорожка рвалась бы обрывками: линии нет, кружки остаются. */
-  .tab-wheel.is-mine .tab-wheel-item.has-dot::before, .tab-wheel.is-mine .tab-wheel-item.has-dot::after { display: none; }
+  .tab-wheel:not(.is-mine) .tab-wheel-item.is-run-start::before, .tab-wheel:not(.is-mine) .tab-wheel-item.is-run-end::after { display: none; }
+  /* «Только мои» (26.11.2026, владелец: «не хватает полосочек между кружками»): дорожка — по видимым соседям
+     (`is-mine-run-start|end`), а не по всем вкладкам. */
+  .tab-wheel.is-mine .tab-wheel-item.is-mine-run-start::before, .tab-wheel.is-mine .tab-wheel-item.is-mine-run-end::after { display: none; }
   .tab-wheel-dot, .tab-wheel-mark { position: absolute; z-index: 1; left: var(--dot-x); top: 50%; translate: 0 -50%; width: var(--dot); height: var(--dot); }
   .tab-wheel-dot { border-radius: 999px; background: var(--color-wheel); font-size: var(--text-xs); font-weight: 600; letter-spacing: 0; line-height: 1; }
   /* Ждём — точка меньше (владелец), на той же оси. */

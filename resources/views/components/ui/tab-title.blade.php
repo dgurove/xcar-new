@@ -63,6 +63,26 @@
         }
         $cols[array_key_last($cols)]['keys'][] = $key;
     }
+    // «Только мои» (26.11.2026, владелец: «не хватает полосочек между кружками»): дорожка — между видимыми соседями-кружками того же
+    // раздела и столбца: вкладка → [есть линия вверх, есть линия вниз] (`is-mine-run-start|end`).
+    $mineRun = [];
+    foreach ($cols as $col) {
+        $prev = null;
+        foreach ($col['keys'] as $key) {
+            if (isset($sections[$key])) {
+                $prev = null;
+            }
+            if ($hide($key)) {
+                continue;
+            }
+            $isDot = in_array($key, $dots, true);
+            $mineRun[$key] = [$isDot && $prev !== null, false];
+            if ($isDot && $prev !== null) {
+                $mineRun[$prev][1] = true;
+            }
+            $prev = $isDot ? $key : null;
+        }
+    }
     // Сколько вкладок в разделе: у раздела из одной на ПК только линия. Своих в разделе нет — «Только мои» прячет и его линию.
     $size = [];
     $own = [];
@@ -116,7 +136,8 @@
                         @php($dot = in_array($key, $dots, true))
                         @php($prevKey = $col['keys'][$loop->index - 1] ?? null)
                         @php($nextKey = $col['keys'][$loop->index + 1] ?? null)
-                        <a href="{{ $href($key) }}" @class(['tab-wheel-item text-xl sm:text-2xl', 'is-head' => in_array($key, $heads, true), 'is-wait' => in_array($key, $waits, true), 'has-dot' => $dot, 'is-run-start' => $dot && ($prevKey === null || isset($sections[$key]) || ! in_array($prevKey, $dots, true)), 'is-run-end' => $dot && ($nextKey === null || isset($sections[$nextKey]) || ! in_array($nextKey, $dots, true))]) data-turbo-prefetch="false" @isset($bumps[$key]) data-pill-bump="{{ $key }}:{{ $counts[$bumps[$key]] ?? 0 }}" @endisset @if ((string) $pill === $key) aria-current="true" @endif @if ($hide($key)) data-not-mine @endif>
+                        <a href="{{ $href($key) }}" @class(['tab-wheel-item text-xl sm:text-2xl', 'is-head' => in_array($key, $heads, true), 'is-wait' => in_array($key, $waits, true), 'has-dot' => $dot, 'is-run-start' => $dot && ($prevKey === null || isset($sections[$key]) || ! in_array($prevKey, $dots, true)), 'is-run-end' => $dot && ($nextKey === null || isset($sections[$nextKey]) || ! in_array($nextKey, $dots, true)),
+                            'is-mine-run-start' => $dot && ! ($mineRun[$key][0] ?? false), 'is-mine-run-end' => $dot && ! ($mineRun[$key][1] ?? false)]) data-turbo-prefetch="false" @isset($bumps[$key]) data-pill-bump="{{ $key }}:{{ $counts[$bumps[$key]] ?? 0 }}" @endisset @if ((string) $pill === $key) aria-current="true" @endif @if ($hide($key)) data-not-mine @endif>
                             {{-- Зелёное число — сразу за названием (16.11.2026, владелец: «зелёные счётчики возле заголовков, а не справа»):
                                  внутри названия, растёт вместе с ним; серое «всего» — справа. «›» у выбранной — на ПК (на телефоне она
                                  одна, на месте заголовка, `.tab-wheel-chev`). --}}
