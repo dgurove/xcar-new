@@ -235,9 +235,10 @@ class DealContractController
     public function recallContract(Request $request, Deal $deal, \App\Offers\Actions\ShowToManager $show)
     {
         abort_unless($deal->hasContract(), 404);
+        $edited = \App\Offers\ContractEdit::has($deal);
         $show->recallContract($deal, $request->user());
 
-        return back()->with('toast', 'Договор отозван у менеджера');
+        return back()->with('toast', 'Договор отозван у менеджера'.($edited ? ', заполненный файл удалён' : ''));
     }
 
     /**

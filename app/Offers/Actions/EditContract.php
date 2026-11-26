@@ -87,11 +87,17 @@ final class EditContract
         if ($contract->shown_at !== null) {
             throw ValidationException::withMessages(['file' => 'Договор у менеджера: сначала отзовите его']);
         }
+        self::drop($deal, $contract);
+        $deal->offer->log(OfferEventType::Note, $by, ['text' => 'Договор снова сформирован из данных сделки']);
+        RefreshDeal::of($deal);
+    }
+
+    /** Убрать заполненный файл: договор снова из данных сделки. Зовут `revert` и «Отозвать» (`ShowToManager::recallContract`). */
+    public static function drop(Deal $deal, DealContract $contract): void
+    {
         $deal->clearMediaCollection('dkp_edited');
         $deal->clearMediaCollection('dkp_edited_pdf');
         $contract->update(['edited_at' => null, 'edited_by' => null, 'edited_base' => null]);
-        $deal->offer->log(OfferEventType::Note, $by, ['text' => 'Договор снова сформирован из данных сделки']);
-        RefreshDeal::of($deal);
     }
 
     private static function fileName(DealContract $contract, string $ext): string

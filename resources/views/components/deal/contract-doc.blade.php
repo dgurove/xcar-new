@@ -8,7 +8,7 @@
        `dkp.docx?edit=1`), 2) приложить заполненный (`EditContract`);
      - приложен заполненный — метка «заполнен», справа ↶ «Вернуть сформированный», под строкой одна «Отправить менеджеру»;
        данные сделки поменялись после правки — красным (`ContractEdit::stale`);
-     - отправлен — под строкой «Приложить подписанный» | «Отозвать» (`ShowToManager::recallContract`); отправлен ли — словом подписи
+     - отправлен — под строкой «Приложить подписанный» | «Отозвать» (`ShowToManager::recallContract`, заполненный файл убирает); отправлен ли — словом подписи
        «Договор» (`x-deal.doc-cap` в `x-deal.money`).
      `attach` — «Приложить подписанный» кнопкой (19.11.2026; прежде скрепкой справа). --}}
 @props(['deal', 'attach' => false])
@@ -75,7 +75,7 @@
             <div class="send-under send-pair">
                 @if ($canAttach)<x-deal.attach-signed :deal="$deal" :base="$base" primary/>@endif
                 @if ($canRecall)
-                    <form method="post" action="{{ $base }}/contract/recall" class="contents" data-turbo-confirm="Отозвать {{ mb_strtolower(mb_substr($title, 0, 1)).mb_substr($title, 1) }}? Менеджер перестанет его видеть">
+                    <form method="post" action="{{ $base }}/contract/recall" class="contents" data-turbo-confirm="Отозвать {{ mb_strtolower(mb_substr($title, 0, 1)).mb_substr($title, 1) }}? Менеджер перестанет его видеть{{ $edited ? ', заполненный файл удалится' : '' }}">
                         @csrf
                         <button type="submit" class="btn btn-quiet btn-s !flex-none !px-4">Отозвать</button>
                     </form>

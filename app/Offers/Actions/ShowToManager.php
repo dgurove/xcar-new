@@ -131,7 +131,7 @@ final class ShowToManager
         return DealContract::for($deal)->shown_at !== null && ! $deal->contract_signed_at && $deal->getMedia('signed_contract')->isEmpty();
     }
 
-    /** «Отозвать» отправленный договор: менеджер видит «Договор готовится»; номер остаётся. */
+    /** «Отозвать» отправленный договор: менеджер видит «Договор готовится»; номер остаётся, заполненный файл убирается. */
     public function recallContract(Deal $deal, User $by): DealContract
     {
         $done = DB::transaction(function () use ($deal, $by) {
@@ -143,7 +143,11 @@ final class ShowToManager
                 throw ValidationException::withMessages(['show' => 'Подписанный договор уже приложен: отозвать нельзя']);
             }
             $c->update(['shown_at' => null, 'shown_by' => null]);
-            $deal->offer->log(OfferEventType::Note, $by, ['text' => 'Договор'.($c->code ? ' № '.$c->code : '').' отозван у менеджера']);
+            // Заполненный файл уходит вместе с отзывом (26.11.2026, владелец: Лиза приложила паспорт вместо договора, отозвала —
+            // а паспорт остался «заполненным договором»): после отзыва договор снова из данных сделки, «Заполнить…» — заново.
+            $dropped = \App\Offers\ContractEdit::has($deal);
+            $dropped && EditContract::drop($deal, $c);
+            $deal->offer->log(OfferEventType::Note, $by, ['text' => 'Договор'.($c->code ? ' № '.$c->code : '').' отозван у менеджера'.($dropped ? ', заполненный файл убран' : '')]);
 
             return $c;
         });

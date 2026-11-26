@@ -138,8 +138,13 @@ class ContractRecallTest extends TestCase
         $this->actingAs($this->manager);
         $this->get(config('app.url').'/deals/'.$deal->id.'/dkp.pdf')->assertNotFound();
 
-        // «Вернуть сформированный» — снова из данных сделки.
+        // Отзыв убирает и заполненный файл (26.11.2026): договор снова из данных сделки.
         $this->actingAs($this->admin);
+        $this->assertFalse(ContractEdit::has($deal->fresh()));
+
+        // «Вернуть сформированный» без отзыва — тоже снова из данных сделки.
+        $this->post($this->crm.'/work/deals/'.$deal->id.'/contract/edited', ['file' => UploadedFile::fake()->createWithContent('dogovor.pdf', '%PDF-1.4 исправленный')])->assertRedirect();
+        $this->assertTrue(ContractEdit::has($deal->fresh()));
         $this->delete($this->crm.'/work/deals/'.$deal->id.'/contract/edited')->assertRedirect();
         $this->assertFalse(ContractEdit::has($deal->fresh()));
         $this->assertStringStartsWith('%PDF', $this->get($this->crm.'/work/deals/'.$deal->id.'/dkp.pdf')->assertOk()->getContent());
