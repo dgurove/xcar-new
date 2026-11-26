@@ -77,10 +77,19 @@ final class Original extends Model implements HasMedia
      */
     public function scans(): Collection
     {
-        $own = collect($this->getMedia('scan')->all());
+        // Один раз на экземпляр (ревью 26.11.2026): строка вкладки, `settled` и `todo` спрашивают по нескольку раз.
+        return $this->scanCache ??= (function () {
+            $own = collect($this->getMedia('scan')->all());
 
-        return $this->kind === 'buyer_dkp' && $this->deal ? $own->concat(SignedContractPdf::files($this->deal)) : $own;
+            return $this->kind === 'buyer_dkp' && $this->deal ? $own->concat(SignedContractPdf::files($this->deal)) : $own;
+        })();
     }
+
+    /** @var Collection<int, \Spatie\MediaLibrary\MediaCollections\Models\Media>|null */
+    private ?Collection $scanCache = null;
+
+    /** Дней после отправки ДКП прежнему владельцу, когда пора проверить, дошёл ли он (СДЭК по России — до недели). */
+    public const DELIVERY_DAYS = 7;
 
     /** Ждём менеджера: документ ещё у него. */
     public function waitsManager(): bool
@@ -89,8 +98,8 @@ final class Original extends Model implements HasMedia
     }
 
     /**
-     * Наше дело по документу: `send` — отправить (ДКП прежнему владельцу), `executor` — получить у исполнителя вывоза, `scan` —
-     * дошёл, а скана нет; null — ждём или на месте.
+     * Наше дело по документу: `send` — отправить (ДКП прежнему владельцу), `executor` — получить у исполнителя вывоза, `delivery` —
+     * отправили от нас неделю назад, а «дошёл» не отмечен (проверить по треку), `scan` — дошёл, а скана нет; null — ждём или на месте.
      */
     public function todo(): ?string
     {
@@ -98,6 +107,7 @@ final class Original extends Model implements HasMedia
             $this->state === 'skip' => null,
             $this->to !== 'us' && in_array($this->state, ['waiting', 'at_us'], true) => 'send',
             $this->from() === 'executor' && $this->state === 'waiting' => 'executor',
+            $this->to !== 'us' && $this->state === 'sent' && $this->sent_at?->lte(now()->subDays(self::DELIVERY_DAYS)) => 'delivery',
             $this->placed() && ! $this->settled() => 'scan',
             default => null,
         };

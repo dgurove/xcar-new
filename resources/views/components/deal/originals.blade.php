@@ -11,7 +11,7 @@
 @endphp
 <div {{ $attributes->class(['list']) }}>
     {{-- Сделка встала на шаг раньше, чем появились документы шага, — завести их. --}}
-    @if ($items->isEmpty())
+    @if ($items->isEmpty() && \App\Offers\Originals::kit($deal) !== [])
         <form method="post" action="{{ $base }}/open" class="contents">@csrf<button class="row w-full text-left text-accent-text"><x-ui.icon name="file" class="size-5 shrink-0"/><span class="min-w-0 flex-1">Завести документы</span></button></form>
     @endif
     @foreach ($items as $o)

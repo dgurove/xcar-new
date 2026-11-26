@@ -109,6 +109,11 @@ final class FileController
         if ($media->model_type === \App\Offers\Original::class) {
             return $user->canEditDeals();
         }
+        // Файл просьбы шага сделки (подписанный договор, документ об оплате) — и тем, кто ведёт сделки: модератор видит его в
+        // шторке «Оригиналов» и в файлах договора (ревью 26.11.2026: модератору отвечало 403 — `$offer` есть только у файла ТС).
+        if ($media->model_type === Requirement::class && $user->canEditDeals() && Requirement::whereKey($media->model_id)->whereNotNull('deal_id')->exists()) {
+            return true;
+        }
         if ($user->isModerator()) {
             if ($media->model_type === Party::class) {
                 return $user->canEditDeals() && DealContract::whereHas('buyer', fn ($q) => $q->where('party_id', $media->model_id))->exists();

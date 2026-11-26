@@ -293,11 +293,9 @@ class DealContractController
         abort_unless($request->user()->canEditDeals() && $original->deal_id === $deal->id, 404);
         $data = $request->validate(['state' => ['required', 'string'], 'track' => ['nullable', 'string', 'max:60'],
             'kind' => ['nullable', 'in:'.implode(',', array_keys(\App\Offers\Originals::SIGNED))]]);
-        // Совком, редкий вариант: доверенность вместо договора комиссии с актом — тем же «Сохранить».
-        if (($data['kind'] ?? null) && isset(\App\Offers\Originals::SIGNED[$original->kind])) {
-            \App\Offers\Originals::switchKind($original, $data['kind'], $request->user());
-        }
-        \App\Offers\Originals::update($original->fresh(), $data['state'], $data['track'] ?? null, $request->user());
+        // Совком, редкий вариант: доверенность вместо договора комиссии с актом — тем же «Сохранить», вместе с остальным.
+        $kind = isset(\App\Offers\Originals::SIGNED[$original->kind]) ? ($data['kind'] ?? null) : null;
+        \App\Offers\Originals::update($original, $data['state'], $data['track'] ?? null, $request->user(), $kind);
 
         return back()->with('toast', $original->title.': '.$original->fresh()->place());
     }

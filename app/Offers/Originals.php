@@ -63,6 +63,10 @@ final class Originals
                 ['dkp_owner', 'ДКП прежнему владельцу', 'owner', false],
             ];
         }
+        // Покупатель платит страховой или собственнику сам — оригиналы не наши (сделку поставили на шаг руками): шаг пройдёт сам.
+        if (! $deal->schemeOf()->paysCar()) {
+            return [];
+        }
         $kit = [
             ['supplier_dkp', 'ДКП и акт с поставщиком', 'us', true],
             ['buyer_dkp', 'ДКП и акт с покупателем', 'us', true],
@@ -86,20 +90,20 @@ final class Originals
         return Original::with('media')->where('deal_id', $deal->id)->orderBy('id')->get()->each->setRelation('deal', $deal);
     }
 
-    /** Документы по умолчанию — один раз на сделку. @return Collection<int, Original> */
-    public static function ensure(Deal $deal): Collection
+    /** Документы по умолчанию — один раз на сделку. Да — завели сейчас (первый вход в шаг). */
+    public static function ensure(Deal $deal): bool
     {
-        DB::transaction(function () use ($deal) {
+        return DB::transaction(function () use ($deal) {
             Deal::whereKey($deal->id)->lockForUpdate()->first();
             if (Original::where('deal_id', $deal->id)->exists()) {
-                return;
+                return false;
             }
             foreach (self::kit($deal) as [$kind, $title, $to, $scan]) {
                 Original::create(['deal_id' => $deal->id, 'kind' => $kind, 'title' => $title, 'to' => $to, 'needs_scan' => $scan]);
             }
-        });
 
-        return self::of($deal);
+            return true;
+        });
     }
 
     /** Наше дело на шаге (`DealTabs`): отправить, получить у исполнителя, приложить сканы; иначе ждём (null). */
@@ -109,14 +113,17 @@ final class Originals
         $button = ['label' => 'Открыть', 'href' => '/offers/'.$deal->offer?->number];
         // Документов ещё нет (сделка встала на шаг раньше, чем они появились) — их завести: тоже наше дело.
         if ($items->isEmpty()) {
-            return ['key' => 'originals-open', 'title' => 'Завести документы', 'rank' => 2, 'since' => $since, 'button' => $button];
+            return self::kit($deal) === [] ? null : ['key' => 'originals-open', 'title' => 'Завести документы', 'rank' => 2, 'since' => $since, 'button' => $button];
         }
-        // Ключ — само дело: вкладка группирует по нему («Отправить ДКП прежнему владельцу», «Приложить сканы» — порознь).
-        $todo = fn (string $key) => $items->first(fn (Original $o) => $o->todo() === $key);
+        // Ключ — само дело: вкладка группирует по нему («Отправить ДКП прежнему владельцу», «Приложить сканы» — порознь). Дело
+        // документа считается один раз (ревью 26.11.2026: `todo()` ходит за сканами).
+        $todos = $items->map(fn (Original $o) => ['todo' => $o->todo(), 'item' => $o]);
+        $todo = fn (string $key) => $todos->firstWhere('todo', $key)['item'] ?? null;
         $send = $todo('send');
         [$key, $title] = match (true) {
             $send !== null => $send->kind === 'dkp_owner' ? ['originals-owner', 'Отправить ДКП прежнему владельцу'] : ['originals-send', 'Отправить оригиналы'],
             $todo('executor') !== null => ['originals-executor', 'Получить оригиналы у исполнителя'],
+            $todo('delivery') !== null => ['originals-delivery', 'Проверить доставку'],
             $todo('scan') !== null => ['originals-scan', 'Приложить сканы'],
             default => [null, null],
         };
@@ -137,17 +144,18 @@ final class Originals
     }
 
     /** Где документ сейчас и трек СДЭК (шторка строки). Всё на месте — шаг проходит сам. */
-    public static function update(Original $item, string $state, ?string $track, User $by): Original
+    /** $kind — у Совкома что подписали (`SIGNED`): меняется вместе с остальным или никак, если проверка не прошла. */
+    public static function update(Original $item, string $state, ?string $track, User $by, ?string $kind = null): Original
     {
         // Под замком сделки (26.11.2026, ревью): двое отмечают последние документы разом — шаг проходит один раз.
-        return DB::transaction(function () use ($item, $state, $track, $by) {
+        return DB::transaction(function () use ($item, $state, $track, $by, $kind) {
             Deal::whereKey($item->deal_id)->lockForUpdate()->first();
 
-            return self::write($item->fresh(), $state, $track, $by);
+            return self::write($item->fresh(), $state, $track, $by, $kind);
         });
     }
 
-    private static function write(Original $item, string $state, ?string $track, User $by): Original
+    private static function write(Original $item, string $state, ?string $track, User $by, ?string $kind = null): Original
     {
         if (! isset($item->choices()[$state])) {
             throw ValidationException::withMessages(['state' => 'Выберите, где документ']);
@@ -155,6 +163,9 @@ final class Originals
         $track = $track !== null ? strtoupper(preg_replace('/\s+/u', '', $track)) : null;
         if ($state === 'sent' && ! preg_match('/^[A-Z0-9-]{6,40}$/', (string) $track)) {
             throw ValidationException::withMessages(['track' => 'Трек-номер СДЭК']);
+        }
+        if ($kind !== null) {
+            self::switchKind($item, $kind, $by);
         }
         $was = $item->place();
         $placed = (clone $item)->fill(['state' => $state])->placed();
@@ -178,8 +189,8 @@ final class Originals
         return $item;
     }
 
-    /** Совком, редкий вариант: вместо договора комиссии с актом — доверенность (и обратно). */
-    public static function switchKind(Original $item, string $kind, User $by): void
+    /** Совком, редкий вариант: вместо договора комиссии с актом — доверенность (и обратно). Зовёт `write` под замком. */
+    private static function switchKind(Original $item, string $kind, User $by): void
     {
         abort_unless(isset(self::SIGNED[$kind], self::SIGNED[$item->kind]), 422);
         if ($item->kind === $kind) {
@@ -193,9 +204,11 @@ final class Originals
     /** Скан документа (`x-ui.photo-pdf` шторки: фото и файлы — одним). Всё на месте — шаг проходит сам. */
     public static function attachScan(Original $item, UploadedFile $file, User $by): void
     {
-        DB::transaction(function () use ($item, $file, $by) {
+        // Файл — до транзакции (ревью 26.11.2026): откат перехода шага не оставит на диске файл без записи; скан приложен в
+        // любом случае, а шаг пройдёт, когда пройдёт.
+        $item->addMedia($file)->usingFileName($file->getClientOriginalName())->toMediaCollection('scan');
+        DB::transaction(function () use ($item, $by) {
             Deal::whereKey($item->deal_id)->lockForUpdate()->first();
-            $item->addMedia($file)->usingFileName($file->getClientOriginalName())->toMediaCollection('scan');
             $item->update(['updated_by' => $by->id]);
             $item->deal->offer?->log(OfferEventType::Note, $by, ['text' => $item->title.': приложен скан']);
             self::advance($item->deal, $by);
@@ -233,7 +246,7 @@ final class Originals
     }
 
     /** Всё на месте и сделка на шаге — «Оригиналы на месте» → «Сделка закрыта». Да — прошли. */
-    public static function advance(Deal $deal, User $by): bool
+    public static function advance(Deal $deal, ?User $by = null): bool
     {
         $offer = $deal->offer?->fresh();
         $stage = $offer?->position(Track::Sale)?->stage?->loadMissing('exits');
@@ -241,7 +254,8 @@ final class Originals
             return false;
         }
         $items = self::of($deal);
-        if ($items->isEmpty() || $items->contains(fn (Original $o) => ! $o->settled())) {
+        // Пусто — ждать нечего, только если и набор пуст (покупатель платит не нам); иначе документы ещё не завели.
+        if (($items->isEmpty() && self::kit($deal) !== []) || $items->contains(fn (Original $o) => ! $o->settled())) {
             return false;
         }
         $exit = $stage->exits->firstWhere('label', self::DONE) ?? $stage->exits->first();
