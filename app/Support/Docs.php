@@ -107,7 +107,15 @@ final class Docs
             return [];
         }
 
-        return Cache::remember("mail:archive:{$a->id}", 86400, fn () => app(ArchivePhotoExtractor::class)->listFile((string) $a->file()));
+        $key = "mail:archive:{$a->id}";
+        if (is_array($cached = Cache::get($key))) {
+            return $cached;
+        }
+        $list = app(ArchivePhotoExtractor::class)->listFile((string) $a->file());
+        // Пустой список — минута, а не сутки (26.11.2026): архив, что ещё дописывается на диск, иначе сутки показывался пустым.
+        Cache::put($key, $list, $list ? 86400 : 60);
+
+        return $list;
     }
 
     /**

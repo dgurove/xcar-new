@@ -109,10 +109,47 @@ final class ScanAttachments implements ShouldBeUniqueUntilProcessing, ShouldQueu
         }
     }
 
-    /** Какие из файлов сейчас в работе. @param iterable<ScanFile> $files @return list<string> */
+    /**
+     * Какие из файлов сейчас в работе: метка «читается» или файл в задаче, что стоит в очереди. Метка живёт полчаса, а фон
+     * бывает дольше (26.11.2026): по одной метке ждущий файл считался свободным — ставился второй раз, а предмет «прочитанным».
+     *
+     * @param  iterable<ScanFile>  $files
+     * @return list<string>
+     */
     public static function reading(iterable $files): array
     {
-        return collect($files)->map->scanId()->filter(fn ($id) => Cache::has("scan:a:{$id}"))->values()->all();
+        $queued = null;
+
+        return collect($files)->map->scanId()->filter(function ($id) use (&$queued) {
+            if (Cache::has("scan:a:{$id}")) {
+                return true;
+            }
+            $queued ??= self::queuedIds();
+
+            return isset($queued[(string) $id]);
+        })->values()->all();
+    }
+
+    /**
+     * Файлы задач чтения, что ждут в очереди (их единицы — `scan` и `scan-bg`). Взятые — нет: у них свои метки (задача ставит
+     * их на старте), а своя строка взятой задачи живёт до конца `handle` — с ней задача считала бы себя «ещё читается» и не
+     * подводила итог.
+     *
+     * @return array<string, true>
+     */
+    public static function queuedIds(): array
+    {
+        $conn = config('queue.connections.database-scan');
+        $out = [];
+        foreach (DB::connection($conn['connection'] ?? null)->table($conn['table'] ?? 'jobs')->whereIn('queue', self::QUEUES)->whereNull('reserved_at')->pluck('payload') as $payload) {
+            $command = json_decode($payload, true)['data']['command'] ?? null;
+            $job = is_string($command) && str_contains($command, 'ScanAttachments') ? @unserialize($command, ['allowed_classes' => [self::class]]) : null;
+            foreach ($job instanceof self ? $job->ids : [] as $id) {
+                $out[(string) $id] = true;
+            }
+        }
+
+        return $out;
     }
 
     /** Файл читался и не прочёлся (упал, не уложился) — читалка покажет «не прочитан» до нового чтения. */
@@ -194,7 +231,9 @@ final class ScanAttachments implements ShouldBeUniqueUntilProcessing, ShouldQueu
             Cache::put("scan:run:{$this->subject}", true, 960);
             self::mark($files->map->scanId()->all());
             $this->ping($publish);
-            DocumentText::read($files, function (ScanFile $file, ?string $text, ?int $turn = null, bool $skipped = false) use ($publish, &$rest) {
+            $answered = [];
+            DocumentText::read($files, function (ScanFile $file, ?string $text, ?int $turn = null, bool $skipped = false) use ($publish, &$rest, &$answered) {
+                $answered[$file->scanId()] = true;
                 if ($skipped) {
                     // Не дошли по сроку задачи — не сбой: следующей задачей сразу (иначе ждали бы дочитки часов).
                     $rest[] = $file->scanId();
@@ -207,6 +246,15 @@ final class ScanAttachments implements ShouldBeUniqueUntilProcessing, ShouldQueu
                 // Предмет читается сам (ТС заявки, черновик из письма) — строка списка на шаг вперёд.
                 AutoScan::advance($this->subject);
             }, $this->timeout - 60, fn () => Cache::has($stop));
+            // Файл, на котором чтение упало исключением (битый PDF), ответа не получил: «не прочёлся» на час — иначе дочитка
+            // часов ставила бы его снова каждые 5 минут.
+            if (! Cache::has($stop)) {
+                foreach ($files as $file) {
+                    if (! isset($answered[$file->scanId()]) && ! DocumentText::isCached($file)) {
+                        Cache::put("scan:x:{$file->scanId()}", true, self::LOST_TTL);
+                    }
+                }
+            }
             if ($rest && ! Cache::has($stop)) {
                 self::dispatch($this->subject, $rest, $this->queue === 'scan-bg');
             }

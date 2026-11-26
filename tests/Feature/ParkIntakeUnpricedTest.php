@@ -97,6 +97,21 @@ class ParkIntakeUnpricedTest extends TestCase
         $this->assertTrue($this->in('nofloor', $offer->fresh()));
     }
 
+    public function test_lot_after_request_returns_unread_draft_to_nofloor(): void
+    {
+        $vehicle = $this->vehicle();
+        app(AutoSale::class)->sweep();
+        $offer = Offer::where('car_id', $vehicle->car_id)->sole();
+        $this->assertTrue($this->in('unpriced', $offer));
+
+        DB::table('migtorg_lots')->insert(['id' => 900002, 'claim_ref' => '785R/046/01928/26', 'claim_ref_key' => \App\Mail\Extraction\Code::key('785R/046/01928/26'),
+            'title' => 'Exeed', 'seen_at' => now()->addMinute(), 'first_seen_at' => now()->addMinute()]);
+        \App\Offers\Valuations::sweep();
+
+        $this->assertNull($offer->fresh()->park_intake_at, 'лот позже заявки — сумма заявки неактуальна, ждём оценку поставщика');
+        $this->assertTrue($this->in('nofloor', $offer->fresh()));
+    }
+
     public function test_waits_for_reading_but_not_longer_than_half_an_hour(): void
     {
         $vehicle = $this->vehicle(at: now()->subMinutes(5));

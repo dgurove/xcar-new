@@ -34,6 +34,27 @@ class QueueRecoveryTest extends TestCase
         $this->assertNotNull(DB::table('jobs')->find($other)->reserved_at, 'чужие очереди — их работника');
     }
 
+    public function test_job_that_keeps_killing_its_worker_stops_being_forgiven(): void
+    {
+        $id = DB::table('jobs')->insertGetId(['queue' => 'scan', 'payload' => '{}', 'attempts' => 1, 'reserved_at' => time(), 'available_at' => time(), 'created_at' => time()]);
+        foreach ([1, 2] as $i) {
+            Artisan::call('queue:release-orphans', ['queues' => 'scan']);
+            DB::table('jobs')->where('id', $id)->update(['reserved_at' => time(), 'attempts' => 1]);
+        }
+
+        Artisan::call('queue:release-orphans', ['queues' => 'scan']);
+
+        $this->assertSame(1, (int) DB::table('jobs')->find($id)->attempts, 'третий раз — попытка засчитана, tries её снимет');
+    }
+
+    public function test_file_waiting_in_queued_read_counts_as_reading_and_new_file_does_not(): void
+    {
+        \App\Mail\Jobs\ScanAttachments::dispatch('v:1', ['501'], true);
+        $file = fn (string $id) => \Mockery::mock(\App\Mail\Scan\ScanFile::class, ['scanId' => $id]);
+
+        $this->assertSame(['501'], \App\Mail\Jobs\ScanAttachments::reading([$file('501'), $file('502')]), 'ждущий в очереди — занят, новый — нет (его ставят)');
+    }
+
     public function test_queued_progress_stops_blocking_after_an_hour(): void
     {
         Progress::queue(12345, Progress::MAIL.':1:all', 'Прикрепляем фото');

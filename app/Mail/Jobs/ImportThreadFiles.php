@@ -147,7 +147,7 @@ final class ImportThreadFiles implements ShouldBeUniqueUntilProcessing, ShouldQu
             $properties = $vehicle ? fn (Attachment $a) => self::stageOf($a) + $hidden : $hidden;
             $added = $importer->import($model, $attachments, 'photos', 'papers', $properties, $report);
             if ($offer) {
-                $cloud = self::cloud($thread, $offer, $importer, $hidden, $report);
+                $cloud = self::cloud($thread, $offer, $importer, $hidden, $report, $this->job?->uuid());
                 $added = ['photos' => $added['photos'] + $cloud['photos'], 'documents' => $added['documents'] + $cloud['documents']];
             }
         } finally {
@@ -184,7 +184,7 @@ final class ImportThreadFiles implements ShouldBeUniqueUntilProcessing, ShouldQu
      *
      * @return array{photos: int, documents: int}
      */
-    private static function cloud(Thread $thread, Offer $offer, AttachmentImporter $importer, array $photos, callable $report): array
+    private static function cloud(Thread $thread, Offer $offer, AttachmentImporter $importer, array $photos, callable $report, ?string $owner = null): array
     {
         $added = ['photos' => 0, 'documents' => 0];
         $links = $thread->messages()->get()->filter(fn ($m) => $m->isFromVendor())
@@ -193,7 +193,15 @@ final class ImportThreadFiles implements ShouldBeUniqueUntilProcessing, ShouldQu
             // «Уже брали» — после попытки, а не до (26.11.2026): задачу убили посреди скачивания (выкладка) — повтор берёт ссылку
             // снова; с меткой до скачивания она не скачалась бы никогда. Задача у ветки одна (`ShouldBeUniqueUntilProcessing`).
             $key = 'cloud-import:'.$offer->id.':'.$link['token'];
+            // Пока одна задача качает — другая (другое письмо той же ветки) ссылку не берёт: замок на время скачивания. Хозяин
+            // замка — сама задача (`uuid` не меняется при повторе): убитую выкладкой и возвращённую замок свой не держит.
+            $lock = Cache::lock($key.':run', 1500, $owner);
+            if (Cache::has($key) || ! $lock->get()) {
+                continue;
+            }
             if (Cache::has($key)) {
+                $lock->release();
+
                 continue;
             }
             $path = sys_get_temp_dir().'/cloud-'.Str::uuid();
@@ -212,6 +220,7 @@ final class ImportThreadFiles implements ShouldBeUniqueUntilProcessing, ShouldQu
                 @unlink($path);
             }
             Cache::put($key, 1, now()->addDays(60));
+            $lock->release();
         }
 
         return $added;

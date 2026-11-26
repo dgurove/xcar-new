@@ -156,7 +156,29 @@ final class Valuations
 
     public static function sweep(): int
     {
-        return self::staleDrafts()->filter(fn (Offer $o) => self::drop($o))->count();
+        return self::staleDrafts()->filter(fn (Offer $o) => self::drop($o))->count() + self::staleIntakes();
+    }
+
+    /**
+     * Черновик из заявки с парковки (`park_intake_at`), у которого оценочной ещё нет, а лот на Мигторге появился позже заявки
+     * (26.11.2026): сумма заявки по правилу Мигторга уже неактуальна и не встанет (`older`) — метка снимается, машина ждёт оценку
+     * поставщика в «Без закупочной», как те, у кого оценочную сняло правило (владелец).
+     */
+    private static function staleIntakes(): int
+    {
+        $n = 0;
+        $flagged = Offer::query()->where('offers.state', OfferState::Draft)->whereNotNull('offers.park_intake_at')->whereNull('offers.value')
+            ->whereCar(fn ($c) => $c->whereExists(fn ($q) => $q->from('migtorg_lots')->whereColumn('migtorg_lots.claim_ref_key', 'cars.claim_ref_key')))->get();
+        foreach ($flagged as $offer) {
+            $lot = self::lotAt($offer->claim_ref_key);
+            if ($lot && $lot->gt($offer->park_intake_at)) {
+                $offer->forceFill(['park_intake_at' => null])->save();
+                $offer->log(OfferEventType::Updated, null, ['why' => 'Появилось на Мигторге после заявки на приём, ждём оценку поставщика']);
+                $n++;
+            }
+        }
+
+        return $n;
     }
 
     /**
