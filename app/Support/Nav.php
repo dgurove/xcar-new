@@ -737,20 +737,13 @@ final class Nav
             $staff = self::staffCounts($surface);
             $staff['/work/money'] = $staff['money:deals'] ?? 0;
             $staff['/work/chats'] = ($staff['/work/chats'] ?? 0) + $user->unreadDirectChats();
-            // «Предложения» — своё по «Ответственным» (26.11.2026, `Responsibility::total`): то же, что красное в колесе.
-            $mine = \App\Offers\Responsibility::assigned($user) ? ['/offers' => \App\Offers\Responsibility::total($user)] : [];
-
-            return array_filter($badges + $mine + array_intersect_key($staff, array_flip($keys)));
+            return array_filter($badges + array_intersect_key($staff, array_flip($keys)));
         }
         if ($surface === Surface::Park || $surface === Surface::Crm) {
             $staff = self::staffCounts($surface);
             // Чаты площадки — общие на всех сотрудников (кэш), свои лички — каждому свои (22.11.2026).
             if ($surface === Surface::Crm && $user->canEditDeals()) {
                 $staff['/work/chats'] = ($staff['/work/chats'] ?? 0) + $user->unreadDirectChats();
-            }
-            // Админу с «Ответственными» — своё в «Предложениях» (26.11.2026); главному администратору — всё, как было.
-            if ($surface === Surface::Crm && ! $user->isOwner() && \App\Offers\Responsibility::assigned($user)) {
-                $staff['/offers'] = \App\Offers\Responsibility::total($user);
             }
 
             return array_filter($badges + $staff);

@@ -1159,12 +1159,6 @@ class OfferController
                 $q->where(fn ($v) => $v->whereNull('offers.vendor_id')->orWhere('offers.vendor_id', '!=', $carcade));
             }
             $subs[$key] = $count($q);
-            // Горящее вкладки — красным тем, кто отвечает только за горящее или следит за сроком обязывающего (`Responsibility`,
-            // 26.11.2026): горит обязывающий везде, у сделки — и просроченный шаг, у вывоза — просроченный вывоз.
-            // Сделки и вывоз — по готовым спискам ниже (`urgentOf`), без второго прохода условий вкладки.
-            if (! array_key_exists($key, self::SUMMARIES) && $key !== 'all' && ! isset(DealTabs::TABS[$key]) && ! isset(PickupController::TABS[$key])) {
-                $subs[$key.'_hot'] = $count((clone $q)->whereIntegerInRaw('offers.id', $hot));
-            }
             // У «Из таблицы Кати» в числе и незаведённые номера — призрачные строки. Черновик из письма встаёт туда из
             // призрака, и число не меняется, — пилюле отдельно число черновиков: выросло — она вспыхивает (flip.js).
             if ($key === 'legacy' && self::ghostsShown($facets)) {
@@ -1203,6 +1197,13 @@ class OfferController
                 $counts[$tab.'_our'] = $counts[$tab];
             }
         }
+        // Горящее вкладок предложений — отдельным лёгким запросом по горящим машинам (их единицы), а не вторым проходом условий
+        // каждой вкладки в общем SELECT: 26.11.2026 так запрос чисел модератора шёл по 25 с и уронил прод.
+        foreach ($hot ? self::hotOf($hot, $user) : [] as $alias => $n) {
+            if (isset($counts[$alias])) {
+                $counts[$alias.'_hot'] = $n;
+            }
+        }
         // Горящее вкладок сделки и вывоза (`Responsibility`, 26.11.2026): строки вкладки ∩ горящий обязывающий, у сделки — и
         // просроченный шаг, у вывоза — просроченный вывоз.
         foreach (self::urgentOf($hot) as $alias => $n) {
@@ -1225,6 +1226,20 @@ class OfferController
      * @param  list<int>  $hot  машины с горящим обязывающим
      * @return array<string, int>
      */
+    /** Горящие машины по вкладкам предложений (не сделки и не вывоз): только среди горящих, без чипов. @param list<int> $hot @return array<string, int> */
+    private static function hotOf(array $hot, User $user): array
+    {
+        $out = [];
+        foreach (array_keys(self::presets($user)) as $key) {
+            if (array_key_exists($key, self::SUMMARIES) || in_array($key, ['all', 'purchases', 'archive'], true) || isset(DealTabs::TABS[$key]) || isset(PickupController::TABS[$key])) {
+                continue;
+            }
+            $out[$key] = self::scopeFor($key, Offer::query()->whereIntegerInRaw('offers.id', $hot), $user->canManageCrm())->count();
+        }
+
+        return $out;
+    }
+
     private static function urgentOf(array $hot): array
     {
         $hotSet = array_flip($hot);
