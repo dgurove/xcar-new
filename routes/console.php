@@ -16,35 +16,38 @@ use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schedule;
 
-Schedule::command('offers:tick')->everyMinute()->withoutOverlapping();
+// Замок `withoutOverlapping` — со сроком в минутах (26.11.2026): без срока он живёт сутки, и планировщик, убитый не выкладкой
+// (нехватка памяти, перезагрузка сервера), оставлял часы, почту, Мигторг и банк молчать до суток. Срок — с запасом над
+// самим прогоном; часы и почта сверх того держат замок Postgres в самой команде (`HoldsSingleRun`).
+Schedule::command('offers:tick')->everyMinute()->withoutOverlapping(10);
 // Дело «Укажите покупателя» — и сделкам, согласованным не живым «Беру в работу» (11.11.2026, `AskBuyer::sweep`).
-Schedule::command('deals:ask-buyers')->everyTenMinutes()->withoutOverlapping();
-Schedule::command('park:tick')->everyFiveMinutes()->withoutOverlapping();
+Schedule::command('deals:ask-buyers')->everyTenMinutes()->withoutOverlapping(30);
+Schedule::command('park:tick')->everyFiveMinutes()->withoutOverlapping(15);
 // Номера «К запросу» письмом в 9:00 и 18:00 (`claims:digest`): каждые 5 минут — пропущенный слот уходит следующим проходом.
-Schedule::command('claims:digest')->everyFiveMinutes()->withoutOverlapping();
-Schedule::command('logistics:tick')->everyFifteenMinutes()->withoutOverlapping();
+Schedule::command('claims:digest')->everyFiveMinutes()->withoutOverlapping(15);
+Schedule::command('logistics:tick')->everyFifteenMinutes()->withoutOverlapping(30);
 Schedule::command('billing:tick')->dailyAt('09:05');
 // «Напомнить через…» про счёт (19.11.2026, `NudgeInvoice::later`): напоминания на 10:00, проход раз в 15 минут.
-Schedule::command('billing:nudges')->everyFifteenMinutes()->withoutOverlapping();
+Schedule::command('billing:nudges')->everyFifteenMinutes()->withoutOverlapping(30);
 // Прозрачности водяных знаков по снятым и почищенным вручную кадрам — ночью, процессор свободен.
-Schedule::command('media:unmark-tune')->dailyAt('04:20')->withoutOverlapping();
+Schedule::command('media:unmark-tune')->dailyAt('04:20')->withoutOverlapping(120);
 // Файлы из писем выданных ТС — только когда месяц выдачи закрыт и оплачен (`LettersPurge::due`, 06.11.2026).
-Schedule::command('park:purge-letters --apply')->dailyAt('04:40')->withoutOverlapping();
+Schedule::command('park:purge-letters --apply')->dailyAt('04:40')->withoutOverlapping(120);
 Schedule::command('billing:close-month')->monthlyOn(1, '06:00');
 // Оплаты по ссылкам — подстраховка уведомлений ЮKassa; выписка Сбера — днём сегодняшняя, утром вчерашняя целиком и сводка.
-Schedule::command('acquiring:sync')->everyFiveMinutes()->withoutOverlapping();
-Schedule::command('bank:sync')->everyTenMinutes()->between('7:00', '23:00')->withoutOverlapping()->runInBackground();
-Schedule::command('bank:sync --days=1 --digest')->dailyAt('06:10')->withoutOverlapping();
+Schedule::command('acquiring:sync')->everyFiveMinutes()->withoutOverlapping(15);
+Schedule::command('bank:sync')->everyTenMinutes()->between('7:00', '23:00')->withoutOverlapping(30)->runInBackground();
+Schedule::command('bank:sync --days=1 --digest')->dailyAt('06:10')->withoutOverlapping(60);
 // Перепроверка выписки (17.11.2026): строка пришла раньше, чем завели сделку или машину, — привяжется сама; деньги без счёта
 // закрывают шаг оплаты (`StampDealMoney` → `MoneyIn`). Привязанное руками не трогается.
-Schedule::command('bank:link')->hourlyAt(25)->between('7:00', '23:00')->withoutOverlapping()->runInBackground();
-Schedule::command('mail:sync')->everyMinute()->withoutOverlapping()->runInBackground();
+Schedule::command('bank:link')->hourlyAt(25)->between('7:00', '23:00')->withoutOverlapping(60)->runInBackground();
+Schedule::command('mail:sync')->everyMinute()->withoutOverlapping(10)->runInBackground();
 // Без withoutOverlapping: очередь держит замок Postgres в самой команде — новый опрос ждёт прежний и подхватывает без паузы.
 Schedule::command('telegram:poll')->everyMinute()->runInBackground();
 // WhatsApp (`WhatsApp\Sender`): группа, личные, оценка — паузы между сообщениями внутри минуты самой командой; коды
 // привязки — длинным опросом эстафетой, как Telegram (привязка работает и при выключенной рассылке).
 Schedule::command('whatsapp:poll')->everyMinute()->runInBackground()->when(fn () => filled(config('xcar.whatsapp.via')));
-Schedule::command('whatsapp:tick')->everyMinute()->withoutOverlapping()->runInBackground()
+Schedule::command('whatsapp:tick')->everyMinute()->withoutOverlapping(10)->runInBackground()
     ->when(fn () => filled(config('xcar.whatsapp.via')) && filled(config('xcar.whatsapp.since')));
 Schedule::command('mail:reconcile')->dailyAt('04:10');
 Schedule::command('mail:archive-stale')->dailyAt('04:20');
@@ -60,7 +63,7 @@ Schedule::call(fn () => Visit::prune())->dailyAt('04:48')->name('user-visits:pru
 // (`migtorg:archive`) пройден 05.10.2026 и из расписания снят — команда для ручного запуска. Одной записью: у двух записей
 // одной команды разные замки `withoutOverlapping`, и дневной прогон мог идти вместе с ночным.
 Schedule::command('migtorg:sync')->everyTenMinutes()->when(fn () => (now()->hour >= 8 && now()->hour < 21) || now()->minute < 10)
-    ->withoutOverlapping()->runInBackground();
+    ->withoutOverlapping(60)->runInBackground();
 // Коды от бота (замок менеджеров) живут минуты — старше двух дней не нужны.
 Schedule::call(fn () => AccessCode::where('created_at', '<', now()->subDays(2))->delete())->dailyAt('04:50')->name('access-codes:prune');
 // Входы админа за человека, из которых не вышли кнопкой, — закрыть сроком сессии.

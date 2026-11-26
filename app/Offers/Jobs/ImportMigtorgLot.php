@@ -192,8 +192,9 @@ final class ImportMigtorgLot implements ShouldQueue
             return false;
         }
         $lot = self::lotFor($offer);
-        // Не взялся трижды — сутки сам не берётся: иначе синхронизация ставила бы задачу раз в полчаса без конца.
-        if (! $lot || $lot->offer_id || ($lot->failed_at && now()->subDay()->lt($lot->failed_at)) || ! self::sameCar($offer, $lot, strict: true)) {
+        // Не взялся трижды — час сам не берётся (было сутки; 26.11.2026: три смерти подряд бывают от выкладок, а не от лота):
+        // иначе синхронизация ставила бы задачу раз в полчаса без конца.
+        if (! $lot || $lot->offer_id || ($lot->failed_at && now()->subHour()->lt($lot->failed_at)) || ! self::sameCar($offer, $lot, strict: true)) {
             return false;
         }
         self::start($offer, $lot);

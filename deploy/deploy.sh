@@ -170,8 +170,8 @@ up() {
     remote "cd $(release_dir)/deploy && for s in scheduler queue queue-mail queue-files queue-scan queue-long offers-bot mail-watch; do \
         docker compose up -d --no-deps \$s >/dev/null 2>&1; sleep 3; done"
     compose_in "$(release_dir)" up -d --remove-orphans
-    # Старый планировщик убит посреди задач, а их замки withoutOverlapping живут в кэше до 10 минут:
-    # бот (telegram:poll) и почта молчали бы после каждой выкладки. Новые контейнеры ещё ничего не держат.
+    # Старый планировщик убит посреди задач, а их замки withoutOverlapping живут в кэше до своего срока (10–120 минут,
+    # `routes/console.php`): часы и почта молчали бы после каждой выкладки. Новые контейнеры ещё ничего не держат.
     compose_in "$(release_dir)" exec -T scheduler php artisan schedule:clear-cache || true
     remote "ln -sfn $(release_dir) $ROOT/current"
     timers

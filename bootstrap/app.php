@@ -131,6 +131,7 @@ return Application::configure(basePath: dirname(__DIR__))
     )
     ->withCommands([
         PerfDigestCommand::class,
+        \App\Support\Console\ReleaseOrphans::class,
         PerfPagesCommand::class,
         CollectValuesCommand::class,
         ListsCheck::class,

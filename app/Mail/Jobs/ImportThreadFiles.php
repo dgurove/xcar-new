@@ -74,6 +74,19 @@ final class ImportThreadFiles implements ShouldBeUniqueUntilProcessing, ShouldQu
         $model && Progress::queue($model, $this->task(), self::QUEUED, $this->expected);
     }
 
+    /**
+     * Упала или убита дважды — ход снять и дать подвести итог (26.11.2026): иначе «Прикрепляем фото» держал чтение документов,
+     * черновик из письма и «Сразу в продажу» до истечения хода.
+     */
+    public function failed(?\Throwable $e): void
+    {
+        [$model] = self::target(Thread::find($this->threadId));
+        if ($model) {
+            Progress::done($model, $this->task());
+            AutoScan::filesArrived($model);
+        }
+    }
+
     /** Ключ хода — как замок уникальности: задача всей ветки и задача одного письма не стирают ход друг друга. */
     private function task(): string
     {
@@ -93,6 +106,9 @@ final class ImportThreadFiles implements ShouldBeUniqueUntilProcessing, ShouldQu
         // У выданной без продажи, чей месяц выдачи закрыт и оплачен (`LettersPurge::due`), файлы из писем уже не хранятся
         // (`PurgeLetters`): письмо их не приносит. До того — как у стоящей: акты нужны для сверки счёта и акта за месяц.
         if (! $model || ($vehicle && ! $offer && LettersPurge::due($vehicle))) {
+            // Ход встал при постановке — снять: иначе `AutoScan::finished`, дочитка и `AutoOffer` ждали бы его час.
+            $model && Progress::done($model, $this->task());
+
             return;
         }
         // Черновик у поставщика (partner.xcar.ru): файлы письма сами не ложатся у него на глазах — их принесёт `Partner\Handover`,
@@ -111,6 +127,7 @@ final class ImportThreadFiles implements ShouldBeUniqueUntilProcessing, ShouldQu
             $pin->only($docs->pluck('id')->all());
             $added = $importer->importDocuments($model, $importer->attachmentsOf(null, $thread->id), 'papers');
             Log::info('Документы выданной из ящика', ['thread' => $thread->id, 'vehicle' => $vehicle?->id, 'documents' => $added]);
+            Progress::done($model, $this->task());
 
             return;
         }
@@ -173,7 +190,10 @@ final class ImportThreadFiles implements ShouldBeUniqueUntilProcessing, ShouldQu
         $links = $thread->messages()->get()->filter(fn ($m) => $m->isFromVendor())
             ->flatMap(fn ($m) => CloudShare::links($m->ownText()."\n".$m->replyText(marks: true)))->unique('token');
         foreach ($links as $link) {
-            if (! Cache::add('cloud-import:'.$offer->id.':'.$link['token'], 1, now()->addDays(60))) {
+            // «Уже брали» — после попытки, а не до (26.11.2026): задачу убили посреди скачивания (выкладка) — повтор берёт ссылку
+            // снова; с меткой до скачивания она не скачалась бы никогда. Задача у ветки одна (`ShouldBeUniqueUntilProcessing`).
+            $key = 'cloud-import:'.$offer->id.':'.$link['token'];
+            if (Cache::has($key)) {
                 continue;
             }
             $path = sys_get_temp_dir().'/cloud-'.Str::uuid();
@@ -191,6 +211,7 @@ final class ImportThreadFiles implements ShouldBeUniqueUntilProcessing, ShouldQu
             } finally {
                 @unlink($path);
             }
+            Cache::put($key, 1, now()->addDays(60));
         }
 
         return $added;

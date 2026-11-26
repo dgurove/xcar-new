@@ -78,7 +78,9 @@ services:
   queue:
     <<: *app
     cpu_shares: 64
-    command: nice -n 10 php artisan queue:work --tries=3 --max-time=3600 --memory=384 --sleep=3 --queue=notifications,default,media
+    command: sh -c 'php artisan queue:release-orphans notifications,default,media; exec nice -n 10 php artisan queue:work --tries=3 --max-time=3600 --memory=384 --sleep=3 --queue=notifications,default,media'
+    # Уведомления короткие — полминуты на SIGTERM успевают дойти; убитое возвращает `queue:release-orphans` на старте.
+    stop_grace_period: 30s
     healthcheck:
       disable: true
 
@@ -90,7 +92,9 @@ services:
     <<: *app
     cpu_shares: 1024
     # scan — человек ждёт, scan-bg — фон (заявки и черновики из писем): фон только когда людских нет.
-    command: php artisan queue:work database-scan --tries=1 --max-time=3600 --memory=256 --sleep=3 --queue=scan,scan-bg
+    # Убитое выкладкой чтение — обратно в очередь на старте (`queue:release-orphans`, 26.11.2026): прочитанные файлы в кэше,
+    # задача продолжает с непрочитанного в ту же минуту, а не через retry_after 16 мин.
+    command: sh -c 'php artisan queue:release-orphans scan,scan-bg; exec php artisan queue:work database-scan --tries=1 --max-time=3600 --memory=256 --sleep=3 --queue=scan,scan-bg'
     healthcheck:
       disable: true
 
@@ -99,8 +103,8 @@ services:
   queue-long:
     <<: *app
     cpu_shares: 64
-    command: nice -n 15 php artisan queue:work database-long --tries=2 --max-time=3600 --memory=256 --sleep=5 --queue=migtorg,long
-    # Минута на SIGTERM: короткие задачи дочитываются, длинную выкачку добирает повтор джобы.
+    command: sh -c 'php artisan queue:release-orphans migtorg,long; exec nice -n 15 php artisan queue:work database-long --tries=2 --max-time=3600 --memory=256 --sleep=5 --queue=migtorg,long'
+    # Минута на SIGTERM: короткие задачи дочитываются, длинную выкачку убитой возвращает `queue:release-orphans` на старте.
     stop_grace_period: 60s
     healthcheck:
       disable: true
@@ -110,7 +114,7 @@ services:
   queue-mail:
     <<: *app
     cpu_shares: 64
-    command: php artisan queue:work database-long --tries=2 --max-time=3600 --memory=256 --sleep=1 --queue=mail
+    command: sh -c 'php artisan queue:release-orphans mail; exec php artisan queue:work database-long --tries=2 --max-time=3600 --memory=256 --sleep=1 --queue=mail'
     stop_grace_period: 60s
     healthcheck:
       disable: true
@@ -121,7 +125,7 @@ services:
   queue-files:
     <<: *app
     cpu_shares: 64
-    command: php artisan queue:work database-long --tries=2 --max-time=3600 --memory=256 --sleep=2 --queue=files
+    command: sh -c 'php artisan queue:release-orphans files; exec php artisan queue:work database-long --tries=2 --max-time=3600 --memory=256 --sleep=2 --queue=files'
     stop_grace_period: 60s
     healthcheck:
       disable: true

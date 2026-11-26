@@ -78,10 +78,15 @@ final class ScanAttachments implements ShouldBeUniqueUntilProcessing, ShouldQueu
 
     /** Метка «читается» на файлах пачки: ставит контроллер при постановке, снимает задача — по файлу, как прочтёт. */
     /**
-     * Метка «файл читается» живёт, пока задача может ждать в очереди: 12.10.2026 очередь стояла час, метка в 960 с гасла
-     * раньше, и дочитка часов ставила те же файлы снова (8–20 задач каждые 5 минут). Снимают её `finally` и `failed`.
+     * Метка «файл читается». 12.10.2026 очередь стояла час, метка в 960 с гасла раньше, и дочитка часов ставила те же файлы
+     * снова — тогда её подняли до 6 ч, и метка-сирота (задача умерла) держала предмет «читается» 6 ч. С 26.11.2026 дубли
+     * не ставятся иначе (фон смотрит невзятую задачу предмета, `queuedFor`), метка — полчаса, задача на старте её обновляет.
+     * Снимают её `finally` и `failed`.
      */
-    private const MARK_TTL = 21600;
+    private const MARK_TTL = 1800;
+
+    /** Файл читался и не прочёлся — не повторять столько: час, а не сутки (дочитка часов возьмёт его снова). */
+    private const LOST_TTL = 3600;
 
     /**
      * Стоит ли в очереди не взятая задача этого предмета: дочитка и автозапуск не ставят вторую. В теле задачи —
@@ -171,6 +176,7 @@ final class ScanAttachments implements ShouldBeUniqueUntilProcessing, ShouldQueu
     public function handle(ReadLetter $reader, Threads $threads, Publisher $publish): void
     {
         $stop = "scan:stop:{$this->subject}";
+        $rest = [];
         try {
             $subject = Subjects::find($this->subject);
             if (! $subject || Cache::has($stop)) {
@@ -186,14 +192,24 @@ final class ScanAttachments implements ShouldBeUniqueUntilProcessing, ShouldQueu
                 return;
             }
             Cache::put("scan:run:{$this->subject}", true, 960);
+            self::mark($files->map->scanId()->all());
             $this->ping($publish);
-            DocumentText::read($files, function (ScanFile $file, ?string $text) use ($publish) {
+            DocumentText::read($files, function (ScanFile $file, ?string $text, ?int $turn = null, bool $skipped = false) use ($publish, &$rest) {
+                if ($skipped) {
+                    // Не дошли по сроку задачи — не сбой: следующей задачей сразу (иначе ждали бы дочитки часов).
+                    $rest[] = $file->scanId();
+
+                    return;
+                }
                 self::mark([$file->scanId()], false);
-                $text === null ? Cache::put("scan:x:{$file->scanId()}", true, 86400) : Cache::forget("scan:x:{$file->scanId()}");
+                $text === null ? Cache::put("scan:x:{$file->scanId()}", true, self::LOST_TTL) : Cache::forget("scan:x:{$file->scanId()}");
                 $this->ping($publish, $file->scanId());
                 // Предмет читается сам (ТС заявки, черновик из письма) — строка списка на шаг вперёд.
                 AutoScan::advance($this->subject);
             }, $this->timeout - 60, fn () => Cache::has($stop));
+            if ($rest && ! Cache::has($stop)) {
+                self::dispatch($this->subject, $rest, $this->queue === 'scan-bg');
+            }
             foreach (Message::with(['account', 'attachments', 'thread'])->whereIn('id', $attachments->pluck('message_id')->unique())->get() as $message) {
                 $reader->apply($message);
                 if ($message->thread) {
@@ -202,7 +218,8 @@ final class ScanAttachments implements ShouldBeUniqueUntilProcessing, ShouldQueu
             }
             $subject->refresh();
         } finally {
-            self::mark($this->ids, false);
+            // Недочитанное по сроку ушло следующей задачей — его метки остаются: предмет всё ещё читается.
+            self::mark(array_values(array_diff(array_map('strval', $this->ids), $rest)), false);
             Cache::forget("scan:run:{$this->subject}");
             // ТС завела почта — найденное вписывается само, без формы (`AutoScan`). После снятия меток: недочитанное
             // по сроку иначе держало бы предмет «читается», и итог не подвёл бы никто.

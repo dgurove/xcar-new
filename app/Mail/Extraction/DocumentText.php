@@ -207,10 +207,14 @@ final class DocumentText
             Log::warning('Почта: документы не прочитаны', ['error' => $e->getMessage()]);
         } finally {
             // Чего ocr не вернул (упал, не уложился) — в кеш не кладётся: это сбой, а не «текста нет». Читалка покажет
-            // «не прочитан» с «Повторить». Остановленное человеком сбоем не считается — его просто не читали.
+            // «не прочитан» с «Повторить». Остановленное человеком сбоем не считается — его просто не читали. До чего очередь
+            // не дошла по сроку — не сбой (`skipped`, четвёртым): задача ставит их следующей сразу (26.11.2026).
             if (! $halted) {
-                foreach ([...array_map(fn ($id) => $owner[array_key_first($pages[$id])], array_keys($pages)), ...$queue] as $a) {
-                    $done($a, null);
+                foreach (array_keys($pages) as $id) {
+                    $done($owner[array_key_first($pages[$id])], null);
+                }
+                foreach ($queue as $a) {
+                    $done($a, null, null, true);
                 }
             }
             array_map('unlink', glob($dir.'/*') ?: []);

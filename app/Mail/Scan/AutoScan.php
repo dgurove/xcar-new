@@ -52,8 +52,11 @@ final class AutoScan
     /** Ничего не читается, а итога всё нет столько минут — подвести самим: силуэт строки не висит вечно. */
     private const STALE_MINUTES = 20;
 
-    /** Дочитывать документы ТС и черновиков, заведённых из писем не раньше стольких дней назад. */
-    private const SWEEP_DAYS = 7;
+    /**
+     * Дочитывать документы ТС и черновиков, заведённых из писем не раньше стольких дней назад: 30 (26.11.2026; было 7 —
+     * чтение, убитое на неделе, не дочитывалось никогда). Проход дешёвый: предметы без нового письма и файла не перебираются.
+     */
+    private const SWEEP_DAYS = 30;
 
     /** Не чаще — пинг списку о ходе фото: они ложатся по одному, а морф списка из сотни строк не бесплатный. */
     private const NUDGE_SECONDS = 2;
@@ -236,10 +239,16 @@ final class AutoScan
             }
             $unread = $files->filter(fn (ScanFile $f) => ! DocumentText::isCached($f) && DocumentText::scannable($f) && ! ScanAttachments::lost($f->scanId()));
             if ($unread->isNotEmpty()) {
+                // Отпечаток «смотрели, читать нечего» — только когда правда нечего: поставили чтение, а его убили (выкладка) —
+                // следующий проход ставит снова, а не через сутки (26.11.2026, владелец: «ждать следующего дня — полный бред»).
                 self::start($model);
                 $started++;
+
+                continue;
             }
-            Cache::put(self::sweptKey($subject->key()), $sig, 86400);
+            // Не прочёлся файл (`lost`, час) — отпечаток на час, а не сутки: потом дочитка возьмёт его снова.
+            $lost = $files->contains(fn (ScanFile $f) => ! DocumentText::isCached($f) && ScanAttachments::lost($f->scanId()));
+            Cache::put(self::sweptKey($subject->key()), $sig, $lost ? 3600 : 86400);
         }
         $prefix = $offers ? 'o:' : 'v:';
         foreach (self::pending() as $key => $since) {

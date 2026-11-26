@@ -259,17 +259,31 @@ final class AutoOffer
      */
     public function catchUp(): int
     {
+        // Последний час — как раньше, каждый проход; что старше часа и ещё не пройдено (`CAUGHT_UP` — номер цепочки) — тоже,
+        // по одному разу, не дальше недели (26.11.2026; было только окно в час: часы простояли дольше — выкладка, перезагрузка,
+        // замок — и письма из простоя не становились черновиками никогда).
+        $cursor = Cache::get(self::CAUGHT_UP) ?? Candidate::where('created_at', '<', now()->subHour())->max('id') ?? 0;
         $done = 0;
-        foreach ($this->waiting(fn ($q) => $q->whereBetween('created_at', [now()->subHour(), now()->subMinutes(2)])->limit(self::CATCH_UP)) as $candidate) {
+        $passed = $cursor;
+        $batch = $this->waiting(fn ($q) => $q->whereBetween('created_at', [now()->subDays(self::FRESH_DAYS), now()->subMinutes(2)])
+            ->where(fn ($w) => $w->where('created_at', '>=', now()->subHour())->orWhere('id', '>', $cursor))->limit(self::CATCH_UP));
+        foreach ($batch as $candidate) {
+            if ($candidate->created_at < now()->subHour()) {
+                $passed = max($passed, $candidate->id);
+            }
             try {
                 $done += (int) (bool) $this($candidate);
             } catch (Throwable $e) {
                 report($e);
             }
         }
+        Cache::forever(self::CAUGHT_UP, $passed);
 
         return $done;
     }
+
+    /** Докуда (номер цепочки старше часа) часы прошли «Из писем» (`catchUp`). */
+    private const CAUGHT_UP = 'auto-offer:caught-up';
 
     /** @return Collection<int, Candidate> ждущие цепочки предложений, старые первыми */
     public function waiting(?callable $scope = null): Collection

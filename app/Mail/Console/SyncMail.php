@@ -4,6 +4,10 @@ namespace App\Mail\Console;
 
 use App\Mail\Account;
 use App\Mail\Jobs\SendMessage;
+use App\Mail\Jobs\ParseMessage;
+use App\Mail\Message;
+use App\Mail\ParseState;
+use Illuminate\Support\Facades\Cache;
 use App\Mail\Sync;
 use App\Support\HoldsSingleRun;
 use Illuminate\Console\Command;
@@ -34,6 +38,15 @@ class SyncMail extends Command
                 } catch (Throwable $e) {
                     $failed = true;
                     $this->error("{$account->email}: {$e->getMessage()}");
+                }
+            }
+
+            // Письмо завели, а разобрать не успели (убили посреди, обрыв) — снова в разбор через 3 минуты, а не ночью в 04:10
+            // (`mail:reconcile`, 26.11.2026). Одно и то же письмо — не чаще раза в 15 минут: кривое не забивает очередь почты.
+            if (! $this->option('account')) {
+                $stuck = Message::where('parse_state', ParseState::Pending)->whereBetween('created_at', [now()->subDay(), now()->subMinutes(3)])->limit(100)->pluck('id');
+                foreach ($stuck as $id) {
+                    Cache::add('mail:reparse:'.$id, true, 900) && ParseMessage::dispatch($id);
                 }
             }
 
