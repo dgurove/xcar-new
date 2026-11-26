@@ -749,10 +749,13 @@ class OfferController
             // Без закупочной — и с ценой продажи (15.11.2026, владелец: оценочная с парковки, а машина на Мигторге, — «пусть
             // останется цена продажи, но пока нет оценочной и закупочной, они черновики без закупочной»; `ParkValue`).
             // И приём закрывался без подтверждений — сначала закупочная («Без подтверждений» — только с ней).
-            'nofloor' => $q->where('offers.state', OfferState::Draft)->whereNull('slot_at')->where(fn ($p) => $p->whereNull('floor_price')->orWhere('floor_price', 0)),
+            // Заявка с парковки (`park_intake_at`) без цены продажи — админу не здесь, а в «Без продажной цены» (26.11.2026, владелец:
+            // «в „Без закупочной“ их 500, их никто не заметит, это потерянные деньги»; `Offer::parkIntake`).
+            'nofloor' => $q->where('offers.state', OfferState::Draft)->whereNull('slot_at')->where(fn ($p) => $p->whereNull('floor_price')->orWhere('floor_price', 0))
+                ->when($admin, fn ($w) => $w->where(fn ($x) => $x->whereNull('offers.park_intake_at')->orWhere('asking_price', '>', 0))),
             // Админу — и черновики на оценке у менеджеров с любой закупочной: они и здесь, и в «На оценке у менеджеров».
             'unpriced' => $q->where('offers.state', OfferState::Draft)->whereNull('slot_at')->where(fn ($p) => $p->whereNull('asking_price')->orWhere('asking_price', 0))
-                ->where(fn ($f) => $f->where('floor_price', '>', 0)->when($admin, fn ($w) => $w->orWhereHas('estimates', fn ($e) => $e->open()))),
+                ->where(fn ($f) => $f->where('floor_price', '>', 0)->when($admin, fn ($w) => $w->orWhereHas('estimates', fn ($e) => $e->open())->orWhereNotNull('offers.park_intake_at'))),
             // Без цены продажи, а менеджер думает или уже оценил (просьба `asked` | `given`); корректировка цены — в «Оцененных».
             'estimating' => self::estimating($q),
             // Приём кончился без подтверждений — в «Без подтверждений» (29.10.2026, начальник), модератору — здесь же: той вкладки у него нет.

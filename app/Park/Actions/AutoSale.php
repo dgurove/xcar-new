@@ -7,7 +7,7 @@ use App\Mail\Scan\AutoScan;
 use App\Offers\Offer;
 use App\Offers\OfferEventType;
 use App\Offers\OfferState;
-use App\Offers\Pricing;
+use App\Offers\ParkValue;
 use App\Park\City;
 use App\Park\EventType;
 use App\Park\RequestType;
@@ -21,14 +21,24 @@ use Throwable;
 /**
  * «Сразу в продажу» (13.10.2026, начальник): ТС вендора с `vendors.auto_sale` (АльфаСтрахование Москва и СПб), что
  * почта завела заявкой на приём, уходит в продажу сама, как кнопкой «В продажу» (`PutOnSale`), — когда документы
- * прочитаны (`AutoScan::finished`), фото доехали (`ImportThreadFiles`) и оценочная известна. Закупочную черновику
- * ставит правило от оценочной (`PutOnSale`, `Pricing::floorFrom`), продажной нет — он встаёт в «Без продажной цены».
+ * прочитаны (`AutoScan::finished`) и фото доехали (`ImportThreadFiles`). Закупочную черновику ставит правило от оценочной
+ * (`PutOnSale`, `Pricing::floorFrom`), продажной нет — он встаёт в «Без продажной цены».
  * Не сработало при письме (выкладка убила задачу, оценочная прочлась вторым проходом) — подбирают часы парковки (`sweep`).
+ *
+ * С 26.11.2026 (владелец по Exeed 785R/046/01928/26: черновик с Мигторга уже был, заявка его не тронула, и машина с оценочной
+ * 2,5 млн лежала в «Без закупочной» среди 500 других — «их никто не заметит, это потерянные деньги»): черновик — и без марки и
+ * оценочной (не распознались — «не распознано» в строке), и у принятой раньше чтения; чтение застряло — через `WAIT` всё
+ * равно. Черновик уже есть — он помечается (`offers.park_intake_at`) и встаёт в «Без продажной цены», пустая оценочная — с
+ * парковки (`ParkValue::adopt`). Каждую ТС — один раз (событие `Proposal` у продажи): правило Мигторга или «Оценочная
+ * неактуальна» снимает метку (`DropValuation`), и машина остаётся в «Без закупочной».
  */
 final class AutoSale
 {
     /** Заявки из писем не старше стольких дней: давние разбирает админ. */
     private const DAYS = 7;
+
+    /** Минут с заявки, после которых черновик встаёт, даже если документы и фото ещё не дочитаны: поля догонят сами. */
+    private const WAIT = 30;
 
     public function __construct(private PutOnSale $sell) {}
 
@@ -43,11 +53,11 @@ final class AutoSale
         if (! $vehicle || ! $this->ready($vehicle)) {
             return null;
         }
-        // У машины уже есть продажа в CRM (её заводили не мы) — плашки нет. Архивную, отменённую и выданную не трогаем:
-        // из архива сама машина не возвращается (их и не берёт `candidates`).
+        // У машины уже есть продажа в CRM (её заводили не мы). Архивную, отменённую и выданную не трогаем: из архива сама
+        // машина не возвращается; идущую (галерея, продажа, сделка) — тоже: ей не место в «Без продажной цены».
         $holder = $vehicle->carRecord()->offer;
-        if ($holder && in_array($holder->state, [OfferState::Archived, OfferState::Cancelled, OfferState::Delivered], true)) {
-            return null;
+        if ($holder) {
+            return $holder->state === OfferState::Draft ? $this->mark($holder) : null;
         }
         try {
             $offer = ($this->sell)($vehicle, null);
@@ -56,12 +66,22 @@ final class AutoSale
 
             return null;
         }
-        if (! $holder) {
-            // Решение за админом: плашка «Принять / Отклонить» в окошке и редакторе.
-            $offer->forceFill(['proposed_at' => now()])->save();
-            $offer->log(OfferEventType::Proposal);
-            AutoScan::arrived($offer);
-        }
+        // Решение за админом: плашка «Принять / Отклонить» в окошке и редакторе.
+        $offer->forceFill(['proposed_at' => now(), 'park_intake_at' => now()])->save();
+        $offer->log(OfferEventType::Proposal);
+        AutoScan::arrived($offer);
+        Nav::forgetStaffCounts();
+
+        return $offer;
+    }
+
+    /** Черновик машины уже был (Мигторг, письмо, руками): в «Без продажной цены», пустая оценочная — с парковки. */
+    private function mark(Offer $offer): Offer
+    {
+        ParkValue::adopt($offer);
+        $offer->refresh()->forceFill(['park_intake_at' => now()])->save();
+        $offer->log(OfferEventType::Proposal, null, ['existing' => true]);
+        AutoScan::arrived($offer);
         Nav::forgetStaffCounts();
 
         return $offer;
@@ -75,17 +95,25 @@ final class AutoSale
 
     private function ready(Vehicle $vehicle): bool
     {
-        return $this->candidates()->whereKey($vehicle->id)->exists()
-            && ! ImportThreadFiles::progressOf($vehicle)
-            && ! AutoScan::busy($vehicle);
+        if (! $this->candidates()->whereKey($vehicle->id)->exists()) {
+            return false;
+        }
+        // Документы и фото ещё едут — ждём, но не дольше `WAIT` с заявки: застрявшее чтение не держит машину вне CRM.
+        $late = $vehicle->requests()->withoutGlobalScope(City::SCOPE)->where('type', RequestType::Intake)->whereNotNull('letter_id')
+            ->where('created_at', '<', now()->subMinutes(self::WAIT))->exists();
+
+        return $late || (! ImportThreadFiles::progressOf($vehicle) && ! AutoScan::busy($vehicle));
     }
 
     private function candidates()
     {
         return Vehicle::withoutGlobalScope(City::SCOPE)
-            ->whereDoesntHave('car.offer')->whereNull('sold_at')->whereCar(fn ($c) => $c->where('value', '>', 0)->whereNotNull('brand_id'))
-            // Только пока в «Заявках на приём»: принятую раньше чтения админ выставляет кнопкой, как прежде.
-            ->where('state', VehicleState::Expected)
+            // Продажи нет или она черновик, ещё не предложенный из заявки (`Proposal` — один раз на машину).
+            ->where(fn ($v) => $v->whereDoesntHave('car.offer')->orWhereHas('car.offer', fn ($o) => $o->where('offers.state', OfferState::Draft)
+                ->whereNull('offers.park_intake_at')->whereDoesntHave('events', fn ($e) => $e->where('type', OfferEventType::Proposal))))
+            ->whereNull('sold_at')
+            // Ждёт приёма или уже принята (FAW Z691/046/10289/26: приняли раньше, чем вписали марку, — черновика не было вовсе).
+            ->whereIn('state', [VehicleState::Expected, VehicleState::Stored])
             ->whereHas('vendor', fn ($q) => $q->where('auto_sale', true))
             // Отклонили или сняли с продажи — больше сама не выставляется.
             ->whereDoesntHave('events', fn ($q) => $q->where('type', EventType::Unlinked))

@@ -43,6 +43,35 @@ final class ParkValue
         $offer->value_from = self::PARK;
     }
 
+    /**
+     * Черновик, что был до заявки на приём (`Park\Actions\AutoSale`, 26.11.2026): у него нет оценочной — берёт оценочную ТС с её
+     * датой, если лот на Мигторге не появился позже неё (`usable`) и её не снимали как неактуальную; закупочная — за ней
+     * (`UpdateOffer`, если не вписана рукой).
+     */
+    public static function adopt(Offer $offer): void
+    {
+        $car = $offer->carRecord();
+        $dropped = $offer->value === null && $offer->value_at !== null;
+        if ($dropped || $offer->costDeal()) {
+            return;
+        }
+        // Оценочная уже стоит (взяла при заведении, `inherit`), а закупочной нет — закупочная от неё по правилу.
+        if ($offer->value && ! $offer->floor_price) {
+            Pricing::valued($offer) && app(UpdateOffer::class)($offer, ['floor_price' => Pricing::floorFrom((int) $offer->value, Pricing::rulesFor($offer))], null, ['why' => 'Закупочная от оценочной']);
+
+            return;
+        }
+        if ($offer->value || ! $car->exists || ! self::usable($car)) {
+            return;
+        }
+        self::$writing = true;
+        try {
+            app(UpdateOffer::class)($offer, ['value' => (int) $car->value, 'value_from' => self::PARK], null, ['why' => 'Оценочная с парковки', 'as_of' => $car->value_at]);
+        } finally {
+            self::$writing = false;
+        }
+    }
+
     /** Правка оценочной на парковке идёт в продажу: у продажи оценочной нет или она с парковки, а машины нет на Мигторге. */
     public static function follows(Offer $offer): bool
     {

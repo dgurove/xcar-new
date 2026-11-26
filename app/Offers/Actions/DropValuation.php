@@ -37,6 +37,12 @@ final class DropValuation
         // Закупочная от оценочной (по правилу предложения, вендора или ровно она) — уходит с ней; вписанная рукой остаётся.
         $auto = ! $floor || in_array($floor, [$value, Pricing::floorFrom($value), Pricing::floorFrom($value, Pricing::rulesFor($offer))], true);
         ($this->update)($offer, ['value' => null, 'value_from' => null] + ($auto ? ['floor_price' => null] : []), $by, ['why' => $why]);
+        // Пришла заявкой с парковки (`park_intake_at`) — метка снимается: ждём оценку поставщика в «Без закупочной» (26.11.2026,
+        // владелец: «те, что убираются по правилу Мигторга, должны быть во вкладке „Без закупочной“»). Обычным сохранением — вкладка
+        // сменилась, `tab_at` новый.
+        if ($offer->park_intake_at !== null) {
+            $offer->forceFill(['park_intake_at' => null])->save();
+        }
         // Момент снятия — дата оценочной: что старше, не встанет.
         $offer->forceFill(['value_at' => now()])->saveQuietly();
 

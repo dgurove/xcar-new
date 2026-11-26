@@ -71,7 +71,9 @@ final class AutoScan
         $read = $files->filter(fn (ScanFile $f) => DocumentText::isCached($f))->count();
         Cache::put(self::key($subject->key()), ['pass' => 'docs', 'i' => $read, 'n' => $files->count()], self::TTL);
         self::register($subject->key());
-        Reader::read($subject, $ids, background: true);
+        // ТС заявки парковки — в людскую очередь `scan` (26.11.2026: заявка Альфы ждала в `scan-bg` двое суток за дочиткой
+        // черновиков, и машина с оценочной 2,5 млн лежала в «Без закупочной»). Заявок в день единицы, а ждут они деньги.
+        Reader::read($subject, $ids, background: $model instanceof Offer);
         // Читать нечего или всё уже в кеше — итог сразу, задачи не будет.
         if (! ScanAttachments::reading(Reader::files($subject))) {
             self::finished($subject);

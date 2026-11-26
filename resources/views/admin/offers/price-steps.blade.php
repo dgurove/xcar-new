@@ -24,6 +24,16 @@
             <h2 class="detail-section !mb-0 flex flex-wrap items-baseline gap-x-1">Цены @include('admin.offers.fields.vat-check', ['form' => $form])</h2>
         </div>
         @include('admin.offers.revived')
+        {{-- Пришла заявкой с парковки, а из заявки не всё распозналось (26.11.2026, владелец: «писать, что не распознано, чтобы
+             вручную заполнили»; `Offer::parkIntake`). --}}
+        @php
+            $unread = auth()->user()?->canManageCrm() && $offer->parkIntake()
+                ? array_keys(array_filter(['марка' => ! $offer->brand_id && ! $offer->carRecord()->no_brand, 'оценочная' => ! $offer->value, 'закупочная' => ! ($offer->floor_price > 0)]))
+                : [];
+        @endphp
+        @if ($unread)
+            <p class="text-sm text-danger">Не распознано: {{ implode(', ', $unread) }}</p>
+        @endif
         {{-- Без марки не выставить (12.11.2026, начальник): марка и модель — тут, полями формы окна; у прицепа или кузова без
              шильдика — «Марки нет» (`OfferController::noBrand`). В «ТС» ниже их тогда нет (`x-car.blocks without`). --}}
         @if ($brandTop ?? false)

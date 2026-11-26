@@ -44,6 +44,11 @@ final class Reader
             $ids = array_values(array_intersect($ids, $subject->files()->map->scanId()->all()));
             Cache::put(self::moreKey($subject), array_values(array_unique([...self::more($subject), ...$ids])), 86400);
         }
+        // Фоновое чтение предмета, у которого задача уже ждёт в очереди, — не второй раз: метки файлов живут 6 ч, очередь
+        // бывала дольше, и дочитка часов клала дубли (26.11.2026: одни и те же файлы по 3–4 задачи).
+        if ($background && ! $ids && ScanAttachments::queuedFor($subject)) {
+            return self::live($subject);
+        }
         $files = self::files($subject)->filter(fn (ScanFile $f) => ! $ids || in_array($f->scanId(), $ids, true));
         $busy = ScanAttachments::reading($files);
         ScanAttachments::enqueue($subject, $files->filter(fn (ScanFile $f) => ! DocumentText::isCached($f) && ! in_array($f->scanId(), $busy, true))->map->scanId()->values()->all(), $background);

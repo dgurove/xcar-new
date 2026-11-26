@@ -36,6 +36,8 @@
     // и на телефоне справа стоит закупочная.
     $nofloor = $draft && ! $offer->floor_price && ! $offer->isScheduled();
     $floorSide = (bool) $table->context('floorSide');
+    // Пришла заявкой с парковки (`Offer::parkIntake`, 26.11.2026): чего не распознали — словами, чтобы вписали руками.
+    $unread = $admin && $offer->parkIntake();
     $has = fn (string $k) => $table->has($k);
     $when = match ($table->context('when')) {
         'published' => $offer->published_at,
@@ -96,8 +98,10 @@
 @elseif ($endCol === 'price')
     @if ($admin && ! $busy && ($margin = $offer->marginMark()))<x-offer.margin :m="$margin"/>@endif
     @if ($count)<span class="nums {{ $gallery ? 'text-accent-text' : 'text-urgent' }}">{{ $countWord }}</span>
-    @elseif ($offer->floor_price && $has('floor') && ! ($correcting && $waits))<span @class(['cell-main' => $unpriced]) @if ($busy) data-arrive-count @endif>{{ \App\Support\Money::nums($offer->floor_price) }}</span>@endif
+    @elseif ($offer->floor_price && $has('floor') && ! ($correcting && $waits))<span @class(['cell-main' => $unpriced]) @if ($busy) data-arrive-count @endif>{{ \App\Support\Money::nums($offer->floor_price) }}</span>
+    @elseif ($unread && $has('floor'))<span class="text-danger">не распознано</span>@endif
 @elseif ($endCol === 'floor' && $offer->floor_price)<span class="cell-main" @if ($busy) data-arrive-count @endif>{{ \App\Support\Money::nums($offer->floor_price) }}</span>
+@elseif ($endCol === 'floor' && $unread)<span class="text-danger">не распознано</span>
 @endif
 @php $endBottom = trim(ob_get_clean()); @endphp
 <tr data-detail-key="{{ $n }}" data-search-row id="{{ ($gallery ? 'gallery-' : 'admin-offer-') }}{{ $n }}" data-offer-number="{{ $n }}" @if ($todo) data-todo @endif @if ($offer->claim_ref_key) data-flip="c:{{ $offer->claim_ref_key }}" @endif @if ($arrive) data-controller="arrive" data-arrive-state-value="{{ $arriving }}" data-arrive-subject-value="o:{{ $offer->id }}" @endif @class(['arrive arrive--offer' => $arrive, 'arrive--'.$arriving => $busy, 'arrive--busy' => $busy])>
@@ -112,7 +116,7 @@
         @if ($busy && ! $offer->brand_id)
         <x-ui.row-link :key="$n"><span class="cell-title"><span class="skeleton arrive-bar w-40 max-w-full"></span></span></x-ui.row-link>
         @else
-        <x-ui.row-link :key="$n"><span class="cell-title"><x-ui.cat-icon :category="$offer->category()"/><span class="cell-name arrive-late">{{ $offer->title() }}@if ($year = $offer->carRecord()->year)<span class="cell-year"> {{ $year }}</span>@endif</span>@if ($offer->recommended)<x-offer.recommended/>@endif{{ "" }}@if ($offer->isUrgent())<x-offer.urgent/>@endif{{ "" }}@if ($offer->auctionPlanned())<x-offer.auction/>@endif{{ "" }}@if ($admin && $offer->proposed())<span class="ml-1.5 inline-flex shrink-0 text-accent-text" title="Предложено из заявок на приём" aria-label="Предложено из заявок на приём"><x-ui.spark class="size-4"/></span>@endif{{ "" }}@if ($admin && $offer->awaitingPark())<x-offer.awaiting/>@endif<x-car.keys :count="$offer->keys_count"/><x-ui.links :offer="$offer"/>@if ($noVin && ! $has('manager'))<s class="ml-1.5 shrink-0 text-sm text-ink-dim" title="VIN нет">VIN</s>@endif{{ "" }}@if ($offer->intake_closed_at && $offer->state === \App\Offers\OfferState::Draft && request()->query('preset') !== 'done' && $offer->floor_price && ! $has('state'))<span class="ml-1.5 shrink-0 text-sm text-urgent">приём закрыт</span>@endif{{ "" }}@if ($offer->partner_price_at)<span class="ml-1.5 shrink-0 text-sm text-ink-muted" title="Поставщик вписал цену, но ещё не отправил — может поправить">у поставщика</span>@endif{{ "" }}@unless ($has('binding') || $has('vendor'))<x-offer.binding :offer="$offer" icon class="max-sm:hidden"/>@endunless{{ "" }}@if ($endCol)<span class="line-end sm:hidden">{!! $endTopLine !!}</span>@endif</span></x-ui.row-link>
+        <x-ui.row-link :key="$n"><span class="cell-title"><x-ui.cat-icon :category="$offer->category()"/><span class="cell-name arrive-late">@if ($unread && ! $offer->brand_id && ! $offer->carRecord()->no_brand)<span class="text-ink-muted">Марка не распознана</span>@else{{ $offer->title() }}@endif{{ "" }}@if ($year = $offer->carRecord()->year)<span class="cell-year"> {{ $year }}</span>@endif</span>@if ($offer->recommended)<x-offer.recommended/>@endif{{ "" }}@if ($offer->isUrgent())<x-offer.urgent/>@endif{{ "" }}@if ($offer->auctionPlanned())<x-offer.auction/>@endif{{ "" }}@if ($admin && $offer->proposed())<span class="ml-1.5 inline-flex shrink-0 text-accent-text" title="Предложено из заявок на приём" aria-label="Предложено из заявок на приём"><x-ui.spark class="size-4"/></span>@endif{{ "" }}@if ($admin && $offer->awaitingPark())<x-offer.awaiting/>@endif<x-car.keys :count="$offer->keys_count"/><x-ui.links :offer="$offer"/>@if ($noVin && ! $has('manager'))<s class="ml-1.5 shrink-0 text-sm text-ink-dim" title="VIN нет">VIN</s>@endif{{ "" }}@if ($offer->intake_closed_at && $offer->state === \App\Offers\OfferState::Draft && request()->query('preset') !== 'done' && $offer->floor_price && ! $has('state'))<span class="ml-1.5 shrink-0 text-sm text-urgent">приём закрыт</span>@endif{{ "" }}@if ($offer->partner_price_at)<span class="ml-1.5 shrink-0 text-sm text-ink-muted" title="Поставщик вписал цену, но ещё не отправил — может поправить">у поставщика</span>@endif{{ "" }}@unless ($has('binding') || $has('vendor'))<x-offer.binding :offer="$offer" icon class="max-sm:hidden"/>@endunless{{ "" }}@if ($endCol)<span class="line-end sm:hidden">{!! $endTopLine !!}</span>@endif</span></x-ui.row-link>
         @endif
         {{-- Телефон: строка переносится, а не режется «…» (владелец 04.10.2026: «поля не должны исчезать»); город, даты и
              прочие столбцы — в «Подробной таблице». --}}
@@ -174,7 +178,7 @@
     {{-- Закупочная на месте цены («Без закупочной цены») — кто завёл и когда стоит при ней, как при цене. --}}
     <td class="{{ $col->classes() }} phone-off">@if ($busy && $nofloor)<span class="skeleton arrive-bar w-16"></span>@elseif ($offer->floor_price)<span @if ($busy) data-arrive-count @endif>{{ \App\Support\Money::nums($offer->floor_price) }}</span>@endif</td>
     @else
-    <td class="{{ $col->classes() }}">@if ($offer->floor_price)<span @if ($busy) data-arrive-count @endif>{{ \App\Support\Money::nums($offer->floor_price) }}</span>@endif</td>
+    <td class="{{ $col->classes() }}">@if ($offer->floor_price)<span @if ($busy) data-arrive-count @endif>{{ \App\Support\Money::nums($offer->floor_price) }}</span>@elseif ($unread)<span class="text-danger">не распознано</span>@endif</td>
     @endif
         @break
         @case('price')

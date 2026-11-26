@@ -89,7 +89,7 @@ class Offer extends Model
 
     /** Поля, от которых зависит вкладка CRM или вид строки в ней (`saved` → живое обновление строки). */
     private const ROW_FIELDS = ['state', 'tab_at', 'number', 'floor_price', 'asking_price', 'publish_price', 'bids_close_at', 'slot_at',
-        'auction_at', 'auction_planned_at', 'gallery_from', 'gallery_until', 'urgent_at', 'proposed_at', 'vendor_id', 'recommended', 'binding_until'];
+        'auction_at', 'auction_planned_at', 'gallery_from', 'gallery_until', 'urgent_at', 'proposed_at', 'park_intake_at', 'vendor_id', 'recommended', 'binding_until'];
 
     /** Машина (`Cars\Car`) — с каждым предложением: название, VIN, фото. */
     protected $with = ['car'];
@@ -310,6 +310,7 @@ class Offer extends Model
             'refused_at' => 'datetime',
             'lapse_since' => 'datetime',
             'proposed_at' => 'datetime',
+            'park_intake_at' => 'datetime',
             'floor_price' => 'int',
             'publish_price' => 'int',
             'asking_price' => 'int',
@@ -1625,10 +1626,21 @@ class Offer extends Model
             ($a['auction_at'] ?? null) !== null && $state === OfferState::Draft->value => 'auction',
             ($a['slot_at'] ?? null) !== null => 'slots',
             $state === OfferState::Gallery->value => 'gallery',
+            // Заявка с парковки без цены продажи — «Без продажной цены» и без закупочной (`parkIntake`).
+            ($a['park_intake_at'] ?? null) !== null && (int) ($a['asking_price'] ?? 0) <= 0 => 'unpriced',
             (int) ($a['floor_price'] ?? 0) <= 0 => 'nofloor',
             (int) ($a['asking_price'] ?? 0) > 0 => 'priced',
             default => 'unpriced',
         };
+    }
+
+    /**
+     * Черновик пришёл заявкой с парковки и ещё без цены продажи (`park_intake_at`, `Park\Actions\AutoSale`, 26.11.2026): админу —
+     * в «Без продажной цены» и без закупочной, нераспознанное — словами «не распознано» в строке и окне.
+     */
+    public function parkIntake(): bool
+    {
+        return $this->park_intake_at !== null && $this->state === OfferState::Draft && ! ($this->asking_price > 0);
     }
 
     public function crmTab(?User $user = null): string
@@ -1648,11 +1660,11 @@ class Offer extends Model
                 $this->slot_at !== null => $presets['slots'],
                 $this->state === OfferState::Gallery => 'Галерея',
                 // Без закупочной — «Без закупочной», и с ценой продажи и закрытым приёмом (`OfferController::scopeFor`).
-                ! ($this->floor_price > 0) => $presets['nofloor'],
+                ! ($this->floor_price > 0) && ! ($user?->canManageCrm() && $this->parkIntake()) => $presets['nofloor'],
                 $this->intake_closed_at !== null && $user?->canManageCrm() => $presets['done'],
                 $this->asking_price > 0 => $presets['priced'],
                 $user?->canManageCrm() && $this->onEstimate() => $presets['estimating'],
-                $this->floor_price > 0 => $presets['unpriced'],
+                $this->floor_price > 0 || $this->parkIntake() => $presets['unpriced'],
                 default => $presets['nofloor'],
             },
             OfferState::Open => $user?->canManageCrm() && ($this->relationLoaded('bids') ? $this->bids->contains('state', BidState::Active) : self::hasActiveBids($this->id))
