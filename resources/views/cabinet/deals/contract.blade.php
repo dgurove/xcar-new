@@ -17,7 +17,7 @@
     $gap = $buyer?->party?->gapWord();
     $mine = \App\Support\People::buyersOf($me);
     $prime = $deal->isPrime();
-    $editable = $deal->isLive();
+    $editable = $deal->holderEditable();
     // Гаражная «платит менеджер»: ДКП ПРАЙМ с ним самим — выбирать покупателя нечего, нужны только его данные. Машина в гараже
     // покупателя (`forGarageBuyer`) — договор на его клиента (24.11.2026), выбор и «Другой покупатель» как у сделки (26.11.2026).
     $garage = $deal->isGarage() && ! $deal->forGarageBuyer();

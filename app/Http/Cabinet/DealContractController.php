@@ -37,7 +37,7 @@ class DealContractController
     public function update(Request $request, Deal $deal, SaveDealContract $save)
     {
         // Покупатель для счёта поставщика без договора — тоже здесь (03.11.2026, `Deal::collectsBuyer`).
-        abort_unless(($deal->collectsBuyer() || $deal->contract?->buyer_user_id) && $deal->isLive(), 404);
+        abort_unless(($deal->collectsBuyer() || $deal->contract?->buyer_user_id) && $deal->holderEditable(), 404);
         $new = $request->input('buyer_id') === 'new';
         $rules = ['buyer_id' => ['nullable', 'string'], 'payer' => ['nullable', 'in:buyer,manager']];
         if ($new) {

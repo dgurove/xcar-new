@@ -1776,6 +1776,17 @@ class Deal extends Model implements HasMedia
         return $this->closed_at === null;
     }
 
+    /**
+     * Держатель (менеджер или покупатель с гаражом) ещё выбирает покупателя по договору и правит его данные: сделка идёт — или
+     * она закрыта (поставщику заплатили), а машина покупателя с гаражом ещё продаётся (26.11.2026: клиент у него появляется,
+     * когда продаст, — с закрытием сделки выбор пропадал).
+     */
+    public function holderEditable(): bool
+    {
+        return $this->isLive() || ($this->state !== DealState::Cancelled && $this->forGarageBuyer()
+            && ($car = $this->garageCar) && $car->state !== \App\Garage\CarState::Settled);
+    }
+
     /** Параллельные той же машины (у главной): метка «+N» в «Сделках» CRM. */
     public function parallels(): HasMany
     {

@@ -81,6 +81,11 @@ final class Turn
 
         return match (true) {
             $car->isWaiting() => PickupState::of($car->offer, $viewer)[1] === 'urgent' ? new self(true, 'Забрать ТС', null, null) : null,
+            // Покупатель с гаражом продаёт после закрытой сделки — его ход тот же, что при открытой (`garageTask`, 26.11.2026).
+            $car->forBuyer() && in_array($car->state, [\App\Garage\CarState::Selling, \App\Garage\CarState::Sold], true)
+                && in_array($gap = $car->deal?->invoiceGap(), ['price', 'buyer', 'passport'], true) => new self(true, match ($gap) {
+                    'price' => 'Указать цену продажи', 'buyer' => 'Указать покупателя', default => 'Приложить паспорт покупателя',
+                }, null, null),
             $car->state === \App\Garage\CarState::Sold && $car->settledByDeal() => match ($car->deal?->invoiceGap()) {
                 'buyer' => new self(true, 'Указать покупателя', null, null),
                 'passport' => new self(true, 'Приложить паспорт покупателя', null, null),
@@ -204,7 +209,10 @@ final class Turn
      */
     private static function garageTask(Deal $deal, Position $position): ?array
     {
-        if (! $deal->isGarage() || ! $position->stage?->isPayStep() || ! $deal->hasContract()) {
+        // Покупатель с гаражом (26.11.2026): его ход — цена продажи и клиент, как только машина в продаже, на каком бы шаге со
+        // страховой ни стояла сделка (она ждёт нашей оплаты поставщику, и шага оплаты он не видит никогда).
+        $holder = $deal->forGarageBuyer() && in_array($deal->garageCar?->state, [\App\Garage\CarState::Selling, \App\Garage\CarState::Sold], true);
+        if (! $deal->isGarage() || ! ($holder || $position->stage?->isPayStep()) || ! $deal->hasContract()) {
             return null;
         }
 

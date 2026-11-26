@@ -376,7 +376,7 @@ class DealController
     public function buyerNew(Request $request, Deal $deal)
     {
         $me = $request->user();
-        abort_unless($deal->isLive() && $deal->buyer_id === $me->id && ! $me->isSuperBuyer(), 404);
+        abort_unless($deal->holderEditable() && $deal->buyer_id === $me->id && ! $me->isSuperBuyer(), 404);
         $kind = $request->validate(['kind' => ['required', 'in:person,ip,company']])['kind'];
         $as = match ($kind) {
             'ip' => PartyKind::Entrepreneur, 'company' => PartyKind::Company, default => PartyKind::Person,

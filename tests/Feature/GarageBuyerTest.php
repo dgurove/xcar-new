@@ -190,6 +190,40 @@ class GarageBuyerTest extends TestCase
         $this->actingAs($buyer)->get(self::SITE.'/buyers/invites')->assertNotFound();
     }
 
+    /**
+     * После закрытой сделки (поставщику заплатили) держатель, пока машина продаётся, по-прежнему называет клиента; его ход — словами;
+     * оплаченная до 26.11 без цены продажи получает её из оплаты (`garage:holder-sale`).
+     */
+    public function test_holder_keeps_deal_after_close_and_paid_gets_price(): void
+    {
+        $this->buyer->update(['garage_enabled' => true]);
+        $offer = $this->draft();
+        $this->give($offer)->assertSessionHasNoErrors();
+        $car = Car::where('offer_id', $offer->id)->firstOrFail();
+        app(AgreeDeal::class)($car->deal->fresh(), $this->admin);
+        $car->moveTo(CarState::Selling);
+        $car->deal->finish();
+        $deal = $car->deal->fresh();
+        $this->assertFalse($deal->isLive());
+        $this->assertTrue($deal->holderEditable());
+        $view = \App\Garage\GarageView::for($car->fresh(), $this->buyer->fresh());
+        $this->assertSame('Указать цену продажи', \App\Offers\Turn::ofGarage($car->fresh(), $this->buyer->fresh(), $view)?->title);
+
+        $n = $offer->fresh()->number;
+        $this->actingAs($this->buyer)->put(self::SITE.'/deals/'.$deal->id.'/contract', ['buyer_id' => 'me'])->assertSessionHasNoErrors();
+        $this->assertSame($this->buyer->id, \App\Offers\DealContract::for($deal->fresh())->buyer_user_id);
+        $this->actingAs($this->buyer)->get(self::SITE.'/garage/cars/'.$n)->assertOk()->assertSee('ООО «ПРАЙМ»', false);
+
+        // Оплачено по старой цене, цены продажи нет — команда ставит её из оплаты, договор встаёт на неё же.
+        $this->actingAs($this->buyer)->put(self::SITE.'/garage/cars/'.$n.'/sale-price', ['sale_price' => '1 000 000'])->assertSessionHasNoErrors();
+        $invoice = Invoice::where('deal_id', $deal->id)->where('kind', ChargeKind::Sale)->where('state', '!=', InvoiceState::Void)->firstOrFail();
+        app(RecordPayment::class)($invoice, $this->admin, 1000000, null, PaymentSource::Bank);
+        $deal->fresh()->update(['amount' => null]);
+        $this->artisan('garage:holder-sale', ['--apply' => true])->assertSuccessful();
+        $this->assertSame(1000000, (int) $deal->fresh()->amount);
+        $this->assertSame(1000000, (int) \App\Offers\DealContract::for($deal->fresh())->price);
+    }
+
     /** Покупатель без менеджера — только свой гараж: ни предложений, ни галереи, шторка сохраняет «Без менеджера» (21.10.2026). */
     public function test_buyer_without_manager_sees_only_garage(): void
     {

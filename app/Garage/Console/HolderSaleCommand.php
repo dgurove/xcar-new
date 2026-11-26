@@ -13,8 +13,8 @@ use Illuminate\Console\Command;
 /**
  * Живые сделки покупателей с гаражом — на цену продажи (26.11.2026, владелец: «он не должен нигде видеть цену закупа», вознаграждения
  * нет): вознаграждение снимается; счёт на его цену гаража, по которому не платили, аннулируется, если не совпадает с ценой продажи
- * его клиенту, — новый встанет сам, когда будут цена и клиент (`SyncDealInvoices::prime`). Оплаченные не трогаются. Без `--apply` —
- * список.
+ * его клиенту, — новый встанет сам, когда будут цена и клиент (`SyncDealInvoices::prime`). Оплаченные не трогаются; у оплаченной без
+ * цены продажи цена — сумма оплаченного счёта (деньги уже пришли, договор встаёт на неё же). Без `--apply` — список.
  */
 class HolderSaleCommand extends Command
 {
@@ -26,17 +26,20 @@ class HolderSaleCommand extends Command
     {
         $apply = (bool) $this->option('apply');
         $by = User::withRole(\App\Users\Role::Admin)->orderBy('id')->firstOrFail();
-        $deals = Deal::live()->whereNotNull('buyer_id')->with(['offer', 'buyer', 'contract', 'garageCar'])->orderBy('id')->get()
-            ->filter(fn (Deal $d) => $d->forGarageBuyer());
+        // Идущие и закрытые, где машина ещё продаётся (`Deal::holderEditable`).
+        $deals = Deal::whereNotNull('buyer_id')->whereHas('garageCar')->with(['offer', 'buyer', 'contract', 'garageCar'])->orderBy('id')->get()
+            ->filter(fn (Deal $d) => $d->forGarageBuyer() && $d->holderEditable());
         foreach ($deals as $deal) {
             $car = $deal->garageCar;
             $invoice = $car?->holderInvoice();
+            // Оплаченный счёт за ТС без цены продажи — цена из оплаты.
+            $fromPaid = $deal->amount === null && $invoice?->state === InvoiceState::Paid ? (int) round((float) $invoice->total) : null;
             $paid = (bool) $car?->buyerHasPaid();
             $client = $deal->payer_party_id || $deal->contract?->buyer_user_id;
             $stale = $invoice && ! $paid && $invoice->state !== InvoiceState::Paid
                 && ($deal->amount === null || ! $client || abs((float) $invoice->total - (float) $deal->amount) >= 0.01);
             $this->line($deal->offer?->number.' '.$deal->offer?->title().' — '.$deal->buyer?->name
-                .', цена продажи '.($deal->amount !== null ? Money::rub($deal->amount) : 'нет')
+                .', цена продажи '.($deal->amount !== null ? Money::rub($deal->amount) : ($fromPaid ? 'нет → '.Money::rub($fromPaid).' из оплаты' : 'нет'))
                 .($deal->commission !== null ? ', вознаграждение '.Money::rub($deal->commission).' → снять' : '')
                 .($invoice ? ', счёт '.$invoice->label().' '.Money::rub($invoice->total).($paid ? ' (платили — не трогаю)' : ($stale ? ' → аннулировать' : ' — оставить')) : ', счёта нет')
                 .($client ? '' : ', клиента нет'));
@@ -44,6 +47,7 @@ class HolderSaleCommand extends Command
                 continue;
             }
             $deal->commission !== null && $deal->update(['commission' => null]);
+            $fromPaid && $deal->update(['amount' => $fromPaid]);
             $stale && $void($invoice, $by, 'Счёт покупателю с гаражом — по цене продажи его клиенту');
             $sync($deal->fresh(), $by);
         }

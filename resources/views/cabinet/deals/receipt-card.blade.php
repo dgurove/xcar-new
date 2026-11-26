@@ -29,8 +29,10 @@
     $cbReady = (bool) $cb?->party?->readyAsBuyer();
     // Покупатель — сразу с открытия сделки (24.11.2026, владелец: «не после „Беру в работу“, а изначально, как только подтверждение
     // приняли»; до того — с согласия, `Deal::buyerOpen`). Спрашивать о нём (уведомления, «ваш ход») по-прежнему с согласия.
-    $buyerShown = $cb || ($live && ($deal->hasContract() || $deal->needsBuyer()));
-    $pickHere = $live && $mine && ! $me->isSuperBuyer() && (! $cb || $cb->isBuyerDraft());
+    // Покупателя выбирают и после закрытия сделки, пока машина покупателя с гаражом продаётся (`Deal::holderEditable`).
+    $picking = $deal->holderEditable();
+    $buyerShown = $cb || ($picking && ($deal->hasContract() || $deal->needsBuyer()));
+    $pickHere = $picking && $mine && ! $me->isSuperBuyer() && (! $cb || $cb->isBuyerDraft());
     $left = fn ($i) => $i ? round($i->remaining() - $i->claimed(), 2) : 0;
     $payable = fn ($i) => $i && $mine && $i->state === InvoiceState::Issued && $left($i) > 0;
     // Состояние счёта словом справа от строки «кому» (сумма — числом рядом): оплачено, осталось, ждём подтверждения.
@@ -194,7 +196,7 @@
 
             {{-- Договор — сразу за счётом, своей группой: «в обработке», «готов» (файл Word или PDF), «подписан». Подписанный — строкой
                  и кнопкой «Приложить подписанный» / «Приложить ещё» (на шаге договора — лаймовой). --}}
-            @if ($contractRow && ($cb || $signedFiles->isNotEmpty()) && ($live || $contract->shownToManager()))
+            @if ($contractRow && ($cb || $signedFiles->isNotEmpty()) && ($picking || $contract->shownToManager()))
                 @php
                     $shown = $contract->shownToManager() || ($contract->shown_at && \App\Offers\ContractEdit::has($deal));
                     $dealWord = match (true) {

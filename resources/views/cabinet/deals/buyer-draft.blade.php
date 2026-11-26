@@ -7,7 +7,7 @@
     $draft = \App\Offers\DealContract::for($deal)->draftParty;
     $draftErrors = old('buyer_id') === 'draft' && collect($errors->keys())->contains(fn ($k) => str_starts_with($k, 'buyer'));
 @endphp
-@if ($draft && $deal->isLive())
+@if ($draft && $deal->holderEditable())
     <div class="contents" data-controller="sheet" data-action="deal-buyer-new:open@window->sheet#open">
         <x-ui.sheet id="deal-buyer-new" title="Новый покупатель" :open="$draftErrors || session('open_sheet') === 'deal-buyer-new'" tall>
             <form method="post" action="/deals/{{ $deal->id }}/contract" class="flex flex-col gap-3" id="deal-buyer-new-form">
