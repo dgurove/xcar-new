@@ -3,7 +3,8 @@
      без слова «просрочено») и кнопка дела. Рыжего нет: вся группа — наш ход. Столбцы — `DealController::table('us')`. --}}
 {{-- debt — долг сделки во вкладке «Менеджер должен нам» (`DealDebt`, 24.11.2026, владелец: «непонятно сколько и за что»):
      столбцы «За что», «Должен», «Срок» вместо «Ждёт»; на телефоне под названием — «за ТС 620 000 ₽», справа — срок цветом или кнопка. --}}
-@props(['deal', 'todo', 'table', 'debt' => null])
+{{-- docs — документы шага «Оригиналы» (`DealTabs`, 26.11.2026): столбец «Документы» значками, как у документа в шаге. --}}
+@props(['deal', 'todo', 'table', 'debt' => null, 'docs' => null])
 @php
     $offer = $deal->offer;
     $position = $offer->position();
@@ -35,7 +36,7 @@
         {{-- Телефон: под названием — за что и срок цветом; сумма или кнопка — справа (ячейка «Должен»). --}}
         <span class="cell-sub sm:hidden">@if ($debt){{ $debt->what ?: 'долг' }}@if (empty($todo['issue']) && empty($todo['claim'])) <span class="inline-block whitespace-nowrap {{ $debt->dueTone() }}">{{ $debt->dueWord() }}</span>@else <span class="nums">{{ \App\Support\Money::rub($debt->owed) }}</span>@endif @endif</span>
         @else
-        <span class="cell-sub sm:hidden">@if ($ask){{ \Illuminate\Support\Str::ucfirst($ask->phrase()) }}@else<x-vendor.ref :vendor-id="$offer->vendor_id" :ref="$offer->claim_ref">@if ($burning)<x-offer.binding :offer="$offer" icon/>@endif</x-vendor.ref>@endif{{ "" }}@if ($wait && ! $inButton) <span class="inline-block whitespace-nowrap {{ $tone }}">{!! $wait !!}</span>@endif</span>
+        <span class="cell-sub sm:hidden">@if ($ask){{ \Illuminate\Support\Str::ucfirst($ask->phrase()) }}@else<x-vendor.ref :vendor-id="$offer->vendor_id" :ref="$offer->claim_ref">@if ($burning)<x-offer.binding :offer="$offer" icon/>@endif</x-vendor.ref>@endif{{ "" }}@if ($docs)<span class="ms-1.5 inline-flex gap-1 align-middle">@foreach ($docs as $o)<x-ui.icon :name="$o->icon()[0]" class="size-4 {{ $o->icon()[1] }}"/>@endforeach</span>@endif{{ "" }}@if ($wait && ! $inButton) <span class="inline-block whitespace-nowrap {{ $tone }}">{!! $wait !!}</span>@endif</span>
         @endif
     </td>
         @break
@@ -44,6 +45,13 @@
         @break
         @case('asked')
     <td class="{{ $col->classes() }}">{{ $ask ? \Illuminate\Support\Str::ucfirst($ask->phrase()) : '' }}</td>
+        @break
+        @case('docs')
+    <td class="{{ $col->classes() }}"><span class="inline-flex gap-1 align-middle">
+        @foreach ($docs ?? [] as $o)
+            <span title="{{ $o->title }}: {{ $o->place() }}"><x-ui.icon :name="$o->icon()[0]" class="size-[18px] {{ $o->icon()[1] }}"/></span>
+        @endforeach
+    </span></td>
         @break
         @case('manager')
     <td class="{{ $col->classes() }}"><x-cell.person :user="$deal->buyer" from="lg"/></td>

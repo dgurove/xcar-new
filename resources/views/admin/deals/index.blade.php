@@ -4,7 +4,7 @@
     // Столбец кнопок — только когда в списке есть хоть одна кнопка дела (18.11.2026, владелец про «Ждём ответа»: «убери пустое
     // место, кнопки там не нужны»).
     $actions = $groups !== null && collect($groups)->contains(fn ($g) => collect($g['rows'] ?? [])->contains(fn ($r) => ! empty($r['todo']['button'])));
-    $table = \App\Http\Admin\DealController::table($groups !== null, $actions, ($preset ?? null) === 'extra', in_array($preset ?? null, ['paying', 'paying_fee'], true) && $debts !== null);
+    $table = \App\Http\Admin\DealController::table($groups !== null, $actions, ($preset ?? null) === 'extra', in_array($preset ?? null, ['paying', 'paying_fee'], true) && $debts !== null, ($preset ?? null) === 'originals');
 @endphp
 {{-- Вкладки сделки в «Предложениях» (16.11.2026: сделка — состояние предложения, `OfferController::DEAL_TABS`): то же колесо
      с разделами, что у предложений; вкладка — этап маршрута (`DealTabs`). Внутри — сначала наши дела зелёными группами, потом
@@ -26,7 +26,7 @@
                 <x-slot:head><x-table.head :table="$table"/></x-slot:head>
                 @foreach ($groups as $key => $group)
                     <x-table.group :table="$table" :key="$key" :title="$group['title']" :count="$group['size']" :ours="$group['ours']" :danger="$group['danger'] ?? false" :sum="$group['sum'] ?? null"/>
-                    @foreach ($group['rows'] as $row)<x-deal.todo-row :deal="$row['deal']" :todo="$row['todo']" :table="$table" :debt="$row['debt'] ?? null"/>@endforeach
+                    @foreach ($group['rows'] as $row)<x-deal.todo-row :deal="$row['deal']" :todo="$row['todo']" :table="$table" :debt="$row['debt'] ?? null" :docs="$row['docs'] ?? null"/>@endforeach
                 @endforeach
             </x-ui.table>
         @endif

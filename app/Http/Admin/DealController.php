@@ -222,7 +222,7 @@ class DealController
                     // Данные паспорта не распознались и договор не отправлен при оплаченном счёте — тоже (18.11.2026).
                     'danger' => str_starts_with($key, 'do:letter-agree:') || in_array($key, ['do:gap:unread', 'do:contract:unread', 'do:contract:paid'], true),
                     'size' => $rows->count(),
-                    'rows' => $rows->sortBy($since)->map(fn (array $r) => ['deal' => $r['deal'], 'todo' => $r['todo'] ?? ['key' => '', 'title' => '', 'rank' => 0, 'since' => null, 'button' => null]])->values(),
+                    'rows' => $rows->sortBy($since)->map(fn (array $r) => ['deal' => $r['deal'], 'todo' => $r['todo'] ?? ['key' => '', 'title' => '', 'rank' => 0, 'since' => null, 'button' => null], 'docs' => $r['docs'] ?? null])->values(),
                 ];
             })->sortBy([['rank', 'asc'], ['title', 'asc']]);
 
@@ -314,7 +314,7 @@ class DealController
      * (`x-deal.todo-row`): что сделать или кого ждём — заголовок группы, у строки — сколько ждёт и кнопка дела. «Завершённые» и
      * лупа — таблица с этапом, оплатой и суммой (`x-deal.table-row`).
      */
-    public static function table(bool $staged = false, bool $actions = true, bool $asked = false, bool $debt = false): Table
+    public static function table(bool $staged = false, bool $actions = true, bool $asked = false, bool $debt = false, bool $docs = false): Table
     {
         $title = new Column('title', 'Марка, модель', grow: true);
         // Ширина у каждого столбца (29.10.2026): без неё `x-ui.table :rest` гадали числом в виде, и название то резалось, то
@@ -328,6 +328,9 @@ class DealController
             ? Table::of(...array_filter([$title, $vendor, $asked ? new Column('asked', 'Попросили', from: 'sm', clip: true, cell: 'whitespace-nowrap', role: ColRole::State, rem: 16) : null,
                 // «Менеджер должен нам» (24.11.2026): за что, сколько и срок оплаты — вместо «Ждёт» (`DealDebt`).
                 $debt ? new Column('what', 'За что', from: 'sm', clip: true, role: ColRole::State, rem: 16) : null,
+                // «Оригиналы» (26.11.2026, владелец выбрал из макетов): значок на документ — чего не хватает, видно без окна; на
+                // телефоне — во второй строке у номера убытка (`x-deal.todo-row`).
+                $docs ? new Column('docs', 'Документы', from: 'sm', role: ColRole::State, rem: 6) : null,
                 $manager,
                 $debt ? new Column('owed', 'Должен', num: true, class: 'nums', rem: 8) : null,
                 $debt ? new Column('due', 'Срок', from: 'sm', role: ColRole::When, rem: 8) : new Column('wait', 'Ждёт', from: 'sm', role: ColRole::When, rem: 8),

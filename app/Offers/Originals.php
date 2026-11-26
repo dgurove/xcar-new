@@ -19,7 +19,7 @@ use Illuminate\Validation\ValidationException;
  *
  * - **Совкомбанк** (комиссия; Катя, 26.11.2026: «их оригиналы должны попасть К НАМ, не в Совком»): при вывозе страхователь
  *   подписывает договор комиссии и акт приёма-передачи — их оригиналы от исполнителя вывоза к нам; редко у собственника уже по
- *   четыре экземпляра соглашения и акта — тогда к нам только доверенность (переключатель в шторке, `switchKind`). После продажи
+ *   четыре экземпляра соглашения и акта — тогда к нам только доверенность (меню «⋯» документа, `switchKind`). После продажи
  *   прежнему владельцу шлём ДКП СДЭКом, чтобы снял машину с учёта, — обязательно. Подписанный ДКП от менеджера — хватит скана,
  *   его берёт шаг «Подписанный договор».
  * - **Р.О.С. или ПРАЙМ у остальных** (владелец, 26.11.2026: «нужны оригиналы ДКП, если договор не на покупателя, а на прайм или на
@@ -28,8 +28,9 @@ use Illuminate\Validation\ValidationException;
  *   продаёт собственник — её нет). У каждого — скан и оригинал (`needs_scan`). Покупатель платит страховой сам — шага нет
  *   (оригиналы ездят между офисами Альфы, маршрут ведёт в «Оригиналы» только веткой `ros`).
  *
- * Где документ и трек СДЭК — шторкой строки (`x-deal.originals`, `update`), скан — «Приложить» в ней же (`attachScan`). Ждём
- * менеджера — при входе в шаг ему сообщение в чат (`nudge`), повтор — кнопкой. Всё на месте (`Original::settled`) — шаг проходит
+ * Где документ — кнопками следующего шага под документом (`x-deal.originals`, `Original::actions`, `update`; трек СДЭК — полем
+ * в строке), редкое — меню «⋯» документа; скан — «Скан» там же (`attachScan`); у каждого документа история с датами
+ * (`Original::note`). Ждём менеджера — при входе в шаг ему сообщение в чат (`nudge`), повтор — из меню «⋯». Всё на месте (`Original::settled`) — шаг проходит
  * сам «Оригиналы на месте» → «Сделка закрыта» (`advance`). Вкладка «Оригиналы» (`DealTabs`): наше дело — `todo`, иначе ждём
  * менеджера или документы в пути (`waits`).
  */
@@ -42,7 +43,7 @@ final class Originals
     /** Куда — словами шторки «+ Документ». */
     public const DESTINATIONS = ['us' => 'Нам', 'owner' => 'Прежнему владельцу', 'supplier' => 'Поставщику'];
 
-    /** Что подписал страхователь у Совкома — первым документом (переключатель шторки). */
+    /** Что подписал страхователь у Совкома — первым документом (меню «⋯» документа). */
     public const SIGNED = ['commission' => 'Договор комиссии и акт приёма-передачи', 'proxy' => 'Доверенность'];
 
     public static function applies(?Stage $stage): bool
@@ -107,9 +108,9 @@ final class Originals
     }
 
     /** Наше дело на шаге (`DealTabs`): отправить, получить у исполнителя, приложить сканы; иначе ждём (null). */
-    public static function todo(Deal $deal, ?\Carbon\Carbon $since = null): ?array
+    public static function todo(Deal $deal, ?\Carbon\Carbon $since = null, ?Collection $items = null): ?array
     {
-        $items = self::of($deal);
+        $items ??= self::of($deal);
         $button = ['label' => 'Открыть', 'href' => '/offers/'.$deal->offer?->number];
         // Документов ещё нет (сделка встала на шаг раньше, чем они появились) — их завести: тоже наше дело.
         if ($items->isEmpty()) {
@@ -143,7 +144,7 @@ final class Originals
         return Original::where('deal_id', $deal->id)->where('state', 'waiting')->whereIn('kind', array_keys(array_filter(Original::FROM, fn ($f) => $f === 'manager')))->exists();
     }
 
-    /** Где документ сейчас и трек СДЭК (шторка строки). Всё на месте — шаг проходит сам. */
+    /** Где документ сейчас и трек СДЭК (кнопки под документом и меню «⋯»). Всё на месте — шаг проходит сам. */
     /** $kind — у Совкома что подписали (`SIGNED`): меняется вместе с остальным или никак, если проверка не прошла. */
     public static function update(Original $item, string $state, ?string $track, User $by, ?string $kind = null): Original
     {
@@ -169,6 +170,9 @@ final class Originals
         }
         $was = $item->place();
         $placed = (clone $item)->fill(['state' => $state])->placed();
+        if ($state !== $item->state || ($state === 'sent' && $track !== $item->track)) {
+            $item->note(['state' => $state] + ($state === 'sent' ? ['track' => $track] : []), $by->id);
+        }
         $item->update([
             'state' => $state,
             'track' => $track ?: $item->track,
@@ -201,7 +205,7 @@ final class Originals
         $item->deal->offer?->log(OfferEventType::Note, $by, ['text' => 'Оригиналы: «'.self::SIGNED[$kind].'» вместо «'.$was.'»']);
     }
 
-    /** Скан документа (`x-ui.photo-pdf` шторки: фото и файлы — одним). Всё на месте — шаг проходит сам. */
+    /** Скан документа («Скан» под документом, `x-ui.photo-pdf`: фото и файлы — одним). Всё на месте — шаг проходит сам. */
     public static function attachScan(Original $item, UploadedFile $file, User $by): void
     {
         // Файл — до транзакции (ревью 26.11.2026): откат перехода шага не оставит на диске файл без записи; скан приложен в
@@ -209,6 +213,7 @@ final class Originals
         $item->addMedia($file)->usingFileName($file->getClientOriginalName())->toMediaCollection('scan');
         DB::transaction(function () use ($item, $by) {
             Deal::whereKey($item->deal_id)->lockForUpdate()->first();
+            $item->note(['scan' => true], $by->id);
             $item->update(['updated_by' => $by->id]);
             $item->deal->offer?->log(OfferEventType::Note, $by, ['text' => $item->title.': приложен скан']);
             self::advance($item->deal, $by);
@@ -219,6 +224,8 @@ final class Originals
     {
         $file = $item->getMedia('scan')->firstWhere('id', $media) ?? abort(404);
         $file->delete();
+        $item->note(['scan' => false], $by->id);
+        $item->update(['updated_by' => $by->id]);
         $item->deal->offer?->log(OfferEventType::Note, $by, ['text' => $item->title.': скан убран']);
     }
 
@@ -269,7 +276,7 @@ final class Originals
 
     /**
      * Попросить менеджера прислать оригиналы, что у него, — сообщением в чат сделки (при входе в шаг сам, `OpenOriginals`, и
-     * кнопкой шторки). Нечего просить — false.
+     * из меню «⋯» документа). Нечего просить — false.
      */
     public static function nudge(Deal $deal, ?User $by = null): bool
     {

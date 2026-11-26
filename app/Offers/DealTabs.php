@@ -208,7 +208,10 @@ final class DealTabs
             }
             // Шаг «Оригиналы» — своей вкладкой: наше дело — отправить, что у нас; остальное — ждём (26.11.2026).
             if (! $repricing && Originals::applies($position?->stage)) {
-                return [$deal->id => ['deal' => $deal, 'tab' => 'originals', 'todo' => Originals::todo($deal, $position->entered_at)]];
+                // Документы — одной выборкой на дело и значки строки (`x-deal.todo-row` столбец «Документы»).
+                $docs = Originals::of($deal);
+
+                return [$deal->id => ['deal' => $deal, 'tab' => 'originals', 'todo' => Originals::todo($deal, $position->entered_at, $docs), 'docs' => $docs]];
             }
             // Отправляем реквизиты покупателя, а они не проверены — сначала проверка (26.11.2026): «Проверить реквизиты».
             if (! $repricing && self::verifies($deal, $todo)) {
