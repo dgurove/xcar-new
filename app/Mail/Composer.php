@@ -172,6 +172,8 @@ final class Composer
                 'preview' => $text ? mb_substr($text, 0, 300) : null,
                 'is_seen' => true,
                 'parse_state' => ParseState::Parsed,
+                // Наше письмо из приложения — следствия его отправки идут своей дорогой, дообрабатывать нечего (`Ingest::handle`).
+                'handled_at' => now(),
                 'send_state' => SendState::Queued,
                 'created_by' => $by?->id,
                 // Доп. запрос поставщику (`Offers\ExtraRequest::record`) — до очереди: письмом этапа его не считать (`MarkSupplierLetter`).

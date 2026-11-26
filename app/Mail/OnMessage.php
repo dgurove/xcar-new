@@ -121,7 +121,8 @@ final class OnMessage
                 OnInsurerReply::queue($deal, $message);
             }
         }
-        $this->toStaff($message, $linked instanceof Offer ? $linked : $thread?->offer);
+        // Шаги, которые повторять нельзя, — по разу на письмо (`MessageStep`): письмо, чей разбор убили посреди, дообрабатывается заново.
+        MessageStep::once($message, 'supplier-notice', fn () => $this->toStaff($message, $linked instanceof Offer ? $linked : $thread?->offer));
         $topic = $message->account->scope === Scope::Park ? Topics::PARK : Topics::STAFF;
         $base = $message->account->scope === Scope::Park ? '/mail' : '/work/mail';
         // «Заявки» — тоже: заявку из письма могла только что завести почта (`AutoRequest`), её строка входит силуэтом.
@@ -140,13 +141,13 @@ final class OnMessage
             app(ReportByLetters::class)($vehicle->refresh());
         }
         if ($vehicle && $message->direction === Direction::In) {
-            $vehicle->log(EventType::Letter, null, ['from' => $message->from_name ?: $message->from_email, 'subject' => $message->subject, 'thread' => $message->thread_id, 'message' => $message->id, 'intent' => $message->intent]);
+            MessageStep::once($message, 'park-history', fn () => $vehicle->log(EventType::Letter, null, ['from' => $message->from_name ?: $message->from_email, 'subject' => $message->subject, 'thread' => $message->thread_id, 'message' => $message->id, 'intent' => $message->intent]));
             // «Продано, заберёт такой-то» по ТС на стоянке — дата продажи и покупатель из письма, заявка на выдачу.
             if ($vehicle->state === VehicleState::Stored && ! $vehicle->sold_at && $message->intent === Intent::Sold->value
                 && ($sold = ParkExtractor::soldNotice($message->subject, $message->ownText()))) {
                 ($this->sold)($vehicle, null, $message->date_at ?? now(), $sold['name'], $sold['phone'], $message, $sold['free_until']);
             } elseif (! Intent::silent($message->intent)) {
-                LetterArrived::dispatch($vehicle, $message);
+                MessageStep::once($message, 'park-notice', fn () => LetterArrived::dispatch($vehicle, $message));
                 // Запрос осмотра стоящей ТС — заявка «Осмотр» (13.11.2026, вкладка в «Заявках»).
                 if ($message->account->scope === Scope::Park && $message->intent === Intent::Inspect->value) {
                     app(InspectByLetter::class)($vehicle, $message);
@@ -155,22 +156,24 @@ final class OnMessage
                 // перетирает — но людям решать, кому отдавать: парковке громко (управляющим и администраторам), в CRM — строкой
                 // в истории предложения.
                 if ($message->intent === Intent::Sold->value && ($pass = $vehicle->dealPass())) {
-                    // Оплату поставщик уже подтвердил (`prepaid_at`) — «реализовано» и есть наша продажа (13.11.2026, Альфа по X6
-                    // № 2610041185: подписали в 13:00, в 13:20 «Данное ТС реализовано, покупатель сегодня планирует вывоз»):
-                    // не конфликт — строкой в истории, выдача по пропуску сделки.
-                    $deal = $vehicle->offer?->deal;
-                    if ($deal?->isActive() && $deal->prepaid_at) {
-                        $vehicle->offer->log(OfferEventType::Note, null, ['text' => 'Поставщик: ТС реализовано, выдача по пропуску — '.$pass->name]);
-                        // «Реализовано» — договор у поставщика подписан (25.11.2026: четыре сделки Альфы висели на «Время подписания» и
-                        // «Запись на подписание» после такого письма): шаги подписания проходятся, как «Договор подписан за менеджера».
-                        \App\Offers\Actions\MarkContractSigned::byLetter($deal, $message);
-                    } else {
-                        Notification::send(
-                            app(Notify::class)->parkManagersOf($vehicle->city_id)
-                                ->merge(User::withRole(Role::ParkAdmin)->whereNotNull('approved_at')->get())->unique('id'),
-                            ParkNotice::insurerSoldDeal($vehicle, $pass));
-                        $vehicle->offer?->log(OfferEventType::Note, null, ['text' => 'Страховая прислала «продано» по ТС, а по нашей сделке ждём '.$pass->name.': сверить, кому выдавать']);
-                    }
+                    MessageStep::once($message, 'sold-deal', function () use ($vehicle, $message, $pass) {
+                        // Оплату поставщик уже подтвердил (`prepaid_at`) — «реализовано» и есть наша продажа (13.11.2026, Альфа по X6
+                        // № 2610041185: подписали в 13:00, в 13:20 «Данное ТС реализовано, покупатель сегодня планирует вывоз»):
+                        // не конфликт — строкой в истории, выдача по пропуску сделки.
+                        $deal = $vehicle->offer?->deal;
+                        if ($deal?->isActive() && $deal->prepaid_at) {
+                            $vehicle->offer->log(OfferEventType::Note, null, ['text' => 'Поставщик: ТС реализовано, выдача по пропуску — '.$pass->name]);
+                            // «Реализовано» — договор у поставщика подписан (25.11.2026: четыре сделки Альфы висели на «Время подписания» и
+                            // «Запись на подписание» после такого письма): шаги подписания проходятся, как «Договор подписан за менеджера».
+                            \App\Offers\Actions\MarkContractSigned::byLetter($deal, $message);
+                        } else {
+                            Notification::send(
+                                app(Notify::class)->parkManagersOf($vehicle->city_id)
+                                    ->merge(User::withRole(Role::ParkAdmin)->whereNotNull('approved_at')->get())->unique('id'),
+                                ParkNotice::insurerSoldDeal($vehicle, $pass));
+                            $vehicle->offer?->log(OfferEventType::Note, null, ['text' => 'Страховая прислала «продано» по ТС, а по нашей сделке ждём '.$pass->name.': сверить, кому выдавать']);
+                        }
+                    });
                 }
             }
             $paths[] = "/cars/{$vehicle->id}";

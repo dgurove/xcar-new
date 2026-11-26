@@ -6,6 +6,7 @@ use App\Mail\Actions\ReadEarlier;
 use App\Mail\Events\MessageParsed;
 use App\Mail\Jobs\ImportThreadFiles;
 use App\Mail\Reading\ReadLetter;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 
 /** Разобранное письмо → база: поля, адреса, опись вложений, ветка; дальше — событие и закрепление файлов, если ветка привязана. */
@@ -60,15 +61,40 @@ final class Ingest
         }
         // Ветка уже привязана — файлы этого письма едут к машине; если привяжется сейчас (OnMessage), LinkThread поставит джобу на всю ветку.
         $linked = $message->thread?->isLinked() ?? false;
-        $first = $message->thread_id !== $was;
-        MessageParsed::dispatch($message, $quiet);
-        // Ветка привязана к делу (`OnMessage`) — непрочитанным во всей цепочке остаётся только это письмо (`ReadEarlier::arrived`).
-        if ($first && ($fresh = $message->fresh(['account', 'thread'])) && in_array($message->id, $this->readEarlier->arrived($fresh), true)) {
-            $message->is_seen = true;
-            $message->syncOriginalAttribute('is_seen');
+
+        return $this->handle($message, $quiet, $message->thread_id !== $was, $linked);
+    }
+
+    /**
+     * Следствия разобранного письма — одна дверь (26.11.2026): событие (`OnMessage`: ветка, цепочки, черновик и заявка, ход сделки,
+     * уведомления), непрочитанные ветки, файлы привязанной ветки; в конце — отметка `handled_at`. Разбор убили посреди (выкладка,
+     * нехватка памяти) или слушатель упал — отметки нет, и дочитка `mail:sync` проходит дверь заново: шаги, что повторять нельзя, —
+     * под `MessageStep::once`, остальные идемпотентны по своим данным. Повтор (`$linked` null): ветка привязана сейчас — файлы
+     * письма в очередь (задача уникальна, дедуп по sha), это закрывает и обрыв между привязкой ветки и `attachNow`.
+     */
+    public function handle(Message $message, bool $quiet = false, bool $first = false, ?bool $linked = null): Message
+    {
+        // Живой синк и дочитка — не вдвоём по одному письму.
+        $lock = Cache::lock('mail:handle:'.$message->id, 300);
+        if (! $lock->get()) {
+            return $message;
         }
-        if ($linked) {
-            ImportThreadFiles::dispatch($message->thread_id, $message->id);
+        try {
+            $linked ??= $message->thread?->isLinked() ?? false;
+            MessageParsed::dispatch($message, $quiet);
+            // Ветка привязана к делу (`OnMessage`) — непрочитанным во всей цепочке остаётся только это письмо (`ReadEarlier::arrived`).
+            if ($first && ($fresh = $message->fresh(['account', 'thread'])) && in_array($message->id, $this->readEarlier->arrived($fresh), true)) {
+                $message->is_seen = true;
+                $message->syncOriginalAttribute('is_seen');
+            }
+            if ($linked && $message->thread_id) {
+                ImportThreadFiles::dispatch($message->thread_id, $message->id);
+            }
+            Message::whereKey($message->id)->update(['handled_at' => now()]);
+            $message->handled_at = now();
+            $message->syncOriginalAttribute('handled_at');
+        } finally {
+            $lock->release();
         }
 
         return $message;

@@ -2,6 +2,7 @@
 
 namespace App\Offers\Listeners;
 
+use App\Mail\MessageStep;
 use App\Mail\Actions\ReadSettled;
 use App\Mail\Composer;
 use App\Mail\Direction;
@@ -67,7 +68,9 @@ final class OnInsurerReply
         $files = InsurerReplies::hasFiles($message);
         // Контакт дали, а документов нет — сами просим их ответом на это же письмо (05.10.2026).
         // Только по ДКП: у ПРАЙМ и «страховой напрямую» данные страхователя не нужны (05.10.2026).
-        $asked = $e->live && $deal->isDkp() && $contact && ! $files && $this->askForDocuments($deal, $message);
+        // Письмо поставщику — раз на ответ (`MessageStep`): уходит раньше записи в историю, и дообработка ответа после обрыва
+        // отправила бы его второй раз.
+        $asked = $e->live && $deal->isDkp() && $contact && ! $files && MessageStep::once($message, 'ask-documents', fn () => $this->askForDocuments($deal, $message));
         $offer->log(OfferEventType::InsurerReplied, null, array_filter(['letter' => $message->id, 'contact' => $contact, 'files' => $files, 'asked' => $asked]));
         if ($files) {
             ShareReplyFiles::dispatch($message->id);

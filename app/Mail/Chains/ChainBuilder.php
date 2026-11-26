@@ -19,6 +19,7 @@ use App\Mail\Extraction\QuotationStripper;
 use App\Mail\Extraction\ScanFields;
 use App\Mail\Jobs\ImportCandidateFiles;
 use App\Mail\Message;
+use App\Mail\MessageStep;
 use App\Mail\Reading\ReadLetter;
 use App\Mail\Scope;
 use App\Mail\Thread;
@@ -79,7 +80,11 @@ final class ChainBuilder
         // писем» модераторам (Notify::candidateArrived). История ящика — молча.
         $born = $this->born;
         $this->born = [];
-        if ($fresh && ! $quiet && $candidate) {
+        // Дообработка письма после обрыва (`Ingest::handle`): цепочка уже заведена этим письмом, но людям о ней не сказали —
+        // то же, что новой. Уведомление — раз на цепочку (`MessageStep`), завести — идемпотентно (`AutoX` по состоянию цепочки).
+        $resumed = ! $fresh && ! $quiet && $candidate && $message->handled_at === null
+            && (int) $candidate->messages()->min('mail_messages.id') === (int) $message->id;
+        if (($fresh || $resumed) && ! $quiet && $candidate) {
             // Письмо о нескольких машинах завело несколько цепочек — каждой то же, что одной.
             foreach ([$candidate, ...$born] as $one) {
                 try {
@@ -88,7 +93,7 @@ final class ChainBuilder
                     // Не завелась сама — цепочка ждёт человека в «Из писем», а письмо всё равно принято.
                     report($e);
                 }
-                CandidateArrived::dispatch($one->fresh());
+                MessageStep::once($message, 'candidate-arrived:'.$one->id, fn () => CandidateArrived::dispatch($one->fresh()));
             }
         }
 

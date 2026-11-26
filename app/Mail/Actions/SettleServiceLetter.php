@@ -5,6 +5,7 @@ namespace App\Mail\Actions;
 use App\Mail\Direction;
 use App\Mail\Extraction\Intent;
 use App\Mail\Message;
+use App\Mail\MessageStep;
 use App\Mail\Scope;
 use App\Offers\Listeners\MarkSupplierLetter;
 use App\Telegram\Jobs\NotifyOwner;
@@ -44,17 +45,18 @@ final class SettleServiceLetter
                 return;
             }
             $to = Intent::bounceRecipient($text);
-            NotifyOwner::dispatch(new MailServiceNotice('Письмо не дошло', [
+            // Владельцу — раз на письмо (`MessageStep`): дообработка письма после обрыва не шлёт второй раз.
+            MessageStep::once($message, 'service-owner', fn () => NotifyOwner::dispatch(new MailServiceNotice('Письмо не дошло', [
                 'Кому: '.($to ?? 'адрес не понятен'),
                 self::reason($text),
                 'Письмо системы — уведомление человеку, в почте его нет',
-            ], $thread->id));
+            ], $thread->id)));
         } elseif (preg_match('/подтвердите\s+пересылку/iu', (string) $message->subject.' '.$text)) {
             preg_match('/https:\/\/e\.mail\.ru\/confirm\/forward\S+/u', html_entity_decode($text), $link);
-            NotifyOwner::dispatch(new MailServiceNotice('Почта просит подтвердить пересылку на '.$message->account->email, [
+            MessageStep::once($message, 'service-owner', fn () => NotifyOwner::dispatch(new MailServiceNotice('Почта просит подтвердить пересылку на '.$message->account->email, [
                 Str::limit(trim((string) preg_replace('/\s+/u', ' ', $text)), 200),
                 $link[0] ?? null,
-            ], $thread->id));
+            ], $thread->id)));
         }
         ($this->archive)($thread);
     }

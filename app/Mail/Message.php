@@ -16,7 +16,7 @@ use Illuminate\Support\Facades\Cache;
     'references_header', 'subject', 'subject_normalized', 'from_email', 'from_name', 'to_preview', 'date_at',
     'internal_at', 'size', 'is_seen', 'is_answered', 'is_flagged', 'is_draft', 'is_deleted', 'text_body',
     'html_body', 'preview', 'headers', 'parse_state', 'parse_error', 'send_state', 'send_error', 'send_attempts',
-    'sent_at', 'appended_to_sent_at', 'has_attachments', 'attachments_count', 'created_by', 'intent', 'parsed', 'parser_version', 'requests',
+    'sent_at', 'appended_to_sent_at', 'has_attachments', 'attachments_count', 'created_by', 'intent', 'parsed', 'parser_version', 'requests', 'handled_at',
 ])]
 class Message extends Model
 {
@@ -52,6 +52,7 @@ class Message extends Model
             'date_at' => 'datetime',
             'internal_at' => 'datetime',
             'sent_at' => 'datetime',
+            'handled_at' => 'datetime',
             'appended_to_sent_at' => 'datetime',
             'frozen_at' => 'datetime',
             'is_seen' => 'bool', 'is_answered' => 'bool', 'is_flagged' => 'bool', 'is_draft' => 'bool', 'is_deleted' => 'bool',
