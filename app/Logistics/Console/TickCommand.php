@@ -6,10 +6,12 @@ use App\Logistics\Transport;
 use App\Logistics\TransportNotice;
 use App\Logistics\TransportState;
 use App\Notifications\Batch;
+use App\Notifications\SentOnce;
 use App\Users\User;
 use Illuminate\Console\Command;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Notification;
 
 /**
@@ -36,16 +38,21 @@ final class TickCommand extends Command
                 // Заявку логиста от его заказчика админы не видят: просрочка — ему и исполнителю. Логисту — всегда: его
                 // исполнители обычно по ссылке, без приложения (20.10.2026).
                 $to = $t->isOrder() ? collect() : User::logisticsLeads()->get();
-                Notification::send($to->push($t->logist)->push($t->executor)->filter()->unique('id'), TransportNotice::late($t));
-                $t->update(['late_noticed_at' => now()]);
+                // Отправка и отметка — одной транзакцией (очередь в той же базе): упало посреди — следующий тик пришлёт.
+                DB::transaction(function () use ($t, $to) {
+                    Notification::send($to->push($t->logist)->push($t->executor)->filter()->unique('id'), TransportNotice::late($t));
+                    $t->update(['late_noticed_at' => now()]);
+                });
             });
 
         $this->waiting();
 
         self::stuck()->whereNull('nudged_at')->each(function (Transport $t) {
             $to = $t->state === TransportState::Logist ? $t->logist : $t->executor;
-            $to?->notify(TransportNotice::callDue($t));
-            $t->update(['nudged_at' => now()]);
+            DB::transaction(function () use ($t, $to) {
+                $to?->notify(TransportNotice::callDue($t));
+                $t->update(['nudged_at' => now()]);
+            });
         });
 
         $this->digest();
@@ -76,10 +83,11 @@ final class TickCommand extends Command
         }
         $due = Transport::where('state', TransportState::New)->where('undecided', false)
             ->whereBetween('created_at', [now()->subDay(), now()->subHours(2)])->with('car')->get()
-            ->reject->isOrder()->filter(fn (Transport $t) => Cache::add('logistics:waiting:'.$t->id, true, now()->addDays(2)));
+            ->reject->isOrder()->reject(fn (Transport $t) => Cache::has('logistics:waiting:'.$t->id));
         if ($due->isNotEmpty()) {
             $leads = User::logisticsLeads()->get();
-            $due->each(fn (Transport $t) => Batch::send($leads, TransportNotice::waiting($t)));
+            // «Отправлено» — после отправки (`SentOnce`): упало посреди — следующий тик.
+            $due->each(fn (Transport $t) => SentOnce::run('logistics:waiting:'.$t->id, now()->addDays(2), fn () => Batch::send($leads, TransportNotice::waiting($t))));
         }
     }
 
@@ -87,13 +95,16 @@ final class TickCommand extends Command
     private function digest(): void
     {
         $today = now('Europe/Moscow');
-        if ($today->hour < 10 || ! Cache::add('logistics:digest:'.$today->toDateString(), true, now()->addDays(2))) {
+        if ($today->hour < 10) {
             return;
         }
-        $waiting = Transport::where('state', TransportState::New)->where('undecided', false)->where('created_at', '<', now()->subDay())->count();
-        $silent = self::stuck()->reject->isOrder()->count();
-        if ($waiting + $silent > 0) {
-            Notification::send(User::logisticsLeads()->get(), TransportNotice::stale($waiting, $silent));
-        }
+        // «Отправлено» — после отправки (`SentOnce`): упало посреди — следующий тик (через 15 минут), а не завтра.
+        SentOnce::run('logistics:digest:'.$today->toDateString(), now()->addDays(2), function () {
+            $waiting = Transport::where('state', TransportState::New)->where('undecided', false)->where('created_at', '<', now()->subDay())->count();
+            $silent = self::stuck()->reject->isOrder()->count();
+            if ($waiting + $silent > 0) {
+                Notification::send(User::logisticsLeads()->get(), TransportNotice::stale($waiting, $silent));
+            }
+        });
     }
 }

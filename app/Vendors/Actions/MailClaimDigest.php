@@ -7,6 +7,7 @@ use App\Mail\Composer;
 use App\Mail\Events\MessageSent;
 use App\Mail\Message;
 use App\Mail\SendState;
+use App\Notifications\SentOnce;
 use App\Offers\Actions\SendClaimRequest;
 use App\Users\User;
 use App\Vendors\ClaimRequest;
@@ -59,9 +60,10 @@ final class MailClaimDigest
         }
         $sent = 0;
         foreach (Vendor::whereIn('id', (array) config('xcar.claim_digest.vendors'))->get() as $vendor) {
-            if (Cache::add('claim-digest:'.$vendor->id.':'.$slot->format('Y-m-d H:i'), true, now()->addDays(2))) {
-                $sent += (int) (bool) $this->send($vendor, $user, $slot);
-            }
+            // «Отправлено» — после отправки (`SentOnce`): упало посреди — следующий тик слота отправит. Без общей транзакции:
+            // письмо уходит из очереди после своей (`mail`).
+            $sent += (int) (bool) SentOnce::run('claim-digest:'.$vendor->id.':'.$slot->format('Y-m-d H:i'), now()->addDays(2),
+                fn () => $this->send($vendor, $user, $slot), atomic: false);
         }
 
         return $sent;

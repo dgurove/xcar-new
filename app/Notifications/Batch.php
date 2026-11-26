@@ -59,19 +59,30 @@ final class Batch
             ->havingRaw('max(created_at) <= ? or min(created_at) <= ?', [now()->subMinutes(self::QUIET), now()->subMinutes(self::WAIT)])->get();
         $sent = 0;
         foreach ($ready as $group) {
-            $items = DB::table('notice_batch_items')->where('user_id', $group->user_id)->where('key', $group->key)->orderBy('id')->get();
-            DB::table('notice_batch_items')->whereIn('id', $items->pluck('id'))->delete();
-            $user = User::find($group->user_id);
+            // Удаление пачки и `notify` — одной транзакцией (очередь в той же базе, 26.11.2026): задачу убили между ними —
+            // строки остаются и уходят следующим тиком, а не пропадают. Упало у одного — остальные уходят, его пачка ждёт.
             try {
-                $first = unserialize(base64_decode($items->first()->notice));
-            } catch (Throwable) {
-                continue;
+                $sent += DB::transaction(function () use ($group) {
+                    $items = DB::table('notice_batch_items')->where('user_id', $group->user_id)->where('key', $group->key)->orderBy('id')->lockForUpdate()->get();
+                    if ($items->isEmpty() || ! DB::table('notice_batch_items')->whereIn('id', $items->pluck('id'))->delete()) {
+                        return 0;
+                    }
+                    $user = User::find($group->user_id);
+                    try {
+                        $first = unserialize(base64_decode($items->first()->notice));
+                    } catch (Throwable) {
+                        return 0;
+                    }
+                    if (! $user || ! $first instanceof Notice) {
+                        return 0;
+                    }
+                    $user->notify($items->count() === 1 ? $first : new BatchNotice($group->key, $items->pluck('line')->all(), $first));
+
+                    return 1;
+                });
+            } catch (Throwable $e) {
+                report($e);
             }
-            if (! $user || ! $first instanceof Notice) {
-                continue;
-            }
-            $user->notify($items->count() === 1 ? $first : new BatchNotice($group->key, $items->pluck('line')->all(), $first));
-            $sent++;
         }
 
         return $sent;

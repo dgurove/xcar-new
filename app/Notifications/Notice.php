@@ -139,7 +139,9 @@ abstract class Notice extends Notification implements ShouldQueue
         if ($car === null || ! str_contains($title, $car)) {
             return $title;
         }
-        $rest = trim(str_replace($car, '', $title), " \u{00A0}:—–-,");
+        // Края — регуляркой по буквам, не `trim`: тот режет байты, и «—» в списке (E2 80 94) срезал хвост «р» (D1 80) —
+        // «Подписанный догово\xD1», строка ленты не писалась (26.11.2026, 30 `DealEventNotice` в `failed_jobs`).
+        $rest = (string) preg_replace('/^[\s\x{00A0}:—–,-]+|[\s\x{00A0}:—–,-]+$/u', '', str_replace($car, '', $title));
 
         return $rest !== '' ? $rest : ($this->textFor($user) ?? $title);
     }
@@ -608,6 +610,27 @@ abstract class Notice extends Notification implements ShouldQueue
             + (($vendor = $this->vendor()) ? ['vendor' => $vendor->id] : [])
             + ($this->important() ? ['important' => true] : [])
             + ['icon' => $this->icon()];
+    }
+
+    /**
+     * Строка ленты в базу — одна дверь для всех уведомлений (`DatabaseChannel` берёт её раньше `toArray`): строки — чистым UTF-8.
+     * Битый байт из текста письма или обрезки ронял задание целиком (`JsonEncodingException`), и уведомление не доходило никуда.
+     */
+    final public function toDatabase(User $user): array
+    {
+        return self::scrub($this->toArray($user));
+    }
+
+    /** Строки массива — валидным UTF-8 (`mb_scrub`: битое — «?»). */
+    public static function scrub(array $data): array
+    {
+        array_walk_recursive($data, function (&$v) {
+            if (is_string($v) && ! mb_check_encoding($v, 'UTF-8')) {
+                $v = mb_scrub($v, 'UTF-8');
+            }
+        });
+
+        return $data;
     }
 
     /**

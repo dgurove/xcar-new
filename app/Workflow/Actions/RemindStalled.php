@@ -2,13 +2,13 @@
 
 namespace App\Workflow\Actions;
 
+use App\Notifications\SentOnce;
 use App\Notifications\StalledStepNotice;
 use App\Offers\Deal;
 use App\Workflow\Position;
 use App\Workflow\Track;
 use App\Workflow\WaitsFor;
 use Illuminate\Support\Carbon;
-use Illuminate\Support\Facades\Cache;
 
 /**
  * Мягкое напоминание менеджеру (18.10.2026, владелец): шаг ждёт его без срока («Забрать автомобиль» у
@@ -43,12 +43,13 @@ final class RemindStalled
         }
         $sent = 0;
         foreach ($due->groupBy(fn ($r) => $r['deal']->buyer_id) as $buyerId => $mine) {
-            if (! Cache::add('workflow:stalled:'.$buyerId.':'.$msk->toDateString(), true, $now->copy()->addDays(2))) {
-                continue;
-            }
-            $mine->each(fn ($r) => $r['position']->update(['reminded_at' => $now]));
-            $mine->first()['deal']->buyer->notify(new StalledStepNotice($mine->map(fn ($r) => [$r['deal'], $r['ask']])->values()->all()));
-            $sent++;
+            // «Отправлено» и `reminded_at` — вместе с отправкой (`SentOnce`, одна транзакция): упало посреди — следующий тик.
+            $sent += (int) SentOnce::run('workflow:stalled:'.$buyerId.':'.$msk->toDateString(), $now->copy()->addDays(2), function () use ($mine, $now) {
+                $mine->first()['deal']->buyer->notify(new StalledStepNotice($mine->map(fn ($r) => [$r['deal'], $r['ask']])->values()->all()));
+                $mine->each(fn ($r) => $r['position']->update(['reminded_at' => $now]));
+
+                return true;
+            });
         }
 
         return $sent;
