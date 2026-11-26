@@ -540,7 +540,7 @@ class DealContractController
         abort_unless($request->user()->canEditDeals(), 404);
         $edit->revert($deal, $request->user());
 
-        return back()->with('toast', 'Договор снова сформирован из данных сделки');
+        return back()->with('toast', 'Заполненный договор удалён');
     }
 
     /**

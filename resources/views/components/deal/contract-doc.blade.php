@@ -6,7 +6,7 @@
      - не отправлен — под строкой «Заполнить…» главной и «Отправить как есть» второй (19.11.2026, владелец: «желательно, чтобы
        заполняли, а не в сыром виде отправляли»): шторка «Заполнить договор» — 1) скачать Word (с номером договора,
        `dkp.docx?edit=1`), 2) приложить заполненный (`EditContract`);
-     - приложен заполненный — метка «заполнен», справа ↶ «Вернуть сформированный», под строкой одна «Отправить менеджеру»;
+     - приложен заполненный — метка «заполнен», справа корзина «Удалить заполненный» (до 26.11.2026 — ↶), под строкой одна «Отправить менеджеру»;
        данные сделки поменялись после правки — красным (`ContractEdit::stale`);
      - отправлен — под строкой «Приложить подписанный» | «Отозвать» (`ShowToManager::recallContract`, заполненный файл убирает); отправлен ли — словом подписи
        «Договор» (`x-deal.doc-cap` в `x-deal.money`).
@@ -40,9 +40,10 @@
             @if ($edited && ! $sent && $staff)
                 <x-slot:acts>
                     @if ($edited && ! $sent && $staff)
-                        <form method="post" action="{{ $base }}/contract/edited" class="contents" data-turbo-confirm="Вернуть сформированный договор? Заполненный файл удалится">
+                        <form method="post" action="{{ $base }}/contract/edited" class="contents" data-turbo-confirm="Удалить заполненный договор? Договор снова соберётся из данных сделки">
                             @csrf @method('DELETE')
-                            <button type="submit" class="btn btn-ghost btn-s px-1.5 text-ink-muted" title="Вернуть сформированный" aria-label="Вернуть сформированный"><x-ui.icon name="undo" class="size-5"/></button>
+                            {{-- Корзина, а не ↶ (26.11.2026, владелец: стрелку «Вернуть сформированный» не находили, Лиза искала, как убрать паспорт). --}}
+                            <button type="submit" class="btn btn-ghost btn-s px-1.5 text-ink-muted" title="Удалить заполненный" aria-label="Удалить заполненный"><x-ui.icon name="trash" class="size-5"/></button>
                         </form>
                     @endif
                 </x-slot:acts>
