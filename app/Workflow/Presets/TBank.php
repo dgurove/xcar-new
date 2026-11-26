@@ -38,7 +38,11 @@ final class TBank extends Route
 
     public function blocks(): array
     {
-        return $this->saleBlocks();
+        $blocks = $this->saleBlocks();
+        // Подписания у Т нет — блок документов держит только «Оригиналы» (договор на Р.О.С. или ПРАЙМ, 26.11.2026).
+        $blocks['signing']['text'] = 'Собираем сканы и оригиналы документов';
+
+        return $blocks;
     }
 
     public function stages(): array
@@ -82,6 +86,6 @@ final class TBank extends Route
                 'ask_text' => 'Нужен ДКП, подписанный собственником и покупателем, — без него сделка не закроется',
                 'exits' => [['Договор приложен', 'manager', 'selection_pay']],
             ],
-        ] + $this->selectionSegment('closed_won') + $this->tail();
+        ] + $this->selectionSegment('closed_won', originals: 'originals') + self::originalsStage('signing') + $this->tail();
     }
 }

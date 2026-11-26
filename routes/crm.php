@@ -197,12 +197,14 @@ Route::domain(config('xcar.crm_host'))->middleware(['auth', 'ability:isStaff'])-
         Route::post('/work/deals/{deal}/contract/show', [DealContractController::class, 'showContract']);
         // «Напомнить менеджеру» приложить подписанный договор (26.11.2026, вкладка «Ждём договор»).
         Route::post('/work/deals/{deal}/signed/nudge', [DealContractController::class, 'nudgeSigned']);
-        // Оригиналы документов (26.11.2026, шаг «Оригиналы» Совкомбанка, `Offers\Originals`).
+        // Оригиналы документов (26.11.2026, шаг «Оригиналы»: Совкомбанк и сделки через Р.О.С. или ПРАЙМ, `Offers\Originals`).
         Route::put('/work/deals/{deal}/originals/{original}', [DealContractController::class, 'original']);
         Route::post('/work/deals/{deal}/originals', [DealContractController::class, 'originalAdd']);
         Route::delete('/work/deals/{deal}/originals/{original}', [DealContractController::class, 'originalRemove']);
         Route::post('/work/deals/{deal}/originals/nudge', [DealContractController::class, 'originalNudge']);
         Route::post('/work/deals/{deal}/originals/open', [DealContractController::class, 'originalOpen']);
+        Route::post('/work/deals/{deal}/originals/{original}/scan', [DealContractController::class, 'originalScan'])->whereNumber('original');
+        Route::delete('/work/deals/{deal}/originals/{original}/scan/{media}', [DealContractController::class, 'originalScanRemove'])->whereNumber(['original', 'media']);
         // Документы на вывоз СДЭКом из CRM (26.11.2026, вкладка «Документы на вывоз»): трек и «Документы получены» — `Logistics\Actions\Docs`.
         Route::post('/work/transports/{transport}/docs', [PickupController::class, 'docs']);
         Route::post('/work/transports/{transport}/docs/received', [PickupController::class, 'docsReceived']);

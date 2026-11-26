@@ -291,8 +291,13 @@ class DealContractController
     public function original(Request $request, Deal $deal, \App\Offers\Original $original)
     {
         abort_unless($request->user()->canEditDeals() && $original->deal_id === $deal->id, 404);
-        $data = $request->validate(['state' => ['required', 'string'], 'track' => ['nullable', 'string', 'max:60']]);
-        \App\Offers\Originals::update($original, $data['state'], $data['track'] ?? null, $request->user());
+        $data = $request->validate(['state' => ['required', 'string'], 'track' => ['nullable', 'string', 'max:60'],
+            'kind' => ['nullable', 'in:'.implode(',', array_keys(\App\Offers\Originals::SIGNED))]]);
+        // Совком, редкий вариант: доверенность вместо договора комиссии с актом — тем же «Сохранить».
+        if (($data['kind'] ?? null) && isset(\App\Offers\Originals::SIGNED[$original->kind])) {
+            \App\Offers\Originals::switchKind($original, $data['kind'], $request->user());
+        }
+        \App\Offers\Originals::update($original->fresh(), $data['state'], $data['track'] ?? null, $request->user());
 
         return back()->with('toast', $original->title.': '.$original->fresh()->place());
     }
@@ -325,13 +330,31 @@ class DealContractController
         return back()->with('toast', 'Документы заведены');
     }
 
-    /** Попросить менеджера прислать оригинал подписанного ДКП. */
+    /** Попросить менеджера прислать оригиналы, что у него (сообщением в чат сделки). */
     public function originalNudge(Request $request, Deal $deal)
     {
         abort_unless($request->user()->canEditDeals(), 404);
-        \App\Offers\Originals::nudge($deal, $request->user());
 
-        return back()->with('toast', 'Попросили менеджера');
+        return back()->with('toast', \App\Offers\Originals::nudge($deal, $request->user()) ? 'Написали менеджеру' : 'У менеджера ничего не ждём');
+    }
+
+    /** Скан оригинала «Приложить» (`x-ui.photo-pdf`): фото и файлы — одним документом. */
+    public function originalScan(Request $request, Deal $deal, \App\Offers\Original $original, \App\Media\PhotosPdf $photos)
+    {
+        abort_unless($request->user()->canEditDeals() && $original->deal_id === $deal->id && $deal->isActive(), 404);
+        $doc = $photos->fromRequest($request, $deal->offer->title());
+        \App\Offers\Originals::attachScan($original, $doc['file'], $request->user());
+        session()->flash('toast', $original->title.': скан приложен');
+
+        return response()->json(['reload' => true, 'name' => $doc['name'], 'pages' => $doc['pages']]);
+    }
+
+    public function originalScanRemove(Request $request, Deal $deal, \App\Offers\Original $original, int $media)
+    {
+        abort_unless($request->user()->canEditDeals() && $original->deal_id === $deal->id, 404);
+        \App\Offers\Originals::removeScan($original, $media, $request->user());
+
+        return back()->with('toast', 'Скан убран');
     }
 
     /** Договор от страховой руками («страховой напрямую», 16.11.2026): файл к машине, открыт менеджеру (`SupplierContract`). */

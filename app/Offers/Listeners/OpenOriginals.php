@@ -7,7 +7,10 @@ use App\Workflow\Events\StageEntered;
 use App\Workflow\Track;
 use Illuminate\Events\Dispatcher;
 
-/** Вошли в шаг «Оригиналы» (26.11.2026) — у сделки три документа, что должны дойти (`Originals::ensure`). */
+/**
+ * Вошли в шаг «Оригиналы» (26.11.2026): у сделки документы, что должны дойти (`Originals::ensure`, набор — `Originals::kit`), и
+ * менеджеру сообщение в чат, если что-то у него (`Originals::nudge`).
+ */
 final class OpenOriginals
 {
     public function subscribe(Dispatcher $events): array
@@ -20,6 +23,7 @@ final class OpenOriginals
         $deal = $e->deal ?? $e->offer->deal;
         if ($e->track === Track::Sale && $deal?->isActive() && Originals::applies($e->to)) {
             Originals::ensure($deal);
+            Originals::nudge($deal, $e->by);
         }
     }
 }

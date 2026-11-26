@@ -2,6 +2,8 @@
 
 namespace App\Workflow\Presets;
 
+use App\Workflow\Outcome;
+
 /**
  * Поставщик выставляет счёт, после оплаты — передача договора (как именно — в чате). «Забираю в гараж» — гаражная ветка.
  *
@@ -112,9 +114,13 @@ final class Alfa extends Route
             'signing' => [
                 'name' => 'Подписание', 'block' => 'signing', 'waits_for' => 'manager',
                 'ask_title' => 'Подписание договора {{ signing }}', 'ask_text' => 'Покупатель подписывает договор у поставщика в назначенное время',
-                'exits' => [['Договор подписан', 'manager', 'closed_won'], ['Договор подписан за менеджера', 'staff', 'closed_won']],
+                // Договор на Р.О.С. или ПРАЙМ (`ros`) — дальше «Оригиналы»: сканы и оригиналы ДКП, актов и счёт-фактуры (26.11.2026).
+                'exits' => [
+                    ['Договор подписан', 'manager', 'originals', Outcome::ROS], ['Договор подписан', 'manager', 'closed_won', Outcome::NOT_ROS],
+                    ['Договор подписан за менеджера', 'staff', 'originals', Outcome::ROS], ['Договор подписан за менеджера', 'staff', 'closed_won', Outcome::NOT_ROS],
+                ],
             ],
-        ];
+        ] + self::originalsStage('signing');
     }
 
     public function letters(): array

@@ -267,8 +267,26 @@ abstract class Route
      * оплату; после ДКП сделка ждёт его оплату. Проверяем сами, поставщику писать не о чем. Оплатили раньше — оба шага
      * проходят сразу (`AdvanceOnPayment::entered`).
      */
-    protected function selectionSegment(string $next): array
+    /**
+     * Шаг «Оригиналы» (26.11.2026, `Offers\Originals`): ждём документы сделки, всё на месте — сделка закрыта. У Совкома — всегда,
+     * у Альфы и Т — веткой `ros` (договор на Р.О.С. или ПРАЙМ).
+     */
+    protected static function originalsStage(string $block): array
     {
+        return ['originals' => [
+            'name' => \App\Offers\Originals::STAGE, 'block' => $block, 'waits_for' => 'us', 'limit_minutes' => 14 * self::DAY,
+            'ask_text' => 'Собираем сканы и оригиналы документов',
+            'exits' => [[\App\Offers\Originals::DONE, 'staff', 'closed_won']],
+        ]];
+    }
+
+    /** $originals — у оплаты подбора развилка: договор на Р.О.С. или ПРАЙМ (`ros`) — в «Оригиналы», остальным — в $next. */
+    protected function selectionSegment(string $next, ?string $originals = null): array
+    {
+        $paid = $originals
+            ? [['Оплата получена', 'staff', $originals, Outcome::ROS], ['Оплата получена', 'staff', $next, Outcome::NOT_ROS]]
+            : [['Оплата получена', 'staff', $next]];
+
         return [
             'selection_pay' => [
                 'name' => 'Оплата подбора', 'block' => 'payment', 'waits_for' => 'manager', 'limit_minutes' => 14 * self::DAY, 'asks' => 'document',
@@ -277,7 +295,7 @@ abstract class Route
             ],
             'selection_check' => [
                 'name' => 'Проверка оплаты подбора', 'block' => 'payment', 'waits_for' => 'us', 'limit_minutes' => self::DAY,
-                'exits' => [['Оплата получена', 'staff', $next], ['Оплата не поступила', 'staff', 'selection_pay']],
+                'exits' => [...$paid, ['Оплата не поступила', 'staff', 'selection_pay']],
             ],
         ];
     }

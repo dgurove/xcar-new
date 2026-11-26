@@ -105,6 +105,10 @@ final class FileController
         if ($media->model_type === Deal::class) {
             return $user->canEditDeals() || Deal::whereKey($media->model_id)->where('buyer_id', $user->id)->exists();
         }
+        // Скан оригинала сделки (`Offers\Original`, 26.11.2026) — только тем, кто ведёт документы сделок.
+        if ($media->model_type === \App\Offers\Original::class) {
+            return $user->canEditDeals();
+        }
         if ($user->isModerator()) {
             if ($media->model_type === Party::class) {
                 return $user->canEditDeals() && DealContract::whereHas('buyer', fn ($q) => $q->where('party_id', $media->model_id))->exists();

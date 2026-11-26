@@ -808,6 +808,10 @@ class Deal extends Model implements HasMedia
         if ($this->hasContract() && ! $this->contractSigned() && \App\Offers\Documents\SignedContractPdf::files($this)->isEmpty()) {
             return false;
         }
+        // Оригиналы у него (Р.О.С. или ПРАЙМ, шаг «Оригиналы», 26.11.2026) — прислать их тоже он.
+        if (\App\Offers\Originals::managerOwes($this)) {
+            return false;
+        }
         // Машину забирает он сам и ещё не забрал — его дело, и у гаражной тоже (`closeBlocker` гаражную не держит).
         $pickup = $this->offer?->pickup();
         if ($pickup && ! $pickup->taken() && $pickup->channel === Channel::Manager) {
