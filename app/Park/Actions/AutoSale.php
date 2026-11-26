@@ -57,7 +57,10 @@ final class AutoSale
         // машина не возвращается; идущую (галерея, продажа, сделка) — тоже: ей не место в «Без продажной цены».
         $holder = $vehicle->carRecord()->offer;
         if ($holder) {
-            return $holder->state === OfferState::Draft ? $this->mark($holder) : null;
+            // Оценочную сняли как неактуальную (правило Мигторга, «Оценочная неактуальна») — ждём оценку поставщика в «Без закупочной».
+            $dropped = $holder->value === null && $holder->value_at !== null;
+
+            return $holder->state === OfferState::Draft && ! $dropped ? $this->mark($holder) : null;
         }
         try {
             $offer = ($this->sell)($vehicle, null);

@@ -85,6 +85,18 @@ class ParkIntakeUnpricedTest extends TestCase
         $this->assertNull($offer->fresh()->park_intake_at);
     }
 
+    public function test_draft_with_dropped_value_is_left_in_nofloor(): void
+    {
+        $vehicle = $this->vehicle();
+        $offer = new Offer(['vendor_id' => $this->vendor->id]);
+        $offer->forceFill(['car_id' => $vehicle->car_id, 'value_at' => now()->subDay()])->save();
+
+        app(AutoSale::class)->sweep();
+
+        $this->assertNull($offer->fresh()->park_intake_at, 'правило Мигторга сняло оценочную — остаётся в «Без закупочной»');
+        $this->assertTrue($this->in('nofloor', $offer->fresh()));
+    }
+
     public function test_waits_for_reading_but_not_longer_than_half_an_hour(): void
     {
         $vehicle = $this->vehicle(at: now()->subMinutes(5));
