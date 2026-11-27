@@ -94,7 +94,7 @@ class MigtorgDraftsTest extends TestCase
         $this->lot(3, '0592/046/00004/26', 'casco');
         MigtorgDrafts::run();
         DB::table('migtorg_lots')->whereIn('id', [2, 3])->update(['section' => 'osago']);
-        // Взяли в работу — закупочная есть: не «Без закупочной цены».
+        // Взяли в работу — закупочная есть: не «Назначить закупочную».
         $this->offerOf('0592/046/00004/26')->update(['floor_price' => 300000]);
 
         $this->artisan('migtorg:drop-osago')->assertSuccessful();

@@ -14,7 +14,7 @@ use Tests\TestCase;
 
 /**
  * «На оценке у менеджеров» (01.11.2026, начальник): отдали черновик без цены продажи на оценку — у админа он во вкладке
- * после «Без продажной цены» и из неё уходит; сняли просьбы — возвращается. Модератору вкладки нет.
+ * после «Назначить цену продажи» и из неё уходит; сняли просьбы — возвращается. Модератору вкладки нет.
  */
 class EstimatingTabTest extends TestCase
 {
@@ -41,7 +41,7 @@ class EstimatingTabTest extends TestCase
         $this->assertTrue($in('unpriced'));
         $this->assertTrue($in('unpriced', admin: false));
         $this->assertSame('На оценке у менеджеров', $offer->fresh()->crmTab($admin));
-        // Время во вкладке не трогается: строка «Без продажной цены» остаётся на своём месте (22.11.2026, владелец: «бесит, что
+        // Время во вкладке не трогается: строка «Назначить цену продажи» остаётся на своём месте (22.11.2026, владелец: «бесит, что
         // вверх перескакивает»); «На оценке» считает своё — с первой открытой просьбы.
         $this->assertEquals($was, $offer->fresh()->tab_at);
         $this->assertArrayNotHasKey('estimating', OfferController::presets(User::create(['name' => 'Мод', 'phone' => '79000000042', 'roles' => [Role::Moderator], 'approved_at' => now()])));
