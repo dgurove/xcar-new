@@ -66,14 +66,12 @@
                     <x-ui.field name="buyer[reg_address]" :id="$f('p', 'reg')" label="Адрес прописки" type="textarea" rows="1" :value="$party->reg_address" :required="! $onlyReg"/>
                 </div>
                 <div class="flex flex-col gap-3" data-reveal-target="pane" data-reveal-key="ip" data-requisites-paste-target="group" @if ($kind !== 'ip') hidden @endif>
-                    <x-ui.field name="_paste" :id="$f('ip', 'paste')" label="Реквизиты целиком" type="textarea" rows="2" placeholder="Скопируйте карточку ИП из Word и вставьте сюда"/>
                     <x-ui.field name="buyer[name]" :id="$f('ip', 'name')" label="ФИО" :value="$company ? null : $party->name" required/>
                     <x-ui.field name="buyer[inn]" :id="$f('ip', 'inn')" label="ИНН" :value="$own('inn', $ip)" placeholder="12 цифр" required/>
                     <x-ui.field name="buyer[ogrn]" :id="$f('ip', 'ogrn')" label="ОГРНИП" :value="$own('ogrn', $ip)" placeholder="15 цифр" required/>
                     <x-ui.field name="buyer[legal_address]" :id="$f('ip', 'addr')" label="Адрес" type="textarea" rows="1" :value="$ip ? ($party->legal_address ?: $party->reg_address) : $party->reg_address" required/>
                 </div>
                 <div class="flex flex-col gap-3" data-reveal-target="pane" data-reveal-key="company" data-requisites-paste-target="group" @if ($kind !== 'company') hidden @endif>
-                    <x-ui.field name="_paste" :id="$f('org', 'paste')" label="Реквизиты целиком" type="textarea" rows="2" placeholder="Скопируйте карточку организации из Word и вставьте сюда"/>
                     <x-ui.field name="buyer[org]" :id="$f('org', 'name')" label="Название" :value="$own('name', $company)" required/>
                     <x-ui.field name="buyer[inn]" :id="$f('org', 'inn')" label="ИНН" :value="$own('inn', $company)" required/>
                     <x-ui.field name="buyer[kpp]" :id="$f('org', 'kpp')" label="КПП" :value="$own('kpp', $company)" required/>
