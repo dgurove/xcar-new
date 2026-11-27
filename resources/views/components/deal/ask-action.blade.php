@@ -18,6 +18,8 @@
     // Одна страница бывает с несколькими видами одного вопроса (чат и полка) — id формы и окна свои у вида и места.
     $form = 'ask-'.($ask->requirement?->id).'-'.$variant.'-'.substr(md5((string) $back), 0, 6);
     $shown = $ask->taps() ? (in_array($variant, ['row', 'card'], true) ? $ask->moves->take(1) : $ask->moves) : collect();
+    // «Доп. запрос…» рядом с «Беру в работу» (27.11.2026, `ExtraWant`) — в чате и в сделке, не в строке, плитке и вопросе при входе.
+    $want = ! $plain && $shown->contains(fn ($e) => $e->takes()) && \App\Offers\ExtraWant::can($deal, auth()->user());
 @endphp
 <div {{ $attributes->class(['ask-action', 'ask-action--'.$variant]) }} @if ($pickup) data-controller="sheet" @endif>
     @if ($ask->taps())
@@ -31,6 +33,9 @@
                          (19.11.2026, владелец: отказ там не показывать, он — на странице сделки). --}}
                     <x-ui.button type="button" :size="$size" :variant="$loop->first ? 'primary' : 'secondary'" :block="$variant !== 'row'"
                         data-controller="emit" data-action="emit#send" :data-emit-event-param="'take:'.$form.'-'.$exit->id">{{ Wording::mine($exit->label) }}</x-ui.button>
+                    @if ($want && $exit->takes())
+                        <x-ui.button type="button" :size="$size" variant="secondary" :block="$variant !== 'row'" data-controller="emit" data-action="emit#send" :data-emit-event-param="'want-'.$form.':open'">Доп. запрос…</x-ui.button>
+                    @endif
                 @else
                     <x-ui.button name="exit" :value="$exit->id" :size="$size" :variant="$loop->first ? 'primary' : 'secondary'" :block="$variant !== 'row'"
                         :data-turbo-confirm="Wording::mine($exit->confirm) ?: null">{{ Wording::mine($exit->label) }}</x-ui.button>
@@ -39,6 +44,9 @@
             {{-- В строке и в плитке «Ждут вас» — одна кнопка: плитки одной высоты, кнопки в ряд (10.11.2026, владелец: «всё скачет»);
                  «Отказываюсь» и «Попросить вывоз…» — в чате, в сделке и в окне «Беру в работу». --}}
         </form>
+        @if ($want)
+            <div class="contents" data-controller="sheet" data-action="want-{{ $form }}:open@window->sheet#open"><x-deal.want-sheet :deal="$deal" :id="'want-'.$form" :back="$back"/></div>
+        @endif
         @foreach ($shown->filter(fn ($e) => Warnings::takes($e)) as $exit)
             <x-deal.take-sheet :id="$form.'-'.$exit->id" :form="$form" :take="['exit', $exit->id]" :ok="$exit->takes() ? 'Да, беру в работу' : 'Да, берём'"
                 :drop="$variant !== 'sheet' && ($r = $ask->retreats->first()) ? ['exit', $r->id] : null" :deal="$deal" :ask="$ask->requirement" :back="$back"/>

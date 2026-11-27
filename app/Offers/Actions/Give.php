@@ -182,6 +182,9 @@ final class Give
             DB::afterCommit(fn () => app(FillCommissionOwner::class)($deal->fresh(['offer.vendor', 'contract'])));
             // Продавец ДКП собственника — из паспорта в письмах страховой (25.11.2026, `FillOwnerFromPassport`).
             DB::afterCommit(fn () => app(FillOwnerFromPassport::class)($deal->fresh(['offer.vendor', 'contract'])));
+            // Менеджер в подтверждении попросил доп. запрос (27.11.2026, `ExtraWant`, `bids.extra_picks`) — сделка сразу с его просьбой.
+            // Сбой просьбы не роняет принятие: сделка уже записана, просьбу тогда заводят руками.
+            DB::afterCommit(fn () => rescue(fn () => app(WantExtra::class)->fromBid($deal->fresh(['offer', 'buyer']))));
 
             return $deal;
         });

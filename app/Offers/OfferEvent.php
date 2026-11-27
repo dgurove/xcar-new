@@ -136,6 +136,8 @@ class OfferEvent extends Model
             // Доп. просьба поставщику (17.11.2026, `Offers\ExtraRequest`; 18.11.2026 — «просьба», и её ход, `Offers\ExtraAsk`).
             // Какая просьба — её текстом (24.11.2026): у одной машины их бывает несколько.
             OfferEventType::ExtraRequest => match ($p['state'] ?? null) {
+                'wanted' => 'Менеджер просит доп. запрос'.(! empty($p['bid']) ? ' (из подтверждения)' : '').(! empty($p['text']) ? ': '.$p['text'] : '').(! empty($p['comment']) ? ', «'.$p['comment'].'»' : ''),
+                'skipped' => 'Доп. запрос менеджера не отправляли'.(! empty($p['answer']) ? ': '.$p['answer'] : ''),
                 'answered' => 'Поставщик ответил на доп. просьбу'.self::askText($p),
                 'phone' => 'Доп. просьба: поставщик ответил не письмом'.self::askText($p).(! empty($p['answer']) ? ', ответ: '.$p['answer'] : ''),
                 'reopened' => 'Доп. просьба снова активна: вопрос не решён'.self::askText($p),

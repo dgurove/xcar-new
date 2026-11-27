@@ -926,6 +926,8 @@ class MailController
             'closing' => $closing && ! $review ? $request->query('closing') : null, 'closingReplaces' => $closing[2]?->id ?? null, 'closingFiles' => $closingFiles, 'closingSend' => $send,
             'closingThread' => $closing ? $request->query('closing') : null,
             'extra' => $extra, 'extraCity' => $extraCity, 'extraAll' => $extra !== null ? Template::requests()->get() : collect(),
+            // Менеджер сам просил «Доп. запрос…» (27.11.2026, `ExtraWant`): кто и его комментарий — строкой над галками.
+            'extraWant' => $extra !== null ? \App\Offers\ExtraAsk::wanted($offer->deal)?->loadMissing('wanter') : null,
             // Просим подтвердить оплату, а платёжки в системе нет (платил ПРАЙМ) — прикладывают скрепкой.
             'extraNoProof' => $extra !== null && $extra->contains(fn (Template $t) => $t->attach === Template::PAY_PROOF) && (! $offer->deal || PaymentProofPdf::files($offer->deal)->isEmpty()),
             // Номер, который письмо показало: при отправке он меняется на настоящий, если успел смениться (полночь, другой отправил).

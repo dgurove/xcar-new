@@ -29,6 +29,15 @@ final class ExtraAskController
         return back(fallback: "/offers/{$offer->number}")->with('toast', $ask->fresh()->isOpen() ? 'Ждём решения менеджера' : 'Просьба решена');
     }
 
+    /** «Не запрашивать…» на просьбе менеджера (27.11.2026, `Offers\ExtraWant`): снять, ему в чат — почему. */
+    public function skip(Request $request, Offer $offer, ExtraAsk $ask, SettleExtraAsk $settle)
+    {
+        abort_unless($ask->offer_id === $offer->id, 404);
+        $settle->skip($ask, $request->user(), $request->string('skip_text')->limit(1000, '')->value());
+
+        return back(fallback: "/offers/{$offer->number}")->with('toast', 'Доп. запрос снят, менеджеру написали в чат');
+    }
+
     public function decide(Request $request, Offer $offer, SettleExtraAsk $settle)
     {
         $data = $request->validate(['decision' => ['required', 'in:'.ExtraAsk::TAKE.','.ExtraAsk::DROP]]);

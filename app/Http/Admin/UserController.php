@@ -740,6 +740,7 @@ class UserController
         $dealShare = $request->validate(['deal_share' => ['nullable', 'integer', 'min:0', 'max:100']], [], ['deal_share' => 'доля'])['deal_share'] ?? null;
         $data['deal_share'] = in_array(Role::Manager, $data['roles'], true) && $dealShare !== null && $dealShare !== '' ? (int) $dealShare : null;
         $data['consent_precheck'] = in_array(Role::Manager, $data['roles'], true) && $request->boolean('consent_precheck');
+        $data['extra_ask_button'] = in_array(Role::Manager, $data['roles'], true) && $request->boolean('extra_ask_button');
 
         return $data;
     }

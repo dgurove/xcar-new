@@ -142,7 +142,7 @@ class Position extends Model
     public function needsUs(): bool
     {
         if ($ask = $this->extraAsk()) {
-            return $ask->phase() === ExtraAsk::SHOW || $this->repricePending() || $this->priceAskLate() !== null || $this->priceOffered() !== null
+            return in_array($ask->phase(), [ExtraAsk::SHOW, ExtraAsk::WANTED], true) || $this->repricePending() || $this->priceAskLate() !== null || $this->priceOffered() !== null
                 || $this->replyPending() !== null || $this->repriceUnanswered() !== null || $this->moneyArrived() !== null || $this->pickupLetter() !== null
                 || $this->contactDue() !== null;
         }
@@ -380,6 +380,11 @@ class Position extends Model
 
         if ($answer = $this->repriceUnanswered()) {
             return $todo('reprice-answer', 'Ответить поставщику про переоценку', 0, $answer->decided_at, ['label' => 'Открыть', 'href' => '/offers/'.$offer->number]);
+        }
+
+        // Менеджер сам попросил «Доп. запрос…» (27.11.2026, `Offers\ExtraWant`) — написать поставщику с его галками.
+        if ($ask?->phase() === ExtraAsk::WANTED) {
+            return $todo('extra-want', 'Написать доп. запрос', 0, $ask->asked_at, ['label' => 'Написать', 'letters' => \App\Offers\ExtraWant::letterUrl($ask, $offer)]);
         }
 
         // Поставщик ответил на доп. просьбу — показать менеджеру (или «Вопрос не решён»): своим делом, а не «Прочитать ответ».

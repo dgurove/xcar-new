@@ -17,6 +17,8 @@ use Illuminate\Support\Collection;
  * `Actions\LogExtraRequest`, ведёт `Actions\SettleExtraAsk`.
  *
  * Шаги (`phase`), пока просьба не решена (`decided_at`), ход идущей сделки стоит (`Position::extraAsk`):
+ * - `wanted` — менеджер сам попросил «Доп. запрос…» (27.11.2026, `ExtraWant`): что отметил (`picks`) и комментарий, письма ещё нет —
+ *   наш ход «Написать доп. запрос» (письмо — `SettleExtraAsk::asked` в эту же запись) или «Не запрашивать…» (`skip`);
  * - `supplier` — ждём первого ответа поставщика по машине (не автоответа, `Message::isAutomatic`) с `since_at`;
  * - `show` — ответ пришёл, наш ход: показать менеджеру (`Disclose`) или «Вопрос не решён» — снова `supplier` с этой минуты;
  * - `manager` — показали, ход менеджера: «Беру в работу» / «Отказываюсь» (`SettleExtraAsk::decide`).
@@ -25,11 +27,13 @@ use Illuminate\Support\Collection;
  * порядке, берём» / «Отказываюсь» (`labels`): осмотр до «Беру в работу» и после — один модуль (18.11.2026, владелец: «это одно и то
  * же, выглядеть и работать должно одинаково»; прежний этап Альфы «Осмотр перед оплатой» снят).
  */
-#[Fillable(['offer_id', 'deal_id', 'message_id', 'text', 'phone_answer', 'asks_manager', 'asked_by', 'asked_at', 'since_at', 'frozen_at', 'answered_at',
+#[Fillable(['offer_id', 'deal_id', 'message_id', 'text', 'phone_answer', 'asks_manager', 'asked_by', 'wanted_by', 'picks', 'comment', 'asked_at', 'since_at', 'frozen_at', 'answered_at',
     'answer_message_id', 'shown_at', 'decided_at', 'decision', 'decided_by', 'remind_at'])]
 class ExtraAsk extends Model
 {
     use FastAttributes;
+
+    public const WANTED = 'wanted';
 
     public const SUPPLIER = 'supplier';
 
@@ -46,10 +50,14 @@ class ExtraAsk extends Model
 
     public const GONE = 'gone';
 
+    /** Менеджер просил, а мы запрашивать не стали («Не запрашивать…»). */
+    public const SKIPPED = 'skipped';
+
     protected function casts(): array
     {
         return [
             'asks_manager' => 'boolean',
+            'picks' => 'array',
             'asked_at' => 'datetime',
             'since_at' => 'datetime',
             'frozen_at' => 'datetime',
@@ -86,6 +94,12 @@ class ExtraAsk extends Model
         return $this->belongsTo(Message::class, 'answer_message_id');
     }
 
+    /** Менеджер, что сам попросил «Доп. запрос…». */
+    public function wanter(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'wanted_by');
+    }
+
     public function askedBy(): BelongsTo
     {
         return $this->belongsTo(User::class, 'asked_by');
@@ -106,11 +120,12 @@ class ExtraAsk extends Model
         return $this->decided_at === null;
     }
 
-    /** Шаг открытой просьбы (`SUPPLIER` | `SHOW` | `MANAGER`), решённой — null. */
+    /** Шаг открытой просьбы (`WANTED` | `SUPPLIER` | `SHOW` | `MANAGER`), решённой — null. */
     public function phase(): ?string
     {
         return match (true) {
             $this->decided_at !== null => null,
+            $this->since_at === null => self::WANTED,
             $this->answered_at === null => self::SUPPLIER,
             $this->shown_at === null => self::SHOW,
             default => self::MANAGER,
@@ -165,12 +180,20 @@ class ExtraAsk extends Model
         return $ask?->deal_id === $deal->id ? $ask : null;
     }
 
+    /** Открытая просьба менеджера без письма — по сделке (`WANTED`). */
+    public static function wanted(?Deal $deal): ?self
+    {
+        $ask = self::holding($deal);
+
+        return $ask?->phase() === self::WANTED ? $ask : null;
+    }
+
     /** SQL над `offer_positions`: открытая просьба держит идущую сделку машины (`Position::NEEDS_US_SQL`, `TickStages`). */
     public const HOLDS_SQL = 'exists (select 1 from extra_asks ea join deals d on d.id = ea.deal_id where ea.offer_id = offer_positions.offer_id and ea.decided_at is null and '.Deal::ACTIVE_D.')';
 
-    /** То же — на шаге «Показать менеджеру» (наш ход). */
+    /** То же — ход наш: «Показать менеджеру» или менеджер попросил, а письма ещё нет («Написать доп. запрос»). */
     public const SHOW_SQL = 'exists (select 1 from extra_asks ea join deals d on d.id = ea.deal_id where ea.offer_id = offer_positions.offer_id and ea.decided_at is null
-        and ea.answered_at is not null and ea.shown_at is null and '.Deal::ACTIVE_D.')';
+        and ((ea.answered_at is not null and ea.shown_at is null) or ea.since_at is null) and '.Deal::ACTIVE_D.')';
 
     /** SQL над `deals`: просьба ещё не у менеджера — его ход стоит (`Deal::MANAGER_TURN_SQL`). */
     public const DEAL_BEFORE_SQL = 'exists (select 1 from extra_asks ea where ea.deal_id = deals.id and ea.decided_at is null and ea.shown_at is null)';

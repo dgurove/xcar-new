@@ -96,6 +96,8 @@
                 </div>
                 {{-- Доп. запрос до «Беру в работу» (20.11.2026, Корабельников): по грузовым Альфы сначала ПТС и осмотр (`Deal::needsPrecheck`). --}}
                 <x-ui.check name="consent_precheck" :checked="old('consent_precheck', $user->consent_precheck)" id="precheck-{{ $user->id }}">Грузовые Альфы: сначала доп. запрос ПТС и осмотра</x-ui.check>
+                {{-- «Доп. запрос…» рядом с «Беру в работу» (27.11.2026, Корабельников): сам отмечает, что запросить (`Offers\ExtraWant`). --}}
+                <x-ui.check name="extra_ask_button" :checked="old('extra_ask_button', $user->extra_ask_button)" id="extra-ask-button-{{ $user->id }}">Кнопка «Доп. запрос…» у «Беру в работу»</x-ui.check>
             </div>
             <div data-super class="flex flex-col gap-3">
                 <x-admin.garage-toggle :user="$user"/>

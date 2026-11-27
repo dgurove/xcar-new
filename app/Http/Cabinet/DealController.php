@@ -311,6 +311,18 @@ class DealController
         return $this->back($request, $deal)->with('toast', $labels['take']);
     }
 
+    /** «Доп. запрос…» (27.11.2026, `Offers\ExtraWant`): что запросить у поставщика — галками, комментарий по желанию. */
+    public function extraWant(Request $request, Deal $deal, \App\Offers\Actions\WantExtra $want)
+    {
+        $data = $request->validate(['picks' => ['nullable', 'array', 'max:20'], 'picks.*' => ['integer'], 'comment' => ['nullable', 'string', 'max:500']]);
+        if (! \App\Offers\ExtraWant::can($deal, $request->user())) {
+            return $this->back($request, $deal)->with('toast', 'Доп. запрос уже идёт');
+        }
+        $want($deal, $request->user(), $data['picks'] ?? [], $data['comment'] ?? null);
+
+        return $this->back($request, $deal)->with('toast', 'Попросили XCAR запросить у поставщика');
+    }
+
     public function answer(Request $request, Deal $deal, AnswerRequirement $answer)
     {
         $data = $request->validate(['exit' => ['required', 'integer'], 'requirement' => ['nullable', 'integer'], 'back' => ['nullable', 'string', 'max:500']]);

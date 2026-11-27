@@ -32,13 +32,15 @@ class BidController
             'amount' => [$kind === BidKind::Buyer ? 'required' : 'nullable', 'string'],
             'comment' => ['nullable', 'string', 'max:500'],
             'manager_id' => [$staff ? 'required' : 'nullable', 'integer'],
+            'extra' => ['nullable', 'array', 'max:20'],
+            'extra.*' => ['integer'],
         ], ['manager_id.required' => 'Выберите менеджера']);
         $amount = Money::rubles($data['amount'] ?? null) ?: null;
 
         if (! $staff) {
-            $place($offer, $me, $amount, $data['comment'] ?? null, $kind, $request->boolean('low_ok'));
+            $bid = $place($offer, $me, $amount, $data['comment'] ?? null, $kind, $request->boolean('low_ok'), $data['extra'] ?? []);
 
-            return back()->with('toast', $kind === BidKind::Garage ? 'В гараж, ждёт решения' : 'Подтверждение отправлено');
+            return back()->with('toast', ($kind === BidKind::Garage ? 'В гараж, ждёт решения' : 'Подтверждение отправлено').($bid->extra_picks ? ', доп. запрос сделаем, когда примут' : ''));
         }
 
         $manager = User::withRole(Role::Manager)->find($data['manager_id']);

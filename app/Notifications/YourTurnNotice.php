@@ -2,6 +2,7 @@
 
 namespace App\Notifications;
 
+use App\Offers\ExtraWant;
 use App\Support\Ago;
 use App\Telegram\Text;
 use App\Workflow\Outcome;
@@ -109,8 +110,13 @@ final class YourTurnNotice extends Notice
      */
     public static function consentButtons(Requirement $r): array
     {
+        // «Доп. запрос…» (27.11.2026, `ExtraWant`) — рядом с «Беру в работу» ссылкой на шторку галок на сайте (`?want=1`): галки
+        // и комментарий в Telegram не вводим, как и цены.
+        $want = $r->deal && ExtraWant::can($r->deal, $r->deal->buyer) && ($url = $r->deal->personUrl())
+            ? ['text' => 'Доп. запрос…', 'url' => $url.(str_contains($url, '?') ? '&' : '?').'want=1'] : null;
+
         return array_values(array_filter([
-            self::consentExit($r, 'take') ? [['text' => 'Беру в работу', 'callback_data' => "turn:{$r->id}:take"]] : null,
+            self::consentExit($r, 'take') ? array_values(array_filter([['text' => 'Беру в работу', 'callback_data' => "turn:{$r->id}:take"], $want])) : null,
             array_values(array_filter([
                 self::consentExit($r, 'drop') ? ['text' => 'Отказываюсь', 'callback_data' => "turn:{$r->id}:drop"] : null,
                 ['text' => 'Напомнить через…', 'callback_data' => "turn:{$r->id}:remind"],

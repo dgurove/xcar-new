@@ -12,6 +12,8 @@
         ->contains(fn ($a) => $a->alive() && ! $a->isOffered() && ! $a->isCountered());
     $retreats = $askRefuses ? collect() : $retreats;
     // Закрыть сделку, пока автомобиль не забрали, нельзя (18.10.2026): вместо кнопки — что сделать сначала.
+    // «Доп. запрос…» в ряд с «Беру в работу» (27.11.2026, Корабельников; вариант А по макетам): у менеджера с признаком (`ExtraWant`).
+    $want = $moves->contains(fn ($e) => $e->takes()) && \App\Offers\ExtraWant::can($deal, auth()->user());
     $blocker = $moves->contains(fn ($e) => \App\Offers\Deal::closes($e)) ? $deal->closeBlocker() : null;
     if ($blocker) {
         $moves = $moves->reject(fn ($e) => \App\Offers\Deal::closes($e));
@@ -29,17 +31,24 @@
             @if ($errors->has('exit'))<p class="field-error">{{ $errors->first('exit') }}</p>@endif
             @if ($blocker)<p class="font-medium text-urgent">{{ $blocker }}</p>@endif
             {{-- Один исход — во всю ширину, два — в ряд одной ширины, как ответы в диалоге приложения; больше — переносом. --}}
-            <div @class(['gap-3', 'grid' => $moves->count() <= 2, 'grid-cols-2' => $moves->count() === 2, 'flex flex-wrap' => $moves->count() > 2])>
+            @php $count = $moves->count() + ($want ? 1 : 0); @endphp
+            <div @class(['gap-3', 'grid' => $count <= 2, 'grid-cols-2' => $count === 2, 'flex flex-wrap' => $count > 2])>
                 @foreach ($moves as $exit)
                     @if (\App\Offers\Warnings::takes($exit))
                         {{-- «Беру в работу» — окно с тремя кнопками (`x-deal.take-sheet`), а не `confirm.js` с двумя. --}}
                         <x-ui.button type="button" :variant="$loop->first ? 'primary' : 'secondary'" data-controller="emit" data-action="emit#send" :data-emit-event-param="'take:take-'.$requirement->id.'-'.$exit->id" class="min-w-0 px-4">{{ \App\Support\Opens::label(\App\Users\Wording::mine($exit->label), true) }}</x-ui.button>
+                        @if ($want && $exit->takes())
+                            <x-ui.button type="button" variant="secondary" data-controller="emit" data-action="emit#send" :data-emit-event-param="'want-'.$deal->id.':open'" class="min-w-0 px-4">Доп. запрос…</x-ui.button>
+                        @endif
                     @else
                         <x-ui.button name="exit" :value="$exit->id" :variant="$loop->first ? 'primary' : 'secondary'" :data-turbo-confirm="\App\Users\Wording::mine($exit->confirm) ?: null" class="min-w-0 px-4">{{ \App\Support\Opens::label(\App\Users\Wording::mine($exit->label), (bool) $exit->confirm) }}</x-ui.button>
                     @endif
                 @endforeach
             </div>
         </form>
+        @if ($want)
+            <div class="contents" data-controller="sheet" data-action="want-{{ $deal->id }}:open@window->sheet#open"><x-deal.want-sheet :deal="$deal" :id="'want-'.$deal->id" auto/></div>
+        @endif
         @foreach ($moves->filter(fn ($e) => \App\Offers\Warnings::takes($e)) as $exit)
             <x-deal.take-sheet :id="'take-'.$requirement->id.'-'.$exit->id" :form="'reply-'.$requirement->id" :take="['exit', $exit->id]" :ok="$exit->takes() ? 'Да, беру в работу' : 'Да, берём'"
                 :drop="($r = $retreats->first()) ? ['exit', $r->id] : null" :deal="$deal" :ask="$requirement"/>

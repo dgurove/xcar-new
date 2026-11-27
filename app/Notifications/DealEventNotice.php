@@ -49,6 +49,13 @@ final class DealEventNotice extends Notice
             path: Notice::dealPathOr($offer, '/offers/'.$offer->number.'?window='.rawurlencode('/offers/'.$offer->number.'/letters?at='.$letter->id)));
     }
 
+    /** Менеджер сам попросил «Доп. запрос…» (27.11.2026, `Offers\ExtraWant`) — громко: ждёт наше письмо. */
+    public static function extraWanted(Deal $deal, \App\Offers\ExtraAsk $ask, User $manager): self
+    {
+        return new self($deal->offer, 'extra-want', 'Менеджер просит доп. запрос', 'просит запросить: '.\App\Offers\ExtraWant::words($ask, lower: true), $ask->comment,
+            'managers', $manager, loud: true, path: self::dealPath($deal));
+    }
+
     /** Шаг сделки сдвинул сотрудник: «Андрей Кузнецов: «Оплата получена» → «Подписание»». */
     public static function stageMoved(Deal $deal, Stage $to, ?Outcome $exit, User $by): self
     {

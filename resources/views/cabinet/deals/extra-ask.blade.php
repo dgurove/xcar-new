@@ -19,6 +19,10 @@
          поставщика — наш ход «На согласовании» / «В обработке» со счётчиком, без «Попросили …»; решать ему — вопрос «Поставщик ответил —
          берёте?» (`ExtraAskDecisionNotice::question`), ниже сам ответ. --}}
     @if ($turn = \App\Offers\Turn::of($deal))<x-deal.turn-head :turn="$turn"/>@endif
+    {{-- Он сам просил «Доп. запрос…» (27.11.2026, `ExtraWant`): что отметил — строкой под шапкой, пока ждём письма и ответа. --}}
+    @if ($ask->wanted_by && in_array($phase, [ExtraAsk::WANTED, ExtraAsk::SUPPLIER], true))
+        <p class="mt-2 text-ink-muted">{{ $phase === ExtraAsk::WANTED ? 'Вы попросили запросить' : 'Запросили у поставщика' }}: {{ \App\Offers\ExtraWant::words($ask, lower: true) }}</p>
+    @endif
     @if ($answer->isNotEmpty())@include('cabinet.deals.disclosures', ['disclosures' => $answer, 'early' => collect(), 'late' => $answer])@endif
     @if ($ask->asks_manager)
         <form method="post" action="/deals/{{ $deal->id }}/extra-ask" id="extra-ask-{{ $ask->id }}" class="mt-5 flex flex-col gap-4">

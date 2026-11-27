@@ -66,7 +66,7 @@
         @if ($counter)<x-ui.state tone="accent"><span class="nums">→ {{ Money::rub($bid->counter_amount) }}</span>, ждём ответа</x-ui.state>@if ($bid->counter_remind_at)<span>напомним {!! \App\Support\Ago::html($bid->counter_remind_at, true, words: false) !!}</span>@endif
         @elseif ($refusedCounter)<span>отказался от контрпредложения <span class="nums">{{ Money::rub($bid->counter_amount) }}</span></span>
         @elseif ($byCounter)<span>по контрпредложению{{ $wasBefore ? ', было ' : '' }}@if ($wasBefore)<span class="nums">{{ Money::nums($wasBefore) }}</span>@endif</span>@endif
-    @php $alert = ob_get_clean(); $rowAlert = (! $active && ! $accepted) || $counter || $byCounter; @endphp
+    @php $alert = ob_get_clean(); $rowAlert = (! $active && ! $accepted) || $counter || $byCounter || ($bid->extra_picks && $active); @endphp
     @php ob_start(); @endphp
         <x-ui.avatar :user="$who" :size="36"/>
         <span class="min-w-0 flex-1">
@@ -81,6 +81,7 @@
                     @elseif (! $active && ! $accepted)<x-ui.state :tone="$bid->state === BidState::Declined ? 'danger' : 'closed'">{{ mb_strtolower($bid->state->label()) }}</x-ui.state>@endif
                     @if ($counter)<x-ui.state tone="accent"><span class="nums">→ {{ Money::rub($bid->counter_amount) }}</span>, ждём ответа</x-ui.state>@if ($bid->counter_remind_at)<span>напомним {!! \App\Support\Ago::html($bid->counter_remind_at, true, words: false) !!}</span>@endif
                     @elseif ($byCounter)<span>по контрпредложению{{ $wasBefore ? ', было ' : '' }}@if ($wasBefore)<span class="nums">{{ Money::nums($wasBefore) }}</span>@endif</span>@endif
+                    @if ($bid->extra_picks && $active)<span>и запросить {{ \App\Offers\ExtraWant::wordsOf($bid->extra_picks, lower: true) }}</span>@endif
                 </span>
             @endif
         </span>
@@ -100,6 +101,8 @@
                 </div>
                 @if ($alerts)<div class="bid-line-sub mt-2">{!! $alert !!}</div>@endif
                 @if ($bid->comment)<p class="mt-2 text-sm">{{ $bid->comment }}</p>@endif
+                {{-- Просит доп. запрос, если примут (27.11.2026, `bids.extra_picks`) — видно при выборе, кого принять. --}}
+                @if ($bid->extra_picks)<p class="mt-2 text-sm">Просит запросить: {{ \App\Offers\ExtraWant::wordsOf($bid->extra_picks, lower: true) }}</p>@endif
                 @if ($bid->byStaff())<p class="mt-1 text-sm text-ink-dim">внёс {{ $bid->placedBy?->shortName() }}</p>@endif
                 @if ($talk || $active || $dealUrl)
                     <div class="bid-sheet-acts">

@@ -3,7 +3,9 @@
      текущего этапа, этап ждёт следом серым без кнопок — как «Переоценка». Строкой — что попросили и письмо; ниже только то, что
      делать сейчас: ждём поставщика («Ответили не письмом» в «⋯»), «Показать менеджеру» и «Вопрос не решён» (ответ пустой —
      «отсутствую на рабочем месте»), менеджер решает — его кнопки за него. Осмотр до «Беру в работу» и после — один модуль (владелец),
-     разница — подписи кнопок (`ExtraAsk::labels`). Сделанное — серой строкой, что впереди — «Потом: …». --}}
+     разница — подписи кнопок (`ExtraAsk::labels`). Сделанное — серой строкой, что впереди — «Потом: …».
+     Менеджер сам попросил «Доп. запрос…» (27.11.2026, `Offers\ExtraWant`, вариант 4б по макетам): шаг «Доп. запрос менеджера» — что
+     отметил, кто и когда, его комментарий; «Написать доп. запрос» — окно письма с его галками, «Не запрашивать…» — ему в чат почему. --}}
 @props(['ask', 'deal'])
 @php
     use App\Offers\ExtraAsk;
@@ -17,15 +19,17 @@
     $letters = fn (?int $id) => '/offers/'.$n.'/letters'.($id ? '?at='.$id : '');
     $pending = \App\Offers\ReplyReview::pending()->where('deal_id', $deal->id)->exists();
     $later = array_values(array_filter([
-        $ask->asks_manager && $phase === ExtraAsk::SUPPLIER ? 'показать ответ менеджеру' : null,
-        $ask->asks_manager && $phase !== ExtraAsk::MANAGER ? ($phase === ExtraAsk::SUPPLIER ? 'его решение' : 'решение менеджера') : null,
+        $phase === ExtraAsk::WANTED ? 'ответ поставщика' : null,
+        $ask->asks_manager && in_array($phase, [ExtraAsk::WANTED, ExtraAsk::SUPPLIER], true) ? 'показать ответ менеджеру' : null,
+        $ask->asks_manager && $phase !== ExtraAsk::MANAGER ? (in_array($phase, [ExtraAsk::WANTED, ExtraAsk::SUPPLIER], true) ? 'его решение' : 'решение менеджера') : null,
     ]));
 @endphp
 <div class="step step--current">
     <span class="step-dot"></span>
     <div class="step-body">
         <div class="step-head !flex-nowrap !items-start">
-            <span class="step-title min-w-0 flex-1">Дополнительная просьба</span>
+            <span class="step-title min-w-0 flex-1">{{ $phase === ExtraAsk::WANTED ? 'Доп. запрос менеджера' : 'Дополнительная просьба' }}</span>
+            @if ($phase !== ExtraAsk::WANTED)
             <x-ui.more :id="$menu" class="ml-auto mt-0.5 shrink-0">
                 <div class="menu-group">
                     @if ($ask->message_id)
@@ -39,6 +43,7 @@
                     @endif
                 </div>
             </x-ui.more>
+            @endif
         </div>
         @if ($phase === ExtraAsk::SUPPLIER)
             <div class="contents" data-controller="sheet" data-action="extra-phone-{{ $ask->id }}:open@window->sheet#open">
@@ -52,6 +57,34 @@
             </div>
         @endif
 
+        @if ($phase === ExtraAsk::WANTED)
+            {{-- Что он отметил — главной строкой, ниже кто и когда, его комментарий; дальше — письмо с его галками или «Не запрашивать…». --}}
+            @php $wanter = $ask->wanter; @endphp
+            <p class="reprice-line">{{ \App\Offers\ExtraWant::words($ask) }}</p>
+            @if ($wanter)
+                <div class="step-who">
+                    <x-ui.avatar :user="$wanter" :size="32"/>
+                    <div class="min-w-0">
+                        <div class="truncate">{{ $wanter->shortName() }}</div>
+                        <x-ui.state tone="plain" class="nums">просит с {{ Ago::at($ask->asked_at, true, words: false) }}</x-ui.state>
+                    </div>
+                </div>
+            @endif
+            @if ($ask->comment)<p class="reprice-decided">«{{ $ask->comment }}»</p>@endif
+            <div class="reprice-acts">
+                <x-mail.window-button :url="\App\Offers\ExtraWant::letterUrl($ask, $offer)" label="Написать доп. запрос" icon="mail" class="btn-s btn-accent"/>
+                <div class="contents" data-controller="sheet">
+                    <x-ui.button size="sm" variant="secondary" type="button" data-action="sheet#open" aria-controls="extra-skip-{{ $ask->id }}">Не запрашивать…</x-ui.button>
+                    <x-ui.sheet :id="'extra-skip-'.$ask->id" title="Не запрашивать">
+                        <form method="post" action="/offers/{{ $n }}/extra-asks/{{ $ask->id }}/skip" class="flex flex-col gap-4">
+                            @csrf
+                            <div class="fields"><x-ui.field name="skip_text" :id="'extra-skip-text-'.$ask->id" label="Что ответить менеджеру" type="textarea" placeholder="ПТС уже есть в документах"/></div>
+                            <x-ui.sheet-foot>Не запрашивать</x-ui.sheet-foot>
+                        </form>
+                    </x-ui.sheet>
+                </div>
+            </div>
+        @else
         {{-- Что попросили — главной строкой; под ней серым письмо, ответ и сколько ждём — одним рядом. --}}
         <p class="reprice-line">{{ \Illuminate\Support\Str::ucfirst($ask->phrase()) }}</p>
         <p class="reprice-meta nums">
@@ -72,6 +105,7 @@
         {{-- Что ответили не письмом (24.11.2026, `phone_answer`) — тёмной строкой под просьбой. --}}
         @if ($ask->phone_answer && $ask->answered_at && ! $ask->answer_message_id)
             <p class="reprice-decided">Ответили: {{ $ask->phone_answer }}</p>
+        @endif
         @endif
 
         {{-- Что делать сейчас: ответ пришёл — письмо строкой «Показать менеджеру?» и «Вопрос не решён»; показали — менеджер решает. --}}

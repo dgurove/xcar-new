@@ -40,6 +40,14 @@ final class SettleExtraAsk
         $deal = $deal?->isActive() && ! $deal->isParallel() ? $deal : null;
         $paying = ExtraRequest::picked($message->requests['ids'] ?? [])->contains(fn (Template $t) => $t->attach === Template::PAY_PROOF);
         $at = $message->date_at ?? now();
+        // Менеджер сам просил «Доп. запрос…» (27.11.2026, `ExtraWant`) — письмо и есть его просьба: та же запись идёт дальше, пауза — с
+        // его просьбы. Любое письмо с галками по этой сделке её закрывает (что отметить — решаем мы, его галки — подсказка).
+        if ($deal && ($wanted = ExtraAsk::wanted($deal))) {
+            $wanted->update(['message_id' => $message->id, 'text' => $text, 'asked_by' => $by?->id, 'asked_at' => $at, 'since_at' => $at]);
+            Disclose::publish($deal);
+
+            return $wanted;
+        }
         $ask = ExtraAsk::create([
             'offer_id' => $offer->id, 'deal_id' => $deal?->id, 'message_id' => $message->id, 'text' => $text,
             'asks_manager' => $deal && $deal->buyer_id && ! $deal->supplierPaid() && ! $paying,
@@ -75,6 +83,32 @@ final class SettleExtraAsk
             $ask->update(['shown_at' => now()]);
         }
         $notify && $asks->isNotEmpty() && $deal->buyer?->notify(new ExtraAskDecisionNotice($asks->last()->setRelation('deal', $deal)));
+    }
+
+    /**
+     * «Не запрашивать…» (27.11.2026): менеджер просил доп. запрос, а писать поставщику не будем — просьба снята, ход сделки снова
+     * идёт (его вопрос «Берёте в работу?» остаётся), ему в чат — почему (`$text`, необязательно).
+     */
+    public function skip(ExtraAsk $ask, User $by, ?string $text = null): void
+    {
+        $text = trim((string) $text) ?: null;
+        DB::transaction(function () use ($ask, $by, $text) {
+            $ask = ExtraAsk::whereKey($ask->id)->lockForUpdate()->firstOrFail();
+            if ($ask->phase() !== ExtraAsk::WANTED) {
+                throw ValidationException::withMessages(['extra' => 'Доп. запрос уже отправлен или снят']);
+            }
+            $ask->update(['decided_at' => now(), 'decision' => ExtraAsk::SKIPPED, 'decided_by' => $by->id]);
+            $ask->offer->log(OfferEventType::ExtraRequest, $by, ['state' => ExtraAsk::SKIPPED, 'ask' => $ask->id] + ($text ? ['answer' => $text] : []));
+            $this->thaw($ask);
+        });
+        $ask = $ask->fresh(['deal.buyer', 'offer']);
+        $deal = $ask?->deal;
+        if ($deal?->buyer && $ask->offer->chatOpenFor($deal->buyer)) {
+            app(\App\Chats\Actions\PlatformMessage::class)(app(\App\Chats\Actions\OpenChat::class)($ask->offer, $deal->buyer, greet: false),
+                'Доп. запрос поставщику отправлять не будем'.($text ? ': '.$text : ''));
+        }
+        $deal && Disclose::publish($deal);
+        \App\Offers\DealTabs::forget();
     }
 
     /** «Вопрос не решён» (ответ был пустым — «отсутствую на рабочем месте»): снова ждём первого ответа поставщика с этой минуты. */

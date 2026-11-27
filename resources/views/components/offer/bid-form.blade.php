@@ -18,7 +18,12 @@
     // Зона цены — при отправке (`bid_controller`, `Offer::bidZone`); своё ниже порога — янтарной строкой под ценой.
     $check = $offer ? '/offers/'.$offer->number.'/confirm/check' : '';
     $lowMine = $offer && $myBid && ! $myBid->isGarage() && $myBid->amount && $offer->bidZone($myBid->amount) === 'low';
+    // «+ Доп. запрос…» в подтверждении (27.11.2026, Корабельников; владелец выбрал П2): та же шторка, что у «Беру в работу», галки
+    // уходят с подтверждением (`bids.extra_picks`), приняли — сделка открывается с его просьбой (`WantExtra::fromBid`).
+    $wantExtra = $offer && ! $staff && auth()->user()->extra_ask_button;
+    $myExtra = $myBid?->extra_picks ? \App\Offers\ExtraWant::wordsOf($myBid->extra_picks, lower: true) : null;
 @endphp
+
 @if ($compact)
     @if ($offer)<x-offer.counter-card :bid="$myBid" class="w-full"/>@endif
     @php $label = $offer ? 'Цена, ₽' : 'Предложение, ₽'; @endphp
@@ -41,13 +46,15 @@
                 @endif
                 <input name="comment" class="field-input field-s min-w-0 flex-1 sm:text-sm" placeholder="Комментарий" value="{{ old('comment', $myBid?->comment) }}">
             </div>
+            @if ($wantExtra)<x-offer.bid-extra :offer="$offer" :my-bid="$myBid"/>@endif
             @if ($garage || $staff)<x-offer.bid-choice :offer="$offer" :garage="$garage" :staff="$staff"/>@endif
         @else
             <input name="comment" class="field-input field-s sm:text-sm" placeholder="Комментарий" value="{{ old('comment', $myBid?->comment) }}">
         @endif
     </form>
     @if ($myBid && $offer)
-        <span class="text-sm text-ink-muted">@if ($myBid->isGarage())<span class="font-semibold text-ink">В гараж</span>@else Ваша цена <span class="nums font-semibold text-ink">{{ \App\Support\Money::rub($myBid->amount) }}</span>@endif, {{ mb_strtolower($myBid->state->label()) }}@if ($lowMine)<span class="block text-warn">Нужно согласование с поставщиком</span>@endif</span>
+        <span class="text-sm text-ink-muted">@if ($myBid->isGarage())<span class="font-semibold text-ink">В гараж</span>@else Ваша цена <span class="nums font-semibold text-ink">{{ \App\Support\Money::rub($myBid->amount) }}</span>@endif, {{ mb_strtolower($myBid->state->label()) }}@if ($lowMine)<span class="block text-warn">Нужно согласование с поставщиком</span>@endif
+            @if ($myExtra)<span class="block">И запросить: {{ $myExtra }}</span>@endif</span>
     @endif
     @if ($myBid)<form method="post" action="{{ $withdraw }}" class="contents">@csrf<button type="submit" class="pill pill-plain" @if ($offer) {{ \App\Offers\Warnings::html(\App\Offers\Warnings::BID_OFF, 'Да, отозвать', danger: true) }} @endif>{{ $offer ? 'Отозвать' : 'Отозвать цену' }}</button></form>@endif
 @else
@@ -56,9 +63,10 @@
     @csrf
     <input type="hidden" name="low_ok" value="{{ $errors->has('low') ? '1' : '' }}" data-bid-target="low">
     @if ($myBid?->isGarage())
-        <p class="mb-4 text-sm text-ink-muted"><span class="font-semibold text-ink">В гараж</span>, {{ mb_strtolower($myBid->state->label()) }}</p>
+        <p class="mb-4 text-sm text-ink-muted"><span class="font-semibold text-ink">В гараж</span>, {{ mb_strtolower($myBid->state->label()) }}@if ($myExtra)<span class="block">И запросить: {{ $myExtra }}</span>@endif</p>
     @elseif ($myBid)
-        <p class="mb-4 text-sm text-ink-muted">Ваша цена <span class="nums font-semibold text-ink">{{ \App\Support\Money::rub($myBid->amount) }}</span>, {{ mb_strtolower($myBid->state->label()) }}@if ($lowMine)<span class="block text-warn">Нужно согласование с поставщиком</span>@endif</p>
+        <p class="mb-4 text-sm text-ink-muted">Ваша цена <span class="nums font-semibold text-ink">{{ \App\Support\Money::rub($myBid->amount) }}</span>, {{ mb_strtolower($myBid->state->label()) }}@if ($lowMine)<span class="block text-warn">Нужно согласование с поставщиком</span>@endif
+            @if ($myExtra)<span class="block">И запросить: {{ $myExtra }}</span>@endif</p>
     @endif
     @if ($asking)
         <div class="flex flex-wrap gap-2">
@@ -74,6 +82,7 @@
     @error('amount')<p class="mt-1.5 text-sm {{ $errors->has('low') ? 'text-urgent' : 'text-danger' }}">{{ $message }}</p>@enderror
     <p class="mt-1.5 text-sm text-danger" data-bid-target="error" hidden></p>
     <textarea name="comment" rows="2" class="field-input mt-4 !min-h-0 sm:text-sm" placeholder="Комментарий">{{ old('comment', $myBid?->comment) }}</textarea>
+    @if ($wantExtra)<x-offer.bid-extra :offer="$offer" :my-bid="$myBid" class="mt-3"/>@endif
     <button type="submit" class="btn btn-accent mt-4 w-full" data-bid-target="submit">{{ $myBid ? 'Изменить предложение' : 'Подтвердить предложение' }}</button>
     @error('manager_id')<p class="mt-1.5 text-sm text-danger">{{ $message }}</p>@enderror
     @if ($garage || $staff)<x-offer.bid-choice :offer="$offer" :garage="$garage" :staff="$staff"/>@endif

@@ -31,7 +31,8 @@ final class PlaceBid
 
     public const NEEDS_CONSENT = 'Такая цена требует дополнительного согласования с поставщиком — подтвердите ещё раз';
 
-    public function __invoke(Offer $offer, User $by, ?int $amount, ?string $comment = null, BidKind $kind = BidKind::Buyer, bool $lowOk = false): Bid
+    /** @param list<int|string> $extra  «Доп. запрос…» в подтверждении (27.11.2026, `ExtraWant`): что запросить, если примут */
+    public function __invoke(Offer $offer, User $by, ?int $amount, ?string $comment = null, BidKind $kind = BidKind::Buyer, bool $lowOk = false, array $extra = []): Bid
     {
         if (! $by->canBid()) {
             throw ValidationException::withMessages(['amount' => 'Подтверждать ценой здесь нельзя']);
@@ -41,7 +42,10 @@ final class PlaceBid
             throw ValidationException::withMessages(['amount' => 'Это предложение вам не открыто']);
         }
 
-        return DB::transaction(function () use ($offer, $by, $amount, $comment, $kind, $lowOk) {
+        // Галки — только у менеджера с кнопкой, только из шаблонов доп. запроса.
+        $extra = $by->extra_ask_button ? \App\Offers\ExtraWant::only($extra) : [];
+
+        return DB::transaction(function () use ($offer, $by, $amount, $comment, $kind, $lowOk, $extra) {
             $offer = Offer::whereKey($offer->id)->lockForUpdate()->firstOrFail();
             if (! $offer->bidsOpen() && ! $offer->canBidInDeal($by)) {
                 throw ValidationException::withMessages(['amount' => 'Приём подтверждений закрыт']);
@@ -58,7 +62,7 @@ final class PlaceBid
                 self::checkZone($offer, $amount, $lowOk);
             }
 
-            return self::record($offer, $by, $by, $amount, $comment, $kind);
+            return self::record($offer, $by, $by, $amount, $comment, $kind, $extra);
         });
     }
 
@@ -78,7 +82,7 @@ final class PlaceBid
      * Записать живое подтверждение менеджера, прежнее его — отозвать. Общий шаг с `PlaceBidFor` (админ за менеджера:
      * $by — админ, `placed_by`). Вызывать под замком строки предложения.
      */
-    public static function record(Offer $offer, User $manager, User $by, ?int $amount, ?string $comment, BidKind $kind): Bid
+    public static function record(Offer $offer, User $manager, User $by, ?int $amount, ?string $comment, BidKind $kind, array $extra = []): Bid
     {
         $staff = ! $manager->is($by);
         // Прежнее живое — заменено, а не отозвано: менеджер видел у старой цены «Отозвано» и не понимал, что случилось.
@@ -86,7 +90,7 @@ final class PlaceBid
         // Закупочная на момент его подтверждения (15.10.2026, 28.10.2026 владелец: «за менеджером — когда он подтвердил»):
         // с ней он придёт в сделку; правка закупочной потом его не касается, новые подтверждения — с новой.
         $bid = $offer->bids()->create(['user_id' => $manager->id, 'placed_by' => $staff ? $by->id : null, 'kind' => $kind, 'amount' => $amount, 'comment' => $comment, 'state' => BidState::Active,
-            'cost' => $offer->floor_price]);
+            'cost' => $offer->floor_price, 'extra_picks' => $extra ?: null]);
         $offer->log(OfferEventType::BidPlaced, $by, ['bid_id' => $bid->id, 'amount' => $amount, ...($kind === BidKind::Garage ? ['garage' => true] : []),
             ...($staff ? ['by_staff' => true, 'manager' => $manager->name] : [])]);
         BidPlaced::dispatch($bid, $by, $staff);

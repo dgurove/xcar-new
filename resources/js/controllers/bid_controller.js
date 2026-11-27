@@ -196,6 +196,10 @@ export default class extends Controller {
                 const sure = await confirmSheet('Вы уверены?', { text: this.warnValue, label: `Да, подтвердить за ${rub(this.amountTarget.value)}`, cancel: 'Ещё подумаю', danger: false });
                 if (!sure) return;
             }
+            // Шторка «куда берёте» после ответа оставалась открытой поверх страницы (27.11.2026): отправляем — закрываем.
+            if (this.hasChoiceTarget && this.choiceTarget.querySelector('dialog')?.open) {
+                this.application.getControllerForElementAndIdentifier(this.choiceTarget, 'sheet')?.close();
+            }
             this.passing = true;
             this.element.requestSubmit(submitter && this.element.contains(submitter) ? submitter : null);
         } finally {

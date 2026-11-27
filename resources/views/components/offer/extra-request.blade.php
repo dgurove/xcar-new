@@ -8,7 +8,7 @@
 @php
     use App\Offers\ExtraAsk;
     use App\Support\Ago;
-    $asks = ExtraAsk::where('offer_id', $offer->id)->orderByDesc('id')->with(['deal', 'decider'])->get();
+    $asks = ExtraAsk::where('offer_id', $offer->id)->orderByDesc('id')->with(['deal', 'decider', 'wanter'])->get();
     $n = $offer->number;
     $last = $asks->first();
     $reopen = $last && $last->answered_at && in_array($last->decision, [null, ExtraAsk::ANSWERED], true) && auth()->user()?->canEditDeals();
@@ -31,7 +31,12 @@
                                 @else
                                     <span>{!! Ago::html($ask->asked_at, true, words: false) !!}</span>
                                 @endif
-                                @if ($phase === ExtraAsk::SUPPLIER)
+                                @if ($phase === ExtraAsk::WANTED)
+                                    {{-- Менеджер сам просил (27.11.2026, `ExtraWant`): письма ещё нет — наш ход. --}}
+                                    <span class="text-accent-text">просит {{ $ask->wanter?->shortName() ?? 'менеджер' }}</span>
+                                @elseif ($ask->decision === ExtraAsk::SKIPPED)
+                                    <span>не запрашивали</span>
+                                @elseif ($phase === ExtraAsk::SUPPLIER)
                                     <span>ждём ответа {{ Ago::since($ask->since_at, hours: true) }}</span>
                                 @elseif ($phase === ExtraAsk::SHOW && $ask->deal && auth()->user()?->canEditDeals())
                                     {{-- Нажимается (25.11.2026, владелец: «надпись не кликабельная, чё он хочет от меня»): окно «Что видит менеджер» из ответа. --}}

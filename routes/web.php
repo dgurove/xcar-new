@@ -243,6 +243,8 @@ Route::middleware(['auth', 'wall'])->group(function () {
             Route::post('/deals/{deal}/reply', [DealController::class, 'answer']);
             // Доп. просьба поставщику (18.11.2026, `Offers\ExtraAsk`): «Беру в работу» / «Я передумал» после ответа поставщика.
             Route::post('/deals/{deal}/extra-ask', [DealController::class, 'extraAsk']);
+            // «Доп. запрос…» рядом с «Беру в работу» (27.11.2026, `Offers\ExtraWant`): менеджер отмечает, что запросить у поставщика.
+            Route::post('/deals/{deal}/extra-want', [DealController::class, 'extraWant']);
             Route::post('/deals/{deal}/signing', [DealController::class, 'signing']);
             Route::post('/deals/{deal}/signing-wish', [DealController::class, 'signingWish']);
             // Город подписания (25.11.2026, `SetSigningCity`) и поиск города в его шторке.

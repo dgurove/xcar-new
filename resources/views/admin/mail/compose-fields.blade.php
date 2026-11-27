@@ -78,6 +78,9 @@
                 $cityT = \App\Offers\ExtraRequest::cityTemplate($extra);
             @endphp
             <div class="compose-requests" data-controller="compose-requests" data-compose-requests-frame-value="letters-frame">
+                @if ($extraWant ?? null)
+                    <p class="compose-requests-note">Просит {{ $extraWant->wanter?->shortName() ?? 'менеджер' }}: {{ \App\Offers\ExtraWant::words($extraWant, lower: true) }}@if ($extraWant->comment), «{{ $extraWant->comment }}»@endif</p>
+                @endif
                 <div class="compose-requests-list">
                     @foreach ($extraAll as $t)
                         @php $ids = in_array($t->id, $pickedIds, true) ? array_values(array_diff($pickedIds, [$t->id])) : [...$pickedIds, $t->id]; @endphp
