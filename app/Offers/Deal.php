@@ -1248,7 +1248,7 @@ class Deal extends Model implements HasMedia
             // Гаражная Совкомбанка: цену продажи и покупателя называет менеджер («Продаю»), вознаграждение — мы.
             $this->namesBuyer() && $this->amount === null => 'price',
             // Покупатель с гаражом (26.11.2026): счёт и договор — по цене продажи его клиенту; нет цены или клиента — ход его.
-            $this->forGarageBuyer() && $this->amount === null => 'price',
+            $this->forGarageBuyer() && ($this->amount === null || $this->commission === null) => 'price',
             $this->forGarageBuyer() && ! $this->contract?->buyer_user_id && ! $this->payer_party_id => 'buyer',
             // Ноль — услуг подбора нет (19.11.2026), не «не вписаны».
             $this->isGarageManager() && $this->share === null => 'share',
@@ -1774,6 +1774,21 @@ class Deal extends Model implements HasMedia
     public function isLive(): bool
     {
         return $this->closed_at === null;
+    }
+
+    /**
+     * Сколько клиент покупателя с гаражом платит ПРАЙМ по счёту, и сумма договора (27.11.2026, владелец по Tiggo Ананьева: «продаёт
+     * за 900 тысяч, вложил 123 — отнимаем, 50 его комиссия — отнимаем, остальное по счёту на ПРАЙМ»): цена продажи минус его
+     * расходы в гараже (`Payer::Manager`) минус его вознаграждение. Нет цены или вознаграждения — null (счёта нет, ход его).
+     */
+    public function holderNet(): ?int
+    {
+        if (! $this->forGarageBuyer() || $this->amount === null || $this->commission === null) {
+            return null;
+        }
+        $spent = (int) round((float) $this->garageCar?->extraSpent(\App\Garage\Payer::Manager));
+
+        return max(0, (int) $this->amount - $spent - (int) $this->commission);
     }
 
     /**

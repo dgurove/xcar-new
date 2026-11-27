@@ -301,8 +301,11 @@
             @else
             @if ($garageBuyer)
                 {{-- Покупатель с гаражом (26.11.2026, владелец: «он не должен нигде видеть цену закупа»): цену продажи вводит он сам в гараже
-                     или сотрудник (`SetGarageSalePrice`), договор и счёт его клиенту — по ней, вознаграждения у него нет. --}}
+                     или сотрудник (`SetGarageSalePrice`) вместе с его вознаграждением; счёт и договор его клиенту — цена минус его расходы и
+                     вознаграждение (`Deal::holderNet`, 27.11.2026). --}}
                 <div class="row sale-row"><span class="sale-row-label">Цена продажи</span>@if ($deal->amount !== null)<span class="sale-row-value nums font-semibold">{{ Money::rub($deal->amount) }}</span>@else<span class="sale-row-value text-ink-muted">не указана</span>@endif<x-ui.chevron-space/></div>
+                @if ($deal->commission !== null)<div class="row sale-row"><span class="sale-row-label">Вознаграждение покупателя</span><span class="sale-row-value nums">{{ Money::rub($deal->commission) }}</span></div>@endif
+                @if (($holderNet = $deal->holderNet()) !== null)<div class="row sale-row"><span class="sale-row-label">По счёту ПРАЙМ</span><span class="sale-row-value nums">{{ Money::rub($holderNet) }}</span></div>@endif
             @endif
             @if ($topPrice)
                 @php $priceTag = $editMoney ? 'button' : 'div'; @endphp

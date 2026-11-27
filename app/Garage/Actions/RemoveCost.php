@@ -2,6 +2,7 @@
 
 namespace App\Garage\Actions;
 
+use App\Garage\Car;
 use App\Garage\Cost;
 use App\Garage\Events\GarageChanged;
 use App\Users\User;
@@ -13,6 +14,7 @@ final class RemoveCost
         $car = $cost->car;
         $cost->delete();
         $car->log($by, ['do' => 'cost_removed', 'title' => $cost->title, 'amount' => $cost->amount]);
+        Car::resyncHolder($car->fresh(), $by);
         GarageChanged::dispatch($car);
     }
 }

@@ -36,13 +36,20 @@
             @if ($editable)<x-ui.chevron/>@endif
         </{{ $editable ? 'button' : 'div' }}>
     @if ($car->deal && $car->state !== \App\Garage\CarState::Settled)
-        {{-- Цена продажи (26.11.2026): договор и счёт его клиенту — по ней; вознаграждения у него нет, «Покупателю за» — наш нижний предел. --}}
+        {{-- Цена продажи и вознаграждение покупателя (27.11.2026): счёт и договор его клиенту — цена минус его расходы и вознаграждение; «Покупателю за» — наш нижний предел. --}}
         <button type="button" class="row justify-between w-full text-left" data-controller="emit" data-action="emit#send" data-emit-event-param="sale-price:open">
             <span>Цена продажи</span>
             <span class="flex items-center gap-2">@if ($car->deal->amount !== null)<span class="nums">{{ Money::rub($car->deal->amount) }}</span>@else<span class="text-accent-text">Указать</span>@endif<x-ui.chevron/></span>
         </button>
     @elseif ($car->deal?->amount !== null)
         <div class="row justify-between"><span>Цена продажи</span><span class="nums">{{ Money::rub($car->deal->amount) }}</span></div>
+    @endif
+    @if ($car->deal?->commission !== null)
+        <div class="row justify-between"><span>Вознаграждение покупателя</span><span class="nums">{{ Money::rub($car->deal->commission) }}</span></div>
+    @endif
+    @if (($holderNet = $car->deal?->holderNet()) !== null)
+        {{-- По счёту ПРАЙМ — цена минус расходы покупателя и его вознаграждение (27.11.2026, `Deal::holderNet`). --}}
+        <div class="row justify-between"><span>По счёту ПРАЙМ</span><span class="nums font-medium">{{ Money::rub($holderNet) }}</span></div>
     @endif
         @if ($price)<div class="{{ $row }}"><span>Закупочная</span><span class="nums">{{ Money::rub($price) }}</span></div>@endif
         @if ($ours > 0)<div class="{{ $row }}"><span>Наши расходы</span><span class="nums">{{ Money::exact($ours) }}</span></div>@endif

@@ -2,6 +2,7 @@
 
 namespace App\Garage\Actions;
 
+use App\Garage\Car;
 use App\Garage\Cost;
 use App\Garage\Events\GarageChanged;
 use App\Garage\Payer;
@@ -21,6 +22,7 @@ final class UpdateCost
         }
         $cost->update(['title' => $data['title'], 'amount' => $data['amount'], 'spent_at' => $data['spent_at'] ?? $cost->spent_at, 'payer' => $payer]);
         $cost->car->log($by, ['do' => 'cost_edit', 'title' => $cost->title, 'amount' => $cost->amount, 'payer' => $payer->value]);
+        Car::resyncHolder($cost->car->fresh(), $by);
         GarageChanged::dispatch($cost->car);
 
         return $cost;

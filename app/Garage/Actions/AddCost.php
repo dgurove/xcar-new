@@ -37,6 +37,7 @@ final class AddCost
             'created_by' => $by->id,
         ]);
         $car->log($by, ['do' => 'cost', 'title' => $cost->title, 'amount' => $cost->amount, 'payer' => $payer->value]);
+        Car::resyncHolder($car->fresh(), $by);
         GarageChanged::dispatch($car);
 
         return $cost;

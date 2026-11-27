@@ -1,7 +1,7 @@
 {{-- Деньги машины у покупателя с гаражом (26.11.2026, владелец: «он не должен нигде видеть цену закупа; цену продажи для того
-     покупателя он назначает сам либо мы за него»): крупно — цена продажи (`deals.amount`, договор и счёт его клиенту — по ней),
-     нажатие — ввести; ниже счёт и его расходы. Его цены гаража (`buyer_price`, часто равна закупочной), закупочной, наших
-     расходов, оплаты поставщику и вознаграждения здесь нет. --}}
+     покупателя он назначает сам либо мы за него»): крупно — цена продажи (`deals.amount`), нажатие — ввести цену и вознаграждение;
+     ниже его расходы, вознаграждение и «По счёту ПРАЙМ» (27.11.2026, `Deal::holderNet`), счёт. Его цены гаража (`buyer_price`,
+     часто равна закупочной), закупочной, наших расходов и оплаты поставщику здесь нет. --}}
 @php
     use App\Support\Money;
     $pdf = (bool) $holderInvoice?->hasPdf();
@@ -9,6 +9,9 @@
     $claimed = $holderInvoice && $left > 0 ? $holderInvoice->claimed() : 0;
     $mine = $car->extraSpent(\App\Garage\Payer::Manager);
     $price = $car->deal?->amount;
+    // По счёту ПРАЙМ — цена минус его расходы и вознаграждение (27.11.2026, `Deal::holderNet`).
+    $net = $car->deal?->holderNet();
+    $commission = $car->deal?->commission;
     // Цену правят, пока расчёт не закрыт и по счёту не платили (`SetGarageSalePrice`).
     $sellable = $car->deal && $car->state !== \App\Garage\CarState::Settled && ! $car->buyerHasPaid();
 @endphp
@@ -25,7 +28,12 @@
         </span>
         @if ($sellable)<x-ui.chevron/>@endif
     </{{ $sellable ? 'button' : 'div' }}>
-    @if ($holderInvoice && $left > 0 && (float) $left !== (float) $price)
+    {{-- Из чего счёт (27.11.2026, владелец: «продаёт за 900, вложил 123 — отнимаем, 50 его комиссия — отнимаем, остальное по счёту на
+         ПРАЙМ»). --}}
+    @if ($price !== null && $mine > 0)<div class="row justify-between"><span>Ваши расходы</span><span class="nums">−{{ Money::rub($mine) }}</span></div>@endif
+    @if ($price !== null && $commission !== null)<div class="row justify-between"><span>Ваше вознаграждение</span><span class="nums">−{{ Money::rub($commission) }}</span></div>@endif
+    @if ($net !== null)<div class="row justify-between"><span>По счёту ПРАЙМ</span><span class="nums font-medium">{{ Money::rub($net) }}</span></div>@endif
+    @if ($holderInvoice && $left > 0 && (float) $left !== (float) $net)
         <div class="row justify-between"><span>К оплате</span><span @class(['nums', 'text-danger' => $holderInvoice->isOverdue()])>{{ Money::rub($left) }}</span></div>
     @endif
     @if ($holderInvoice)
@@ -39,5 +47,5 @@
     @elseif ($car->deal && ($when = $car->deal->invoiceNotYet()))
         <div class="row justify-between"><span>Счёт</span><span class="text-ink-muted">{{ $when }}</span></div>
     @endif
-    @if ($mine > 0)<div class="row justify-between"><span>Ваши расходы</span><span class="nums">{{ Money::exact($mine) }}</span></div>@endif
+    @if ($price === null && $mine > 0)<div class="row justify-between"><span>Ваши расходы</span><span class="nums">{{ Money::exact($mine) }}</span></div>@endif
 </div>

@@ -105,7 +105,9 @@ class DealContract extends Model
         return match (true) {
             // Покупатель с гаражом — цена продажи, которую назначил он или мы (`SetGarageSalePrice`, 26.11.2026, владелец: «он не
             // должен нигде видеть цену закупа»; с 24.11 была его цена гаража — она часто и есть закупочная).
-            $deal->forGarageBuyer() => $deal->amount !== null ? (int) $deal->amount : null,
+            // С 27.11.2026 — за вычетом его расходов и вознаграждения (`Deal::holderNet`); счёт уже оплачен — сумма оплаты.
+            $deal->forGarageBuyer() => ($paid = $deal->issuedInvoices()->where('kind', \App\Billing\ChargeKind::Sale)->where('state', \App\Billing\InvoiceState::Paid)->value('total')) !== null
+                ? (int) round((float) $paid) : $deal->holderNet(),
             $deal->isDkp() => $deal->ownerPrice(),
             $deal->isGarage() && ! $deal->namesBuyer() => $deal->cost,
             // ПРАЙМ / Р.О.С. с известными деньгами — сколько на счёт за ТС (`Deal::carPrice`, вписывается с 25.11.2026), остальное

@@ -145,14 +145,19 @@
 @endif
 
 @if (($buyerCar ?? $asBuyer ?? false) && $car->deal && $car->state !== \App\Garage\CarState::Settled)
-    {{-- Цена продажи у покупателя с гаражом (26.11.2026): договор и счёт его клиенту — по ней, вознаграждения нет (`SetGarageSalePrice`). --}}
+    {{-- Цена продажи и вознаграждение покупателя с гаражом (27.11.2026, владелец: «продаёт за 900, вложил 123 — отнимаем, 50 его
+         комиссия — отнимаем, остальное по счёту на ПРАЙМ»): счёт и договор его клиенту — цена минус его расходы и вознаграждение
+         (`Deal::holderNet`, `SetGarageSalePrice`). --}}
+    @php $holderSpent = $car->extraSpent(\App\Garage\Payer::Manager); @endphp
     <div {!! $wrap('sale-price') !!}>
         <x-ui.sheet id="sale-price-{{ $n }}" title="Цена продажи">
             <form method="post" action="/garage/cars/{{ $n }}/sale-price" class="flex flex-col gap-3">
                 @csrf @method('put')
                 <div class="fields">
                     <x-ui.field name="sale_price" label="Цена продажи, ₽" :value="old('sale_price', $car->deal->amount)" :id="'sale-price-'.$n.'-field'" required/>
+                    <x-ui.field name="sale_commission" :label="($asBuyer ?? false) ? 'Ваше вознаграждение, ₽' : 'Вознаграждение покупателя, ₽'" :value="old('sale_commission', $car->deal->commission)" :id="'sale-commission-'.$n.'-field'" digits required/>
                 </div>
+                <p class="px-1 text-sm text-ink-muted">По счёту ПРАЙМ: цена продажи минус {{ ($asBuyer ?? false) ? 'ваши расходы' : 'расходы покупателя' }}@if ($holderSpent > 0) ({{ \App\Support\Money::rub($holderSpent) }})@endif и вознаграждение</p>
                 <x-ui.sheet-foot type="submit" variant="primary">Сохранить</x-ui.sheet-foot>
             </form>
         </x-ui.sheet>

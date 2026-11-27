@@ -189,6 +189,19 @@ class Car extends Model
         return $this->forBuyer() && $this->holderInvoice()?->state === InvoiceState::Paid;
     }
 
+    /**
+     * Расходы покупателя с гаражом поменялись — счёт и договор его клиенту следом (27.11.2026: сумма счёта — цена минус его расходы и
+     * вознаграждение, `Deal::holderNet`); по счёту платили — не трогаем.
+     */
+    public static function resyncHolder(self $car, ?User $by = null): void
+    {
+        if (! $car->forBuyer() || ! $car->deal || $car->buyerHasPaid()) {
+            return;
+        }
+        $by ??= User::withRole(\App\Users\Role::Admin)->orderBy('id')->first();
+        $by && app(\App\Offers\Actions\SyncDealInvoices::class)($car->deal->fresh(), $by);
+    }
+
     /** Подпись цены тому, кто смотрит: покупателю с гаражом — «Цена продажи», остальным — «Закупочная». */
     public function priceLabel(bool $staff): string
     {

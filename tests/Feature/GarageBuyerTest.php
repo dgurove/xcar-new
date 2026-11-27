@@ -109,12 +109,12 @@ class GarageBuyerTest extends TestCase
         $this->assertSame('price', $deal->fresh()->invoiceGap());
         $n = $offer->fresh()->number;
         // Ниже его цены — отказ без суммы: его цена гаража бывает закупочной.
-        $low = $this->actingAs($this->buyer)->put(self::SITE.'/garage/cars/'.$n.'/sale-price', ['sale_price' => '850 000']);
+        $low = $this->actingAs($this->buyer)->put(self::SITE.'/garage/cars/'.$n.'/sale-price', ['sale_price' => '850 000', 'sale_commission' => '0']);
         $low->assertSessionHasErrors('sale_price');
         $this->assertStringNotContainsString('900', (string) session('errors')->first('sale_price'));
-        $this->actingAs($this->buyer)->put(self::SITE.'/garage/cars/'.$n.'/sale-price', ['sale_price' => '1 000 000'])->assertSessionHasNoErrors();
+        $this->actingAs($this->buyer)->put(self::SITE.'/garage/cars/'.$n.'/sale-price', ['sale_price' => '1 000 000', 'sale_commission' => '0'])->assertSessionHasNoErrors();
         $this->assertSame(1000000, (int) $deal->fresh()->amount);
-        $this->assertNull($deal->fresh()->commission);
+        $this->assertSame(0, (int) $deal->fresh()->commission);
         $this->assertNull(Invoice::where('deal_id', $deal->id)->where('kind', ChargeKind::Sale)->first());
         $this->assertSame('buyer', $deal->fresh()->invoiceGap());
         // Клиент — «Я сам»: счёт ПРАЙМ на цену продажи одной строкой, договор — на неё же.
@@ -215,13 +215,43 @@ class GarageBuyerTest extends TestCase
         $this->actingAs($this->buyer)->get(self::SITE.'/garage/cars/'.$n)->assertOk()->assertSee('ООО «ПРАЙМ»', false);
 
         // Оплачено по старой цене, цены продажи нет — команда ставит её из оплаты, договор встаёт на неё же.
-        $this->actingAs($this->buyer)->put(self::SITE.'/garage/cars/'.$n.'/sale-price', ['sale_price' => '1 000 000'])->assertSessionHasNoErrors();
+        $this->actingAs($this->buyer)->put(self::SITE.'/garage/cars/'.$n.'/sale-price', ['sale_price' => '1 000 000', 'sale_commission' => '0'])->assertSessionHasNoErrors();
         $invoice = Invoice::where('deal_id', $deal->id)->where('kind', ChargeKind::Sale)->where('state', '!=', InvoiceState::Void)->firstOrFail();
         app(RecordPayment::class)($invoice, $this->admin, 1000000, null, PaymentSource::Bank);
         $deal->fresh()->update(['amount' => null]);
         $this->artisan('garage:holder-sale', ['--apply' => true])->assertSuccessful();
         $this->assertSame(1000000, (int) $deal->fresh()->amount);
         $this->assertSame(1000000, (int) \App\Offers\DealContract::for($deal->fresh())->price);
+    }
+
+    /** Счёт его клиенту = цена продажи − его расходы − его вознаграждение (27.11.2026, Tiggo Ананьева: 900 − 123 − 50 = 727). */
+    public function test_holder_invoice_is_price_minus_costs_and_reward(): void
+    {
+        $this->buyer->update(['garage_enabled' => true]);
+        $offer = $this->draft();
+        $this->give($offer)->assertSessionHasNoErrors();
+        $car = Car::where('offer_id', $offer->id)->firstOrFail();
+        app(AgreeDeal::class)($car->deal->fresh(), $this->admin);
+        $car->moveTo(CarState::Repair);
+        $car->update(['buyer_price' => 588571]);
+        foreach ([['Эвакуатор', 9000], ['Запчасти', 69000], ['Работы', 45000]] as [$title, $amount]) {
+            app(AddCost::class)($car->fresh(), ['title' => $title, 'amount' => $amount, 'paid_by' => 'manager'], $this->buyer);
+        }
+        $n = $offer->fresh()->number;
+        \App\Offers\DealContract::for($car->deal->fresh())->update(['buyer_user_id' => $this->buyer->id, 'payer' => 'manager']);
+        $this->actingAs($this->buyer)->put(self::SITE.'/garage/cars/'.$n.'/sale-price', ['sale_price' => '900 000'])->assertSessionHasErrors('sale_commission');
+        $this->actingAs($this->buyer)->put(self::SITE.'/garage/cars/'.$n.'/sale-price', ['sale_price' => '900 000', 'sale_commission' => '50 000'])->assertSessionHasNoErrors();
+        $deal = $car->deal->fresh();
+        $this->assertSame(727000, $deal->holderNet());
+        $live = fn () => Invoice::where('deal_id', $deal->id)->where('kind', ChargeKind::Sale)->where('state', '!=', InvoiceState::Void)->sole();
+        $this->assertSame(727000.0, (float) $live()->total);
+        $this->assertSame(727000, (int) \App\Offers\DealContract::for($deal->fresh())->price);
+        // Добавил расход — счёт пересчитался сам.
+        app(AddCost::class)($car->fresh(), ['title' => 'Мойка', 'amount' => 2000, 'paid_by' => 'manager'], $this->buyer);
+        $this->assertSame(725000.0, (float) $live()->total);
+        $html = $this->actingAs($this->buyer)->get(self::SITE.'/garage/cars/'.$n)->getContent();
+        $this->assertMatchesRegularExpression('/725(\s|&nbsp;|\x{00A0})?000/u', $html);
+        $this->assertDoesNotMatchRegularExpression('/900(\s|&nbsp;|\x{00A0})?000 ₽<\/span><\/div>\s*<\/div>\s*$/u', $html);
     }
 
     /** Покупатель без менеджера — только свой гараж: ни предложений, ни галереи, шторка сохраняет «Без менеджера» (21.10.2026). */
@@ -263,8 +293,8 @@ class GarageBuyerTest extends TestCase
         // новый — на новую (26.11.2026).
         $this->actingAs($this->admin)->put(self::CRM.'/garage/cars/'.$n.'/buyer-price', ['buyer_price' => '950 000'])->assertSessionHasNoErrors();
         \App\Offers\DealContract::for($car->deal->fresh())->update(['buyer_user_id' => $this->buyer->id, 'payer' => 'manager']);
-        $this->actingAs($this->admin)->put(self::CRM.'/garage/cars/'.$n.'/sale-price', ['sale_price' => '1 100 000'])->assertSessionHasNoErrors();
-        $this->actingAs($this->admin)->put(self::CRM.'/garage/cars/'.$n.'/sale-price', ['sale_price' => '940 000'])->assertSessionHasNoErrors();
+        $this->actingAs($this->admin)->put(self::CRM.'/garage/cars/'.$n.'/sale-price', ['sale_price' => '1 100 000', 'sale_commission' => '0'])->assertSessionHasNoErrors();
+        $this->actingAs($this->admin)->put(self::CRM.'/garage/cars/'.$n.'/sale-price', ['sale_price' => '940 000', 'sale_commission' => '0'])->assertSessionHasNoErrors();
         $live = Invoice::where('deal_id', $car->deal_id)->where('kind', ChargeKind::Sale)->where('state', '!=', InvoiceState::Void)->get();
         $this->assertCount(1, $live);
         $this->assertSame(940000.0, (float) $live->first()->total);

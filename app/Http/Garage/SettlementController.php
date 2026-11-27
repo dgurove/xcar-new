@@ -98,9 +98,12 @@ class SettlementController
     {
         $car = $this->car($request, $offer);
         abort_unless($request->user()->garageStaff() || $car->manager_id === $request->user()->id, 403);
-        $request->merge(['sale_price' => Money::rubles($request->input('sale_price'))]);
-        $price = $request->validate(['sale_price' => ['required', 'integer', 'min:1']], ['sale_price.required' => 'Цена продажи'])['sale_price'];
-        $set($car, $price, $request->user());
+        $request->merge(['sale_price' => Money::rubles($request->input('sale_price')),
+            'sale_commission' => filled($request->input('sale_commission')) ? Money::rubles($request->input('sale_commission')) : null]);
+        $data = $request->validate(['sale_price' => ['required', 'integer', 'min:1'], 'sale_commission' => ['required', 'integer', 'min:0']],
+            ['sale_price.required' => 'Укажите цену продажи', 'sale_commission.required' => 'Укажите вознаграждение, можно 0']);
+        $price = $data['sale_price'];
+        $set($car, $price, $request->user(), $data['sale_commission']);
 
         return back()->with('toast', 'Цена продажи '.Money::rub($price));
     }
