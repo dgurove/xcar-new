@@ -16,7 +16,7 @@ class AutoDraftsCommand extends Command
 
     protected $description = 'Завести черновики предложений по ждущим цепочкам «Из писем»';
 
-    private const TABS = ['legacy' => 'Из таблицы Кати', 'unpriced' => 'Назначить цену продажи', 'nofloor' => 'Назначить закупочную'];
+    private const TABS = ['legacy' => 'Из таблицы Кати', 'unpriced' => 'Заполнить цену продажи', 'nofloor' => 'Заполнить закупочную'];
 
     public function handle(AutoOffer $auto): int
     {

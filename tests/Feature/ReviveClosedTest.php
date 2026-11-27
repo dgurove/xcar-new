@@ -14,7 +14,7 @@ use Illuminate\Support\Facades\DB;
 use Tests\TestCase;
 
 /**
- * Письмо поставщика по машине из «Без подтверждений» возвращает её в «Назначить цену продажи» (18.11.2026, AUT-26-1013306:
+ * Письмо поставщика по машине из «Без подтверждений» возвращает её в «Заполнить цену продажи» (18.11.2026, AUT-26-1013306:
  * письмо «Предлагаем принять участие в оценке ТС» легло к машине, а она лежала в «Без подтверждений», и его не увидели).
  */
 class ReviveClosedTest extends TestCase
@@ -53,7 +53,7 @@ class ReviveClosedTest extends TestCase
         ReviveClosed::onLetter($this->offer->fresh(), $letter = $this->letter('in', now()));
         $offer = $this->offer->fresh();
         $this->assertNull($offer->intake_closed_at);
-        $this->assertNull($offer->asking_price, 'в «Назначить цену продажи»');
+        $this->assertNull($offer->asking_price, 'в «Заполнить цену продажи»');
         $this->assertSame(877883, $offer->floor_price);
         $was = $offer->revival();
         $this->assertSame([1030000, 0, $letter->id], [$was['asking'], $was['bids'], $was['letter']->id]);

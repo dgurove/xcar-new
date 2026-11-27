@@ -25,7 +25,7 @@ use Illuminate\Support\Facades\Queue;
 use Tests\TestCase;
 
 /**
- * Заявка на приём «Сразу в продажу» — всегда «Назначить цену продажи» (26.11.2026, владелец по Exeed 785R/046/01928/26: черновик
+ * Заявка на приём «Сразу в продажу» — всегда «Заполнить цену продажи» (26.11.2026, владелец по Exeed 785R/046/01928/26: черновик
  * с Мигторга уже был, оценочная из повёрнутого скана не прочиталась, и машина легла в «Без закупочной» среди 500 других —
  * «их никто не заметит, это потерянные деньги»). Ошибка молчаливая: машина просто теряется в чужой вкладке.
  */
@@ -55,7 +55,7 @@ class ParkIntakeUnpricedTest extends TestCase
         $offer = Offer::where('car_id', $vehicle->car_id)->sole();
         $this->assertNotNull($offer->park_intake_at);
         $this->assertNull($offer->floor_price, 'оценочной нет — и закупочной нет');
-        $this->assertTrue($this->in('unpriced', $offer), 'без закупочной, а в «Назначить цену продажи»');
+        $this->assertTrue($this->in('unpriced', $offer), 'без закупочной, а в «Заполнить цену продажи»');
         $this->assertFalse($this->in('nofloor', $offer));
         $this->assertSame(OfferController::PRESETS['unpriced'], $offer->crmTab($this->admin));
         $this->assertTrue($this->in('nofloor', $offer, admin: false), 'модератору — как было');
