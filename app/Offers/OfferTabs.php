@@ -146,7 +146,7 @@ final class OfferTabs
     private static function since(string $sql): string
     {
         $deal = "(select coalesce(p.block_entered_at, p.entered_at) from offer_positions p where p.offer_id = offers.id and p.track = '".Track::Sale->value."' limit 1)";
-        $whens = collect(array_keys(DealTabs::TABS))->map(fn ($k) => "when '{$k}' then {$deal}")->implode(' ');
+        $whens = collect(array_keys(DealTabs::ALL))->map(fn ($k) => "when '{$k}' then {$deal}")->implode(' ');
         $garage = '(select coalesce(g.stage_at, g.taken_at) from garage_cars g where g.offer_id = offers.id limit 1)';
         $bids = "(select min(b.created_at) from bids b where b.offer_id = offers.id and b.state = '".BidState::Active->value."')";
 

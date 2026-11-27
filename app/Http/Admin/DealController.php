@@ -108,7 +108,7 @@ class DealController
         }
         $stage = "(select left(md5(coalesce(b.name, s.name)), 8) from offer_positions p join workflow_stages s on s.id = p.stage_id
             left join workflow_blocks b on b.id = s.block_id where p.offer_id = deals.offer_id and p.track = 'sale' order by p.id limit 1)";
-        $staged = isset(DealTabs::TABS[$preset]);
+        $staged = isset(DealTabs::ALL[$preset]);
         // Шапка вкладки (17.11.2026): под кнопками — «Горит срок обязывающего»; остальное и параметры машины, денег и сроков
         // (`OfferFilters`) — в окне «Фильтр»; «Во вкладке» — вход в блок шага продажи (вкладка сделки — блок).
         $since = "(select coalesce(p.block_entered_at, p.entered_at) from offer_positions p where p.offer_id = deals.offer_id and p.track = 'sale' limit 1)";

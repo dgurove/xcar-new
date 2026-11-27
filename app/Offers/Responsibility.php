@@ -163,7 +163,7 @@ final class Responsibility
     /** Сводная раздела вкладки — у неё ответственные за раздел целиком (`OfferController::SUMMARIES`). */
     private static function section(string $tab): ?string
     {
-        if (isset(DealTabs::TABS[$tab]) || $tab === 'finished') {
+        if (isset(DealTabs::ALL[$tab]) || $tab === 'finished') {
             return 'all_deals';
         }
         foreach (OfferController::SUMMARIES as $key => $tabs) {

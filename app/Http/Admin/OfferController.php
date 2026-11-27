@@ -118,6 +118,8 @@ class OfferController
         // поперёк этапов, как «Оплата за подбор»: строки рисует `PickupController::tab`.
         // «Показать контакты» (25.11.2026) — первой: менеджер забирает сам, а кому звонить, не знает (`ContactDue`).
         'pickup_contacts' => 'Показать контакты', 'pickup_assign' => 'Назначить исполнителя', 'pickup_docs' => 'Документы на вывоз', 'pickup_letters' => 'Сообщить поставщику', 'pickup_moving' => 'Везём',
+        // «Менеджер забирает ТС» — вкладка сделки по шагу получения, но здесь, в «Вывозе» (27.11.2026, владелец; `DealTabs::PICKUP`).
+        ...DealTabs::PICKUP,
         // «Все архивы», а не «Архивы» (18.11.2026, владелец: «„Архивы“ и „Архив“ рядом — странно»), как прочие сводные.
         'all_archive' => 'Все архивы',
         // «Без подтверждений» — к архивам (24.11.2026, владелец): решить, снова в продажу или в архив.
@@ -191,7 +193,7 @@ class OfferController
     {
         return match (true) {
             $preset === 'all' => array_values(array_diff(OfferTabs::keys(), self::ALL_HIDDEN, ['archive'])),
-            $preset === 'all_deals' => array_keys(self::DEAL_TABS),
+            $preset === 'all_deals' => [...array_keys(self::DEAL_TABS), ...array_keys(DealTabs::PICKUP)],
             array_key_exists((string) $preset, self::SUMMARIES) => self::SUMMARIES[$preset],
             default => null,
         };
@@ -231,13 +233,13 @@ class OfferController
     public static function badges(): array
     {
         return ['refused' => 'refused', 'estimating' => 'estimating_given', 'priced' => 'priced_given', 'all_deals' => 'all_deals_our', 'paying_fee' => 'paying_fee_our',
-            ...array_combine(PickupController::OURS, array_map(fn ($k) => $k.'_our', PickupController::OURS)), ...collect(DealTabs::TABS)->except(DealTabs::WAITING)->mapWithKeys(fn ($t, $k) => [$k => $k.'_our'])->all()];
+            ...array_combine(PickupController::OURS, array_map(fn ($k) => $k.'_our', PickupController::OURS)), ...collect(DealTabs::ALL)->except(DealTabs::WAITING)->mapWithKeys(fn ($t, $k) => [$k => $k.'_our'])->all()];
     }
 
     /** Вкладка ли сделки: строки — сделки (`DealController::tab`). */
     public static function dealTab(?string $preset): bool
     {
-        return isset(self::DEAL_TABS[(string) $preset]);
+        return isset(self::DEAL_TABS[(string) $preset]) || isset(DealTabs::PICKUP[(string) $preset]);
     }
 
     /**
@@ -264,7 +266,7 @@ class OfferController
             'purchases' => true, self::CARCADE_TAB => true, 'gallery' => true, 'interest' => true];
 
         // Модератору (`canEditDeals`) — сделки по этапам, «Завершённые» и гараж (17.11.2026, владелец: полный доступ к сделкам и гаражу).
-        return array_diff_key(self::PRESETS, $hidden + ($user->canEditDeals() ? [] : ['garage' => true] + self::DEAL_TABS + PickupController::TABS));
+        return array_diff_key(self::PRESETS, $hidden + ($user->canEditDeals() ? [] : ['garage' => true] + self::DEAL_TABS + DealTabs::PICKUP + PickupController::TABS));
     }
 
     /**
@@ -326,6 +328,8 @@ class OfferController
         'draft' => 'unpriced', 'purchase' => 'unpriced', 'closed' => 'done', 'slot' => 'slots', 'open' => 'published', 'recommended' => 'published',
         // «Оплата за подбор» — с 24.11.2026 часть «Менеджер должен нам», с 26.11.2026 — «Ждём оплату подбора».
         'selection' => 'paying_fee',
+        // «Ждём договор», «Подписание договора» и «Ждём данные покупателя» — с 27.11.2026 подгруппы «Ждём менеджера».
+        'signed' => 'manager', 'docs' => 'manager', 'buyer_data' => 'manager',
     ];
 
     /** Вкладки, где идёт работа по шагам: всегда таблица, без сортировки — порядок задаёт сам шаг. */
@@ -739,7 +743,7 @@ class OfferController
         if ($preset === 'paying_fee') {
             return $q->whereIntegerInRaw('offers.id', array_values(array_unique([...DealTabs::paying('fee', ! self::$apart), ...SelectionController::ids()])));
         }
-        if (isset(DealTabs::TABS[$preset])) {
+        if (isset(DealTabs::ALL[$preset])) {
             return $q->whereIn('offers.id', DealTabs::ids($preset, ! self::$apart));
         }
 
@@ -1238,7 +1242,7 @@ class OfferController
     {
         $out = [];
         foreach (array_keys(self::presets($user)) as $key) {
-            if (array_key_exists($key, self::SUMMARIES) || in_array($key, ['all', 'purchases', 'archive'], true) || isset(DealTabs::TABS[$key]) || isset(PickupController::TABS[$key])) {
+            if (array_key_exists($key, self::SUMMARIES) || in_array($key, ['all', 'purchases', 'archive'], true) || isset(DealTabs::ALL[$key]) || isset(PickupController::TABS[$key])) {
                 continue;
             }
             $out[$key] = self::scopeFor($key, Offer::query()->whereIntegerInRaw('offers.id', $hot), $user->canManageCrm())->count();
@@ -1252,7 +1256,7 @@ class OfferController
         $hotSet = array_flip($hot);
         $late = array_flip(DealTabs::overdueIds());
         $out = [];
-        foreach (array_keys(DealTabs::TABS) as $tab) {
+        foreach (array_keys(DealTabs::ALL) as $tab) {
             $ids = match ($tab) {
                 'paying' => DealTabs::paying('car'),
                 'paying_fee' => array_values(array_unique([...DealTabs::paying('fee'), ...SelectionController::ids()])),

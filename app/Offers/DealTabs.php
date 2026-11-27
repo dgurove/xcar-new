@@ -38,13 +38,13 @@ final class DealTabs
         // Доп. просьба поставщику держит сделку (18.11.2026, `ExtraAsk`): всю паузу — здесь, группами «Ждём поставщика», «Показать
         // менеджеру» (наш ход), «Ждём менеджера».
         'extra' => 'Доп. просьба',
-        // Вопрос менеджеру (18.11.2026): письмо Т-Страхования пришло — спросить, берёт ли в работу (`Position::todo` `ask-consent`);
-        // и всё, где ждём ответа менеджера на шаге согласования (группа «Ждём ответа»).
+        // Вопрос менеджеру (18.11.2026): письмо Т-Страхования пришло — спросить, берёт ли в работу (`Position::todo` `ask-consent`),
+        // менеджер не ответил к сроку (`consent`). Только наше дело — ждём его в «Ждём менеджера».
         'ask' => 'Спросить менеджера',
-        // «Ждём данные покупателя» (27.11.2026, владелец: «когда менеджер что-то заполняет — это не „Спросить менеджера“, а отдельная
-        // вкладка сразу после, полупрозрачная с иконкой часов»): на оплате нет покупателя или его данных (`awaitsBuyer`), реквизиты
-        // запросили у менеджера на шаге письма (`requisites-asked`). Ожидание (`WAITING`).
-        'buyer_data' => 'Ждём данные покупателя',
+        // «Ждём менеджера» (27.11.2026, владелец: «одной вкладкой, просто разные подгруппы: Ждём «Беру в работу», Ждём реквизиты…;
+        // решение по доп. запросу, когда ему показали и он думает, — туда; решение по переоценке — туда»; и «Ждём договор»,
+        // «Подписание договора»): ожидание (`WAITING`), подгруппы — `waits` (`MANAGER_WAITS`).
+        'manager' => 'Ждём менеджера',
         // «Проверить реквизиты» (26.11.2026, владелец: «распознавание часто кривое, менеджеры отправляют как есть — Алина проверяет»):
         // следующее наше дело отправляет реквизиты покупателя (письмо с реквизитами, счёт за ТС, договор), а их этот вид ещё не
         // проверили (`DealContract::needsBuyerCheck`). Дело — «Проверить и отправить» одним действием (`x-deal.buyer-check`).
@@ -78,18 +78,20 @@ final class DealTabs
         // договор комиссии и акт (или доверенность) — к нам, ДКП — прежнему владельцу; через Р.О.С. или ПРАЙМ — ДКП и акты с
         // поставщиком и с покупателем, счёт-фактура — к нам со сканом (`Originals::kit`).
         'originals' => 'Оригиналы',
-        'pickup' => 'Менеджер забирает ТС',
-        // «Ждём договор» (26.11.2026, владелец: «мониторить подгрузку фоток договоров — отдельная вкладка, Алина видит, подгрузили или
-        // нет, если что — сама подгрузит или напомнит менеджеру»): шаг просит у менеджера подписанный договор, а его ещё нет. Ожидание:
-        // красным — только просроченные (у Алины «только горящее»).
-        'signed' => 'Ждём договор',
-        'docs' => 'Подписание договора',
         // Дело без своего места в ходе сделки — последней. «Не распределено», а не «Другие дела» (18.11.2026, владелец).
         'todo' => 'Не распределено',
     ];
 
+    /**
+     * «Менеджер забирает ТС» — вкладка сделки по шагу получения, но в колесе — в разделе «Вывоз» (27.11.2026, владелец: «не тут, а в
+     * вывозе отдельной вкладкой»): `OfferController::PRESETS` ставит её после «Везём». Все вкладки сделки — `ALL`.
+     */
+    public const PICKUP = ['pickup' => 'Менеджер забирает ТС'];
+
+    public const ALL = [...self::TABS, ...self::PICKUP];
+
     /** Вкладки «Ждём»: нашего дела в них нет. */
-    public const WAITING = ['buyer_data', 'agree', 'invoice', 'paying', 'paying_fee', 'buyer', 'pickup', 'signed', 'docs'];
+    public const WAITING = ['manager', 'agree', 'invoice', 'paying', 'paying_fee', 'buyer', 'pickup'];
 
     /** Группы «Ждём поставщика» по шагу: чего ждём. */
     public const WAIT_STAGES = ['Письмо с реквизитами' => 'Ждём счёт', 'Подтверждение оплаты' => 'Ждём подтверждение оплаты'];
@@ -118,7 +120,7 @@ final class DealTabs
         'Оформление документов' => 'docs',
     ];
 
-    private const CACHE = 'deal-tabs:6';
+    private const CACHE = 'deal-tabs:7';
 
     /**
      * Вкладка и наш ли ход одной сделки по её шагу и делу. `$repricing` — вопрос переоценки ещё не закрыт (`RepriceFlow::for`,
@@ -135,9 +137,10 @@ final class DealTabs
             $supplier = $position?->waitsFor() === WaitsFor::Supplier;
 
             return match (true) {
-                // Менеджер думает (берёт ли, что ответить) — пока не ответил, сделка в «Спросить менеджера» (18.11.2026); оплату,
-                // получение и договор он ведёт сам — там свои вкладки ожидания.
-                self::asksManager($position, $block) => 'ask',
+                // Менеджер думает (берёт ли, что ответить) — «Ждём менеджера» (27.11.2026; до того «Спросить менеджера»); оплату и
+                // получение он ведёт сам — там свои вкладки ожидания; подписание договора — тоже «Ждём менеджера».
+                self::asksManager($position, $block) => 'manager',
+                $block === 'docs' => $supplier ? 'invoice' : 'manager',
                 $block === 'paying' && ! $supplier && $position?->deal?->paysSupplierOn($position->stage) => 'buyer',
                 in_array($block, self::WAITING, true) && ! ($supplier && $block === 'paying') => $block,
                 $supplier => 'invoice',
@@ -194,14 +197,15 @@ final class DealTabs
             $todo = $position?->todo();
             $repricing = $pending->has($deal->offer_id) || $asked->has($deal->id)
                 || ($repriced->has($deal->offer_id) && $deal->offer && RepriceFlow::for($deal->offer->setRelation('deal', $deal)) !== null);
-            // Менеджер думает про новую цену — подгруппа «Ждём менеджера» (`waits`), а не дело шага («Прочитать ответ поставщика» — это
-            // и есть письмо переоценки, его черёд после ответа). Свои дела переоценки (не ответил к сроку, назвал цену) — остаются.
+            // Менеджер думает про новую цену — «Ждём менеджера», подгруппа «Ждём решения по переоценке» (27.11.2026, владелец; до
+            // того — подгруппа во вкладке «Переоценка»), а не дело шага («Прочитать ответ поставщика» — это и есть письмо переоценки,
+            // его черёд после ответа). Свои дела переоценки (не ответил к сроку, назвал цену) — во вкладке «Переоценка».
             if ($asked->has($deal->id) && ! in_array($todo['key'] ?? '', ['reprice', 'reprice-answer', 'price-ask', 'price-offer'], true)) {
-                $todo = null;
+                return [$deal->id => ['deal' => $deal, 'tab' => 'manager', 'todo' => null]];
             }
-            // Реквизиты запросили у менеджера на шаге письма (18.11.2026) — его ход: «Спросить менеджера», группа «Ждём ответа».
+            // Реквизиты запросили у менеджера на шаге письма (18.11.2026) — его ход: «Ждём менеджера», «Ждём реквизиты».
             if (($todo['key'] ?? '') === 'requisites-asked') {
-                return [$deal->id => ['deal' => $deal, 'tab' => 'buyer_data', 'todo' => null]];
+                return [$deal->id => ['deal' => $deal, 'tab' => 'manager', 'todo' => null]];
             }
             // Доп. просьба держит сделку — она во вкладке «Доп. просьба», что бы ни было на шаге (кроме переоценки — она первой).
             if (! $repricing && ExtraAsk::holding($deal)) {
@@ -209,6 +213,10 @@ final class DealTabs
                 // «разбор писем — пиздец срочно»): письмо — в «Поставщик ответил», где письма разбирают; «Доп. просьба» ждёт тихо.
                 if (($todo['key'] ?? '') === 'reply' && $position?->extraAsk()?->phase() === ExtraAsk::MANAGER) {
                     return [$deal->id => ['deal' => $deal, 'tab' => 'answered', 'todo' => $todo]];
+                }
+                // Ответ показали менеджеру, он решает — «Ждём менеджера», «Ждём решения по доп. запросу» (27.11.2026).
+                if ($todo === null && $position?->extraAsk()?->phase() === ExtraAsk::MANAGER) {
+                    return [$deal->id => ['deal' => $deal, 'tab' => 'manager', 'todo' => null]];
                 }
 
                 return [$deal->id => ['deal' => $deal, 'tab' => 'extra', 'todo' => $todo]];
@@ -244,11 +252,11 @@ final class DealTabs
             // Шаг оплаты, а менеджер не указал покупателя или его данные (Совкомбанк: без них нет счёта и договора) — «Спросить
             // менеджера» (26.11.2026, владелец: «Алина отвечает за то, чтобы менеджеры заполнили реквизиты для счёта»).
             if ($todo === null && ! $repricing && self::awaitsBuyer($deal, $position)) {
-                return [$deal->id => ['deal' => $deal, 'tab' => 'buyer_data', 'todo' => null]];
+                return [$deal->id => ['deal' => $deal, 'tab' => 'manager', 'todo' => null]];
             }
-            // Ждём от менеджера фото подписанного договора — «Ждём договор» (26.11.2026), на каком бы блоке шаг ни стоял.
+            // Ждём от менеджера фото подписанного договора — «Ждём менеджера», «Ждём подписанный договор», на каком бы блоке шаг ни стоял.
             if ($todo === null && ! $repricing && self::awaitsSigned($deal, $position)) {
-                return [$deal->id => ['deal' => $deal, 'tab' => 'signed', 'todo' => null]];
+                return [$deal->id => ['deal' => $deal, 'tab' => 'manager', 'todo' => null]];
             }
 
             return [$deal->id => ['deal' => $deal, 'tab' => self::of($position, $todo, $repricing), 'todo' => $todo]];
@@ -368,7 +376,9 @@ final class DealTabs
         'buyer', 'openRequirement', 'invoices.claims', 'invoices.party', 'contract.buyer.party.media', 'garageCar'];
 
     /** Группы сделок без нашего дела, по порядку. */
-    public const WAITS = ['answer' => 'Ждём ответа', 'buyer' => 'Ждём данные покупателя', 'originals' => 'Документы в пути', 'manager' => 'Ждём менеджера', 'supplier' => 'Ждём поставщика', 'transport' => 'Везёт наша логистика', 'other' => 'Прочее'];
+    public const WAITS = ['consent' => 'Ждём «Беру в работу»', 'answer' => 'Ждём ответа', 'buyer' => 'Ждём реквизиты', 'extra' => 'Ждём решения по доп. запросу',
+        'reprice' => 'Ждём решения по переоценке', 'signed' => 'Ждём подписанный договор', 'docs' => 'Ждём подписания', 'originals' => 'Документы в пути',
+        'manager' => 'Ждём менеджера', 'supplier' => 'Ждём поставщика', 'transport' => 'Везёт наша логистика', 'other' => 'Прочее'];
 
     /** Ждём ответа менеджера на шаге согласования, а не на оплате, получении, договоре или расчёте (у них свои вкладки). */
     private static function asksManager(?Position $position, string $block): bool
@@ -390,19 +400,22 @@ final class DealTabs
         $ask = ExtraAsk::holding($deal);
 
         return match (true) {
-            // Доп. просьба: ждём ответа поставщика или решения менеджера (18.11.2026).
-            $ask !== null => $ask->phase() === ExtraAsk::MANAGER ? 'manager' : 'supplier',
             // Менеджер думает про новую цену (`RepriceAsk`) — ждём его, какой бы шаг ни стоял (гаражная без шага переоценки).
-            RepriceAsk::where('deal_id', $deal->id)->whereIn('state', RepriceAsk::OPEN)->exists() => 'manager',
+            RepriceAsk::where('deal_id', $deal->id)->whereIn('state', RepriceAsk::OPEN)->exists() => 'reprice',
+            // Доп. просьба: ждём ответа поставщика или решения менеджера (18.11.2026).
+            $ask !== null => $ask->phase() === ExtraAsk::MANAGER ? 'extra' : 'supplier',
             // Ждём реквизиты от менеджера на шаге письма (`Position::requisitesTodo`).
-            ($position?->todo()['key'] ?? null) === 'requisites-asked' => 'answer',
+            ($position?->todo()['key'] ?? null) === 'requisites-asked' => 'buyer',
             $position?->carried() === true => 'transport',
             // Оригиналы: документ у менеджера — ждём его, иначе документы в пути (26.11.2026).
             Originals::applies($position?->stage) => Originals::waits($deal),
-            // Шаг оплаты без покупателя или его данных (26.11.2026, «Спросить менеджера»).
+            // Шаг оплаты без покупателя или его данных (26.11.2026) — «Ждём реквизиты».
             self::awaitsBuyer($deal, $position) => 'buyer',
-            // Вопрос менеджеру на шаге не из вкладок ожидания (оплата, получение, договор) — «Спросить менеджера», «Ждём ответа».
-            self::asksManager($position, self::BLOCKS[$position?->stage?->block?->name ?? $position?->stage?->name ?? ''] ?? 'agree') => 'answer',
+            self::awaitsSigned($deal, $position) => 'signed',
+            // Вопрос менеджеру на шаге согласования: берёт ли в работу — своей подгруппой, прочее — «Ждём ответа».
+            self::asksManager($position, $block = self::BLOCKS[$position?->stage?->block?->name ?? $position?->stage?->name ?? ''] ?? 'agree')
+                => $position->stage?->asksConsent() ? 'consent' : 'answer',
+            ($block ?? null) === 'docs' && $position?->waitsFor() !== WaitsFor::Supplier => 'docs',
             $position?->waitsFor() === WaitsFor::Manager => 'manager',
             // Чего ждём от поставщика на шагах оплаты — своей группой («Ждём счёт», «Ждём подтверждение оплаты»).
             $position?->waitsFor() === WaitsFor::Supplier => isset(self::WAIT_STAGES[$position->stage?->name]) ? 'supplier:'.$position->stage->name : 'supplier',

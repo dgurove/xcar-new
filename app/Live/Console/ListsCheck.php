@@ -39,7 +39,7 @@ final class ListsCheck extends Command
         $offers = ['nofloor', 'unpriced', 'estimating', 'priced', 'slots', 'published', 'bids', 'done', 'all', 'all_drafts', 'all_offers', 'all_deals', 'all_archive', 'archive', 'legacy', 'auction'];
 
         return [
-            ...array_map(fn ($p) => $crm('/offers?preset='.$p), [...array_keys(DealTabs::TABS), 'finished']),
+            ...array_map(fn ($p) => $crm('/offers?preset='.$p), [...array_keys(DealTabs::ALL), 'finished']),
             ...array_map(fn ($p) => $crm('/offers?preset='.$p.'&vid=table'), $offers),
             $crm('/offers?preset=gallery&vid=table'), $crm('/offers?preset=interest&vid=table'),
             $crm('/alarms'),
