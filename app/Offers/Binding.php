@@ -74,7 +74,7 @@ final class Binding
             return null;
         }
         $burning = $until->lte(self::edge());
-        $live = in_array($offer->state, self::LIVE, true);
+        $live = self::live($offer);
         // Списки считают горящее одним подзапросом (`select`) — без запросов на строку.
         if (array_key_exists('binding_panic', $offer->getAttributes())) {
             if ($offer->getAttribute('binding_panic')) {
@@ -112,7 +112,7 @@ final class Binding
     /** Срок ещё что-то значит: продажа ищет покупателя или сделка не заплатила поставщику. */
     public static function matters(Offer $offer): bool
     {
-        return $offer->binding_until !== null && self::applies($offer) && (in_array($offer->state, self::LIVE, true) || self::unpaidDeal($offer));
+        return $offer->binding_until !== null && self::applies($offer) && (self::live($offer) || self::unpaidDeal($offer));
     }
 
     /**
@@ -187,30 +187,27 @@ final class Binding
         if ($vendors === []) {
             return 'false';
         }
-        $states = implode(',', array_map(fn ($v) => "'{$v}'", self::liveValues()));
 
         return "({$table}.binding_until is not null and {$table}.vendor_id in (".implode(',', array_map('intval', $vendors)).')'
-            ." and ({$table}.state in ({$states}) or ".str_replace('offers.', "{$table}.", self::UNPAID_SQL).'))';
+            .' and ('.self::liveSql($table).' or '.str_replace('offers.', "{$table}.", self::UNPAID_SQL).'))';
     }
 
     /** Горит и покупателя нет — без «поставщику не заплачено» (26.11.2026, `panics`). */
     public static function buyerlessSql(string $table = 'offers'): string
     {
         $sql = fn (string $s) => str_replace('offers.', "{$table}.", $s);
-        $states = implode(',', array_map(fn ($v) => "'{$v}'", self::liveValues()));
 
         return "({$table}.binding_until is not null and {$table}.binding_until <= '".self::edge()->toDateTimeString()."'"
-            ." and {$table}.state in ({$states}) and not ".$sql(self::BUYER_SQL).')';
+            .' and '.self::liveSql($table).' and not '.$sql(self::BUYER_SQL).')';
     }
 
     /** Горит всерьёз одним SQL — колонка списков, сортировка и подзапрос логистики. */
     public static function panicSql(string $table = 'offers'): string
     {
         $sql = fn (string $s) => str_replace('offers.', "{$table}.", $s);
-        $states = implode(',', array_map(fn ($v) => "'{$v}'", self::liveValues()));
 
         return "({$table}.binding_until is not null and {$table}.binding_until <= '".self::edge()->toDateTimeString()."'"
-            ." and (({$table}.state in ({$states}) and not ".$sql(self::BUYER_SQL).') or '.$sql(self::UNPAID_SQL).'))';
+            .' and (('.self::liveSql($table).' and not '.$sql(self::BUYER_SQL).') or '.$sql(self::UNPAID_SQL).'))';
     }
 
     /**
@@ -223,12 +220,28 @@ final class Binding
      */
     public static function levelSql(string $table = 'offers'): string
     {
-        $states = implode(',', array_map(fn ($v) => "'{$v}'", self::liveValues()));
         $col = "{$table}.binding_until";
 
-        return "(case when {$col} is null or {$table}.state not in ({$states}) then 0"
+        return "(case when {$col} is null or not ".self::liveSql($table).' then 0'
             ." when {$col} <= '".self::burnt()->toDateTimeString()."' then 2"
             ." when {$col} <= '".self::edge()->toDateTimeString()."' then 1 else 0 end)";
+    }
+
+    /**
+     * Машина ещё ищет покупателя: черновик, галерея, продажа — и не передана на аукцион (27.11.2026, владелец: «если передано на
+     * аукцион, не должно висеть горящим — это и нужно, чтобы передавать, если сгорает»). Вернули с аукциона — снова живая.
+     */
+    public static function live(Offer $offer): bool
+    {
+        return in_array($offer->state, self::LIVE, true) && $offer->auction_at === null;
+    }
+
+    /** То же одним SQL. */
+    public static function liveSql(string $table = 'offers'): string
+    {
+        $states = implode(',', array_map(fn ($v) => "'{$v}'", self::liveValues()));
+
+        return "({$table}.state in ({$states}) and {$table}.auction_at is null)";
     }
 
     /** @return list<string> */

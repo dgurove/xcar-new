@@ -14,6 +14,8 @@ use Illuminate\Validation\ValidationException;
  * «На аукцион» (черновик — просто встаёт туда); «По истечению срока на аукцион» — план: часы (`due`, шаг `offers:tick`)
  * отправят его, когда приём закончится без единого подтверждения, а будут подтверждения — план снимут. Пока план стоит,
  * у предложения в CRM метка «На аукцион». Снять — «Отменить отправку на аукцион» / «Вернуть в черновики» (`cancel`); «Вернуть в продажу…» — `ReturnToSale`.
+ * Передали — поставщику со сроком обязывающего письмо «прошу передать на аукцион» (`TellSupplierAuction`, 27.11.2026); горящим
+ * машина на аукционе больше не считается (`Binding::live`).
  */
 final class SendToAuction
 {
@@ -29,6 +31,12 @@ final class SendToAuction
         }
         $offer->forceFill(['auction_at' => now(), 'auction_planned_at' => null, 'auction_by' => $by?->id ?? $offer->auction_by])->save();
         $offer->log(OfferEventType::Auction, $by, array_filter(['to' => true, 'why' => $why]));
+        // Поставщику «прошу передать на аукцион» (27.11.2026) — у вендоров со сроком обязывающего (Совкомбанк: аукцион — его),
+        // после записи; не ушло — не роняет передачу, `TellSupplierAuction` сам пишет в «Историю» и админам.
+        if (\App\Offers\Binding::applies($offer)) {
+            $id = $offer->id;
+            \Illuminate\Support\Facades\DB::afterCommit(fn () => rescue(fn () => app(TellSupplierAuction::class)(Offer::findOrFail($id), $by)));
+        }
 
         return $offer;
     }
