@@ -2,14 +2,17 @@
      внутри поля справа вместо неё (номер убытка — значок Мигторга, x-offer.migtorg-field).
      required — звёздочка у подписи; без поля сервер не сохранит (атрибута required нет: поле в свёрнутом блоке
      браузер не покажет, и форма молча не уйдёт). --}}
-@props(['name', 'label' => null, 'type' => 'text', 'value' => null, 'options' => null, 'placeholder' => null, 'afterLabel' => null, 'span' => null, 'copy' => false, 'required' => false, 'digits' => false, 'notes' => []])
+@props(['name', 'label' => null, 'type' => 'text', 'value' => null, 'options' => null, 'placeholder' => null, 'afterLabel' => null, 'span' => null, 'copy' => false, 'required' => false, 'digits' => false, 'notes' => [], 'sheet' => null])
 @php
     $id = $attributes->get('id', 'f-'.str_replace(['[', ']'], ['-', ''], $name));
     // Поле набора (`rows[0][price]`): ошибки и old() лежат под точками — иначе строка лестницы прайса
     // после ошибки теряла введённое и не подсвечивалась.
     $path = str_replace(['[', ']'], ['.', ''], $name);
-    $error = $errors->first($name) ?: $errors->first($path);
-    $bound = old($path, old($name, $value));
+    // `sheet` — id шторки поля: ошибки и old() чужой шторки с тем же именем поля — не наши (27.11.2026, 467056: «Цена и
+    // вознаграждение» вернула ошибку `amount`, и «Записать расход» открылась поверх с её суммой и текстом).
+    $foreign = $sheet !== null && old('_sheet') !== null && old('_sheet') !== $sheet;
+    $error = $foreign ? null : ($errors->first($name) ?: $errors->first($path));
+    $bound = $foreign ? $value : old($path, old($name, $value));
     // Чужая форма с тем же именем набором (`value[ключ]` шторки «Показать менеджеру», 25.11.2026) — не наше: поле скалярное,
     // массив ронял страницу 500 (`htmlspecialchars`).
     if (is_array($bound)) { $bound = is_array($value) ? null : $value; }

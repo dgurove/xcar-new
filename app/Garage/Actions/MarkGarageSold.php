@@ -32,7 +32,9 @@ final class MarkGarageSold
             throw ValidationException::withMessages(['sold_price' => 'Покупка ещё не закрыта: продавать рано']);
         }
         if ($staff ? ! $car->state->isWorking() : ($car->state !== CarState::Selling || $car->manager_id !== $by->id)) {
-            throw ValidationException::withMessages(['sold_price' => 'Продать можно ТС в продаже']);
+            // ТС ещё не забрали (27.11.2026, 467056: «Продать можно ТС в продаже» в CRM у машины, что ждёт вывоза, — непонятно почему).
+            throw ValidationException::withMessages(['sold_price' => $car->state === CarState::Waiting
+                ? 'ТС ещё не забрали: продать можно после «Забрал»' : 'Продать можно ТС в продаже']);
         }
 
         $buyer = $car->forBuyer();

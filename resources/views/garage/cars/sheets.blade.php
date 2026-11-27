@@ -19,10 +19,12 @@
 
 @if ($canAdd)
     <div {!! $wrap('cost-new') !!}>
-        <x-ui.sheet id="cost-new" title="Записать расход" :open="$errors->has('title') || $errors->has('amount') && ! $unpaid">
+        {{-- Открыта после ошибки — только своей (`_sheet`): у «Цены и вознаграждения» поле той же суммы `amount`, и её ошибка
+             открывала расход поверх (27.11.2026, 467056). Без `_sheet` (форма без шторки) — как раньше. --}}
+        <x-ui.sheet id="cost-new" title="Записать расход" :open="($errors->has('title') || $errors->has('amount')) && in_array(old('_sheet'), [null, 'cost-new'], true) && ! $unpaid">
             <form method="post" action="/garage/cars/{{ $n }}/costs" class="flex flex-col gap-3">
                 @csrf
-                @include('garage.cars.cost-fields', ['cost' => null])
+                @include('garage.cars.cost-fields', ['cost' => null, 'sheet' => 'cost-new'])
                 <x-ui.sheet-foot type="submit" variant="primary">Записать</x-ui.sheet-foot>
             </form>
         </x-ui.sheet>

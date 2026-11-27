@@ -2,7 +2,7 @@
      07.10.2026: сумма первой (у нового расхода — с клавиатурой сразу), поля строками (.fields), подсказки одной строкой вбок. --}}
 <div class="contents" data-controller="suggest">
     <div class="fields">
-        <x-ui.field name="amount" label="Сколько, ₽" :value="$cost?->amount ? \App\Support\Money::nums($cost->amount, fmod((float) $cost->amount, 1) ? 2 : 0) : null" placeholder="15 000" data-digits-decimals-value="2" :autofocus="! $cost"/>
+        <x-ui.field name="amount" :sheet="$sheet ?? null" label="Сколько, ₽" :value="$cost?->amount ? \App\Support\Money::nums($cost->amount, fmod((float) $cost->amount, 1) ? 2 : 0) : null" placeholder="15 000" data-digits-decimals-value="2" :autofocus="! $cost"/>
     </div>
     @unless ($cost)
         <div class="sheet-chips">
@@ -13,8 +13,8 @@
         </div>
     @endunless
     <div class="fields">
-        <x-ui.field name="title" label="Что" :value="$cost?->title" placeholder="Доставка" autocomplete="off" data-suggest-target="field"/>
-        <x-ui.field name="spent_at" label="Когда" type="date" :value="($cost?->spent_at ?? now())->toDateString()" max="{{ now()->toDateString() }}"/>
+        <x-ui.field name="title" :sheet="$sheet ?? null" label="Что" :value="$cost?->title" placeholder="Доставка" autocomplete="off" data-suggest-target="field"/>
+        <x-ui.field name="spent_at" :sheet="$sheet ?? null" label="Когда" type="date" :value="($cost?->spent_at ?? now())->toDateString()" max="{{ now()->toDateString() }}"/>
     </div>
 </div>
 {{-- Кто платил — выбирает сотрудник: свой расход или менеджера с его слов. «Оплата поставщику» — всегда менеджера. --}}
