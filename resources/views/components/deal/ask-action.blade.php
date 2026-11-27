@@ -49,7 +49,8 @@
         @endif
         @foreach ($shown->filter(fn ($e) => Warnings::takes($e)) as $exit)
             <x-deal.take-sheet :id="$form.'-'.$exit->id" :form="$form" :take="['exit', $exit->id]" :ok="$exit->takes() ? 'Да, беру в работу' : 'Да, берём'"
-                :drop="$variant !== 'sheet' && ($r = $ask->retreats->first()) ? ['exit', $r->id] : null" :deal="$deal" :ask="$ask->requirement" :back="$back"/>
+                :drop="$variant !== 'sheet' && ($r = $ask->retreats->first()) ? ['exit', $r->id] : null" :deal="$deal" :ask="$ask->requirement" :back="$back"
+                :want="$want && $exit->takes() ? 'want-'.$form : null"/>
         @endforeach
         {{-- «Отказываюсь» и «Напомнить через…» — двумя кнопками в ряд (19.11.2026, как на шаге сделки, `cabinet.deals.exits`): ряд за
              формой ответа — у шторки напоминания свои формы, «Отказываюсь» шлёт ответ атрибутом `form`. --}}

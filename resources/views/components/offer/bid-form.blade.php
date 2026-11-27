@@ -27,7 +27,7 @@
 @if ($compact)
     @if ($offer)<x-offer.counter-card :bid="$myBid" class="w-full"/>@endif
     @php $label = $offer ? 'Цена, ₽' : 'Предложение, ₽'; @endphp
-    <form method="post" action="{{ $action }}" class="flex w-full flex-col gap-2" @if ($offer) data-telegram-moment="bid" @endif data-controller="bid" data-bid-asking-value="{{ $asking }}" @if ($offer) data-bid-garage-value="{{ $garage ? 'true' : 'false' }}" data-bid-staff-value="{{ $staff ? 'true' : 'false' }}" data-bid-check-value="{{ $check }}" data-bid-warn-value="{{ \App\Offers\Warnings::BID }}" data-action="submit->bid#guard change->bid#update" @else data-bid-min-value="0" @endif>
+    <form method="post" action="{{ $action }}" class="flex w-full flex-col gap-2" @if ($offer) data-telegram-moment="bid" @endif data-controller="bid" data-bid-asking-value="{{ $asking }}" @if ($offer) data-bid-garage-value="{{ $garage ? 'true' : 'false' }}" data-bid-staff-value="{{ $staff ? 'true' : 'false' }}" data-bid-check-value="{{ $check }}" data-bid-warn-value="{{ \App\Offers\Warnings::BID }}" data-bid-warn-extra-value="{{ \App\Offers\Warnings::BID_EXTRA }}" data-action="submit->bid#guard change->bid#update" @else data-bid-min-value="0" @endif>
         @csrf
         @if ($offer)<input type="hidden" name="low_ok" value="{{ $errors->has('low') ? '1' : '' }}" data-bid-target="low">@endif
         <div class="flex gap-2">
@@ -59,7 +59,7 @@
     @if ($myBid)<form method="post" action="{{ $withdraw }}" class="contents">@csrf<button type="submit" class="pill pill-plain" @if ($offer) {{ \App\Offers\Warnings::html(\App\Offers\Warnings::BID_OFF, 'Да, отозвать', danger: true) }} @endif>{{ $offer ? 'Отозвать' : 'Отозвать цену' }}</button></form>@endif
 @else
 <x-offer.counter-card :bid="$myBid" class="mt-6"/>
-<form method="post" action="{{ $action }}" class="mt-6" data-telegram-moment="bid" data-controller="bid draft" data-bid-asking-value="{{ $asking }}" data-bid-garage-value="{{ $garage ? 'true' : 'false' }}" data-bid-staff-value="{{ $staff ? 'true' : 'false' }}" data-bid-check-value="{{ $check }}" data-bid-warn-value="{{ \App\Offers\Warnings::BID }}" data-action="submit->bid#guard change->bid#update">
+<form method="post" action="{{ $action }}" class="mt-6" data-telegram-moment="bid" data-controller="bid draft" data-bid-asking-value="{{ $asking }}" data-bid-garage-value="{{ $garage ? 'true' : 'false' }}" data-bid-staff-value="{{ $staff ? 'true' : 'false' }}" data-bid-check-value="{{ $check }}" data-bid-warn-value="{{ \App\Offers\Warnings::BID }}" data-bid-warn-extra-value="{{ \App\Offers\Warnings::BID_EXTRA }}" data-action="submit->bid#guard change->bid#update">
     @csrf
     <input type="hidden" name="low_ok" value="{{ $errors->has('low') ? '1' : '' }}" data-bid-target="low">
     @if ($myBid?->isGarage())

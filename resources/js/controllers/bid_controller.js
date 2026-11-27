@@ -15,7 +15,7 @@ import { confirmSheet } from '../confirm';
 // не нащупать вводом.
 export default class extends Controller {
     static targets = ['display', 'amount', 'submit', 'choice', 'buyer', 'sum', 'garage', 'low', 'error', 'choicePane', 'pricePane', 'ask', 'askError', 'askSubmit'];
-    static values = { asking: Number, garage: Boolean, staff: Boolean, check: String, warn: String };
+    static values = { asking: Number, garage: Boolean, staff: Boolean, check: String, warn: String, warnExtra: String };
 
     connect() {
         this.update();
@@ -193,7 +193,7 @@ export default class extends Controller {
             // Обычная цена — тоже «Вы уверены?» (19.11.2026, владелец: защита от случайных нажатий; текст — `Offers\Warnings::BID`):
             // ставку могут принять, и откроется сделка. Шаг цены в шторке «куда берёте» уже сам подтверждение — там не спрашиваем.
             if (zone === 'ok' && this.warnValue && !pricing) {
-                const sure = await confirmSheet('Вы уверены?', { text: this.warnValue, label: `Да, подтвердить за ${rub(this.amountTarget.value)}`, cancel: 'Ещё подумаю', danger: false });
+                const sure = await confirmSheet('Вы уверены?', { text: this.warnText(), label: `Да, подтвердить за ${rub(this.amountTarget.value)}`, cancel: 'Ещё подумаю', danger: false });
                 if (!sure) return;
             }
             // Шторка «куда берёте» после ответа оставалась открытой поверх страницы (27.11.2026): отправляем — закрываем.
@@ -206,6 +206,17 @@ export default class extends Controller {
             this.passing = false;
             this.busy = false;
         }
+    }
+
+    // С «+ Доп. запрос…» (27.11.2026): берёт ли ТС, он решит после ответа поставщика — текст об этом, а не «откроется сделка».
+    warnText() {
+        const words = [...this.element.querySelectorAll('input[name="extra[]"]:checked')].map((b) => b.dataset.word).filter(Boolean);
+        if (!words.length || !this.warnExtraValue) return this.warnValue;
+        const low = (w) => (/^\p{Lu}{2}/u.test(w) ? w : w.charAt(0).toLowerCase() + w.slice(1));
+        const list = words.map(low);
+        // «ПТС и осмотр», «ПТС, осмотр и готовность ДКП» — как сказал бы человек.
+        const what = list.length > 1 ? `${list.slice(0, -1).join(', ')} и ${list[list.length - 1]}` : list[0];
+        return this.warnExtraValue.replace('{what}', what);
     }
 
     // Не ответил сервер (сеть, частые попытки) — отправляем как есть: решит store.

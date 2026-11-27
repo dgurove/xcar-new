@@ -31,7 +31,7 @@
             <x-ui.button type="button" :variant="$decides ? 'primary' : 'secondary'" block data-controller="emit" data-action="emit#send" :data-emit-event-param="'take:take-x-'.$ask->id">{{ Wording::mine($labels['take']) }}</x-ui.button>
         </form>
         <x-deal.take-sheet :id="'take-x-'.$ask->id" :form="'extra-ask-'.$ask->id" :take="['decision', 'take']" :ok="$consented ? 'Да, берём' : 'Да, беру в работу'" :drop="['decision', 'drop']"
-            :deal="$decides ? $deal : null" :ask="$ask" extra/>
+            :deal="$decides ? $deal : null" :ask="$ask" extra :early="in_array($phase, [ExtraAsk::WANTED, ExtraAsk::SUPPLIER], true)"/>
         {{-- «Отказываюсь» и «Напомнить через…» — двумя кнопками в ряд (19.11.2026, как на шаге сделки): решать ему — с
              напоминанием, ждём поставщика — одна серая кнопка. --}}
         <div class="mt-3 flex gap-3">

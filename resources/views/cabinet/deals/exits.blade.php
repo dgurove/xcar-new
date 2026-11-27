@@ -51,7 +51,7 @@
         @endif
         @foreach ($moves->filter(fn ($e) => \App\Offers\Warnings::takes($e)) as $exit)
             <x-deal.take-sheet :id="'take-'.$requirement->id.'-'.$exit->id" :form="'reply-'.$requirement->id" :take="['exit', $exit->id]" :ok="$exit->takes() ? 'Да, беру в работу' : 'Да, берём'"
-                :drop="($r = $retreats->first()) ? ['exit', $r->id] : null" :deal="$deal" :ask="$requirement"/>
+                :drop="($r = $retreats->first()) ? ['exit', $r->id] : null" :deal="$deal" :ask="$requirement" :want="$want && $exit->takes() ? 'want-'.$deal->id : null"/>
         @endforeach
         {{-- «Отказываюсь» и «Напомнить через…» — двумя кнопками в ряд под главной (19.11.2026, владелец: тихая ссылка по центру —
              «в нормальных приложениях так не делают»). Шторка напоминания — со своими формами, поэтому ряд — за формой ответа,

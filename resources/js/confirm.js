@@ -27,14 +27,16 @@ export function confirmSheet(message, options = {}) {
             <h2 class="mb-5 text-lg"></h2>
             <p class="-mt-3 mb-5 whitespace-pre-line text-ink-muted" data-text hidden></p>
             <blockquote class="-mt-2 mb-5 border-l-2 border-surface-3 pl-3 text-ink-muted" data-quote hidden><span data-quote-text></span> <cite class="block text-sm text-ink-dim not-italic" data-quote-by></cite></blockquote>
-            <div class="flex flex-col gap-2 sm:flex-row-reverse">
-                <button type="button" class="btn btn-block sm:flex-1 ${danger ? 'btn-danger' : 'btn-accent'}" data-ok></button>
-                <button type="button" class="btn btn-block sm:flex-1" data-alt hidden></button>
-                <button type="button" class="btn btn-quiet btn-block sm:flex-1" data-cancel></button>
+            <div class="flex flex-col gap-2 sm:flex-row-reverse sm:flex-wrap">
+                <button type="button" class="btn btn-block sm:min-w-max sm:flex-1 ${danger ? 'btn-danger' : 'btn-accent'}" data-ok></button>
+                <button type="button" class="btn btn-block sm:min-w-max sm:flex-1" data-alt hidden></button>
+                <button type="button" class="btn btn-quiet btn-block sm:min-w-max sm:flex-1" data-cancel></button>
             </div>`;
         d.querySelector('h2').textContent = message;
         if (options.warn) d.querySelector('h2').insertAdjacentHTML('beforebegin', '<span class="confirm-warn" aria-hidden="true">!</span>');
         d.querySelector('[data-ok]').textContent = label;
+        // Длинное «Да, подтвердить за 1 410 000 ₽» выталкивало «Ещё подумаю» за край окна (27.11.2026): кнопки не уже надписи,
+        // не влезли в ряд — «нет» переносится строкой ниже.
         // Своё «нет» и у формы (18.11.2026, «Запросить счёт…»: «Нет, оплатим обычным способом») — data-turbo-confirm-cancel.
         d.querySelector('[data-cancel]').textContent = options.cancel || submitter?.dataset?.turboConfirmCancel || form?.dataset.turboConfirmCancel || 'Отмена';
         if (options.alt) {
