@@ -124,13 +124,16 @@ final class EnterStage
         // Шаг «Забрать автомобиль» (и связь перед ним — `Stage::handsStep`), а везёт логистика (17.10.2026): ход наш, без часов и просьбы «Заберите» —
         // шаг пройдёт сам по «Привёз» к нему (`SyncHandover`); сняли вывоз — ход снова его (`SyncHandover::turn`).
         $carried = $track === Track::Sale && $deal?->isActive() && $to->handsStep() && $deal->setRelation('offer', $offer->unsetRelation('pickupTask'))->carried();
-        $waits = $ours || $awaitsLetter || $carried ? WaitsFor::Us : ($needsBuyer ? WaitsFor::Manager : null);
+        // Шаг просит подписанный договор, а наш договор менеджеру ещё не отправлен (27.11.2026): ход наш, без часов и без просьбы —
+        // её заведёт «Отправить менеджеру» (`Offers\PassTurnOnContract`).
+        $noContract = $track === Track::Sale && ! $back && $deal !== null && $deal->awaitsOurContract($to);
+        $waits = $ours || $awaitsLetter || $carried || $noContract ? WaitsFor::Us : ($needsBuyer ? WaitsFor::Manager : null);
         $deadline = match (true) {
             $awaitsLetter => Stage::letterDeadline($now),
             // Ход менеджера «Укажите покупателя / паспорт» — часы оплаты сразу (27.10.2026, владелец: «на оплату вне
             // зависимости, указал он покупателя или нет»). Гаражная без цены продаёт сама — часов нет.
             $needsBuyer && $deal->invoiceGap() !== 'price' => $to->deadlineFor($offer, $now),
-            $noInvoice || $carried => null,
+            $noInvoice || $carried || $noContract => null,
             default => $to->deadlineFor($offer, $now),
         };
         // Позиция до входа — её письмо шага может засчитаться и после входа (`MarkSupplierLetter::already`).
@@ -181,7 +184,7 @@ final class EnterStage
             }
         }
 
-        if (! $quiet && ! $noInvoice && ! $carried && $deal && $deal->isActive() && $deal->buyer_id && $to->awaitsManager($deal)) {
+        if (! $quiet && ! $noInvoice && ! $carried && ! $noContract && $deal && $deal->isActive() && $deal->buyer_id && $to->awaitsManager($deal)) {
             Requirement::askFor($deal, $to, $position);
         }
 

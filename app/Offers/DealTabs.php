@@ -45,6 +45,9 @@ final class DealTabs
         // следующее наше дело отправляет реквизиты покупателя (письмо с реквизитами, счёт за ТС, договор), а их этот вид ещё не
         // проверили (`DealContract::needsBuyerCheck`). Дело — «Проверить и отправить» одним действием (`x-deal.buyer-check`).
         'verify' => 'Проверить реквизиты',
+        // «Подтвердить актуальность» (27.11.2026, владелец: «из „Написать поставщику“ в отдельную вкладку, ответственный Андрей; по
+        // остальным „Написать поставщику“ — Алина и Лиза»): письмо шага «Поставщику: подтверждение покупки» (`Position::letterAction`).
+        'confirm' => 'Подтвердить актуальность',
         'letter' => 'Написать поставщику',
         // «На согласовании» (17.11.2026, владелец: «не Согласование, а На согласовании») — с 18.11.2026 только ожидание поставщика
         // (владелец: «то, что менеджеры думают, там не должно быть ничего»).
@@ -141,6 +144,7 @@ final class DealTabs
 
         return match (true) {
             $repricing || in_array($key, ['reprice', 'reprice-answer', 'price-ask', 'price-offer'], true) => 'reprice',
+            in_array($key, ['letter:confirm', 'letter-agree:confirm'], true) => 'confirm',
             in_array($key, ['bounced', 'requisites'], true) || str_starts_with($key, 'letter') || str_starts_with($key, 'request:') => 'letter',
             in_array($key, ['ask-consent', 'consent'], true) => 'ask',
             // Контакт менеджеру, что забирает сам (25.11.2026, `ContactDue`) — машина в «Менеджер забирает ТС», счётчик — у «Показать

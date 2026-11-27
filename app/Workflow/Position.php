@@ -414,6 +414,18 @@ class Position extends Model
             return null;
         }
 
+        // Шаг ждёт подписанный договор, а наш менеджеру не отправлен (27.11.2026): готов — дело «Отправить договор» по оплате
+        // счёта (`Deal::paperTodo`, вкладка «Отправить договор»), не готов — чего не хватает, там же.
+        if ($this->waitsFor() === WaitsFor::Us && $this->deal?->awaitsOurContract($this->stage)) {
+            $contract = \App\Offers\DealContract::for($this->deal);
+
+            return $contract->sendable()
+                ? $this->deal->paperTodo() ?? $todo('contract:send', 'Отправить договор менеджеру', 2, $since,
+                    ['label' => 'Отправить договор', 'post' => '/work/deals/'.$this->deal->id.'/contract/show', 'confirm' => 'Отправить договор менеджеру?'])
+                : $todo('contract:missing', 'Договор не готов: '.implode(', ', $contract->missing()), 2, $since,
+                    ['label' => 'Открыть', 'href' => '/offers/'.$offer->number.'#money']);
+        }
+
         return match (true) {
             $letter === 'replied' => $todo('reply', 'Прочитать ответ поставщика', 0, $this->replyAt(), ['label' => 'Открыть письмо', 'letters' => '/offers/'.$offer->number.'/letters']),
             $letter === 'bounced' => $todo('bounced', 'Письмо поставщику не дошло', 1, button: $write('Написать снова')),

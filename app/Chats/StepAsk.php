@@ -43,6 +43,10 @@ final class StepAsk
             if (($current && $current !== $r->stage_id) || ($r->stage?->isPayStep() && $deal->credited() > 0)) {
                 return;
             }
+            // Просить подписать нечего: наш договор менеджеру ещё не отправлен (27.11.2026, 495181/2026) — попросит «Отправить менеджеру».
+            if ($r->stage && $deal->awaitsOurContract($r->stage)) {
+                return;
+            }
             // Оплатить страховой — сразу и сам счёт вложением (11.11.2026, владелец).
             $bill = $r->stage && $deal->paysSupplierOn($r->stage) ? SupplierInvoice::shown($deal->offer)->take(1) : collect();
             app(PlatformMessage::class)(app(OpenChat::class)($deal->offer, $deal->buyer, greet: false), self::text($r), $r, media: $bill);

@@ -1051,6 +1051,17 @@ class Deal extends Model implements HasMedia
     }
 
     /**
+     * Шаг просит у менеджера подписанный договор, а наш договор ему ещё не отправлен (27.11.2026, владелец по 495181/2026:
+     * «почему написали „Нужно приложить договор“, если он нами ещё не отправлен?»): подписывать нечего — ход наш, просьбы нет,
+     * её заведёт «Отправить менеджеру» (`PassTurnOnContract`). Как этап оплаты без отправленного счёта.
+     */
+    public function awaitsOurContract(Stage $stage): bool
+    {
+        return $stage->asks === Asks::Document && $stage->aboutContract() && $this->isActive() && $this->hasContract()
+            && ! $this->contractSigned() && ! DealContract::for($this)->shownToManager() && SignedContractPdf::files($this)->isEmpty();
+    }
+
+    /**
      * Собираем ли покупателя по договору: договор есть (`hasContract`) или сделка стоит на шаге «Данные покупателя»
      * (`Asks::Buyer`, 03.11.2026, Альфа «страховой напрямую»: счёт поставщик выставит на покупателя — договора у нас нет,
      * а данные нужны). Одна дверь для формы покупателя у менеджера и в CRM.

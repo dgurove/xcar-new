@@ -155,6 +155,7 @@ final class ShowToManager
             $what = 'Договор'.($done->code ? ' № '.$done->code : '');
             $deal->buyer?->notify(new \App\Notifications\DocRecalledNotice($deal, $what));
             \App\Notifications\Notify::toDeals(\App\Notifications\DealEventNotice::recalled($deal->loadMissing('offer'), $what, $by), $by);
+            \App\Offers\PassTurnOnContract::recalled($deal);
             \App\Live\RefreshDeal::of($deal);
         }
 
@@ -182,6 +183,8 @@ final class ShowToManager
         if ($fresh) {
             $deal->buyer?->notify(new ContractReadyNotice($deal));
             Disclose::publish($deal);
+            // Шаг «Подписанный договор» ждал нас — теперь ход менеджера: просьба и сообщение в чат.
+            \App\Offers\PassTurnOnContract::shown($deal);
         }
 
         return $fresh ?? $contract->fresh();
