@@ -87,6 +87,9 @@ final class HandOverGarage
                 $this->give->handOver($offer->fresh(), $was, $deal, $by);
             }
             ($this->sync)($deal->fresh(), $by);
+            // Договор ПРАЙМ теперь нужен (машину отдали держателю) — собственник из договора комиссии сам (27.11.2026, Tiggo
+            // 890289/2026: при «взяли под себя» договора не было, разбор не звали, и собственника вписывали руками).
+            DB::afterCommit(fn () => app(\App\Offers\Actions\FillCommissionOwner::class)($deal->fresh(['offer.vendor', 'contract'])));
             if ($deal->isActive() && $deal->isCommission()) {
                 app(AskBuyer::class)->ask($deal);
             }

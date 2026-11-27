@@ -22,6 +22,9 @@ use Illuminate\Support\Facades\Schedule;
 Schedule::command('offers:tick')->everyMinute()->withoutOverlapping(10);
 // Дело «Укажите покупателя» — и сделкам, согласованным не живым «Беру в работу» (11.11.2026, `AskBuyer::sweep`).
 Schedule::command('deals:ask-buyers')->everyTenMinutes()->withoutOverlapping(30);
+// Собственник из договора комиссии — и где договор понадобился позже (передали держателю, сменили схему) или письмо пришло без
+// события (27.11.2026: у 8 из 19 сделок без собственника он лежал в договоре комиссии); вписанное руками не трогает.
+Schedule::command('deals:commission-owners --apply')->hourly()->withoutOverlapping(30);
 Schedule::command('park:tick')->everyFiveMinutes()->withoutOverlapping(15);
 // Номера «К запросу» письмом в 9:00 и 18:00 (`claims:digest`): каждые 5 минут — пропущенный слот уходит следующим проходом.
 Schedule::command('claims:digest')->everyFiveMinutes()->withoutOverlapping(15);

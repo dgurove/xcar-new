@@ -70,7 +70,7 @@ final class CommitentFields
         $party = array_filter([
             'name' => $name,
             'birth_at' => preg_match('/Дата\s+рождения\s*:?\s*(\d{2}\.\d{2}\.\d{4})/u', $block, $a) ? self::date($a[1]) : null,
-            'passport' => preg_match('/Паспорт\s*:?\s*(?:серия\s*)?(\d{2})\s?(\d{2})\s*№?\s*(\d{6})/u', $block, $a) ? $a[1].' '.$a[2].' '.$a[3] : null,
+            'passport' => preg_match('/Паспорт(?:\s+(?:гражданина\s+)?(?:РФ|Российской\s+Федерации))?\s*:?\s*(?:серия\s*)?(\d{2})\s?(\d{2})\s*№?\s*(\d{6})/u', $block, $a) ? $a[1].' '.$a[2].' '.$a[3] : null,
             'passport_issued_at' => preg_match('/Выдан[а]?\s*:?\s*(\d{2}\.\d{2}\.\d{4})/u', $block, $a) ? self::date($a[1]) : null,
             'passport_issued' => preg_match('/Выдан[а]?\s*:?\s*(?:\d{2}\.\d{2}\.\d{4}\s*г?\.?\s*)?(.+?)\s+(?:Код\s+подразделения|Адрес\s+регистрации|Дата\s+выдачи)/u', $block, $a) ? trim($a[1], ' ,') : null,
             'passport_code' => preg_match('/Код\s+подразделения\s*:?\s*(\d{3}-?\d{3})/u', $block, $a) ? $a[1] : null,
