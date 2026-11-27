@@ -343,7 +343,11 @@ class Position extends Model
         // пришли — значит счёт выставили вне системы, его тут никогда не выставят»): шаг оплаты проходит сам (`MoneyIn`).
         $car = $this->deal?->buyer_id ? null : $this->deal?->garageCar;
         $gap = ($at = $this->moneyArrived()) ? ($car && ! $car->isSold() ? 'price' : $this->deal->invoiceGap()) : null;
-        if ($at && in_array($gap, ['price', 'buyer', 'passport'], true)) {
+        // Гаражная без цены продажи — дела нет (27.11.2026, владелец: «деньги пришли — должны сами вписываться, зачем дополнительное
+        // действие»; «цену продажи менеджер вписывает, пока её нет — и счёта нет»): пришедшее уже в оплатах сделки, счёт встанет на
+        // остаток, когда назовут цену.
+        $garageUnpriced = $gap === 'price' && $this->deal?->garageCar && ! $this->deal->garageCar->isSold();
+        if ($at && ! $garageUnpriced && in_array($gap, ['price', 'buyer', 'passport'], true)) {
             [$what, $label, $href] = match ($gap) {
                 'price' => ['записать продажу', 'Записать', '/offers/'.$offer->number.'?sold=1'],
                 'buyer' => ['нужен покупатель', 'Заполнить', '/offers/'.$offer->number.'?buyer=1#invoice-buyer'],
@@ -354,7 +358,7 @@ class Position extends Model
             return $todo('gap:paid-'.$gap, 'Деньги пришли: '.$what, 1, $at, ['label' => $label, 'href' => $href]);
         }
 
-        if (! $ask && $this->awaitsInvoice()) {
+        if (! $ask && ! $garageUnpriced && $this->awaitsInvoice()) {
             $gap = $this->gap();
             $action = self::gapAction($gap, $this->deal);
 
@@ -621,7 +625,8 @@ class Position extends Model
 
     /** `needsUs()` одним SQL-условием над `offer_positions` — для скоупа, сортировок и подзапросов. */
     // coalesce — пустой payload даёт null, и «не наш ход» (`whereNot`) терял такие позиции. Подписи согласия — `Outcome::TAKES`.
-    // Заявка Каркаде (исход «Заявка отправлена») — тихое дело, в бейдж не идёт (18.11.2026, `todo` `quiet`).
+    // Заявка Каркаде (исход «Заявка отправлена») — тихое дело, в бейдж не идёт (18.11.2026, `todo` `quiet`); наша оплата поставщику
+    // (поле шага «Дата оплаты», «Номер платёжки» — `Stage::isPayField`) — тоже (27.11.2026).
     // Ход наш на шаге получения под логистикой (`carried`) — не наш: этап с исходом менеджера «Автомобиль забрал» или шаг
     // связи перед ним (`Stage::handsStep`).
     // Метки письма — только на этапе письма (`Stage::isLetterStep`), «менеджер не ответил» — только пока ход его
@@ -629,6 +634,8 @@ class Position extends Model
     // письмо на разбор — `replyPending`, ответ поставщику на переоценку — `repriceUnanswered`, письмо о вывозе — `pickupLetter`, контакт менеджеру — `contactDue`.
     public const NEEDS_US_SQL = "coalesce(((not ".ExtraAsk::HOLDS_SQL.") and ((coalesce(offer_positions.waits_for, (select s.waits_for from workflow_stages s where s.id = offer_positions.stage_id)) = 'us'
             and not exists (select 1 from workflow_exits x where x.stage_id = offer_positions.stage_id and lower(x.label) = 'заявка отправлена')
+            and not exists (select 1 from workflow_stages s2, jsonb_array_elements(coalesce(s2.staff_fields::jsonb, '[]'::jsonb)) f
+                where s2.id = offer_positions.stage_id and lower(f->>'label') ~ 'оплат|платёж|платеж|перевод')
             and not (coalesce(offer_positions.waits_for, '') = 'us' and exists (select 1 from workflow_exits x where x.stage_id = offer_positions.stage_id
                 and x.actor = 'manager' and (lower(x.label) = 'автомобиль забрал' or exists (select 1 from workflow_exits y where y.stage_id = x.to_stage_id
                     and y.actor = 'manager' and lower(y.label) = 'автомобиль забрал')))))
