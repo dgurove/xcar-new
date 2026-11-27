@@ -24,22 +24,36 @@
             <button type="button" {{ $attributes->class('pill pill-plain gap-1.5') }} data-action="sheet#open"><x-ui.icon name="users" class="size-4"/>Что видит менеджер</button>
         </x-deal.manager-view>
     @elseif ($line)
-        @if ($letters->isNotEmpty())
-            {{-- Что пришло и когда; нажатие — окно из письма (16.11.2026: без логотипа и числа писем). --}}
-            <x-deal.manager-view :deal="$deal" :id="$id" :letters="$letters" reviews>
-                <x-route.task-row icon="mail" urgent>
-                    {{ $what }} от <span class="nums whitespace-nowrap">{!! Ago::html($letters->first()->date_at, true, words: false) !!}</span>
-                    <x-slot:sub>Показать менеджеру?</x-slot:sub>
-                </x-route.task-row>
-            </x-deal.manager-view>
-        @endif
-        {{-- Что менеджер видит сейчас — всегда строкой: нажатие — окно целиком. --}}
-        @php $summary = ManagerView::summary($deal); @endphp
-        <x-deal.manager-view :deal="$deal" :id="$view">
-            <x-route.task-row :icon="$summary !== '' ? 'eye' : 'eye-off'">
+        {{-- Одна строка «что видит менеджер» (27.11.2026, владелец выбрал В2 из макетов: «три пункта об одном и том же»): глаз,
+             «Менеджер видит» / «ничего не видит», под ним что видит и что нового — письма на разбор (документы, контакт) и контакт
+             для получения, если он нужен (`ContactDue`); справа «+N» лаймом. Нажатие: есть письмо — окно из письма, нужен контакт —
+             окно с отмеченным контактом, иначе — окно целиком. Строк «Письмо от …» и «Показать контакты менеджеру» больше нет. --}}
+        @php
+            $summary = ManagerView::summary($deal);
+            $contactDue = ! $deal->isGarage() && \App\Offers\ContactDue::due($deal);
+            $files = $letters->sum(fn ($m) => \App\Offers\LetterFiles::of($m)->count());
+            $letterContact = $letters->contains(fn ($m) => \App\Offers\InsurerReplies::hasContact($m));
+            $contactNew = $letterContact || $contactDue;
+            $parts = array_filter([
+                $files ? $files.' '.\App\Support\Plural::of($files, ['документ', 'документа', 'документов']) : null,
+                $contactNew ? ($letters->isNotEmpty() ? 'контакт' : 'контакт для получения') : null,
+            ]);
+            $inside = implode(' и ', $parts);
+            $kind = $what === 'Счёт' ? 'счёт' : 'письмо';
+            $news = match (true) {
+                $letters->count() > 1 => $letters->count().' '.\App\Support\Plural::of($letters->count(), ['письмо', 'письма', 'писем']).', последнее '.Ago::at($letters->first()->date_at, true, words: false).($inside ? ': '.$inside : ''),
+                $letters->isNotEmpty() => $kind.' '.Ago::at($letters->first()->date_at, true, words: false).($inside ? ': '.$inside : ''),
+                $contactDue => 'контакт для получения',
+                default => null,
+            };
+            $count = $files + ($contactNew ? 1 : 0) ?: ($letters->isNotEmpty() ? 1 : 0);
+        @endphp
+        <x-deal.manager-view :deal="$deal" :id="$letters->isNotEmpty() ? $id : $view" :letters="$letters->isNotEmpty() ? $letters : null" :reviews="$letters->isNotEmpty()"
+            :focus="$letters->isEmpty() && $contactDue ? ManagerView::CONTACT : null">
+            <x-route.task-row :icon="$summary !== '' ? 'eye' : 'eye-off'" :count="$news ? '+'.$count : null">
                 {{ $summary !== '' ? 'Менеджер видит' : 'Менеджер ничего не видит' }}
-                @if ($summary !== '')
-                    <x-slot:sub>{{ $summary }}</x-slot:sub>
+                @if ($summary !== '' || $news)
+                    <x-slot:sub>@if ($summary !== '')<span class="block">{{ $summary }}</span>@endif @if ($news)<span class="block">новое: {{ $news }}</span>@endif</x-slot:sub>
                 @endif
             </x-route.task-row>
         </x-deal.manager-view>

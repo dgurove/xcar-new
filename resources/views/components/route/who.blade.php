@@ -5,7 +5,7 @@
      Слот `acts` — кнопки за менеджера под строкой во всю ширину шага. Под подпунктом «сейчас» в `x-route.path`.
      `replied` false — «Поставщик ответил» не рисуется: письмо ждёт разбора своей строкой «Письмо от … / Показать менеджеру?»
      (`x-deal.reply-review`), одно письмо двумя строками — лишнее (17.11.2026). --}}
-@props(['position', 'offer', 'deal' => null, 'named' => true, 'replied' => true])
+@props(['position', 'offer', 'deal' => null, 'named' => true, 'replied' => true, 'merged' => false])
 @php
     use App\Support\Ago;
     use App\Workflow\WaitsFor;
@@ -24,9 +24,10 @@
     $manager = $side === 'manager' ? $deal?->buyer : null;
     // Менеджер забирает сам, а контакта не видел — ход наш (25.11.2026, `ContactDue`): вместо «Ждём менеджера» — дело «Показать
     // контакты менеджеру» со шторкой (`x-deal.contact-shown`), кнопки за менеджера — под ним, как были.
-    $contact = $side === 'manager' && $deal && auth()->user()?->canEditDeals() && \App\Offers\ContactDue::due($deal);
+    // `merged` — в шаге пути есть строка «что видит менеджер» (`x-deal.reply-review line`, 27.11.2026, вариант В2): контакт — в ней.
+    $contact = ! $merged && $side === 'manager' && $deal && auth()->user()?->canEditDeals() && \App\Offers\ContactDue::due($deal);
     // Менеджер забирает сам и уже видит контакт — строкой под ходом, над кнопками за него (25.11.2026): поправить и показать ещё.
-    $contactSeen = ! $contact && $deal?->isActive() && $position->track === \App\Workflow\Track::Sale && auth()->user()?->canEditDeals()
+    $contactSeen = ! $merged && ! $contact && $deal?->isActive() && $position->track === \App\Workflow\Track::Sale && auth()->user()?->canEditDeals()
         && $deal->buyerPicksUp() && ! $offer->pickedUp();
     $timer = fn (string $mode, $at) => '<span class="nums" data-controller="timer" data-timer-'.$mode.'-value="'.$at->toIso8601String().'" data-timer-coarse-value="true"'.($mode === 'until' ? ' data-timer-done-value="-" data-timer-word-value=""' : '').'></span>';
     $overdue = $position->isOverdue();

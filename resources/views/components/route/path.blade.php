@@ -328,7 +328,8 @@
                     @if ($deal && $position->track === \App\Workflow\Track::Sale && auth()->user()?->canEditDeals() && \App\Offers\Originals::applies($stage) && $deal->isActive())
                         <x-deal.originals :deal="$deal" class="mt-3"/>
                     @endif
-                    <x-route.who :position="$position" :offer="$offer" :deal="$deal" :named="! $compact" :replied="! $letterWaits">
+                    <x-route.who :position="$position" :offer="$offer" :deal="$deal" :named="! $compact" :replied="! $letterWaits"
+                        :merged="$deal?->isActive() && $deal->buyer_id && $position->track === \App\Workflow\Track::Sale && auth()->user()?->canEditDeals()">
                         <x-slot:acts>
                             @if ($reqFiles->isNotEmpty())
                                 {{-- Строкой дела, как остальное в шаге (16.11.2026): имя файла с телефона — набор цифр, важно, что он есть. --}}
@@ -572,6 +573,14 @@
                             @if ($signingReply)
                                 <p @class(['signing-reply w-full text-sm', 'text-urgent' => $signingReply->kind === 'none'])>{{ $signingReply->line() }} <span class="text-ink-muted">письмо {{ \App\Support\Ago::at($signingReply->message->date_at) }}</span></p>
                             @endif
+                            @php
+                                // Ждёт разбора письмо поставщика, и этот исход — его шаг (27.11.2026, владелец: «где тут выбор, какие
+                                // документы показывать»): кнопка открывает «Что видит менеджер» из письма с отмеченным шагом
+                                // (`x-deal.reply-review line` ниже — то же окно), а не шторку контакта без документов.
+                                $replyLetters = $deal?->isActive() && $deal->buyer_id && $position->track === \App\Workflow\Track::Sale && auth()->user()?->canEditDeals()
+                                    ? \App\Offers\ReplyReview::pending()->where('deal_id', $deal->id)->with('message.attachments')->orderByDesc('id')->get()->pluck('message')->filter()->values() : collect();
+                                $replyStep = $replyLetters->isNotEmpty() ? \App\Offers\Actions\Disclose::stepExit($deal, $replyLetters) : null;
+                            @endphp
                             @foreach ($moves->values() as $i => $exit)
                                 {{-- Письмо поставщику не ушло — главное «Написать поставщику», исходы серыми. --}}
                                 {{-- Ждём ответа поставщика на ушедшее письмо (платёжка, заявка) — его исходы серыми (16.11.2026, владелец: «„Оплата
@@ -581,7 +590,9 @@
                                     && ! ($stage->waits_for === WaitsFor::Supplier && $position->letterStatus() === 'sent')
                                     && $exit->label !== \App\Workflow\Presets\Route::SUPPLIER_PAID ? 'primary' : 'secondary'; @endphp
                                 @php $main = $variant === 'primary' ? 'step-main' : null; @endphp
-                                @if ($exit->to?->offer_state === \App\Offers\OfferState::Open && in_array($offer->state, [\App\Offers\OfferState::Draft, \App\Offers\OfferState::Gallery], true))
+                                @if ($replyStep?->is($exit))
+                                    <x-ui.button type="button" size="sm" :variant="$variant" :class="$main" data-controller="emit" data-action="emit#send" :data-emit-event-param="'disclose-'.$deal->id.':step'">{{ $label($exit) }}</x-ui.button>
+                                @elseif ($exit->to?->offer_state === \App\Offers\OfferState::Open && in_array($offer->state, [\App\Offers\OfferState::Draft, \App\Offers\OfferState::Gallery], true))
                                     {{-- «Выставить в продажу» — сейчас или в слот, как кнопка редактора. --}}
                                     <div data-controller="sheet" @class([$main])>
                                         <x-ui.button type="button" size="sm" :variant="$variant" data-action="sheet#open">{{ $label($exit) }}</x-ui.button>

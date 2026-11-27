@@ -9,6 +9,13 @@ export default class extends Controller {
         this.update();
     }
 
+    // Кнопка шага «Поставщик согласовал» открывает это же окно (27.11.2026): шаг отмечен сразу.
+    step() {
+        const box = this.element.querySelector('input[name="step"]');
+        if (box) box.checked = true;
+        this.update();
+    }
+
     update() {
         const picked = (name) => [...this.element.querySelectorAll(`input[name="${name}"]:checked`)].map((i) => i.dataset.label).filter(Boolean);
         // Подпись кнопки влезает в строку: без повторов («Паспорт собственника» двумя страницами — один раз), длинно — числом.

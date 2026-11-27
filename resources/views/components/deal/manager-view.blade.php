@@ -7,7 +7,8 @@
      «Сообщения менеджеру» (что ушло, `admin.deals.disclosure-edit`).
      Из письма (`letters` — ждущие разбора, `reviews`; или одно письмо окна писем — `message`): сверху «Показать из письма» — его документы,
      контакт и строки подписания, отмечены сразу; текст письма — в сообщение (`Disclosures::draft`), галка шага (`Disclose::stepExit`),
-     «Не показывать» — письмо разобрано. Открывается событием `{id}:open`. --}}
+     «Не показывать» — письмо разобрано. Открывается событием `{id}:open`; `{id}:step` — с отмеченным шагом (кнопка шага «Поставщик
+     согласовал» в пути, 27.11.2026: одно действие — одно окно, документы письма выбираются здесь). --}}
 @props(['deal', 'id' => null, 'letters' => null, 'letter' => null, 'reviews' => false, 'open' => false, 'focus' => null, 'top' => false])
 @php
     use App\Offers\Actions\Disclose;
@@ -40,7 +41,8 @@
     $letterItems = $letterItems->merge($items->filter(fn ($i) => $i['media'] && in_array($i['letter'], $letterIds, true) && ! $letterItems->contains('key', $i['key'])))->values();
     $hasContact = collect($proposals)->contains(fn ($p) => in_array($p['kind'], ['phone', 'name'], true) && str_starts_with((string) $p['group'], 'letter:'));
     $contactItem = $items->firstWhere('key', ManagerView::CONTACT);
-    if ($fromLetter && $hasContact && $contactItem['can']) {
+    // Контакт для получения нужен менеджеру (забирает сам и не видел, `ContactDue`) — и в окне из письма, даже если в письме его нет.
+    if ($fromLetter && ($hasContact || \App\Offers\ContactDue::due($deal)) && $contactItem['can']) {
         $letterItems->prepend($contactItem);
     }
     $lines = collect($proposals)->filter(fn ($p, $k) => str_starts_with($k, 'signing:'));
@@ -63,11 +65,11 @@
         $letterContacts = $found->where('kind', 'phone')->values()->map(fn ($p, $n) => ['name' => $n === 0 ? $name : null, 'phone' => $p['value']])->all();
     }
 @endphp
-<div class="contents" data-controller="sheet" data-action="{{ $id }}:open@window->sheet#open">
+<div class="contents" data-controller="sheet" data-action="{{ $id }}:open@window->sheet#open {{ $id }}:step@window->sheet#open">
     {{-- Слот — то, что открывает окно (строка дела, пилюля): внутри контроллера шторки, `data-action="sheet#open"`. --}}
     {{ $slot }}
     <x-ui.sheet :id="$id" :title="$title" :open="$open" tall>
-        <form method="post" action="/work/deals/{{ $deal->id }}/manager-view" id="{{ $form }}" class="flex flex-col gap-4" data-controller="manager-view" @if ($top) data-turbo-frame="_top" @endif>
+        <form method="post" action="/work/deals/{{ $deal->id }}/manager-view" id="{{ $form }}" class="flex flex-col gap-4" data-controller="manager-view" data-action="{{ $id }}:step@window->manager-view#step" @if ($top) data-turbo-frame="_top" @endif>
             @csrf @method('put')
             @if ($letter)<input type="hidden" name="message" value="{{ $letter->id }}">@elseif ($fromLetter)<input type="hidden" name="reviews" value="1">@endif
             @if ($errors->has('view'))<x-ui.flash tone="danger">{{ $errors->first('view') }}</x-ui.flash>@endif
@@ -81,7 +83,7 @@
                                 <label class="row row-check mview-row">
                                     @include('admin.deals.manager-view-icon', ['i' => $i])
                                     <span class="min-w-0 flex-1"><span class="block truncate">{{ $i['label'] }}</span><span class="block truncate text-sm text-ink-muted">{{ $i['visible'] ? 'уже видит' : $i['sub'] }}</span></span>
-                                    @unless ($i['visible'])<span class="check"><input type="checkbox" name="show[]" value="{{ $i['key'] }}" data-label="{{ $i['label'] }}" @checked($pre($i)) data-action="manager-view#update"></span>@endunless
+                                    @unless ($i['visible'])<span class="check"><input type="checkbox" name="show[]" value="{{ $i['key'] }}" data-label="{{ $i['key'] === ManagerView::CONTACT ? 'контакт' : $i['label'] }}" @checked($pre($i)) data-action="manager-view#update"></span>@endunless
                                 </label>
                             @endforeach
                             @foreach ($lines as $k => $p)
@@ -129,7 +131,7 @@
                                         @endif
                                         @if ($i['can'])
                                             <label class="mview-act">
-                                                <input type="checkbox" class="sr-only" name="{{ $i['visible'] ? 'hide[]' : 'show[]' }}" value="{{ $i['key'] }}" data-label="{{ $i['label'] }}" @checked($on) data-action="manager-view#update">
+                                                <input type="checkbox" class="sr-only" name="{{ $i['visible'] ? 'hide[]' : 'show[]' }}" value="{{ $i['key'] }}" data-label="{{ $i['key'] === ManagerView::CONTACT ? 'контакт' : $i['label'] }}" @checked($on) data-action="manager-view#update">
                                                 <span data-off>{{ $i['visible'] ? ($i['group'] === 'ours' ? 'Отозвать' : 'Скрыть') : 'Показать' }}</span><span data-on>Отменить</span>
                                             </label>
                                         @endif
