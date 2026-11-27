@@ -40,6 +40,7 @@ Route::domain(config('xcar.park_host'))->middleware(['auth', 'section:park'])->g
     // Из писем: та же почта с вшитой выборкой «надо завести»; «Завести» ведёт в разбор письма `/requests/new`.
     Route::get('/requests/from-mail', [MailController::class, 'fromMail']);
     Route::post('/requests/from-mail/{candidate}/decline', [MailController::class, 'decline']);
+    Route::post('/requests/from-mail/{candidate}/restore', [MailController::class, 'restoreChain']);
     Route::get('/requests/from-mail/{candidate}/letters', [MailController::class, 'candidateLetters']);
     // Читалка «Завести» в разборе письма: документы читаются сами по порядку, поля заполняются по ходу (x-mail.reader).
     Route::get('/requests/from-mail/{candidate}/scan/live', [ScanController::class, 'readerLive']);

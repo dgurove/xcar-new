@@ -94,6 +94,7 @@ use App\Vendors\Contact;
 use App\Vendors\ContactRole;
 use App\Vendors\Kind;
 use App\Vendors\Vendor;
+use App\Park\Actions\StoreByLetters;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Collection as EloquentCollection;
 use Illuminate\Http\Request;
@@ -623,6 +624,30 @@ class MailController
 
         // «Не заявка» по ошибке — «Вернуть» в тосте: тот же адрес переключает обратно.
         return back()->with('toast', $rejected ? 'В архиве' : 'Снова ждёт')->with('toast-undo-url', $rejected ? request()->url() : null);
+    }
+
+    /**
+     * «Вернуть из архива» у цепочки (27.11.2026, владелец: «в интерфейсе нигде нет кнопки, чтобы достать тачку из архива»):
+     * закрытая (переход парковки 22.09, «реализована») или «Не заявка» — снова ждёт в «Из писем», письма читаются заново.
+     */
+    public function restoreChain(Candidate $candidate, ArchiveThread $archive, FreezeMessages $freeze, ChainBuilder $chains)
+    {
+        abort_if($candidate->scope !== $this->scope || ! in_array($candidate->state, [CandidateState::Closed, CandidateState::Rejected], true), 404);
+        $candidate->update(['closed_at' => null]);
+        $this->toggleChain($candidate, true, $archive, $freeze, $chains);
+        // Парковка: по нашим письмам принята (и выдана) — ТС заводится сразу, человек попадает в её дело.
+        if ($this->scope === Scope::Park && ($vehicle = app(StoreByLetters::class)($candidate->refresh()))) {
+            return redirect('/cars/'.$vehicle->id)->with('toast', $vehicle->state === VehicleState::Released ? 'Заведена выданной по письмам' : 'Заведена по письмам');
+        }
+        $candidate->refresh();
+
+        if ($candidate->state === CandidateState::New) {
+            return back()->with('toast', 'Снова в «Из писем»');
+        }
+        // Выдана по письмам, а завести нельзя — свёртка закрыла её снова: почему.
+        $why = app(StoreByLetters::class)->blocker((clone $candidate)->forceFill(['state' => CandidateState::New])) ?? 'ТС с этим номером уже есть';
+
+        return back()->with('toast-danger', 'Осталась в архиве: '.$why);
     }
 
     /** Цепочка и её письма ходят в архив вместе; вернулась — письма читаются заново (свёртка размораживает). */

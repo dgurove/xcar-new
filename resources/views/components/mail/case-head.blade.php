@@ -21,6 +21,8 @@
     };
     $fresh = ! $car && $candidate?->state === CandidateState::New ? $candidate : null;
     $loose = ! $car && ! $fresh && ! $candidate && $thread ? $thread : null;
+    // Цепочка в архиве (закрыта при переходе парковки или «Не заявка») — её можно вернуть в «Из писем».
+    $archived = ! $car && ! $fresh && in_array($candidate?->state, [CandidateState::Closed, CandidateState::Rejected], true) ? $candidate : null;
     // «Завести» — письму поставщика: у внутренней переписки и рассылок заводить нечего.
     $letters = $messages ?? ($loose?->relationLoaded('messages') ? $loose->messages : $loose?->messages()->get());
     $enroll = $loose && collect($letters)->contains(fn ($m) => $m->isFromVendor());
@@ -46,6 +48,15 @@
     @else
         <div class="case-head-chain"><x-mail.chain-head :candidate="$fresh" :queue="$queue" :park="$park" window/></div>
     @endif
+@elseif ($archived)
+    <div @class(['case-head' => ! $compact, 'case-head-acts' => $compact])>
+        @unless ($compact)
+            <span class="case-head-icon"><x-ui.cat-icon :category="\App\Cars\Category::guess($archived->title()) ?? \App\Cars\Category::Passenger"/></span>
+            <span class="case-head-name">{{ $archived->title() }}</span>
+            <span class="case-head-place">в архиве</span>
+        @endunless
+        <form method="post" action="{{ $queue }}/{{ $archived->id }}/restore" class="contents" data-turbo-frame="_top">@csrf<button class="btn btn-s btn-quiet case-head-do">Вернуть из архива</button></form>
+    </div>
 @elseif ($loose)
     <div @class(['case-head case-head--loose' => ! $compact, 'case-head-acts' => $compact]) data-controller="unhide">
         @unless ($compact)

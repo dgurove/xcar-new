@@ -32,6 +32,7 @@ use App\Park\CityGuess;
 use App\Park\Events\CandidateArrived;
 use App\Park\Vehicle;
 use App\Park\VehicleState;
+use App\Park\Actions\StoreByLetters;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
@@ -243,8 +244,10 @@ final class ChainBuilder
         Thread::whereIn('id', $messages->pluck('thread_id')->filter()->unique())->whereNull('candidate_id')->whereNull('vehicle_id')->whereNull('offer_id')
             ->update(['candidate_id' => $candidate->id]);
 
-        // Выдана и вендор после не писал — заводить нечего, цепочка закрыта: письма заморожены, в пересборку не идут.
-        if ($last === CandidateStage::Released->value && in_array($candidate->state ?? CandidateState::New, [CandidateState::New, CandidateState::Rejected], true)) {
+        // Выдана и вендор после не писал — цепочка закрыта: письма заморожены, в пересборку не идут. Парковка, где мы писали
+        // и о приёме, и о выдаче, — не в архив: её заведёт выданной `Park\Actions\StoreByLetters` (27.11.2026, владелец).
+        if ($last === CandidateStage::Released->value && in_array($candidate->state ?? CandidateState::New, [CandidateState::New, CandidateState::Rejected], true)
+            && ! ($candidate->scope === Scope::Park && $candidate->state === CandidateState::New && app(StoreByLetters::class)->blocker($candidate) === null)) {
             ($this->close)($candidate, 'released');
         }
     }

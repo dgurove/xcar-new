@@ -10,6 +10,7 @@ Route::middleware('ability:canCrmMail')->group(function () {
     Route::get('/offers/from-mail', [MailController::class, 'fromMail']);
     Route::post('/offers/from-mail/{candidate}/create', [MailController::class, 'promote']);
     Route::post('/offers/from-mail/{candidate}/decline', [MailController::class, 'decline']);
+    Route::post('/offers/from-mail/{candidate}/restore', [MailController::class, 'restoreChain']);
     Route::get('/offers/from-mail/{candidate}/letters', [MailController::class, 'candidateLetters']);
 });
 Route::prefix('work/mail')->middleware('ability:canCrmMail')->group(function () {
