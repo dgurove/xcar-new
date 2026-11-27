@@ -56,6 +56,13 @@ final class DealEventNotice extends Notice
             'managers', $manager, loud: true, path: self::dealPath($deal));
     }
 
+    /** Запланированное письмо поставщику не ушло (27.11.2026, `Offers\PlannedLetters`) — громко: написать руками. */
+    public static function plannedFailed(Deal $deal, string $why): self
+    {
+        return new self($deal->offer, 'planned-failed', 'Запланированное письмо не ушло', 'запланированное письмо поставщику не ушло', $why,
+            'deals', null, loud: true, path: self::dealPath($deal));
+    }
+
     /** Шаг сделки сдвинул сотрудник: «Андрей Кузнецов: «Оплата получена» → «Подписание»». */
     public static function stageMoved(Deal $deal, Stage $to, ?Outcome $exit, User $by): self
     {

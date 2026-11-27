@@ -11,6 +11,8 @@ import { Controller } from '@hotwired/stimulus';
 // Ошибки полей (редирект на `retry`) Turbo рисует как обычно.
 const FINAL = ['sent', 'failed'];
 const SENT = /\/messages\/(\d+)\/sent(?:\?|$)/;
+// «Запланировать» (27.11.2026, `Offers\PlannedLetters`): письмо не уходит сейчас — ответ `planned/{id}/done`, окно закрывается.
+const PLANNED = /\/planned\/\d+\/done(?:\?|$)/;
 
 export default class extends Controller {
     static targets = ['button', 'label', 'error', 'cancel', 'replaces'];
@@ -47,14 +49,26 @@ export default class extends Controller {
         this.element.dataset.mailSending = '';
         // Черновик стирается, только когда письмо ушло (`draft:clear`), а не концом отправки формы.
         this.element.dataset.draftKeep = '';
-        this.state('sending', 'Отправляем');
+        this.state('sending', this.element.querySelector('input[name="plan"]') ? 'Планируем' : 'Отправляем');
         this.errorTarget.hidden = true;
         this.fields(false);
     }
 
     async response(e) {
         const res = e.detail.fetchResponse;
-        const match = (res?.location?.href || res?.response?.url || '').match(SENT);
+        const href = res?.location?.href || res?.response?.url || '';
+        if (PLANNED.test(href) && res.succeeded) {
+            e.preventDefault();
+            this.done = true;
+            delete this.element.dataset.mailSending;
+            delete this.element.dataset.draftKeep;
+            this.element.dispatchEvent(new CustomEvent('draft:clear'));
+            this.state('sent', 'Запланировано');
+            try { const data = JSON.parse(await res.responseText); if (data.toast) window.toast?.(data.toast); } catch { /* без тоста */ }
+            this.after = setTimeout(() => window.dispatchEvent(new CustomEvent('letters:close')), 900);
+            return;
+        }
+        const match = href.match(SENT);
         if (!match || !res.succeeded) return;
         e.preventDefault();
         this.id = Number(match[1]);
@@ -122,7 +136,7 @@ export default class extends Controller {
 
     idle() {
         delete this.element.dataset.mailSending;
-        this.state(null, 'Отправить');
+        this.state(null, this.element.querySelector('input[name="plan"]') ? 'Запланировать' : 'Отправить');
         this.fields(true);
         this.cancelTargets.forEach((c) => { c.hidden = false; c.textContent = 'Отмена'; });
     }

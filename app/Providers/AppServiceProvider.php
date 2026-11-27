@@ -174,6 +174,8 @@ class AppServiceProvider extends ServiceProvider
         Event::listen(StageEntered::class, [AdvanceOnBuyerData::class, 'entered']);
         // «Беру в работу» уже сказано в доп. просьбе (27.11.2026) — «Согласие менеджера» проходит само.
         Event::listen(StageEntered::class, [\App\Offers\Actions\ConsentByExtraAsk::class, 'entered']);
+        // Запланированное письмо поставщику уходит по «Беру в работу», снимается по отказу (27.11.2026, `PlannedLetters`).
+        Event::listen(StageEntered::class, [\App\Offers\PlannedLetters::class, 'entered']);
         Event::listen(StageEntered::class, [FollowParallels::class, 'handle']);
         // Шаг сдвинул сотрудник — почта машины до этого прочитана (`ReadSettled`).
         Event::listen(StageEntered::class, [\App\Mail\Actions\ReadSettled::class, 'onStage']);

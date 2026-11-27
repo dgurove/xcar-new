@@ -29,6 +29,8 @@ Route::prefix('work/mail')->middleware('ability:canCrmMail')->group(function () 
     Route::post('/messages/{message}/retry', [MailController::class, 'resend']);
     Route::get('/messages/{message}/sent', [MailController::class, 'sent']);
     Route::get('/messages/{message}/state', [MailController::class, 'state']);
+    // Письмо запланировано (27.11.2026, `Offers\PlannedLetters`): редактор закрывается с тостом.
+    Route::get('/planned/{planned}/done', [MailController::class, 'planned']);
     Route::get('/{thread}', [MailController::class, 'show']);
     Route::get('/{thread}/window', [MailController::class, 'window']);
     Route::get('/{thread}/reply/{message}', [MailController::class, 'reply']);

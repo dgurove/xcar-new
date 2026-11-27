@@ -925,6 +925,8 @@ class MailController
             'pickupLetter' => $offer && preg_match('/^\d+:(?:date|act)$/', (string) $request->query('pickup')) ? (string) $request->query('pickup') : null,
             'closing' => $closing && ! $review ? $request->query('closing') : null, 'closingReplaces' => $closing[2]?->id ?? null, 'closingFiles' => $closingFiles, 'closingSend' => $send,
             'closingThread' => $closing ? $request->query('closing') : null,
+            // «Спросить менеджера и запланировать письмо…» (27.11.2026, `Offers\PlannedLetters`): исход-вопрос или `wait` — уже спросили.
+            'plan' => $offer && preg_match('/^(\d{1,9}|wait)$/', (string) $request->query('plan')) ? (string) $request->query('plan') : null,
             'extra' => $extra, 'extraCity' => $extraCity, 'extraAll' => $extra !== null ? Template::requests()->get() : collect(),
             // Менеджер сам просил «Доп. запрос…» (27.11.2026, `ExtraWant`): кто и его комментарий — строкой над галками.
             'extraWant' => $extra !== null ? \App\Offers\ExtraAsk::wanted($offer->deal)?->loadMissing('wanter') : null,
@@ -1069,6 +1071,24 @@ class MailController
             && preg_match('/\{\{ ?buyer ?\}\}/', (string) \App\Mail\Template::whereKey((int) $request->input('template'))->value('body')) === 1
             && ($deal = Offer::find($data['offer'])?->deal) && ! $deal->schemeOf()->paysCar() && ! $deal->isGarageUs() && $deal->contract?->needsBuyerCheck()) {
             return redirect($retry ?: url()->previous())->withInput()->withErrors(['body' => 'Реквизиты покупателя не проверены: «Проверить и отправить реквизиты» в шаге сделки']);
+        }
+
+        // «Запланировать» (27.11.2026, `Offers\PlannedLetters`): письмо не заводится, а ждёт «Беру в работу»; вопрос менеджеру —
+        // этой же транзакцией. Ошибка — обратно в редактор.
+        if ($this->scope === Scope::Offers && ! empty($data['offer']) && preg_match('/^(\d{1,9}|wait)$/', (string) $request->input('plan'))) {
+            abort_unless($request->user()->canEditDeals(), 403);
+            $plan = (string) $request->input('plan');
+            $offer = Offer::findOrFail($data['offer']);
+            $ask = $plan === 'wait' ? null : \App\Workflow\Outcome::where('actor', \App\Workflow\Actor::Staff->value)->findOrFail((int) $plan);
+            try {
+                $planned = app(\App\Offers\PlannedLetters::class)->plan($offer, $ask, $account,
+                    $data + ['template' => ctype_digit((string) $request->input('template')) ? (int) $request->input('template') : null], $request->user());
+            } catch (ValidationException $e) {
+                return redirect($retry ?: url()->previous())->withInput()->withErrors($e->errors());
+            }
+
+            return $inWindow ? redirect("{$this->base}/planned/{$planned->id}/done")
+                : redirect('/offers/'.$offer->number)->with('toast', $ask ? 'Письмо запланировано, менеджера спросили' : 'Письмо запланировано');
         }
 
         // Родитель — письмо, ветку которого человеку видно: своей стороны или другой в окне машины (`across`). Ответ уходит с
@@ -1477,6 +1497,14 @@ class MailController
         }
 
         return $window->with('toast', 'Письмо в очереди');
+    }
+
+    /** Письмо запланировано (`PlannedLetters::plan`): редактору — тост, окно закрывается (`compose_send_controller`). */
+    public function planned(Request $request, \App\Offers\PlannedLetter $planned)
+    {
+        abort_unless($request->user()->canEditDeals() && $planned->created_by === $request->user()->id, 404);
+
+        return response()->json(['toast' => 'Письмо запланировано: уйдёт, когда менеджер возьмёт в работу']);
     }
 
     /** Состояние отправки письма для редактора, что ждёт галки (`compose_send_controller`); `thread` — ветка в окне после. */

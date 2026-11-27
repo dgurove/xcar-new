@@ -21,6 +21,8 @@
 {{-- Неудачное письмо этого редактора — повторная отправка его заменяет (`DropFailed`); ставит `compose_send_controller`. --}}
 <input type="hidden" name="replaces" value="" data-compose-send-target="replaces">
 @if ($then ?? null)<input type="hidden" name="then" value="{{ $then }}">@endif
+{{-- «Запланировать» (27.11.2026, `Offers\PlannedLetters`): письмо уйдёт само по «Беру в работу». --}}
+@if ($plan ?? null)<input type="hidden" name="plan" value="{{ $plan }}">@endif
 {{-- Заявка поставщику: сделки её файла — отправили письмо, они идут дальше «Заявка отправлена». --}}
 @if ($requestDeals ?? null)<input type="hidden" name="request_deals" value="{{ old('request_deals', $requestDeals) }}">@endif
 {{-- Письмо поставщику о вывозе (`Logistics\PickupLetters`): ушло — дело вывоза закрыто. --}}
@@ -43,6 +45,9 @@
      скрепка и «Aa» (панель форматирования). --}}
 <div class="compose min-w-0">
     @if ($errors->any() && ! $errors->has('to') && ! $errors->has('cc'))<p class="field-error px-4 pt-3">{{ $errors->first() }}</p>@endif
+    @if ($plan ?? null)
+        <p class="flex items-center gap-2 px-4 pt-3 text-sm text-ink-muted"><x-ui.icon name="clock" class="size-4 shrink-0"/><span>Уйдёт само, когда менеджер нажмёт «Беру в работу»{{ $plan === 'wait' ? '' : '. Менеджера спросим сейчас' }}</span></p>
+    @endif
     {{-- «От» — строкой, только когда есть из чего выбрать (04.11.2026, владелец про вид редактора: серая строка с одним ящиком
          занимала место на телефоне); один ящик — скрытым полем. --}}
     @php $side = ($base ?? '/work/mail') === '/mail' ? \App\Mail\Scope::Park : \App\Mail\Scope::Offers; @endphp
@@ -153,7 +158,7 @@
              анимация — в редакторе при нажатии на „Отправить“»): крутилка «Отправляем», ушло — зелёная с галкой «Отправлено». --}}
         <button type="submit" class="btn btn-accent btn-s compose-send" data-compose-send-target="button">
             <svg class="compose-send-mark" viewBox="0 0 24 24" aria-hidden="true"><circle class="compose-send-ring" cx="12" cy="12" r="9"/><path class="compose-send-tick" d="M7.5 12.4l3 3 6-6.4"/></svg>
-            <span class="compose-send-label" data-compose-send-target="label">Отправить</span>
+            <span class="compose-send-label" data-compose-send-target="label">{{ ($plan ?? null) ? 'Запланировать' : 'Отправить' }}</span>
         </button>
         <button type="button" class="compose-tool" data-action="photos#pick" aria-label="Приложить файл" title="Приложить файл"><x-ui.icon name="clip" class="size-5"/></button>
         {{-- Документ из фото одним PDF (06.11.2026, Сергей: акт выдачи проще сфоткать) — письма парковки о машине. --}}

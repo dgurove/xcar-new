@@ -271,6 +271,8 @@ Route::domain(config('xcar.crm_host'))->middleware(['auth', 'ability:isStaff'])-
         Route::post('/offers/{offer}/extra-asks/{ask}/reopen', [ExtraAskController::class, 'reopen']);
         Route::post('/offers/{offer}/extra-asks/{ask}/phone', [ExtraAskController::class, 'phone']);
         Route::post('/offers/{offer}/extra-asks/{ask}/skip', [ExtraAskController::class, 'skip']);
+        // Запланированное письмо поставщику (27.11.2026, `Offers\PlannedLetters`): отменить.
+        Route::delete('/offers/{offer}/planned-letter', [\App\Http\Admin\PlannedLetterController::class, 'destroy']);
         Route::post('/offers/{offer}/extra-asks/decide', [ExtraAskController::class, 'decide']);
         Route::post('/offers/{offer}/pickup', [RouteController::class, 'pickup']);
         Route::post('/offers/{offer}/media/{media}/managers', [OfferPhotoController::class, 'managers']);

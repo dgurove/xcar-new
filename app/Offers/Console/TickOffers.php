@@ -50,6 +50,8 @@ class TickOffers extends Command
                 // раз в пять минут, как у парковки: проход читает письма всех их веток.
                 + ['drafts' => $auto->catchUp(), 'read' => now()->minute % 5 === 0 ? AutoScan::sweep(offers: true) : 0]
                 + ['expired' => $this->expired(), 'passports' => \App\Billing\Jobs\ReadPassport::retryStuck()]
+                // Запланированные письма поставщику: потерянное — отправить, ненужное — снять (`PlannedLetters::sweep`).
+                + ['planned' => app(\App\Offers\PlannedLetters::class)->sweep()]
                 // Массовое сотрудникам — пачкой (`Notifications\Batch`): созревшие уходят одним уведомлением.
                 + ['batches' => Batch::flush()];
             $this->line(collect($counts)->filter()->map(fn ($n, $k) => "{$k}: {$n}")->implode(', ') ?: 'тихо');

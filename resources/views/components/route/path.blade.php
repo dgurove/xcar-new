@@ -369,6 +369,10 @@
                             @endforeach
                         </x-slot:acts>
                     </x-route.who>
+                    {{-- Письмо поставщику, что уйдёт само по «Беру в работу» (27.11.2026, `Offers\PlannedLetters`). --}}
+                    @if ($deal?->isActive() && $stage->asksConsent() && $position->track === \App\Workflow\Track::Sale && auth()->user()?->canEditDeals() && ! $extra)
+                        <x-deal.planned-letter :deal="$deal" :offer="$offer" :stage="$stage"/>
+                    @endif
                     {{-- Покупатель и чего не хватает договору — строками «Продажи» (`x-deal.buyer`, `x-deal.contract-gaps`), не делами шага
                          (16.11.2026, владелец: «как будто мы эти данные от менеджера ждём»). --}}
                     {{-- Контакт владельца менеджеру, что забирает сам (не показан — дело, показан — «Менеджер видит контакт»), — в `x-route.who`. --}}
@@ -645,6 +649,12 @@
                                         <form method="post" action="/offers/{{ $n }}/exit/{{ $exit->id }}" data-controller="ask-consent" data-action="submit->ask-consent#ask" @class([$main])>
                                             @csrf<input type="hidden" name="then_take" value="" data-ask-consent-target="take"><x-ui.button size="sm" :variant="$variant">{{ $label($exit) }}</x-ui.button>
                                         </form>
+                                        {{-- «Спросить менеджера и запланировать письмо…» (27.11.2026, начальник): окно письма шага после согласия, вместо
+                                             «Отправить» — «Запланировать»; уйдёт само по «Беру в работу» (`Offers\PlannedLetters`). --}}
+                                        @if ($deal?->isActive() && auth()->user()?->canEditDeals() && ! \App\Offers\PlannedLetters::pending($deal)
+                                            && ($planStage = \App\Offers\PlannedLetters::letterFor($exit, $deal)) && ($planUrl = $offer->vendorLetterUrl($planStage)))
+                                            <x-mail.window-button :url="$planUrl.'&plan='.$exit->id" label="Спросить менеджера и запланировать письмо…" icon="mail" class="btn-s btn-quiet"/>
+                                        @endif
                                     @else
                                         @php
                                             $next = $exit->consequence();

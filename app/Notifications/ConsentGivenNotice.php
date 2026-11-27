@@ -32,6 +32,11 @@ final class ConsentGivenNotice extends Notice
 
     public function text(): ?string
     {
+        // Письмо запланировали заранее (27.11.2026, `Offers\PlannedLetters`) — уходит само, писать не нужно.
+        if (\App\Offers\PlannedLetter::where('deal_id', $this->deal->id)->whereIn('state', [\App\Offers\PlannedLetter::PENDING, \App\Offers\PlannedLetter::SENT])->exists()) {
+            return 'Запланированное письмо поставщику уходит само';
+        }
+
         // Альфе — «актуально», Т-Страхованию — просьба о контактах (15.11.2026): письмо шага, общее слово.
         return 'Можно писать поставщику';
     }
