@@ -31,6 +31,13 @@ final class Responsibility
     public const BINDING = 'binding';
 
     /**
+     * Не вкладка: «Уведомлять обо всём» (27.11.2026, Андрей: «пока сотрудники не освоились — много проебов, пусть мне приходит всё»):
+     * пуш, Telegram и всплывашка — как у ответственного за все вкладки (`wants`); лишнее человек выключает в своих настройках
+     * уведомлений. Красные счётчики и «Только мои» эта строка не трогает (`assigned`, `TabOwner::presetsOf`).
+     */
+    public const EVERYTHING = 'everything';
+
+    /**
      * Вывоз горит (одно условие для подгруппы вкладки и счётчика): день вывоза прошёл без «Забрал» (`Transport::isLate`), сутки у
      * логиста или назначен без созвона (`TickCommand::stuck`), сутки без исполнителя, документы СДЭКом не ушли за сутки.
      */
@@ -117,7 +124,7 @@ final class Responsibility
     /** Отвечает ли человек за что-нибудь (иначе — всё как раньше: «Ответственных» ему не задали). */
     public static function assigned(User $user): bool
     {
-        return TabOwner::of($user) !== [];
+        return array_diff_key(TabOwner::of($user), [self::EVERYTHING => true]) !== [];
     }
 
     /**
@@ -127,7 +134,7 @@ final class Responsibility
      */
     public static function wants(User $user, Notice $notice): bool
     {
-        if (! $user->isStaff() || $user->isOwner() || ! self::assigned($user)) {
+        if (! $user->isStaff() || $user->isOwner() || ! self::assigned($user) || isset(TabOwner::of($user)[self::EVERYTHING])) {
             return true;
         }
         $tabs = $notice->tabs();

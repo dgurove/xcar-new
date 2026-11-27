@@ -35,13 +35,13 @@ final class TabOwner extends Model
     }
 
     /**
-     * Вкладки, за которые человек отвечает (`Responsibility::BINDING` — не вкладка: «Только мои» её не показывает).
+     * Вкладки, за которые человек отвечает (`Responsibility::BINDING` и `EVERYTHING` — не вкладки: «Только мои» их не показывает).
      *
      * @return list<string>
      */
     public static function presetsOf(User $user): array
     {
-        return array_values(array_diff(array_keys(self::of($user)), [Responsibility::BINDING]));
+        return array_values(array_diff(array_keys(self::of($user)), [Responsibility::BINDING, Responsibility::EVERYTHING]));
     }
 
     /**

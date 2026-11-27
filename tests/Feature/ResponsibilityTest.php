@@ -80,6 +80,14 @@ class ResponsibilityTest extends TestCase
         // Ответственные есть, но без уведомлений — тихо, разделу не перекладываем.
         TabOwner::create(['preset' => 'payout', 'user_id' => $katya->id, 'scope' => 'all', 'notify' => false]);
         $this->assertFalse(Responsibility::wants($alina, $this->notice(['payout'])));
+        // «Уведомлять обо всём» (27.11.2026): пуш и Telegram обо всём, а красные счётчики — прежние, своих вкладок.
+        TabOwner::create(['preset' => Responsibility::EVERYTHING, 'user_id' => $katya->id, 'scope' => 'all', 'notify' => true]);
+        TabOwner::forget();
+        $this->assertTrue(Responsibility::wants($katya, $this->notice(['check'])), 'обо всём — и не своя вкладка');
+        $this->assertTrue(Responsibility::wants($katya, $this->notice(['pickup_moving'])), 'обо всём — и не горящее');
+        $this->assertNotContains(Responsibility::EVERYTHING, TabOwner::presetsOf($katya));
+        TabOwner::where('preset', Responsibility::EVERYTHING)->delete();
+        TabOwner::forget();
         // Без «Ответственных» — все красные счётчики колеса, как раньше.
         [, $badges] = Responsibility::wheel($free, ['bill' => 2, 'bill_our' => 2]);
         $this->assertSame(array_diff_key(\App\Http\Admin\OfferController::badges(), ['all_deals' => true]), $badges);

@@ -40,7 +40,7 @@ final class ResponsibleController
             'groups' => $groups,
             'owners' => $owners,
             'rows' => $rows,
-            'staff' => fn (string $preset) => $preset === Responsibility::BINDING ? $staff : $staff->filter(fn ($u) => isset($open[$u->id][$preset]))->values(),
+            'staff' => fn (string $preset) => in_array($preset, [Responsibility::BINDING, Responsibility::EVERYTHING], true) ? $staff : $staff->filter(fn ($u) => isset($open[$u->id][$preset]))->values(),
         ]);
     }
 
@@ -48,6 +48,6 @@ final class ResponsibleController
     {
         $set($preset, (array) $request->input('users', []), (array) $request->input('scope', []), (array) $request->input('notify', []));
 
-        return back()->with('toast', 'Ответственные: '.(OfferController::PRESETS[$preset] ?? 'горящий срок обязывающего'));
+        return back()->with('toast', 'Ответственные: '.(OfferController::PRESETS[$preset] ?? ($preset === Responsibility::EVERYTHING ? 'уведомлять обо всём' : 'горящий срок обязывающего')));
     }
 }

@@ -2,8 +2,9 @@
      ответственных; нажатие — шторка с сотрудниками галками (только кому вкладка открыта). По ним «Только мои» в колесе.
      С 26.11.2026 (`Responsibility`): у отмеченного под именем — «Вся вкладка | Только горящее» (красным счётчиком — всё её дело или
      только просроченное и горящий обязывающий) и «Пуш и Telegram» (уведомления по её строкам; лента — всем); первой строкой —
-     горящий срок обязывающего во всех вкладках (красным, без уведомлений и без «Только мои»). --}}
-@php($groups = ['' => [\App\Offers\Responsibility::BINDING => 'Горящий срок обязывающего во всех вкладках'] + ($groups[''] ?? [])] + $groups)
+     горящий срок обязывающего во всех вкладках (красным, без уведомлений и без «Только мои»). Самой первой — «Уведомлять обо всём»
+     (27.11.2026, `Responsibility::EVERYTHING`): пуш и Telegram обо всём, как у ответственного за все вкладки. --}}
+@php($groups = ['' => [\App\Offers\Responsibility::EVERYTHING => 'Уведомлять обо всём', \App\Offers\Responsibility::BINDING => 'Горящий срок обязывающего во всех вкладках'] + ($groups[''] ?? [])] + $groups)
 <x-ui.cabinet title="Ответственные">
     @foreach ($groups as $head => $tabs)
         <div>
@@ -11,7 +12,8 @@
         <div class="list">
             @foreach ($tabs as $key => $label)
                 @php($people = $owners[$key] ?? collect())
-                @php($binding = $key === \App\Offers\Responsibility::BINDING)
+                {{-- «Уведомлять обо всём» (27.11.2026) — как горящий срок: не вкладка, только люди галками, без «за что». --}}
+                @php($binding = in_array($key, [\App\Offers\Responsibility::BINDING, \App\Offers\Responsibility::EVERYTHING], true))
                 <div data-controller="sheet" class="contents">
                     <x-ui.sheet-row>
                         <span class="min-w-0 flex-1 truncate">{{ $label }}</span>
