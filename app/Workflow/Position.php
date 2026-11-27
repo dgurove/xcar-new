@@ -425,7 +425,10 @@ class Position extends Model
                 $this->actAside = false;
             }
 
-            return $other && empty($other['quiet']) ? $other : [...$letter, 'quiet' => true];
+            // Заглушка «название шага» при ходе менеджера — не дело, а «ждём»: тогда остаётся тихий акт.
+            $real = $other && empty($other['quiet']) && ! (str_starts_with($other['key'], 'stage:') && $this->waitsFor() !== WaitsFor::Us);
+
+            return $real ? $other : [...$letter, 'quiet' => true];
         }
 
         // Ход сделки стоит — дел шага нет.
@@ -472,6 +475,9 @@ class Position extends Model
             // Наша оплата поставщику — тихо (27.11.2026, владелец: «бабки на счёте редко есть, Катя сама зайдёт и посмотрит, не надо
             // светить красным»): во вкладке «Оплатить поставщику» серым, без счётчика и бейджа (`NEEDS_US_SQL`).
             $this->stage->paysOut() => [...$todo('stage:'.$this->stage->name, $this->fallbackTitle(), 5), 'quiet' => true],
+            // Гаражная без цены на шаге оплаты счёта — ход менеджера (назвать цену), не наш: дела нет (27.11.2026, Scania 169487
+            // попала в «Не распределено» с «Оплата счёта», когда сняли «записать продажу»).
+            $garageUnpriced && $this->awaitsInvoice() => null,
             default => $todo('stage:'.$this->stage->name, $this->fallbackTitle(), 5),
         };
     }
