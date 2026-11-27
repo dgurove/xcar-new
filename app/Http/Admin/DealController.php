@@ -126,7 +126,8 @@ class DealController
                 where p.offer_id = deals.offer_id and p.track = 'sale' and p.deadline_at < now()) then 'late' else 'ok' end)")
                 ->labels(fn (array $keys) => array_intersect_key(['late' => new Option('late', 'Просрочено'), 'ok' => new Option('ok', 'В срок')], array_flip($keys)))->icon('clock'),
             // Срок обязывающего горит, а поставщику не заплачено (19.10.2026, `Offers\Binding`).
-            Facet::toggle('binding', 'Горит срок обязывающего', fn ($q) => $q->whereHas('offer', fn ($o) => Binding::scope($o, 'deal')))->dot('danger')->quick()->icon('fire'),
+            // Во «Оплатить поставщику» не горит (27.11.2026, владелец: «бабки на счёте редко есть — не светить красным»).
+            ...($preset === 'payout' ? [] : [Facet::toggle('binding', 'Горит срок обязывающего', fn ($q) => $q->whereHas('offer', fn ($o) => Binding::scope($o, 'deal')))->dot('danger')->quick()->icon('fire')]),
             Facet::column('garage', 'Гараж', ['вид', 'вида', 'видов'], "(case when deals.garage_payer is null then 'deal' else 'garage' end)")->icon('warehouse')
                 ->labels(fn (array $keys) => array_intersect_key(['deal' => new Option('deal', 'Без гаража'), 'garage' => new Option('garage', 'Гаражные')], array_flip($keys))),
             ...OfferFilters::for('deals.offer_id', $request->user()->canManageCrm(), $since),

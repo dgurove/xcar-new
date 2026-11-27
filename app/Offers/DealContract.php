@@ -281,6 +281,21 @@ class DealContract extends Model
         return $this->isReady() || ContractEdit::has($this->deal);
     }
 
+    /**
+     * Слово у подписи «Договор» (19.11.2026; одна дверь для «Денег» и шага договора в «Ходе сделки», 27.11.2026): подписан, отправлен,
+     * не отправлен или чего-то не хватает; `null` — договора у сделки нет. @return array{0: string, 1: string}|null
+     */
+    public static function word(Deal $deal, ?self $contract, bool $signed): ?array
+    {
+        return match (true) {
+            $signed => ['подписан', 'ok'],
+            $contract?->shown_at !== null => ['отправлен '.\App\Support\Ago::day($contract->shown_at), 'ok'],
+            $contract && (ContractEdit::has($deal) || ! $contract->missing()) => ['не отправлен', 'bad'],
+            $contract !== null && $deal->isActive() => ['нужны данные', 'bad'],
+            default => null,
+        };
+    }
+
     /** Менеджеру договор виден: можно отправлять и отправлен кнопкой «Отправить менеджеру» в CRM (16.11.2026); иначе — «Договор готовится». */
     public function shownToManager(): bool
     {

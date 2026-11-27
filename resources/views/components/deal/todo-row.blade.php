@@ -8,7 +8,9 @@
 @php
     $offer = $deal->offer;
     $position = $offer->position();
-    $late = $position->isOverdue();
+    // Тихое дело (оплата поставщику, акт вывоза, оригиналы — 27.11.2026, владелец: «красное — только то, что надо срочно») срок
+    // шага не красит: время серым, с начала дела.
+    $late = empty($todo['quiet']) && $position->isOverdue();
     // Доп. просьба держит сделку (18.11.2026): ждём — с начала её шага (просьба ушла, показали менеджеру).
     $ask = $table->has('asked') ? \App\Offers\ExtraAsk::holding($deal) : null;
     $at = $late ? $position->deadline_at : ($todo['since'] ?? ($ask ? ($ask->shown_at ?? $ask->answered_at ?? $ask->since_at) : null));

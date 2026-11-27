@@ -1200,6 +1200,10 @@ class OfferController
                 $counts[$tab.'_our'] = $counts[$tab];
             }
         }
+        // Письма поставщику о вывозе — красным только дата (27.11.2026): акт вывоза ждёт тихо.
+        if (isset($counts['pickup_letters'])) {
+            $counts['pickup_letters_our'] = min($counts['pickup_letters'], count(\App\Logistics\PickupLetters::dueTransportIds('date')));
+        }
         // Горящее вкладок предложений — отдельным лёгким запросом по горящим машинам (их единицы), а не вторым проходом условий
         // каждой вкладки в общем SELECT: 26.11.2026 так запрос чисел модератора шёл по 25 с и уронил прод.
         foreach ($hot ? self::hotOf($hot, $user) : [] as $alias => $n) {
@@ -1254,6 +1258,8 @@ class OfferController
                 'paying_fee' => array_values(array_unique([...DealTabs::paying('fee'), ...SelectionController::ids()])),
                 default => DealTabs::ids($tab),
             };
+            // Оплата поставщику — не горящее (27.11.2026, владелец): Катя заходит сама, когда есть деньги.
+            $ids = $tab === 'payout' ? [] : $ids;
             $out[$tab.':hot'] = count(array_filter($ids, fn ($id) => isset($hotSet[$id])));
             $out[$tab.':urgent'] = count(array_filter($ids, fn ($id) => isset($hotSet[$id]) || isset($late[$id])));
         }

@@ -114,7 +114,7 @@ final class Originals
         $button = ['label' => 'Открыть', 'href' => '/offers/'.$deal->offer?->number];
         // Документов ещё нет (сделка встала на шаг раньше, чем они появились) — их завести: тоже наше дело.
         if ($items->isEmpty()) {
-            return self::kit($deal) === [] ? null : ['key' => 'originals-open', 'title' => 'Завести документы', 'rank' => 2, 'since' => $since, 'button' => $button];
+            return self::kit($deal) === [] ? null : ['key' => 'originals-open', 'title' => 'Завести документы', 'rank' => 2, 'since' => $since, 'button' => $button, 'quiet' => true];
         }
         // Ключ — само дело: вкладка группирует по нему («Отправить ДКП прежнему владельцу», «Приложить сканы» — порознь). Дело
         // документа считается один раз (ревью 26.11.2026: `todo()` ходит за сканами).
@@ -129,7 +129,9 @@ final class Originals
             default => [null, null],
         };
 
-        return $key ? ['key' => $key, 'title' => $title, 'rank' => 2, 'since' => $since, 'button' => $button] : null;
+        // Тихо (27.11.2026, владелец: «красные кружки — то, что надо срочно сделать»): оригиналы ездят неделями — во вкладке серым,
+        // без красного счётчика (`quiet`, как заявка Каркаде).
+        return $key ? ['key' => $key, 'title' => $title, 'rank' => 2, 'since' => $since, 'button' => $button, 'quiet' => true] : null;
     }
 
     /** Кого ждём, когда нашего дела нет (группа ожидания вкладки, `DealTabs::WAITS`): документ у менеджера — его, иначе в пути. */

@@ -1062,6 +1062,20 @@ class Deal extends Model implements HasMedia
     }
 
     /**
+     * Сделка стоит на шаге, что просит подписанный договор, а договор наш (27.11.2026): блок «Договор» — в шаге «Хода сделки»
+     * (`x-deal.contract-step`), «Деньги» его тогда не повторяют (одно действие — одно место).
+     */
+    public function contractStepNow(): bool
+    {
+        if (! $this->isActive() || ! $this->hasContract() || $this->isAuction()) {
+            return false;
+        }
+        $stage = $this->offer?->position()?->stage;
+
+        return $stage !== null && $stage->asks === Asks::Document && $stage->aboutContract();
+    }
+
+    /**
      * Собираем ли покупателя по договору: договор есть (`hasContract`) или сделка стоит на шаге «Данные покупателя»
      * (`Asks::Buyer`, 03.11.2026, Альфа «страховой напрямую»: счёт поставщик выставит на покупателя — договора у нас нет,
      * а данные нужны). Одна дверь для формы покупателя у менеджера и в CRM.

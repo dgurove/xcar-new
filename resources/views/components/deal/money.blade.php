@@ -172,6 +172,9 @@
         $joint = $sale && $selection && $sale->isDocument() && ! $selection->isDocument() && ! in_array($deal->schemeOf(), [\App\Offers\DealScheme::Insurer, \App\Offers\DealScheme::OwnerDkp], true);
         $canEdit = auth()->user()?->canEditDeals();
         $contract = $contractRow ? \App\Offers\DealContract::for($deal) : null;
+        // Сделка на шаге подписанного договора — покупатель и договор в шаге «Хода сделки» (`x-deal.contract-step`, 27.11.2026);
+        // здесь не повторяются (одно действие — одно место, и шторки с одним id дважды на странице не открываются).
+        $contractStep = $canEdit && $deal->contractStepNow();
         // За ТС платят нам (ПРАЙМ, Р.О.С., гараж): наш договор или счёт за машину.
         $carBlock = ! $deal->isAuction() && ! $supplierBlock && ($contract || $sale);
         // Справа в шапке блока — сколько платят нашему юрлицу: счёт или сумма договора (`DealContract::priceFor`); цена продажи —
@@ -190,32 +193,15 @@
         // Поступления выписки — словом шапки; строками — только от того, кто не покупатель (`x-deal.arrivals` `except`).
         $buyerNames = array_filter([$deal->contract?->buyer?->party?->name, $deal->contract?->buyer?->name, $deal->buyer?->name]);
     @endphp
-    {{-- Договор одной строкой: подписан — он, иначе готовый со скрепкой «приложить подписанный»; не готов — «Подписанный договор —
-         Приложить» (подписали без нас). --}}
+    {{-- Договор одной строкой — общий кусок с шагом договора «Хода сделки» (`x-deal.contract-line`, 27.11.2026). --}}
     @php ob_start(); @endphp
-        @if ($withContract || $canEdit)
-            @if ($signed && $canEdit)
-                <x-deal.signed-contract :deal="$deal" :base="'/work/deals/'.$deal->id" bare doc-title="Договор"/>
-            @elseif ($ready)
-                <x-deal.contract-doc :deal="$deal" :attach="$canEdit"/>
-            @elseif ($withContract && $canEdit && $deal->isActive())
-                {{-- Не готов — строкой, как готовый: нажатие — чего не хватает, с полями (18.11.2026, `x-deal.contract-gaps-sheet`). --}}
-                <x-deal.contract-gaps-sheet :deal="$deal" :attach="true"/>
-            @elseif ($canEdit)
-                <x-deal.signed-contract :deal="$deal" :base="'/work/deals/'.$deal->id" bare/>
-            @endif
-        @endif
+        @unless ($contractStep)
+            <x-deal.contract-line :deal="$deal" :can-edit="(bool) $canEdit" :with-contract="$withContract" :signed="$signed" :ready="$ready"/>
+        @endunless
     @php
         $contractLine = trim(ob_get_clean());
         // Слово подписи «Договор» (19.11.2026): подписан, отправлен, не отправлен или чего-то не хватает.
-        $dkpNow = $withContract || $contract ? \App\Offers\DealContract::for($deal) : null;
-        $contractWord = match (true) {
-            $signed => ['подписан', 'ok'],
-            $dkpNow?->shown_at !== null => ['отправлен '.\App\Support\Ago::day($dkpNow->shown_at), 'ok'],
-            $dkpNow && (\App\Offers\ContractEdit::has($deal) || ! $dkpNow->missing()) => ['не отправлен', 'bad'],
-            $dkpNow !== null && $deal->isActive() => ['нужны данные', 'bad'],
-            default => null,
-        };
+        $contractWord = \App\Offers\DealContract::word($deal, $withContract || $contract ? \App\Offers\DealContract::for($deal) : null, $signed);
     @endphp
     {{-- Счёт строкой документа — без суммы (она в шапке), под ним «Отправить», ссылка, «Деньги пришли?», заявки менеджера. --}}
     @php
@@ -390,12 +376,12 @@
         @php ob_start(); @endphp
             @include('admin.deals.supplier-rows')
         @php $top = trim(ob_get_clean()); ob_start(); @endphp
-            <x-deal.contract-gaps :deal="$deal"/>
+            @unless ($contractStep)<x-deal.contract-gaps :deal="$deal"/>@endunless
             @include('admin.deals.supplier-contract-row')
             {!! $contractLine !!}
         @php $dealGroup = trim(ob_get_clean()); @endphp
         {{-- Покупатель — над счётом и договором своей группой: подпись и состояние сверху, в плашке имя (18.11.2026, владелец). --}}
-        @if ($withContract)<div class="mb-3"><x-deal.contract :deal="$deal" bare :doc-row="false" capped/></div>@elseif ($withBuyer)<div class="mb-3"><x-deal.buyer :deal="$deal" capped/></div>@endif
+        @if ($withContract && ! $contractStep)<div class="mb-3"><x-deal.contract :deal="$deal" bare :doc-row="false" capped/></div>@elseif ($withBuyer && ! $contractStep)<div class="mb-3"><x-deal.buyer :deal="$deal" capped/></div>@endif
         {{-- Счёт поставщика, платёжка — своей группой «Поставщику» / «Собственнику» (сколько — в «Итоге»), подпись — только над строками. --}}
         @if ($top !== '')
             <x-deal.doc-cap :label="$deal->schemeOf() === \App\Offers\DealScheme::OwnerDkp ? 'Собственнику' : 'Поставщику'"/>
@@ -414,7 +400,7 @@
              выписке» ниже. --}}
         @if ($sale)<x-deal.arrivals :deal="$deal" :except="$buyerNames"/>@endif
         {{-- Покупатель — над счётом и договором своей группой: подпись и состояние сверху, в плашке имя (18.11.2026, владелец). --}}
-        @if ($withContract)<div class="mb-3"><x-deal.contract :deal="$deal" bare :doc-row="false" capped/></div>@elseif ($withBuyer)<div class="mb-3"><x-deal.buyer :deal="$deal" capped/></div>@endif
+        @if ($withContract && ! $contractStep)<div class="mb-3"><x-deal.contract :deal="$deal" bare :doc-row="false" capped/></div>@elseif ($withBuyer && ! $contractStep)<div class="mb-3"><x-deal.buyer :deal="$deal" capped/></div>@endif
         {{-- Счёт и договор — своими группами с подписью и состоянием справа (19.11.2026, владелец: «как „Покупатель — данные есть“»):
              «Счёт — отправлен 19.11», «Договор — не отправлен»; кнопки — под строкой документа. Счёт — первым (18.11.2026, начальник:
              «договор вообще после счёта должен формироваться»). Счёта нет — строка-заготовка (`x-deal.invoice-gaps`). --}}
@@ -438,9 +424,9 @@
             @endif
         @php $billGroup = trim(ob_get_clean()); ob_start(); @endphp
             {{-- Собственник по договору комиссии — всегда строкой (25.11.2026, `x-deal.owner`). --}}
-            @if (\App\Offers\Actions\SetDealOwner::allows($deal))<x-deal.owner :deal="$deal" :editable="$canEdit"/>@endif
+            @if (\App\Offers\Actions\SetDealOwner::allows($deal) && ! $contractStep)<x-deal.owner :deal="$deal" :editable="$canEdit"/>@endif
             {{-- Чего не хватает договору, говорит его строка-заготовка — отдельными строками только без неё. --}}
-            @unless ($withContract && $canEdit && $deal->isActive() && ! $ready && ! $signed)<x-deal.contract-gaps :deal="$deal" :price-row="(bool) $contract"/>@endunless
+            @unless (($withContract && $canEdit && $deal->isActive() && ! $ready && ! $signed) || $contractStep)<x-deal.contract-gaps :deal="$deal" :price-row="(bool) $contract"/>@endunless
             {!! $contractLine !!}
         @php $dealGroup = trim(ob_get_clean()); @endphp
         @if ($joint)

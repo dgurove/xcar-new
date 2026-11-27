@@ -56,6 +56,14 @@
     // Исход сотрудника «… за менеджера» (Альфа: «Договор подписан за менеджера») — тот же ответ, что «За менеджера: «Договор
     // подписан»» в «⋯» шага: второй раз не даём (19.11.2026, владелец: «не должно быть двух плашек действий»).
     $forManager = $forManager->reject(fn ($x) => $moves->contains(fn ($m) => mb_strtolower($m->label) === mb_strtolower($x->label).' за менеджера'))->values();
+    // Шаг просит подписанный договор, а наш договор менеджеру не отправлен (27.11.2026, владелец: «как он может быть получен, если мы
+    // его ещё не отправили»): ни «Договор получен», ни «За менеджера: Договор приложен» — в шаге сам договор (`x-deal.contract-step`),
+    // «Приложить подписанный» в нём проходит шаг сам.
+    $contractStep = $deal && $position->track === \App\Workflow\Track::Sale && $deal->contractStepNow();
+    if ($contractStep && $deal->awaitsOurContract($stage)) {
+        $moves = $moves->reject(fn ($x) => mb_stripos($x->label, 'договор') !== false)->values();
+        $forManager = $forManager->reject(fn ($x) => mb_stripos($x->label, 'договор') !== false)->values();
+    }
     // «Заявка отправлена» (Каркаде) — не кнопка: её жмёт само письмо заявки по всем сделкам вендора разом.
     $requestExit = $deal ? $moves->first(fn ($x) => mb_strtolower($x->label) === 'заявка отправлена') : null;
     $requests = $requestExit ? \App\Offers\Deal::awaitingRequest($offer->vendor_id)->count() : 0;
@@ -324,6 +332,11 @@
                         && (($stage->isPayStep() && \App\Offers\Signing::routeBooks($stage)) || $deal->needsSigningCity($stage)))
                         <x-deal.signing-city :deal="$deal" :action="'/work/deals/'.$deal->id.'/signing-city'" search="/reference/settlements" class="mt-3"/>
                     @endif
+                    {{-- Шаг подписанного договора (27.11.2026, владелец: «там должен сам договор отображаться и кнопки: скорректировать,
+                         отправить, покупатель, если не заполнен»): блок «Договор» из «Денег» — тем же куском. --}}
+                    @if ($contractStep && auth()->user()?->canEditDeals())
+                        <x-deal.contract-step :deal="$deal" class="mt-3"/>
+                    @endif
                     {{-- Оригиналы документов (26.11.2026, `x-deal.originals`): где каждый и трек СДЭК; всё на месте — шаг проходит сам. --}}
                     @if ($deal && $position->track === \App\Workflow\Track::Sale && auth()->user()?->canEditDeals() && \App\Offers\Originals::applies($stage) && $deal->isActive())
                         <x-deal.originals :deal="$deal" class="mt-3"/>
@@ -353,7 +366,8 @@
                             @endif
                             {{-- Ждём от менеджера подписанный договор (26.11.2026, вкладка «Ждём договор»): приложить за него или напомнить в чат. --}}
                             @if ($deal && auth()->user()?->canEditDeals() && \App\Offers\DealTabs::awaitsSigned($deal, $position))
-                                <x-deal.attach-signed :deal="$deal" :base="'/work/deals/'.$deal->id" label="Приложить договор за менеджера"/>
+                                {{-- Договор в шаге (`x-deal.contract-step`) — там «Приложить подписанный», второй кнопкой не повторяем. --}}
+                                @unless ($contractStep)<x-deal.attach-signed :deal="$deal" :base="'/work/deals/'.$deal->id" label="Приложить договор за менеджера"/>@endunless
                                 <form method="post" action="/work/deals/{{ $deal->id }}/signed/nudge" class="contents">@csrf<button class="btn btn-s btn-quiet gap-2"><x-ui.icon name="bell" class="size-4"/>Напомнить менеджеру</button></form>
                             @endif
                             @if ($proofFor)

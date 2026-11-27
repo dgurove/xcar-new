@@ -51,6 +51,9 @@ class Position extends Model
     /** Список уже знает, есть ли у машины переоценка письмом без ответа (`Admin\DealController::todo`): null — спросить базу. */
     public ?bool $letterRepriceKnown = null;
 
+    /** `todo()` ищет дело шага в обход тихого акта вывоза (не атрибут модели). */
+    private bool $actAside = false;
+
     public function offer(): BelongsTo
     {
         return $this->belongsTo(Offer::class);
@@ -405,12 +408,24 @@ class Position extends Model
             return $todo('contact', 'Показать контакты менеджеру', 0, $at, ['label' => 'Показать', 'href' => '/offers/'.$offer->number.'?contact=1']);
         }
 
-        // Письмо поставщику о вывозе (Совкомбанк) — группой «Написать поставщику».
-        if ($pickup = $this->pickupLetter()) {
+        // Письмо поставщику о вывозе (Совкомбанк) — группой «Написать поставщику». Акт вывоза — тихо (27.11.2026, владелец: «акты
+        // долго доставать, это норм; красные кружки — то, что надо срочно»): серым, без счётчика, и срочное дело шага (договор,
+        // счёт) его не ждёт — показывается первым. Дата вывоза — как было: без неё не забрать.
+        if (($pickup = $this->pickupLetter()) && ! ($this->actAside && $pickup['kind'] === 'act')) {
             $url = \App\Logistics\PickupLetters::due($offer)['url'] ?? null;
-
-            return $todo('letter-pickup:'.$pickup['kind'], $pickup['kind'] === 'act' ? 'Отправить поставщику акт вывоза' : 'Сообщить поставщику дату вывоза', 1,
+            $letter = $todo('letter-pickup:'.$pickup['kind'], $pickup['kind'] === 'act' ? 'Отправить поставщику акт вывоза' : 'Сообщить поставщику дату вывоза', 1,
                 $pickup['since'], $url ? ['label' => 'Написать', 'letters' => $url] : null);
+            if ($pickup['kind'] !== 'act') {
+                return $letter;
+            }
+            $this->actAside = true;
+            try {
+                $other = $this->todo();
+            } finally {
+                $this->actAside = false;
+            }
+
+            return $other && empty($other['quiet']) ? $other : [...$letter, 'quiet' => true];
         }
 
         // Ход сделки стоит — дел шага нет.
@@ -454,6 +469,9 @@ class Position extends Model
             // наш — они туда не зайдут»): своим делом и своей вкладкой «Спросить менеджера», кнопка — тот же выход, что в окне.
             $this->stage->name === \App\Offers\SupplierLetterWait::STAGE && ($ask = \App\Offers\SupplierLetterWait::exitOf($this->stage))
                 => $todo('ask-consent', 'Берёт ли в работу', 1, button: ['label' => 'Спросить', 'post' => '/offers/'.$offer->number.'/exit/'.$ask->id, 'confirm' => 'Спросить менеджера, берёт ли в работу?']),
+            // Наша оплата поставщику — тихо (27.11.2026, владелец: «бабки на счёте редко есть, Катя сама зайдёт и посмотрит, не надо
+            // светить красным»): во вкладке «Оплатить поставщику» серым, без счётчика и бейджа (`NEEDS_US_SQL`).
+            $this->stage->paysOut() => [...$todo('stage:'.$this->stage->name, $this->fallbackTitle(), 5), 'quiet' => true],
             default => $todo('stage:'.$this->stage->name, $this->fallbackTitle(), 5),
         };
     }
