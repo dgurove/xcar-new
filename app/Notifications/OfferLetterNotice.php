@@ -67,7 +67,7 @@ final class OfferLetterNotice extends Notice
         ];
     }
 
-    private function car(): string
+    public function car(): ?string
     {
         $year = $this->candidate->value('year');
 
