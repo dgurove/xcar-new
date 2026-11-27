@@ -35,9 +35,18 @@ class Thread extends Model
         static::addGlobalScope(City::SCOPE, fn (Builder $q) => ($city = City::viewing()) ? City::threads($q, $city) : null);
         // Ветка легла к делу — «ждёт ответа» пересчитывается: наш ответ в соседней ветке того же ТС снимает вопрос
         // (`Threads::answeredElsewhere`).
+        // Пересчёт сам сохраняет ветку, а внутри `updated` прежние значения ещё не сброшены: привязка снова «изменилась»,
+        // и пересчёт звал себя без конца (27.11.2026: заведение выданной ТС по письмам с веткой, ждущей ответа, падало).
         static::updated(function (self $thread) {
-            if ($thread->needs_reply_at && $thread->wasChanged(['offer_id', 'vehicle_id', 'candidate_id'])) {
+            static $busy = [];
+            if (isset($busy[$thread->id]) || ! $thread->needs_reply_at || ! $thread->wasChanged(['offer_id', 'vehicle_id', 'candidate_id'])) {
+                return;
+            }
+            $busy[$thread->id] = true;
+            try {
                 app(Threads::class)->refresh($thread);
+            } finally {
+                unset($busy[$thread->id]);
             }
         });
     }
