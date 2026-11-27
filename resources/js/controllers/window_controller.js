@@ -111,6 +111,8 @@ export default class extends Controller {
         if (head) this.title ??= head.textContent;
         if (title && head) head.replaceChildren(...title.content.cloneNode(true).childNodes);
         else if (head && this.frameTarget.childElementCount) head.textContent = this.title;
+        // Тема письма — данные: выделяется и копируется (27.11.2026), свой заголовок окна — хром.
+        head?.classList.toggle('is-text', !!title?.hasAttribute('data-window-text'));
         if (!this.hasToolsTarget) return;
         // Ответ без шаблона (редактор письма в том же фрейме) — кнопки окна остаются прежними.
         const tools = this.frameTarget.querySelector('template[data-window-tools]');

@@ -83,7 +83,7 @@
 <div {{ $attributes->merge(['class' => 'chain chain--full']) }} data-controller="chain" @if ($fold) data-chain-many-value="true" @endif>
     {{-- Общая тема переписки — в заголовок окна писем вместо «Письма» (`window_controller#tools`); строк-тем внутри ленты нет
          (17.11.2026, владелец). --}}
-    @if ($windowTitle = \App\Mail\Topic::of($messages))<template data-window-title>{{ $windowTitle }}</template>@endif
+    @if ($windowTitle = \App\Mail\Topic::of($messages))<template data-window-title data-window-text>{{ $windowTitle }}</template>@endif
     @php $prevWho = null; @endphp
     @forelse ($nodes as $node)
         @php

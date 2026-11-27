@@ -6531,6 +6531,9 @@ dialog.lightbox:not(.lb-one) .lb-pill--bottom { bottom: calc(var(--lb-strip-bott
   .card input, .card textarea, .row input, .sheet input, .sheet textarea, .field-input, .phase-body { -webkit-user-select: text; user-select: text; }
   /* Номера — данные, не хром: выделяются и копируются. */
   .tag.nums, .chip.nums, .fact.nums, .vincode { -webkit-user-select: text; user-select: text; }
+  /* Тема письма в заголовке окна и страницы ветки — данные (27.11.2026, владелец: «почему я не могу в теме письма
+     выделять текст и копировать», приходилось слать скрин): выделяется, как текст письма. */
+  .is-text { -webkit-user-select: text; user-select: text; -webkit-touch-callout: default; cursor: text; }
 }
 
 /* ------------------------------------------------------------- потянуть вниз */

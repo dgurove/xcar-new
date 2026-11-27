@@ -1,5 +1,5 @@
 @php $park = $base === '/mail'; @endphp
-<x-ui.shell :title="\App\Mail\Topic::of($thread->messages) ?? ($thread->subject ?: '(без темы)')" :back="['Почта', $base]">
+<x-ui.shell :title="\App\Mail\Topic::of($thread->messages) ?? ($thread->subject ?: '(без темы)')" :back="['Почта', $base]" text-title>
     {{-- Ящик — текстом, ТС или предложение — ссылкой (10.10.2026: «что-то чипами, что-то текстом»). Привязка и «Не прочитано» —
          в «⋯» письма, как везде (17.11.2026: две кнопки с ml-auto стояли посреди строки). --}}
     <div class="mb-4 flex flex-wrap items-baseline gap-x-3 gap-y-1">
