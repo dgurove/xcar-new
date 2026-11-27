@@ -221,6 +221,8 @@ Route::domain(config('xcar.crm_host'))->middleware(['auth', 'ability:isStaff'])-
         Route::post('/parties/{party}/passport/read', [PassportScanController::class, 'read'])->middleware('throttle:10,1');
         Route::post('/parties/{party}/passport/{page}/rotate', [PassportScanController::class, 'rotate'])->whereIn('page', ['main', 'reg'])->middleware('throttle:30,1');
         Route::get('/parties/{party}/passport.pdf', [PassportScanController::class, 'pdf']);
+        Route::post('/parties/{party}/card', [\App\Http\Cabinet\PartyCardController::class, 'store'])->middleware('throttle:30,1');
+        Route::delete('/parties/{party}/card/{media}', [\App\Http\Cabinet\PartyCardController::class, 'destroy'])->whereNumber('media');
         Route::get('/work/deals/{deal}/dkp', [DealContractController::class, 'show']);
         Route::get('/work/deals/{deal}/dkp.pdf', [DealContractController::class, 'show']);
         Route::get('/work/deals/{deal}/dkp.docx', [DealContractController::class, 'show']);

@@ -392,7 +392,7 @@ class DealContractController
             abort_unless($deal->holderEditable(), 404);
             $rules = ['buyer_id' => ['nullable', 'string'], 'payer' => ['nullable', 'in:buyer,manager']];
             if ($request->has('buyer')) {
-                $rules += PartyRules::passport('buyer');
+                $rules += PartyRules::passport('buyer', files: DealContract::cardFiled($deal, $request->input('buyer_id')));
             }
             PartyRules::squeeze($request);
             $data = $request->validate($rules, PartyRules::messages(), ['buyer.name' => 'ФИО покупателя'] + PartyRules::buyerLabels());

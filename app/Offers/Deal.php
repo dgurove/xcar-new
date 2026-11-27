@@ -1230,7 +1230,7 @@ class Deal extends Model implements HasMedia
             return 'none';
         }
         $any = $party->readyForContract() || $party->getMedia('passport')->isNotEmpty() || filled($party->passport) || filled($party->reg_address)
-            || filled($party->inn);
+            || filled($party->inn) || $party->getMedia('card')->isNotEmpty();
 
         return $any ? 'partial' : 'none';
     }
@@ -1284,6 +1284,8 @@ class Deal extends Model implements HasMedia
             // У покупателя нет того, что счёт печатает (18.11.2026: ФИО и прописка, у ИП и организации — свои поля; скан и
             // паспорт — договору): счёта ПРАЙМ нет, ход менеджера. Деньги уже пришли — счёт встаёт и так (`SyncDealInvoices::prime`).
             // Паспорт приложен и дочитан, а нужного счёту в нём не нашлось (18.11.2026, владелец: «это уже НАШ ХОД») — `unread`.
+            // Реквизиты карточкой файлами (27.11.2026) — вносим мы: ход наш, менеджера не спрашиваем.
+            $this->isPrime() && ! $this->invoiceReady() && $this->credited() <= 0 && $this->contract?->buyer?->party?->cardOnly() => 'files',
             $this->isPrime() && ! $this->invoiceReady() && $this->credited() <= 0 => $this->invoiceUnread() ? 'unread' : 'passport',
             default => 'invoice',
         };
@@ -1370,7 +1372,7 @@ class Deal extends Model implements HasMedia
     public function invoiceBlockers(): array
     {
         return match ($this->invoiceGap()) {
-            'passport', 'unread' => $this->invoiceGaps(),
+            'passport', 'unread', 'files' => $this->invoiceGaps(),
             'buyer' => ['buyer' => 'Покупатель'],
             'price' => ['price' => 'Цена продажи'],
             'share' => ['share' => 'Наша доля'],

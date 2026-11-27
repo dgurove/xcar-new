@@ -11,18 +11,13 @@
     $buyer = $contract?->buyer;
     $party = $buyer?->party;
     $id = 'buyer-check-'.$deal->id.'-'.\Illuminate\Support\Str::slug($then);
-    $cards = $party ? $party->getMedia('card') : collect();
     $word = mb_lcfirst($label);
 @endphp
 @if ($party && $contract?->needsBuyerCheck() && auth()->user()?->canEditDeals())
     <div class="contents" data-controller="sheet">
         <button type="button" {{ $attributes->merge(['class' => 'btn btn-s gap-2'.(str_contains((string) $attributes->get('class'), 'btn-quiet') ? '' : ' btn-accent')]) }} data-action="sheet#open" aria-controls="{{ $id }}"><x-ui.icon name="check-circle" class="size-4 shrink-0"/>Проверить и {{ $word }}</button>
         <x-ui.sheet :id="$id" title="Проверьте реквизиты покупателя" :open="old('_sheet') === $id" tall>
-            @if ($cards->isNotEmpty())
-                <div class="list mb-3">
-                    @foreach ($cards as $n => $card)<x-ui.doc :doc="\App\Support\Docs::media($card)" class="row"><x-ui.row-icon name="file" size="s" tone="urgent"/><span class="min-w-0 flex-1">Реквизиты от менеджера, фото{{ $cards->count() > 1 ? ' '.($n + 1) : '' }}</span><x-ui.chevron/></x-ui.doc>@endforeach
-                </div>
-            @endif
+            {{-- Карточка организации файлами — в самих полях (`x-billing.card-files` в `buyer-fields`, 27.11.2026). --}}
             <form method="post" action="/work/deals/{{ $deal->id }}/contract" class="flex flex-col gap-3" id="{{ $id }}-form">
                 @csrf @method('put')
                 <input type="hidden" name="_sheet" value="{{ $id }}">

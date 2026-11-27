@@ -229,6 +229,12 @@ final class DealTabs
 
                 return [$deal->id => ['deal' => $deal, 'tab' => 'originals', 'todo' => Originals::todo($deal, $position->entered_at, $docs), 'docs' => $docs]];
             }
+            // Реквизиты покупателя карточкой файлами, полей нет (27.11.2026, менеджеры: «просто приложить файлы с карточкой») —
+            // вносим мы: «Проверить реквизиты», своей подгруппой «Заполнить из файлов».
+            if (! $repricing && $deal->contract?->buyer?->party?->cardOnly()) {
+                return [$deal->id => ['deal' => $deal, 'tab' => 'verify', 'todo' => [...($todo ?? []), 'key' => 'verify:files', 'title' => 'Заполнить из файлов', 'rank' => 1,
+                    'button' => ['label' => 'Заполнить', 'href' => '/offers/'.$deal->offer?->number.'?buyer=1']]]];
+            }
             // Отправляем реквизиты покупателя, а они не проверены — сначала проверка (26.11.2026): «Проверить реквизиты».
             if (! $repricing && self::verifies($deal, $todo)) {
                 return [$deal->id => ['deal' => $deal, 'tab' => 'verify', 'todo' => [...$todo, 'key' => 'verify', 'title' => 'Проверить реквизиты', 'rank' => 1,

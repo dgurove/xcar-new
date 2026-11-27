@@ -234,6 +234,16 @@ class Party extends Model implements HasMedia
             && ($this->kind !== PartyKind::Entrepreneur || ! $this->bankMissing());
     }
 
+    /**
+     * Реквизиты ИП или организации лежат карточкой файлами (`card`, 27.11.2026), а полей для счёта и договора нет: вносим мы —
+     * ход наш, «Проверить реквизиты» → «Заполнить из файлов» (`DealTabs`), менеджера не спрашиваем (`Deal::invoiceGap` `files`).
+     */
+    public function cardOnly(): bool
+    {
+        return in_array($this->kind, [PartyKind::Company, PartyKind::Entrepreneur], true) && $this->getMedia('card')->isNotEmpty()
+            && ! $this->readyAsBuyer();
+    }
+
     /** Чего ещё нет у покупателя, когда сторона договора уже внесена: скана паспорта или банка ИП; null — всё есть или не внесена. */
     public function buyerGap(): ?string
     {
@@ -255,6 +265,9 @@ class Party extends Model implements HasMedia
         // Паспорт приложен (18.11.2026, владелец: «нельзя писать „нет прописки“, если его приложили — „прописка не распозналась“»).
         if ($this->scanState() === 'reading') {
             return 'паспорт распознаётся';
+        }
+        if ($this->cardOnly()) {
+            return 'реквизиты в файлах';
         }
         if ($unread = $this->unreadFields()) {
             return count($unread) > 2 ? 'данные не распознались' : 'не распознано: '.implode(', ', $unread);

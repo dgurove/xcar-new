@@ -102,12 +102,7 @@
         @endif
         <x-ui.sheet :id="$dataSheet" :title="$ready ? 'Данные покупателя' : 'Данные для '.$for" :open="session('open_sheet') === $dataSheet || ($errors->hasAny(['buyer.*']) && ! preg_match('/^deal-(invoice|contract)-gaps-/', (string) old('_sheet'))) || $ask" tall>
             @php $buyerParty = $buyer->party ?? \App\Billing\Party::forUser($buyer); @endphp
-            {{-- Снимки реквизитов от менеджера — над полями: вносят, глядя на них. --}}
-            @if ($cards->isNotEmpty())
-                <div class="list mb-3">
-                    @foreach ($cards as $n => $card)<x-ui.doc :doc="\App\Support\Docs::media($card)" class="row"><x-ui.row-icon name="file" size="s" tone="urgent"/><span class="min-w-0 flex-1">Реквизиты от менеджера, фото{{ $cards->count() > 1 ? ' '.($n + 1) : '' }}</span><x-ui.chevron/></x-ui.doc>@endforeach
-                </div>
-            @endif
+            {{-- Карточка организации файлами — в самих полях (`x-billing.card-files` в `buyer-fields`, 27.11.2026). --}}
             <form method="post" action="/work/deals/{{ $deal->id }}/contract" class="flex flex-col gap-3" id="{{ $dataSheet }}-form">
                 @csrf @method('put')
                 {{-- Вид у заведённого — только физлицо или ИП того же человека; организация — другой покупатель (26.11.2026). --}}
@@ -172,7 +167,7 @@
 @foreach ($cards as $n => $card)
     <x-ui.doc :doc="\App\Support\Docs::media($card)" class="row">
         <x-ui.row-icon name="file" size="s" tone="urgent"/>
-        <span class="min-w-0 flex-1"><span class="block">Реквизиты от менеджера, фото{{ $cards->count() > 1 ? ' '.($n + 1) : '' }}</span>@if (! $ready)<span class="row-sub">внести данные покупателя</span>@endif</span>
+        <span class="min-w-0 flex-1"><span class="block">Карточка организации{{ $cards->count() > 1 ? ' '.($n + 1) : '' }}</span>@if (! $ready)<span class="row-sub">внести данные покупателя</span>@endif</span>
         <x-ui.chevron/>
     </x-ui.doc>
 @endforeach

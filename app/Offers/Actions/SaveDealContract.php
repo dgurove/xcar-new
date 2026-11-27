@@ -132,6 +132,15 @@ final class SaveDealContract
         if ($picked && $fresh->selfBuy() && $fresh->moneyEditable() && $fresh->commission === null && ($commission = $fresh->defaultCommission()) !== null) {
             ($this->money)($fresh, $by, $commission, note: 'Оформляет на себя: вознаграждение '.Money::rub($commission));
         }
+        // Сменили покупателя — счёт за ТС на прежнего, за который не платили, гаснет сразу (27.11.2026: новый без данных — счёта на
+        // него ещё нет, а старый, неотправленный, считался готовым к отправке не тому человеку). Новый встанет сам, когда будут данные.
+        if ($picked && ! $deal->isDirect()) {
+            $party = $contract->fresh('buyer')->buyerParty();
+            $deal->issuedInvoices()->where('kind', \App\Billing\ChargeKind::Sale)->where('state', \App\Billing\InvoiceState::Issued)
+                ->with(['payments', 'claims'])->get()
+                ->filter(fn ($i) => $i->party_id !== $party?->id && $i->claims->isEmpty() && $i->payments->every(fn ($p) => $p->source->isSoft() || $p->voided_at))
+                ->each(fn ($i) => app(\App\Billing\Actions\VoidInvoice::class)($i, $by, 'Сменился покупатель'));
+        }
         // Плательщик или его данные сменились — счёт ПРАЙМ встаёт сам (или перевыставляется, если за него не платили).
         ($this->invoices)($deal->fresh(['offer', 'buyer', 'contract.buyer']), $by);
         $contract = $contract->fresh(['seller', 'buyer.party', 'deal.offer', 'deal.buyer']);
@@ -155,6 +164,8 @@ final class SaveDealContract
             throw ValidationException::withMessages(['buyer_id' => 'Данные нового покупателя устарели, выберите вид ещё раз']);
         }
         $name = trim(preg_replace('/\s+/u', ' ', (string) (($buyer['kind'] ?? null) === 'company' ? ($buyer['org'] ?? '') : ($buyer['name'] ?? ''))));
+        // Реквизиты в карточке организации файлами (27.11.2026) — названия ещё нет: «Новый покупатель», имя встанет, когда внесём данные.
+        $name = $name !== '' ? $name : AddPerson::UNNAMED;
         [$first, $last] = ($buyer['kind'] ?? null) === 'company' ? [$name, ''] : (SaveBuyerData::nameParts($name) ?? [$name, '']);
         $manager = $contract->deal->buyer;
         [$user] = app(AddPerson::class)(fn () => app(IssueInvite::class)->buyer($manager),

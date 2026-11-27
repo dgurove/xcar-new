@@ -97,6 +97,19 @@ class DealContract extends Model
         return tap(self::firstOrCreate(['deal_id' => $deal->id], $defaults), fn ($c) => $deal->setRelation('contract', $c->setRelation('deal', $deal)));
     }
 
+    /**
+     * Приложена ли карточка организации файлами к покупателю, которого сохраняет форма (27.11.2026): черновик плитки
+     * (`buyer_id = draft`) — его контрагент, иначе покупатель по договору. Тогда поля ИП и организации не обязательны
+     * (`PartyRules::passport(files:)`).
+     */
+    public static function cardFiled(Deal $deal, ?string $buyerId): bool
+    {
+        $contract = self::for($deal);
+        $party = $buyerId === 'draft' ? $contract->draftParty : ($buyerId === null || $buyerId === '' ? $contract->buyer?->party : null);
+
+        return (bool) $party?->getMedia('card')->isNotEmpty();
+    }
+
     /** Цена договора по деньгам сделки: собственнику (ДКП), закупочная (гаражная), иначе — как счёт: цена подтверждения (у
      *  гаражной Совкомбанка — цена продажи, которую назвал менеджер) минус вознаграждение менеджера, у ПРАЙМ и у Р.О.С.
      *  (18.11.2026, владелец: «цена минус вознаграждение!!! В ДКП ПРАЙМ, Р.О.С. тоже!!!»). */
@@ -217,7 +230,9 @@ class DealContract extends Model
         $fields = array_map(fn ($v) => $v === null ? null : (string) $v, array_intersect_key($party->getAttributes(), array_flip(self::CHECKED_FIELDS)));
         ksort($fields);
 
-        return sha1(json_encode([$party->id, $fields, $party->getMedia('passport')->pluck('id')->sort()->values()->all()]));
+        // И файлы карточки организации (27.11.2026): приложили новые — проверить снова.
+        return sha1(json_encode([$party->id, $fields, $party->getMedia('passport')->pluck('id')->sort()->values()->all(),
+            ...($party->getMedia('card')->isNotEmpty() ? [$party->getMedia('card')->pluck('id')->sort()->values()->all()] : [])]));
     }
 
     /** Реквизиты покупателя проверены сотрудником в этом виде. */

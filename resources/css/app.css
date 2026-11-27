@@ -698,6 +698,8 @@ html.kb-open { --home-gap: 0px; }
   .field-label { @apply text-sm text-ink-dim; }
   /* Звёздочка обязательного поля (x-ui.req) — вплотную к подписи. */
   .field-req { @apply ml-0.5 text-danger; }
+  /* Карточка организации файлами (27.11.2026): поля ИП и организации не обязательны — звёздочек нет (`card_files_controller`). */
+  .card-filed [data-reveal-key="ip"] .field-req, .card-filed [data-reveal-key="company"] .field-req { display: none; }
   /* Текст про машину кучей (x-ui.paste): поле над полями формы, во всю ширину сетки. */
   .paste-input { display: block; min-height: 5.5rem; resize: none; }
   .field-input {

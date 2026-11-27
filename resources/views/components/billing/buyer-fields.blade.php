@@ -37,6 +37,12 @@
             {{ $scanAfter ?? '' }}
         </div>
     @endif
+    {{-- Карточка организации файлами (27.11.2026): у ИП и организации — вместо полей, внесём мы (`x-billing.card-files`). --}}
+    @if ($scan && $party?->exists && ! $owner)
+        <div data-reveal-target="pane" data-reveal-key="ip company" @if ($kind === 'person') hidden @endif>
+            <x-billing.card-files :party="$party" :key="$key"/>
+        </div>
+    @endif
     <div class="flex flex-col gap-3" data-reveal-target="pane" data-reveal-key="person ip" @if ($kind === 'company') hidden @endif>
         <x-ui.field :name="$n('name')" :id="$id('p', 'name')" label="ФИО" :value="$company ? $fallback : $party?->name" required/>
         <div data-reveal-target="pane" data-reveal-key="person" @if ($kind !== 'person') hidden @endif>

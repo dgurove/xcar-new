@@ -44,7 +44,7 @@ class DealContractController
             $rules += ['new_buyer.phone' => ['nullable', 'string', 'max:20']];
         }
         if ($request->has('buyer') || $new) {
-            $rules += PartyRules::passport('buyer');
+            $rules += PartyRules::passport('buyer', files: DealContract::cardFiled($deal, $request->input('buyer_id')));
         }
         PartyRules::squeeze($request);
         $data = $request->validate($rules, PartyRules::messages(), ['buyer.name' => 'ФИО покупателя'] + PartyRules::buyerLabels());

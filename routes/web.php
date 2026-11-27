@@ -164,6 +164,9 @@ Route::middleware(['auth', 'wall'])->group(function () {
         Route::post('/parties/{party}/passport/read', [PassportScanController::class, 'read'])->middleware('throttle:10,1');
         Route::post('/parties/{party}/passport/{page}/rotate', [PassportScanController::class, 'rotate'])->whereIn('page', ['main', 'reg'])->middleware('throttle:30,1');
         Route::get('/parties/{party}/passport.pdf', [PassportScanController::class, 'pdf']);
+        // Карточка организации файлами (27.11.2026): у ИП и организации — вместо полей, внесём мы.
+        Route::post('/parties/{party}/card', [\App\Http\Cabinet\PartyCardController::class, 'store'])->middleware('throttle:30,1');
+        Route::delete('/parties/{party}/card/{media}', [\App\Http\Cabinet\PartyCardController::class, 'destroy'])->whereNumber('media');
     });
 
     Route::get('/account/invoices/{invoice}/pdf', [MoneyController::class, 'pdf']);

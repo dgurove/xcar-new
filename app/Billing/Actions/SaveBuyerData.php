@@ -42,6 +42,11 @@ final class SaveBuyerData
             'company' => PartyKind::Company,
             default => PartyKind::Person,
         };
+        // Реквизиты в карточке организации файлами (27.11.2026) — названия ещё нет: имя у контрагента обязательно, оставляем прежнее
+        // (пустое — пустой строкой), внесём по файлам.
+        if (array_key_exists('name', $fields) && $fields['name'] === null) {
+            $fields['name'] = $party->name ?? '';
+        }
         $keep = $keepKind && $kind === 'person' && in_array($party->kind, [PartyKind::Entrepreneur, PartyKind::SelfEmployed], true);
         $party->fill(($keep ? [] : ['kind' => $as]) + $fields)->save();
         // Имя покупателя из ФИО ставит само сохранение контрагента (`Party::booted` → `renameBuyer`); здесь — на случай,

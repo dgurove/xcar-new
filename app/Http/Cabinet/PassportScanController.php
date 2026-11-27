@@ -101,7 +101,7 @@ class PassportScanController
     /**
      * Сотрудник CRM: админ — любой; модератор (14.11.2026, `canEditDeals`: данные ДКП) — только покупателя по договору сделки.
      */
-    private static function staff(User $me, Party $party): bool
+    public static function staff(User $me, Party $party): bool
     {
         // И продавец ДКП собственника (25.11.2026: скан паспорта из письма страховой, `FillOwnerFromPassport`).
         return $me->isAdmin() || ($me->canEditDeals() && (DealContract::whereHas('buyer', fn ($q) => $q->where('party_id', $party->id))->exists()
@@ -127,7 +127,7 @@ class PassportScanController
     }
 
     /** Скан встал — у идущих сделок этого покупателя счёт ПРАЙМ и договор могут встать сами (`Party::readyAsBuyer`). */
-    private function resync(Party $party, User $me, SyncDealInvoices $invoices): void
+    public function resync(Party $party, User $me, SyncDealInvoices $invoices): void
     {
         $user = User::where('party_id', $party->id)->first();
         if (! $user) {

@@ -12,18 +12,21 @@ final class PartyRules
      * Паспорт для договора (`x-billing.passport-fields`) набором `$prefix[...]`: ФИО, рождение, паспорт, регистрация. С `kind`
      * — покупатель (`x-billing.buyer-fields`, `SaveBuyerData`): физлицо, ИП или организация.
      */
-    public static function passport(string $prefix, bool $owner = false): array
+    public static function passport(string $prefix, bool $owner = false, bool $files = false): array
     {
         $kind = fn (string $k) => fn ($input) => data_get($input, $prefix.'.kind') === $k;
         // Собственник по договору комиссии (`owner`, 25.11.2026): ему по его реквизитам не платим (платим Совкомбанку по
         // `supplier_requisites`) — банк ИП и руководитель с адресом организации не обязательны.
-        $must = fn (string $rule) => $owner ? [] : [$rule];
+        $must = fn (string $rule) => $owner || $files ? [] : [$rule];
+        // Карточка организации файлами (`files`, 27.11.2026): у ИП и организации ни одно поле не обязательно — внесём мы по файлам
+        // («Проверить реквизиты» → «Заполнить из файлов»); ФИО физлица — как было.
+        $need = fn (string $rule) => $files ? [] : [$rule];
 
         return [
             $prefix => ['required', 'array'],
             // ФИО — у физлица и ИП одно поле; название организации — своё `org` (06.11.2026: одно `name` на оба вида
             // затиралось при смене вида, а скан не вписывал ФИО — два поля с одним именем).
-            $prefix.'.name' => ['required_unless:'.$prefix.'.kind,company', 'nullable', 'string', 'max:200'],
+            $prefix.'.name' => [$files ? 'required_if:'.$prefix.'.kind,person' : 'required_unless:'.$prefix.'.kind,company', 'nullable', 'string', 'max:200'],
             $prefix.'.birth_at' => ['nullable', 'date', 'before:today'], $prefix.'.birth_place' => ['nullable', 'string', 'max:255'],
             $prefix.'.passport' => ['nullable', 'string', 'max:60'], $prefix.'.passport_issued' => ['nullable', 'string', 'max:255'],
             $prefix.'.passport_issued_at' => ['nullable', 'date', 'before_or_equal:today'], $prefix.'.passport_code' => ['nullable', 'string', 'max:10'],
@@ -31,9 +34,9 @@ final class PartyRules
             // ИП (06.11.2026: физлицо платит со своего ИП — поставщику реквизиты ИП и скан паспорта): ИНН, ОГРНИП и банк
             // обязательно; организация — название, ИНН, руководитель, адрес, банк по желанию.
             $prefix.'.kind' => ['nullable', Rule::in(SaveBuyerData::KINDS)],
-            $prefix.'.org' => ['required_if:'.$prefix.'.kind,company', 'nullable', 'string', 'max:200'],
+            $prefix.'.org' => [...$need('required_if:'.$prefix.'.kind,company'), 'nullable', 'string', 'max:200'],
             // Наше юрлицо (ПРАЙМ, Р.О.С., ИП Кузнецов) покупателем не бывает — это схема «Через Р.О.С.» (17.11.2026).
-            $prefix.'.inn' => ['required_if:'.$prefix.'.kind,ip,company', 'nullable', 'digits_between:10,12', Rule::when($kind('ip'), 'digits:12'),
+            $prefix.'.inn' => [...$need('required_if:'.$prefix.'.kind,ip,company'), 'nullable', 'digits_between:10,12', Rule::when($kind('ip'), 'digits:12'),
                 function ($attr, $value, $fail) {
                     ($seller = Party::ours((string) $value)) && $fail(Party::oursMessage($seller));
                 }],
@@ -112,7 +115,7 @@ final class PartyRules
     public static function messages(string $prefix = 'buyer'): array
     {
         return collect([
-            'name.required_unless' => 'Укажите ФИО', 'org.required_if' => 'Укажите название организации',
+            'name.required_unless' => 'Укажите ФИО', 'name.required_if' => 'Укажите ФИО', 'org.required_if' => 'Укажите название организации',
             'inn.required_if' => 'Укажите ИНН', 'inn.digits_between' => 'ИНН: 10 или 12 цифр', 'inn.digits' => 'ИНН ИП: 12 цифр',
             'kpp.digits' => 'КПП: 9 цифр', 'ogrn.required_if' => 'Укажите ОГРНИП', 'ogrn.digits_between' => 'ОГРН: 13 цифр, ОГРНИП: 15',
             'ogrn.digits' => 'ОГРНИП: 15 цифр', 'legal_address.required_if' => 'Укажите юридический адрес',
